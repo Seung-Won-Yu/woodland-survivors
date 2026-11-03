@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#26392d">
+  <meta name="description" content="작은 동물 수호대의 숲 원정. 공용 무기를 조합하며 보급과 위험 사이에서 길을 고르는 2D 서바이버.">
+  <title>동물 수호대 · 새벽숲 정찰</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <canvas id="world" aria-label="새벽숲 전투 화면"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <header id="hud" hidden>
+    <div class="status"><div class="identity"><canvas id="avatar" width="60" height="60"></canvas><div><b id="hero-name"></b><span id="level"></span></div></div><div class="hp"><i id="hp-fill"></i><span id="hp-text"></span></div><div id="weapons" aria-label="장착 무기"></div></div>
+    <div class="clock"><span>새벽숲 · 정찰 원정</span><strong id="time">0:00</strong><small id="kills">0 처치</small></div>
+    <div class="map-wrap"><div class="map-top"><span>숲의 가장자리</span><span>N ↑</span></div><canvas id="map" width="164" height="130" aria-label="목적지와 대원의 위치"></canvas><div class="map-bottom"><span>◆ 보급</span><span>◆ 둥지</span><span>◆ 샘</span></div><button id="pause" aria-label="일시정지">Ⅱ <span>ESC</span></button></div>
+  </header>
+  <aside id="objective" hidden><span class="eyebrow">원정 수첩</span><b id="objective-title">서쪽 길에서 보급 찾기</b><span id="objective-detail">장비와 진화 촉매를 확보하세요.</span></aside>
+  <div id="message" role="status" aria-live="polite" hidden></div>
+  <div id="interact-wrap" hidden><button id="interact"><kbd>F</kbd> <span></span></button></div>
+  <footer id="controls" hidden><div class="keyboard-guide"><kbd>W A S D</kbd> 이동 <i>·</i> 자동 공격 <i>·</i> <kbd>SPACE</kbd> 구르기</div><div class="skills"><button id="dash"><kbd>SPACE</kbd><b>구르기</b><span></span></button><button id="skill"><kbd>E</kbd><b>고유기</b><span></span></button></div></footer>
+  <div id="joystick" hidden aria-label="드래그하여 이동"><div></div><span>이동</span></div>
+  <main id="overlay"></main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
