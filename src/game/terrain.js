@@ -1,10 +1,12 @@
 export const WORLD_LIMIT=1350;
 export const LANDMARKS={supply:{x:-760,y:-180},nest:{x:650,y:-480},spring:{x:140,y:620},camp:{x:0,y:70}};
+export const TRIAL_SPOTS=[{x:-520,y:380},{x:560,y:120},{x:0,y:-490}];
 export const TRAILS=[[[0,70],[-210,-40],[-760,-180]],[[-760,-180],[-710,-560],[-260,-660],[650,-480]],[[0,70],[200,290],[140,620]],[[140,620],[630,330],[800,-120],[650,-480]]];
 function segmentDistance(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy)));return Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t);}
 export const TREE_PROPS=Array.from({length:95},(_,i)=>({x:((i*719+111)%2600)-1300,y:((i*983+91)%2600)-1300,size:.83+(i%5)*.07,variant:i%3,id:i})).filter(a=>{
   if(Math.abs(a.x)<225&&Math.abs(a.y)<230)return false;
   if(Object.values(LANDMARKS).some(({x,y})=>Math.hypot(a.x-x,a.y-y)<180))return false;
+  if(TRIAL_SPOTS.some(({x,y})=>Math.hypot(a.x-x,a.y-y)<135))return false;
   return !TRAILS.some(path=>path.slice(1).some((b,i)=>segmentDistance(a.x,a.y,path[i],b)<92));
 });
 export const TREE_TRUNKS=TREE_PROPS.map(a=>({x:a.x,y:a.y,r:23*a.size,kind:'tree',id:a.id}));

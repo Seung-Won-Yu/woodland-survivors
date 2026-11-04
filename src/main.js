@@ -5,17 +5,21 @@ import {createRenderer} from './game/render.js';
 import {loadIllustratedArt} from './art/illustrated.js';
 import {drawHero} from './art/sprites.js';
 import {createAudio,selectAudioEvents} from './game/audio.js';
+import {RELICS,RELIC_IDS,equipRelic,leaveRelicCache,relicReadout} from './core/relics.js';
+import {JOURNAL_KEY,normalizeJournal,discoverRelics,recordRun} from './game/journal.js';
 const $=id=>document.getElementById(id),overlay=$('overlay'),canvas=$('world'),audio=createAudio();
 overlay.innerHTML='<div class="loading-art" role="status">수호대와 새벽숲을 준비하고 있습니다…</div>';
 const art=await loadIllustratedArt().catch(error=>{overlay.innerHTML='<div class="loading-art" role="alert">그림을 읽지 못했습니다. 새로고침해 주세요.</div>';throw error;});
 const renderer=createRenderer(canvas,$('map'),art);
 let selected='pip',selectedWeapon='acorn',muted=false;
+let journal=normalizeJournal(null);try{journal=normalizeJournal(JSON.parse(localStorage.getItem(JOURNAL_KEY)));}catch{}
 try{const settings=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}');if(Object.hasOwn(HEROES,settings.hero))selected=settings.hero;selectedWeapon=Object.hasOwn(WEAPONS,settings.weapon)&&!WEAPONS[settings.weapon].union?settings.weapon:HEROES[selected].weapon;muted=settings.muted===true;}catch{}
 let game=createExpedition(selected,selectedWeapon);game.phase='camp';game.enemies=[];
-let lastPhase='',keys=new Set(),touch={x:0,y:0},pulse={skill:false,dash:false},hudClock=0,last=performance.now(),runNumber=0,pointer=null;
+let lastPhase='',keys=new Set(),touch={x:0,y:0},pulse={skill:false,dash:false},hudClock=0,last=performance.now(),pointer=null;
 const touchMode=()=>matchMedia('(pointer:coarse)').matches||innerWidth<600;
 function clearInput(){keys.clear();touch={x:0,y:0};pulse={skill:false,dash:false};if(pointer!==null){try{$('joystick').releasePointerCapture(pointer);}catch{}pointer=null;}$('joystick').firstElementChild.style.transform='';}
 function settings(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({hero:selected,weapon:selectedWeapon,muted}));}catch{}}
+function saveJournal(){try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journal));}catch{}}
 function sound(type){if(!muted)audio.play(type);}
 function drawPortrait(target,id){const c=target.getContext('2d'),b=renderer.atlas.portraitBounds[HEROES[id].row],scale=Math.min((target.width-6)/b.w,(target.height-4)/b.h);c.clearRect(0,0,target.width,target.height);c.imageSmoothingEnabled=true;c.drawImage(renderer.atlas,b.x,b.y,b.w,b.h,(target.width-b.w*scale)/2,target.height-b.h*scale-1,b.w*scale,b.h*scale);}
 function icon(target,id){
@@ -29,11 +33,13 @@ function icon(target,id){
   else{for(let i=0;i<5;i++){c.rotate(Math.PI*2/5);c.fillRect(3,-3,6,6);}c.fillStyle='#d6b866';c.fillRect(-3,-3,6,6);}
   c.restore();
 }
-function start(){settings();game=createExpedition(selected,selectedWeapon,1437+runNumber++);lastPhase='';clearInput();audio.unlock();sound('choose');syncPhase();canvas.focus();}
+function start(seed=null){settings();const fresh=Number.isInteger(seed)?seed>>>0:crypto.getRandomValues(new Uint32Array(1))[0];game=createExpedition(selected,selectedWeapon,fresh);lastPhase='';clearInput();audio.unlock();sound('choose');syncPhase();canvas.focus();}
 function camp(){selectedWeapon=game.startWeapon||selectedWeapon;game=createExpedition(selected,selectedWeapon);game.phase='camp';game.enemies=[];lastPhase='';clearInput();syncPhase();}
-function campMarkup(){return `<section class="camp"><div class="camp-content"><div class="brand">WOODLAND SURVIVORS</div><h1>동물 수호대</h1><p class="subtitle">새벽숲 정찰 원정</p><div class="party" role="group" aria-label="출전 대원 선택">${Object.entries(HEROES).map(([id,h])=>`<button data-hero="${id}" aria-label="${h.name} 선택" aria-pressed="${id===selected}"><canvas width="72" height="72" data-portrait="${id}"></canvas></button>`).join('')}</div><div class="character-name"><h2>${HEROES[selected].name}</h2><span>${HEROES[selected].trait}</span></div><p class="character-text">${HEROES[selected].detail}<br><span style="color:#ddc88d">E · ${HEROES[selected].skill}</span></p><div class="loadout"><label for="starting-weapon">공용 시작 무기</label><select id="starting-weapon">${Object.entries(WEAPONS).filter(([,w])=>!w.union).map(([id,w])=>`<option value="${id}" ${selectedWeapon===id?'selected':''}>${w.name}</option>`).join('')}</select></div><button class="primary" id="start">숲으로 출발 <span>→</span></button><div class="camp-notes"><span>3분 생존 후 야영지로 귀환<br>갈림길 탐색 · 교전 · 성장</span><span>WASD 이동 · 자동 공격<br>SPACE 구르기 · E 고유기</span></div></div><div class="camp-location"><span>첫 번째 원정지</span><b>새벽숲, 잃어버린 보급로</b></div><span class="version">전투 개발판 0.4 · 여섯 대원 / 여덟 공용 무기</span></section>`;}
+function campMarkup(){return `<section class="camp"><div class="camp-content"><div class="brand">WOODLAND SURVIVORS</div><h1>동물 수호대</h1><p class="subtitle">새벽숲 정찰 원정</p><div class="party" role="group" aria-label="출전 대원 선택">${Object.entries(HEROES).map(([id,h])=>`<button data-hero="${id}" aria-label="${h.name} 선택" aria-pressed="${id===selected}"><canvas width="72" height="72" data-portrait="${id}"></canvas></button>`).join('')}</div><div class="character-name"><h2>${HEROES[selected].name}</h2><span>${HEROES[selected].trait}</span></div><p class="character-text">${HEROES[selected].detail}<br><span style="color:#ddc88d">E · ${HEROES[selected].skill}</span></p><div class="loadout"><label for="starting-weapon">공용 시작 무기</label><select id="starting-weapon">${Object.entries(WEAPONS).filter(([,w])=>!w.union).map(([id,w])=>`<option value="${id}" ${selectedWeapon===id?'selected':''}>${w.name}</option>`).join('')}</select></div><button class="primary" id="start">숲으로 출발 <span>→</span></button><p class="journal-note">귀환 ${journal.returns}회 · 유물 발견 ${journal.discovered.length}/6${journal.bestLevel?` · 최고 Lv.${journal.bestLevel}`:''}<br><span>매 원정, 제단 위치와 유물 조합이 달라집니다.</span></p>${journalMarkup()}<div class="camp-notes"><span>3분 생존 후 야영지로 귀환<br>유물 두 칸 · 선택하는 필드 도전</span><span>WASD 이동 · 자동 공격<br>SPACE 구르기 · E 고유기</span></div></div><div class="camp-location"><span>첫 번째 원정지</span><b>새벽숲, 잃어버린 보급로</b></div><span class="version">전투 개발판 0.5 · 여섯 대원 / 여섯 행동 유물</span></section>`;}
 function dialog(title,eyebrow,body,actions=''){return `<div class="dialog-backdrop"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><span class="eyebrow">${eyebrow}</span><h2 id="dialog-title">${title}</h2>${body}${actions?`<div class="dialog-actions">${actions}</div>`:''}</section></div>`;}
-function inventory(){return `<div class="inventory">${Object.entries(game.weapons).map(([id,w])=>`<div class="inventory-row"><span>${w.evolved?WEAPONS[id].evo:WEAPONS[id].name}</span><span>${w.evolved?'✦ 진화':`${w.rank} / ${WEAPONS[id].max}단계`}</span><small>${WEAPONS[id].union?'합체 무기':`진화: 8단계 + ${PASSIVES[WEAPONS[id].recipe].name} ${game.passives[WEAPONS[id].recipe]?'✓':'필요'} → 둥지 상자`}</small></div>`).join('')}${Object.entries(game.passives).map(([id,n])=>`<div class="inventory-row"><span>${PASSIVES[id].name}</span><span>${n}단계</span><small>${PASSIVES[id].description}</small></div>`).join('')}</div>`;}
+function journalMarkup(){return journal.runs.length?`<details class="journal-history"><summary>원정 수첩 · 최근 ${journal.runs.length}회</summary><ol>${journal.runs.map(r=>`<li>${HEROES[r.hero].name} · ${r.returned?'귀환':'종료'} · Lv.${r.level} · ${formatTime(r.time)}<br><small>${r.relics.map(id=>RELICS[id].name).join(' + ')||'유물 없이'} · 시드 ${r.seed}</small></li>`).join('')}</ol><p>발견한 유물: ${journal.discovered.map(id=>RELICS[id].name).join(' · ')||'아직 없음'}<br>이 브라우저에 기록합니다. 다음 원정은 같은 기본 능력으로 시작합니다.</p></details>`:'';}
+function inventory(){return `<div class="inventory">${Object.entries(game.weapons).map(([id,w])=>`<div class="inventory-row"><span>${w.evolved?WEAPONS[id].evo:WEAPONS[id].name}</span><span>${w.evolved?'✦ 진화':`${w.rank} / ${WEAPONS[id].max}단계`}</span><small>${WEAPONS[id].union?'합체 무기':`진화: 8단계 + ${PASSIVES[WEAPONS[id].recipe].name} ${game.passives[WEAPONS[id].recipe]?'✓':'필요'} → 둥지 상자`}</small></div>`).join('')}${Object.entries(game.passives).map(([id,n])=>`<div class="inventory-row"><span>${PASSIVES[id].name}</span><span>${n}단계</span><small>${PASSIVES[id].description}</small></div>`).join('')}${game.relics.items.map(id=>`<div class="inventory-row relic-row"><span>◇ ${RELICS[id].name}</span><span>${game.relics.stats[id].procs}회 발동</span><small>${RELICS[id].description}</small></div>`).join('')}</div>`;}
+function relicSummary(){const used=RELIC_IDS.filter(id=>game.relics.stats[id].procs>0||game.relics.discovered.includes(id));return `<div class="relic-report"><span class="eyebrow">이번 원정의 유물</span>${used.length?used.map(id=>{const s=game.relics.stats[id];return `<p><b>${RELICS[id].name}</b> · ${s.procs?`${s.procs}회`:'미발동'}${s.damage?` · 피해 ${Math.round(s.damage)}`:''}${s.healed?` · 회복 ${Math.round(s.healed)}`:''}${s.absorbed?` · 방어 ${Math.round(s.absorbed)}`:''}</p>`;}).join(''):'<p>유물을 남겨둔 원정 · 다음에는 보급 옆 꾸러미를 확인해 보세요.</p>'}<small>제단 도전 ${game.expedition.milestones.trialClearedAt?'완료':game.expedition.trial.startedAt!==null?'미완료':'건너뜀'} · 원정 시드 ${game.expedition.seed}</small></div>`;}
 function expeditionSummary(){
   const ex=game.expedition,nest=ex.sites.find(s=>s.id==='nest'),spring=ex.sites.find(s=>s.id==='spring');
   return `<div class="expedition-summary"><span>보급 장비 <b>${game.gear==='boots'?'순찰 장화':game.gear==='bark'?'나무껍질 망토':'남겨둠'}</b></span><span>위험 둥지 <b>${nest.state==='spent'?'상자 확보':nest.state==='cleared'?'처치 · 상자 미회수':nest.state==='active'?'지휘관 미처치':'도전하지 않음'}</b></span><span>회복 샘 <b>${spring.state==='spent'?'사용함':'남겨둠'}</b></span></div>`;
@@ -48,7 +54,7 @@ function syncPhase(){
   if(inCamp){
     overlay.innerHTML=campMarkup();for(const target of document.querySelectorAll('[data-portrait]'))drawPortrait(target,target.dataset.portrait);
     document.querySelectorAll('[data-hero]').forEach(button=>button.onclick=()=>{selected=button.dataset.hero;selectedWeapon=HEROES[selected].weapon;game.hero=selected;game.startWeapon=selectedWeapon;game.weapons={[selectedWeapon]:{rank:1,evolved:false,clock:0}};game.player.aim=0;lastPhase='';syncPhase();settings();document.querySelector(`[data-hero="${selected}"]`).focus();});
-    $('starting-weapon').onchange=e=>{selectedWeapon=e.target.value;game.weapons={[selectedWeapon]:{rank:1,evolved:false,clock:0}};game.startWeapon=selectedWeapon;settings();};$('start').onclick=start;return;
+    $('starting-weapon').onchange=e=>{selectedWeapon=e.target.value;game.weapons={[selectedWeapon]:{rank:1,evolved:false,clock:0}};game.startWeapon=selectedWeapon;settings();};$('start').onclick=()=>start();return;
   }
   if(game.phase==='choice'){
     overlay.innerHTML=dialog('숲의 힘을 빌리세요',`성장 · LEVEL ${game.level}`,`<p>공격을 더하거나, 지금의 무기를 강하게 만드세요.</p><div class="choices">${game.choices.map((choice,i)=>{const d=(choice.kind==='weapon'?WEAPONS:PASSIVES)[choice.id],rank=choice.kind==='weapon'?game.weapons[choice.id]?.rank||0:game.passives[choice.id]||0;return `<button class="choice" data-choice="${i}"><kbd>${i+1}</kbd><span><b>${d.name}</b><small>${d.description}</small></span><em>${rank?`${rank} → ${rank+1}단계`:'새로 장착'}</em></button>`;}).join('')}</div>`,`<button class="quiet" id="reroll" ${game.rerolls?'':'disabled'}>다시 찾기 · ${game.rerolls}회</button><span class="eyebrow">시간이 멈췄습니다</span>`);
@@ -61,6 +67,16 @@ function syncPhase(){
     }
     overlay.innerHTML=dialog('남겨진 보급 꾸러미','탐색 보상 · 장비 하나 선택',`<p>공통 보상: ${WEAPONS[game.startWeapon].name} +1단계와 진화 촉매.<br>어떻게 숲을 돌파할지 장비를 고르세요.</p><div class="choices"><button class="choice" data-gear="boots"><kbd>1</kbd><span><b>순찰 장화</b><small>이동 속도 +12% · 이동 중 공격 주기 −10%<br>계속 움직이며 경험치를 회수하기 좋습니다.</small></span><em>기동</em></button><button class="choice" data-gear="bark"><kbd>2</kbd><span><b>나무껍질 망토</b><small>0.5초 멈춘 뒤 받는 피해 −3<br>좁은 길에서 버티며 적을 모으기 좋습니다.</small></span><em>진지</em></button></div>`,`<button class="quiet" id="later">보급을 남겨두기</button>`);
     document.querySelectorAll('[data-gear]').forEach(b=>b.onclick=()=>supplyChoice(b.dataset.gear));$('later').onclick=()=>{game.phase='playing';syncPhase();};
+  }else if(game.phase==='relic'){
+    const offer=game.relicOffer,full=game.relics.items.length===2;
+    if(offer.selected){
+      overlay.innerHTML=dialog('어느 유물을 남길까요?','유물 · 두 칸 사용 중',`<p>새 유물: <b>${RELICS[offer.selected].name}</b><br>${RELICS[offer.selected].description}</p><div class="choices">${game.relics.items.map((id,i)=>`<button class="choice" data-relic-replace="${id}"><kbd>${i+1}</kbd><span><b>${RELICS[id].name}</b><small>${RELICS[id].description}</small></span><em>교체</em></button>`).join('')}</div>`,`<button class="quiet" id="relic-back">다시 고르기</button><button class="quiet" id="leave-relic">꾸러미 남겨두기</button>`);
+      document.querySelectorAll('[data-relic-replace]').forEach(b=>b.onclick=()=>relicChoice(offer.selected,b.dataset.relicReplace));$('relic-back').onclick=()=>{offer.selected=null;lastPhase='';syncPhase();};
+    }else{
+      overlay.innerHTML=dialog('움직임을 바꾸는 유물',`숲의 유물 · ${game.relics.items.length}/2칸 장착`, `<p>${full?'두 칸이 찼습니다. 새 유물을 고른 뒤 교체할 하나를 선택하세요.':'한 가지를 골라 장착하세요. 두 유물의 조건을 엮어 보세요.'}</p><div class="choices">${offer.options.map((id,i)=>`<button class="choice relic-choice" data-relic="${id}"><kbd>${i+1}</kbd><span><small class="relic-tag">${RELICS[id].tag}</small><b>${RELICS[id].name}</b><small>${RELICS[id].description}</small></span><em>${full?'비교':'장착'}</em></button>`).join('')}</div>`,`<button class="quiet" id="leave-relic">꾸러미 남겨두기</button><span class="eyebrow">시간이 멈췄습니다</span>`);
+      document.querySelectorAll('[data-relic]').forEach(b=>b.onclick=()=>relicChoice(b.dataset.relic));
+    }
+    $('leave-relic').onclick=()=>{leaveRelicCache(game);syncPhase();};
   }else if(game.phase==='chest'){
     const chest=game.chest,options=chest.options;
     overlay.innerHTML=dialog(options.length?'모인 힘이 깨어납니다':'숲이 내어준 전리품',options.length?'진화 / 합체':'보상 확보',options.length?`${chest.rewards.length?`<p>${chest.rewards.map(r=>`${WEAPONS[r.id].name} +${r.amount||1}단계`).join(' · ')} · 둥지 보상</p>`:''}<div class="choices">${options.map((o,i)=>`<button class="choice" data-evolve="${o.id}"><kbd>${i+1}</kbd><span><b>${o.name}</b><small>${o.description}</small></span><em>${o.kind==='union'?'합체':'진화'}</em></button>`).join('')}</div>`:`<p>${chest.rewards.map(r=>`${r.evolved?WEAPONS[r.id].evo:WEAPONS[r.id].name} ${r.evolved?'✦':`+${r.amount||1}단계`}`).join('<br>')||'무기 보상을 모두 익혔습니다.'}<br>보급 금화 +${chest.gold}</p>`,options.length?'':`<button class="primary" id="close-chest">다시 전장으로 →</button>`);
@@ -69,23 +85,26 @@ function syncPhase(){
     overlay.innerHTML=dialog('잠깐, 숲의 숨을 고르며','원정 일시정지',`<p>${game.pauseReason==='focus'?'창을 떠나 전투를 멈췄습니다.':`${formatTime(game.time)} · ${game.kills} 처치 · ${game.gear?game.gear==='boots'?'순찰 장화':'나무껍질 망토':'장비 미획득'}`}</p>${inventory()}`,`<div><button class="quiet" id="leave">야영지로 돌아가기</button><button class="quiet" id="mute" style="margin-left:15px">소리 ${muted?'켜기':'끄기'}</button></div><button class="primary" id="resume">계속 원정 →</button>`);
     $('resume').onclick=()=>{audio.unlock();resumeGame(game);syncPhase();};$('leave').onclick=camp;$('mute').onclick=()=>{muted=!muted;if(muted)audio.suspend();else audio.unlock();settings();lastPhase='';syncPhase();};
   }else if(game.phase==='result'){
-    const success=game.outcome==='scouted';overlay.innerHTML=dialog(success?'모두 무사히, 야영지로':'숲에 잠시 발을 내딛었습니다',success?'3분 정찰 완료':'원정 종료',`<p>${success?'수호대가 보급로를 확인했습니다. 다른 대원과 공용 무기 조합으로 다시 출발할 수 있습니다.':'경험치를 회수하며 성장하고, 보급과 샘을 활용해 다음 길을 찾아보세요.'}</p><div class="result-stats"><span>원정 시간<b>${formatTime(game.time)}</b></span><span>처치<b>${game.kills}</b></span><span>성장<b>Lv.${game.level}</b></span></div>${expeditionSummary()}${inventory()}`,`<button class="quiet" id="return">대원 바꾸기</button><button class="primary" id="retry">다시 출발 →</button>`);$('return').onclick=camp;$('retry').onclick=start;
+    if(recordRun(journal,game))saveJournal();
+    const success=game.outcome==='scouted';overlay.innerHTML=dialog(success?'모두 무사히, 야영지로':'숲에 잠시 발을 내딛었습니다',success?'3분 정찰 완료':'원정 종료',`<p>${success?'어떤 유물이 움직임과 잘 맞았나요? 같은 길에서 다른 선택을 시험하거나 새로운 숲으로 출발하세요.':'경험치를 회수하며 성장하고, 보급과 샘을 활용해 다음 길을 찾아보세요.'}</p><div class="result-stats"><span>원정 시간<b>${formatTime(game.time)}</b></span><span>처치<b>${game.kills}</b></span><span>성장<b>Lv.${game.level}</b></span></div>${expeditionSummary()}${relicSummary()}${journalMarkup()}${inventory()}`,`<button class="quiet" id="return">대원 바꾸기</button><button class="quiet" id="same-seed">같은 숲 재도전</button><button class="primary" id="retry">새로운 숲으로 →</button>`);$('return').onclick=camp;$('retry').onclick=()=>start();$('same-seed').onclick=()=>start(game.expedition.seed);
   }
   const focus=overlay.querySelector('.choice,.primary');if(focus)focus.focus({preventScroll:true});
 }
 function choose(index){if(applyChoice(game,index)){sound('choose');lastPhase='';syncPhase();}}
 function supplyChoice(gear,replace=null){if(takeSupply(game,gear,replace))sound('choose');lastPhase='';syncPhase();}
+function relicChoice(id,replace=null){if(equipRelic(game,id,replace)){discoverRelics(journal,game.relics.discovered);saveJournal();sound('choose');}lastPhase='';syncPhase();}
 function pause(reason='manual'){if(pauseGame(game,reason)){audio.suspend();syncPhase();}}
 function togglePause(){if(game.phase==='playing')pause();else if(game.phase==='paused'){audio.unlock();resumeGame(game);syncPhase();}}
 $('pause').onclick=togglePause;$('interact').onclick=()=>{interact(game);syncPhase();};$('skill').onclick=()=>{pulse.skill=true;audio.unlock();};$('dash').onclick=()=>{pulse.dash=true;audio.unlock();};
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(e.target.tagName==='SELECT')return;
-  if(k==='tab'&&overlay.querySelector('[role="dialog"]')){const focusable=[...overlay.querySelectorAll('button:not(:disabled),select')];const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}return;}
+  if(k==='tab'&&overlay.querySelector('[role="dialog"]')){const focusable=[...overlay.querySelectorAll('button:not(:disabled),select,summary')];const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}return;}
   if(['arrowup','arrowdown','arrowleft','arrowright',' ','escape'].includes(k))e.preventDefault();
   if(e.repeat)return;if(k==='escape'){togglePause();return;}
   if(game.phase==='choice'&&['1','2','3'].includes(k)){choose(Number(k)-1);return;}
   if(game.phase==='supply'&&game.pendingSupplyGear&&['1','2','3','4','5','6'].includes(k)){supplyChoice(game.pendingSupplyGear,Object.keys(game.passives)[Number(k)-1]);return;}
   if(game.phase==='supply'&&['1','2'].includes(k)){supplyChoice(k==='1'?'boots':'bark');return;}
+  if(game.phase==='relic'&&['1','2'].includes(k)){const n=Number(k)-1,o=game.relicOffer;if(o.selected)relicChoice(o.selected,game.relics.items[n]);else relicChoice(o.options[n]);return;}
   if(game.phase==='playing'){
     if(k==='f'){interact(game);syncPhase();return;}if(k==='e')pulse.skill=true;if(k===' ')pulse.dash=true;
     keys.add(k);
@@ -107,9 +126,11 @@ function updateHUD(){
   $('dash').querySelector('span').textContent=p.dashCooldown>0?`${p.dashCooldown.toFixed(1)}초`:'준비 완료';$('dash').disabled=game.phase!=='playing'||p.dashCooldown>0;
   const slots=Object.entries(game.weapons),signatureKey=slots.map(([id,w])=>`${id}${w.rank}${w.evolved}`).join();
   if($('weapons').dataset.signature!==signatureKey){$('weapons').dataset.signature=signatureKey;$('weapons').innerHTML=Array.from({length:6},(_,i)=>slots[i]?`<div class="weapon-slot" title="${WEAPONS[slots[i][0]].name} ${slots[i][1].rank}단계"><canvas width="28" height="28" data-item="${slots[i][0]}"></canvas><small>${slots[i][1].evolved?'✦':slots[i][1].rank}</small></div>`:'<div class="weapon-slot empty"></div>').join('');document.querySelectorAll('[data-item]').forEach(c=>icon(c,c.dataset.item));}
+  $('relics').hidden=!game.relics.items.length;document.body.classList.toggle('has-relics',!!game.relics.items.length);
+  const relicText=game.relics.items.map(id=>`<span title="${RELICS[id].description}"><b>${RELICS[id].name}</b><small>${relicReadout(game,id)}</small></span>`).join('');if($('relics').innerHTML!==relicText)$('relics').innerHTML=relicText;
   const {title,detail}=expeditionObjective(game);
   $('objective-title').textContent=title;$('objective-detail').textContent=detail;
-  const site=nearestSite(game);$('interact-wrap').hidden=!site||game.phase!=='playing';if(site)$('interact').querySelector('span').textContent=site.id==='camp'?(game.time>=180?'원정 마치기':'야영지 확인'):site.id==='nest'?'둥지 깨우기':site.id==='spring'?'샘에서 회복':site.state==='guarded'?'보급 주위 버섯 제거':'보급 열기';
+  const site=nearestSite(game);$('interact-wrap').hidden=!site||game.phase!=='playing';if(site)$('interact').querySelector('span').textContent=site.type==='relic'?'유물 두 개 살펴보기':site.id==='camp'?(game.time>=180?'원정 마치기':'야영지 확인'):site.id==='nest'?'둥지 깨우기':site.id==='trial'?'20초 도전 시작':site.id==='spring'?'샘에서 회복':site.state==='guarded'?'보급 주위 버섯 제거':'보급 열기';
   const toast=game.expedition.toast&&game.time<game.expedition.toastUntil&&game.phase==='playing';$('message').hidden=!toast;if(toast)$('message').textContent=game.expedition.toast;
 }
 function frame(now){

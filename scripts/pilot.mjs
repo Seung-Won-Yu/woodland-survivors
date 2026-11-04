@@ -3,10 +3,11 @@ import {createExpedition,interact,takeSupply,updateExpedition} from '../src/game
 import {stepGame,applyChoice,closeChest,selectChest} from '../src/core/game.js';
 import {WEAPONS} from '../src/core/content.js';
 import {LANDMARKS} from '../src/game/terrain.js';
+import {equipRelic} from '../src/core/relics.js';
 const point=id=>[LANDMARKS[id].x,LANDMARKS[id].y];
 const route=[point('supply'),[-710,-560],[-260,-660],point('nest'),[950,-360],[920,-780],[100,-980],[-600,-850],[-950,-100],[-450,120],[0,100],[260,310],point('spring'),[-100,850],[460,850],[900,150],[800,-300]];
-export function pilot({hero='pip',seed=1437,seconds=215,takeNest=true,view=null}={}){
- const g=createExpedition(hero,undefined,seed),start=g.startWeapon;let waypoint=0,supply=false,nestActivated=false,firstSupply=null,phaseCounts={},steps=0,dashes=0,choices=[],samples=[];
+export function pilot({hero='pip',seed=1437,seconds=215,takeNest=true,takeRelics=false,takeTrial=false,relicPreference=['wind','thread','thorn','shell','seed','tide'],view=null}={}){
+ const g=createExpedition(hero,undefined,seed),start=g.startWeapon;let waypoint=0,supply=false,nestActivated=false,firstSupply=null,phaseCounts={},steps=0,dashes=0,choices=[],samples=[],relicChoices=[];
  if(view)g.view={...view};
  for(let frame=0;frame<seconds*60+5000&&g.time<seconds&&g.phase!=='result';frame++){
   if(g.phase==='choice'){
@@ -16,6 +17,10 @@ export function pilot({hero='pip',seed=1437,seconds=215,takeNest=true,view=null}
   }
   if(g.phase==='supply'){takeSupply(g,'boots');supply=true;firstSupply??=g.time;waypoint=1;continue;}
   if(g.phase==='chest'){if(g.chest.options.length)selectChest(g,g.chest.options[0].id);closeChest(g);continue;}
+  if(g.phase==='relic'){
+   const options=[...g.relicOffer.options].sort((a,b)=>relicPreference.indexOf(a)-relicPreference.indexOf(b)),id=options[0],replace=g.relics.items.length===2?[...g.relics.items].sort((a,b)=>relicPreference.indexOf(b)-relicPreference.indexOf(a))[0]:null;
+   relicChoices.push({time:Math.round(g.time),source:g.relicOffer.source,options:[...g.relicOffer.options],id,replace});equipRelic(g,id,replace);continue;
+  }
   const p=g.player,returning=g.time>=180,target=returning?point('camp'):route[waypoint%route.length];
   if(returning&&Math.hypot(p.x,p.y-70)<68){interact(g);continue;}
   if(!returning&&Math.hypot(p.x-target[0],p.y-target[1])<55){
@@ -43,11 +48,19 @@ export function pilot({hero='pip',seed=1437,seconds=215,takeNest=true,view=null}
    if(spring.state==='ready'&&p.hp<p.maxHp*.6){next=point('spring');if(Math.hypot(p.x-spring.x,p.y-spring.y)<65)interact(g);}
   }
   if(!returning&&takeNest&&!nestActivated&&g.time>=55){next=point('nest');if(Math.hypot(p.x-nest.x,p.y-nest.y)<65){nestActivated=interact(g);if(nestActivated)waypoint=4;}}
+  const trial=g.expedition.sites.find(s=>s.id==='trial');
+  if(!returning&&takeTrial&&supply&&trial.state==='ready'&&nest.state!=='active'){
+   next=[trial.x,trial.y];if(Math.hypot(p.x-trial.x,p.y-trial.y)<65){interact(g);continue;}
+  }
+  if(!returning&&trial.state==='active'){const a=g.time*.5;next=[trial.x+Math.cos(a)*125,trial.y+Math.sin(a)*125];}
+  const cache=takeRelics&&!returning&&trial.state!=='active'?g.pickups.find(p=>p.type==='relic'):null;
+  if(cache){next=[cache.x,cache.y];if(Math.hypot(p.x-cache.x,p.y-cache.y)<65){interact(g);if(g.phase==='relic')continue;}}
   const desired=Math.atan2(next[1]-p.y,next[0]-p.x);
   let best={score:Infinity,x:0,y:0};
   for(let i=-4;i<=4;i++){
    const a=desired+i*Math.PI/8,x=Math.cos(a),y=Math.sin(a),px=p.x+x*45,py=p.y+y*45;
    let score=Math.hypot(next[0]-px,next[1]-py)*.12+Math.abs(i)*.3;
+   if(trial.state==='active'&&Math.hypot(px-trial.x,py-trial.y)>205)score+=300;
    for(const r of g.terrain){const d=Math.hypot(px-r.x,py-r.y);if(d<r.r*.78+20)score+=500;}
    for(const e of g.enemies){const d=Math.hypot(px-e.x,py-e.y),reach=e.r+27;if(d<reach)score+=(reach-d)*4;
     const safe=(waypoint===0||nest.state==='active')&&['briar','bloom','vine'].includes(start)?60:85;if(d<safe)score+=(safe-d)*1.3;
@@ -63,6 +76,6 @@ export function pilot({hero='pip',seed=1437,seconds=215,takeNest=true,view=null}
   if(g.time>=(samples.length+1)*30)samples.push({time:Math.round(g.time),level:g.level,hp:Math.round(p.hp),kills:g.kills,xpDropped:g.metrics.xpDropped,xpCollected:g.metrics.xpCollected,damageTaken:Math.round(g.metrics.damageTaken),damageBySource:{...g.metrics.damageBySource},x:Math.round(p.x),y:Math.round(p.y),weapons:Object.fromEntries(Object.entries(g.weapons).map(([id,w])=>[id,{rank:w.rank,evolved:w.evolved}]))});
   for(const e of g.enemies)phaseCounts[e.type+':'+e.mode]=(phaseCounts[e.type+':'+e.mode]||0)+1;
  }
- return {hero,seed,takeNest,elapsed:Math.round(g.time*10)/10,hp:Math.round(g.player.hp),level:g.level,kills:g.kills,damage:Math.round(g.damage),supply,firstSupply,firstLevelAt:g.metrics.firstLevelAt,firstEvolutionAt:g.metrics.firstEvolutionAt,nestActivated,nest:g.expedition.sites.find(s=>s.id==='nest').state,milestones:g.expedition.milestones,choices,dashes,damageTaken:Math.round(g.metrics.damageTaken),xpDropped:g.metrics.xpDropped,xpCollected:g.metrics.xpCollected,xpRemaining:[...g.gems.values(),...g.flying].reduce((sum,gem)=>sum+gem.value,0),blockedSeconds:Math.round(g.metrics.blockedSeconds*10)/10,damageBySource:g.metrics.damageBySource,samples,weapons:g.weapons,evolutions:g.evolutions,phaseCounts,steps,waypoint,outcome:g.outcome};
+ return {hero,seed,takeNest,takeRelics,takeTrial,trial:g.expedition.sites.find(s=>s.id==='trial').state,relics:g.relics.items,relicStats:g.relics.stats,relicChoices,elapsed:Math.round(g.time*10)/10,hp:Math.round(g.player.hp),level:g.level,kills:g.kills,damage:Math.round(g.damage),supply,firstSupply,firstLevelAt:g.metrics.firstLevelAt,firstEvolutionAt:g.metrics.firstEvolutionAt,nestActivated,nest:g.expedition.sites.find(s=>s.id==='nest').state,milestones:g.expedition.milestones,choices,dashes,damageTaken:Math.round(g.metrics.damageTaken),xpDropped:g.metrics.xpDropped,xpCollected:g.metrics.xpCollected,xpRemaining:[...g.gems.values(),...g.flying].reduce((sum,gem)=>sum+gem.value,0),blockedSeconds:Math.round(g.metrics.blockedSeconds*10)/10,damageBySource:g.metrics.damageBySource,samples,weapons:g.weapons,evolutions:g.evolutions,phaseCounts,steps,waypoint,outcome:g.outcome};
 }
 if(import.meta.url===pathToFileURL(process.argv[1]||'').href){console.log(JSON.stringify(['pip','lune','bram','fox','mole','otter'].map(hero=>pilot({hero})),null,2));}

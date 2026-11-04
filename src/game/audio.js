@@ -10,6 +10,7 @@ export function selectAudioEvents(events) {
   // One foreground cue plus one contact, never one voice per enemy.
   if (important === 'hurt' || important === 'elite-break' || important === 'crowd-break') return [important];
   if (important) return impact ? [important, impact] : [important];
+  if(has('relic-proc'))return impact?['relic-proc',impact]:['relic-proc'];
   if (cast) return impact ? [cast, impact] : [cast];
   if (impact) return [impact];
   const other = ['fire-spread', 'ember-shot', 'xp', 'kill'].find(has);
@@ -70,7 +71,7 @@ export function createAudio() {
     const lane = IMPACTS.includes(event) ? 'impact' : IMPORTANT.includes(event) ? 'important' : CASTS.includes(event)?'cast':'background';
     // A short foreground window separates being hit from dealing damage in a crowd.
     if (event !== 'hurt' && !['boss-warning','boss-charge'].includes(event) && now < dangerUntil) return;
-    const cooldown = lane === 'impact' ? .085 : lane==='cast'?.11:['xp', 'kill'].includes(event) ? .16 : .06;
+    const cooldown = event==='relic-proc'?.35:lane === 'impact' ? .085 : lane==='cast'?.11:['xp', 'kill'].includes(event) ? .16 : .06;
     if ((event !== 'hurt' && now - (lastLane.get(lane) ?? -1) < (lane === 'impact' ? .085 : .045)) || now - (lastEvent.get(event) ?? -1) < cooldown) return;
     lastLane.set(lane, now);
     lastEvent.set(event, now);
@@ -92,6 +93,8 @@ export function createAudio() {
     } else if (event === 'burst') {
       transient(now,.09,.035,1400);
       note(180,420,'triangle',now,.1,.025);
+    } else if(event==='relic-proc'){
+      note(590,790,'sine',now,.09,.018);note(885,1180,'sine',now+.025,.1,.011);
     } else if (event === 'guard-block') {
       note(390, 810, 'sine', now, .13, .03);
       transient(now, .04, .035, 2400);
