@@ -1,11 +1,13 @@
 {
   "name": "woodland-survivors",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
     "test": "node --test scripts/core.test.mjs",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/preview-server.mjs",
+    "test:pages": "node --test scripts/pages.test.mjs"
   }
 }

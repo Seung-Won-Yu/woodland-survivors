@@ -12,7 +12,7 @@ export const HEROES = {
   otter:hero('수달','지속',5,'lantern','#9fcad2','효과 지속시간 +25%','지속이 적용되는 장판·왕복탄·꿀벌·회전 가시가 더 오래 유지됩니다.','물결 회수','근처의 경험치를 끌어모으고 파도로 적을 밀어냅니다.','반딧불 병 4단계 달성')
 };
 export const WEAPONS = {
-  acorn:{name:'도토리 탄',tag:'투사체 · 관통',color:'#efbe76',max:8,damage:11,cooldown:.86,recipe:'twin',evo:'도토리 폭풍',evoText:'부채꼴 관통탄이 적을 뚫고 연쇄 폭발합니다.',description:'가까운 적에게 도토리를 발사합니다.'},
+  acorn:{name:'도토리 탄',tag:'투사체 · 관통',color:'#efbe76',max:8,damage:17,cooldown:.72,recipe:'twin',evo:'도토리 폭풍',evoText:'부채꼴 관통탄이 적을 뚫고 연쇄 폭발합니다.',description:'가까운 적에게 도토리를 발사합니다.'},
   moon:{name:'반달 부메랑',tag:'왕복 · 관통',color:'#c5d5ff',max:8,damage:18,cooldown:1.55,recipe:'feather',evo:'은하의 궤적',evoText:'여러 개의 큰 반달이 왕복하며 전장을 가릅니다.',description:'앞으로 날아갔다 돌아오는 반달을 던집니다.'},
   briar:{name:'회전 가시',tag:'궤도 · 공간 확보',color:'#b6df9b',max:8,damage:13,cooldown:.55,recipe:'leaf',evo:'가시 성채',evoText:'촘촘한 가시가 쉬지 않고 회전하며 적을 밀어내고 느리게 만듭니다.',description:'몸 주변을 도는 가시로 접근하는 적을 공격합니다.'},
   bees:{name:'꿀벌 동료',tag:'추적 · 소환',color:'#ffda7d',max:8,damage:13,cooldown:1.18,recipe:'dew',evo:'여왕의 행진',evoText:'벌떼가 오래 머무르며 먼 적까지 추적합니다.',description:'꿀벌이 가까운 적을 찾아 공격합니다.'},

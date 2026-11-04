@@ -1,15 +1,18 @@
 const IMPORTANT = ['hurt', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
-const IMPACTS = ['blade-impact', 'ember-impact', 'rune-hit', 'pulse'];
+const IMPACTS = ['wood-impact', 'wood-kill', 'blade-impact', 'ember-impact'];
+const CASTS = ['acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
 
 export function selectAudioEvents(events) {
   const has = event => events.has(event);
   const important = IMPORTANT.find(has);
-  const impact = IMPACTS.find(has);
+  const impact = has('kill')&&has('wood-impact')?'wood-kill':IMPACTS.find(has);
+  const cast = CASTS.find(has);
   // One foreground cue plus one contact, never one voice per enemy.
   if (important === 'hurt' || important === 'elite-break' || important === 'crowd-break') return [important];
   if (important) return impact ? [important, impact] : [important];
+  if (cast) return impact ? [cast, impact] : [cast];
   if (impact) return [impact];
-  const other = ['fire-spread', 'ember-shot', 'swing', 'xp', 'kill'].find(has);
+  const other = ['fire-spread', 'ember-shot', 'xp', 'kill'].find(has);
   return other ? [other] : [];
 }
 
@@ -64,14 +67,24 @@ export function createAudio() {
   function play(event, variant, evolved = false) {
     if (context?.state !== 'running') return;
     const now = context.currentTime;
-    const lane = IMPACTS.includes(event) ? 'impact' : IMPORTANT.includes(event) ? 'important' : 'background';
+    const lane = IMPACTS.includes(event) ? 'impact' : IMPORTANT.includes(event) ? 'important' : CASTS.includes(event)?'cast':'background';
     // A short foreground window separates being hit from dealing damage in a crowd.
-    if (event !== 'hurt' && lane !== 'important' && now < dangerUntil) return;
-    const cooldown = lane === 'impact' ? .085 : ['xp', 'kill'].includes(event) ? .16 : .06;
+    if (event !== 'hurt' && !['boss-warning','boss-charge'].includes(event) && now < dangerUntil) return;
+    const cooldown = lane === 'impact' ? .085 : lane==='cast'?.11:['xp', 'kill'].includes(event) ? .16 : .06;
     if ((event !== 'hurt' && now - (lastLane.get(lane) ?? -1) < (lane === 'impact' ? .085 : .045)) || now - (lastEvent.get(event) ?? -1) < cooldown) return;
     lastLane.set(lane, now);
     lastEvent.set(event, now);
-    if (event === 'hurt') {
+    if(event==='acorn-shot'){
+      transient(now,.022,.023,2100);note(230,85,'triangle',now,.065,.028);note(90,55,'sine',now,.075,.018);
+    }else if(event==='wood-kill'){
+      transient(now,.035,.046,1300);note(190,52,'triangle',now,.09,.033);note(900,1250,'sine',now+.012,.045,.013);
+    }else if(event==='wood-impact'){
+      transient(now,.032,.052,1500);note(160,63,'triangle',now,.075,.035);note(760,230,'sine',now,.035,.012);
+    }else if(event==='whoosh'||event==='throw'){
+      transient(now,.045,.016,event==='whoosh'?1100:1800);note(event==='whoosh'?440:330,170,'sine',now,.08,.014);
+    }else if(event==='buzz'){
+      note(190,240,'triangle',now,.045,.01);
+    }else if (event === 'hurt') {
       dangerUntil = now + .18;
       transient(now, .075, .08, 950);
       note(145, 42, 'triangle', now, .2, .06);

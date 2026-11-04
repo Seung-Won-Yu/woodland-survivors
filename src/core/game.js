@@ -10,7 +10,7 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const direction=(x,y)=>{const l=Math.hypot(x,y)||1;return {x:x/l,y:y/l};};
 const fromPool=(g,list)=>list[Math.floor(random(g)*list.length)];
 export function random(g){g.seed=(Math.imul(g.seed,1664525)+1013904223)>>>0;return g.seed/4294967296;}
-export function xpCost(level){return level===1?5:7+level*4+Math.floor(Math.pow(Math.max(0,level-10),1.6)*1.1);}
+export function xpCost(level){return level===1?10:12+level*8-Math.min(24,Math.max(0,level-3)*2)+Math.floor(Math.pow(Math.max(0,level-10),1.6)*1.2);}
 export function createGame(profile,hero='pip',hard=false,seed=Date.now()) {
   profile=normalizeProfile(profile);
   if(!Object.hasOwn(HEROES,hero)||!unlocked(profile,hero))hero='pip';
@@ -19,10 +19,10 @@ export function createGame(profile,hero='pip',hard=false,seed=Date.now()) {
     player:{x:0,y:0,fx:1,fy:0,hp:h.hp+u.vitality*10,maxHp:h.hp+u.vitality*10,hurt:0,invincible:1.5,walk:0,moving:false,wind:0,still:0,stillGrace:0,charge:0,dash:0,dashCooldown:0,attack:0,guard:0},
     weapons:{[h.weapon]:{rank:1,evolved:false,clock:.15}},passives:{},pool:weaponPool(profile),boosts:{...u},
     consumed:[],discovered:[h.weapon],maxRanks:{[h.weapon]:1},evolutions:[],unions:[],drafts:0,upgradeMisses:0,mastered:false,
-    metrics:{firstLevelAt:null,firstEvolutionAt:null,firstUnionAt:null,chests:0,signatures:0,damageTaken:0},
+    metrics:{firstLevelAt:null,firstEvolutionAt:null,firstUnionAt:null,chests:0,signatures:0,damageTaken:0,xpDropped:0,xpCollected:0,xpGranted:0,blockedSeconds:0,damageBySource:{contact:0,charge:0,projectile:0,field:0}},
     enemies:[],projectiles:[],gems:new Map(),flying:[],pickups:[],fields:[],effects:[],texts:[],delayed:[],events:[],choices:[],decoy:null,
     rerolls:2+u.reroll,banishes:0,skips:0,banished:[],spawn:.1,nextSurge:35,nextElite:75,wave:0,finalSpawned:false,bossId:null,
-    view:{width:1200,height:760},shake:0,hitstop:0,pauseReason:'',outcome:null,banked:false};
+    view:{width:1200,height:760},feedback:{nextImpactAt:0,killWindowAt:0,killCount:0,nextCrowdAt:0},shake:0,hitstop:0,pauseReason:'',outcome:null,banked:false};
   for(let i=0;i<8;i++){const a=i*TAU/8;spawnEnemy(g,'shroom',Math.cos(a)*350,Math.sin(a)*300);}
   g.stats=deriveStats(g);return g;
 }
@@ -34,7 +34,7 @@ export function deriveStats(g) {
     duration:(1+(p.dew||0)*.2)*(g.hero==='otter'?1.25:1),
     cooldown:(g.gear==='boots'&&g.player.moving?.9:1)*(1-(p.feather||0)*.07)*(1-(g.hero==='lune'?g.player.wind*.05:0)),
     amount:(p.twin||0)+(g.hero==='pip'?1:0),projectileSpeed:1+(p.swift||0)*.15,
-    speed:h.speed*(g.gear==='boots'?1.12:1),armor:(g.hero==='bram'?2:0)+(p.bark||0)+(g.gear==='bark'&&g.player.still>.5?3:0),magnet:68+(u.magnet||0)*12+(p.stone||0)*22,
+    speed:h.speed*(g.gear==='boots'?1.12:1),armor:(g.hero==='bram'?2:0)+(p.bark||0)+(g.gear==='bark'&&g.player.still>.5?3:0),magnet:94+(u.magnet||0)*12+(p.stone||0)*22,
     growth:1+(u.growth||0)*.05+(p.stone||0)*.06,regen:(u.recovery||0)*.08,knock:1};
 }
 function emit(g,type,data={}){g.events.push({type,...data});}
@@ -55,27 +55,29 @@ export function spawnEnemy(g,type,x,y,extra={}) {
   g.enemies.push(e);return e;
 }
 function edgeSpawn(g,type) {
-  const p=g.player,w=g.view.width/2+75,h=g.view.height/2+75,side=Math.floor(random(g)*4);
+  // Narrow screens must keep the same approach distance instead of spawning a pincer beside the player.
+  const p=g.player,w=Math.max(560,g.view.width/2+75),h=Math.max(420,g.view.height/2+75),side=Math.floor(random(g)*4);
   const x=p.x+(side<2?(side===0?-w:w):(random(g)*2-1)*w);
   const y=p.y+(side>=2?(side===2?-h:h):(random(g)*2-1)*h);
   return spawnEnemy(g,type,x,y);
 }
 function enemyType(g) {
   const r=random(g),t=g.time;
-  if(t>120&&r<.13)return 'spore';
+  if(t>120&&r<.13)return g.expedition&&g.enemies.filter(e=>e.type==='spore'&&!e.dead).length>=4?'shroom':'spore';
   if(t>70&&r<.30)return 'beetle';
   if(t>28&&r<.50)return 'runner';
   return 'shroom';
 }
 function updateDirector(g,dt) {
-  const cap=Math.min(520,36+g.time*.55),rate=Math.min(27,3.1+g.time*.035)*(g.hard?1.2:1);
+  const returning=!!g.expedition&&g.time>=150;
+  const cap=Math.min(520,24+g.time*.45),rate=Math.min(27,1.7+g.time*.026)*(g.hard?1.2:1)*(returning?.75:1);
   g.spawn-=dt;
   while(g.spawn<=0){g.spawn+=1/rate;if(g.enemies.length<cap)edgeSpawn(g,enemyType(g));}
   const wave=Math.floor(g.time/30);
   if(wave!==g.wave){g.wave=wave;if(wave%2===0)emit(g,'wave',{wave});}
   if(g.time>=g.nextSurge&&g.time<RUN_SECONDS) {
     g.nextSurge+=45;
-    const angle=random(g)*TAU,count=Math.min(48,14+Math.floor(g.time/25));
+    const angle=random(g)*TAU,count=Math.round(Math.min(48,14+Math.floor(g.time/25))*(returning?.6:1));
     const radius=Math.hypot(g.view.width,g.view.height)/2+80;
     for(let i=0;i<count;i++){
       const a=angle+(i/count-.5)*1.1;
@@ -105,24 +107,32 @@ function nearby(g,x,y,r,visit) {
     const b=g.grid.get(`${cx},${cy}`);if(b)for(const e of b)if(!e.dead&&Math.hypot(e.x-x,e.y-y)<=r+e.r)visit(e);
   }
 }
+function guardAlert(g,e){return !e.supplyGuard||!e.home||dist(g.player,e.home)<285||e.hp<e.maxHp;}
 function nearest(g,point=g.player,range=900) {
   let target=null,best=range;
-  for(const e of g.enemies)if(!e.dead){const d=dist(point,e);if(d<best){target=e;best=d;}}
+  for(const e of g.enemies)if(!e.dead&&guardAlert(g,e)){const d=dist(point,e);if(d<best){target=e;best=d;}}
   return target;
 }
 function addGem(g,x,y,value) {
+  g.metrics.xpDropped=(g.metrics.xpDropped||0)+value;
   // Only merge inside the same small world cell. Distant XP never teleports.
   const key=`${Math.floor(x/30)},${Math.floor(y/30)}`,existing=g.gems.get(key);
-  if(existing)existing.value+=value;else g.gems.set(key,{x,y,value});
+  if(existing)existing.value+=value;else g.gems.set(key,{x,y,value,age:0});
 }
 function trimPickups(g){while(g.pickups.length>LIMITS.pickups){let index=g.pickups.findIndex(p=>p.type!=='chest');if(index<0)index=0;const [old]=g.pickups.splice(index,1);if(old.type==='coin')g.gold+=2;}}
 function kill(g,e) {
   if(e.dead)return;e.dead=true;g.kills++;g.player.charge=clamp(g.player.charge+.9,0,100);
   addGem(g,e.x,e.y,e.xp*(1+Math.floor(g.time/180)));
-  effect(g,'death',e.x,e.y,e.r,e.type==='beetle'?'#5dbfb3':'#e5b78b',.25);
+  effect(g,'death',e.x,e.y,e.r,e.type==='beetle'?'#5dbfb3':'#e5b78b',.28,{enemyType:e.type,angle:Math.atan2(e.ky,e.kx)});
+  emit(g,'kill');
+  if(e.type!=='elite'&&e.type!=='king'){
+    const f=g.feedback;
+    if(g.time-f.killWindowAt>.12){f.killWindowAt=g.time;f.killCount=0;}
+    if(++f.killCount>=3&&g.time>=f.nextCrowdAt){f.nextCrowdAt=g.time+.4;f.killCount=0;g.shake=Math.max(g.shake,1.4);g.hitstop=Math.max(g.hitstop,.018);emit(g,'crowd-break');}
+  }
   if(e.type==='king'){g.kingKills++;g.gold+=120;g.pickups.push({id:++g.id,type:'chest',x:e.x,y:e.y,canEvolve:true});g.shake=6;emit(g,'bossDown');trimPickups(g);return;}
   if(e.type==='elite'){
-    g.elites++;g.pickups.push({id:++g.id,type:'chest',x:e.x,y:e.y,canEvolve:e.canEvolve});g.hitstop=.045;g.shake=4;emit(g,'eliteDown');
+    g.elites++;g.pickups.push({id:++g.id,type:'chest',x:e.x,y:e.y,canEvolve:e.canEvolve,forgeWeapon:e.nestGuardian?g.startWeapon:null,source:e.nestGuardian?'nest':'elite'});g.fields=g.fields.filter(f=>f.ownerId!==e.id);g.hitstop=.04;g.shake=3;emit(g,'eliteDown');
   }else{
     const r=random(g);
     if(r<.013)g.pickups.push({id:++g.id,type:'heal',x:e.x,y:e.y});
@@ -134,9 +144,14 @@ function kill(g,e) {
 function hit(g,e,amount,knock=0,origin=g.player,crit=false) {
   if(e.dead)return;
   amount*=e.type==='elite'||e.type==='king'?g.stats.eliteDamage:1;
-  const dealt=Math.min(e.hp,amount);e.hp-=amount;g.damage+=dealt;e.hurt=.09;
-  if(knock){const d=direction(e.x-origin.x,e.y-origin.y),mass=e.type==='king'?.1:e.type==='elite'?.35:1;e.kx+=d.x*knock*g.stats.knock*mass;e.ky+=d.y*knock*g.stats.knock*mass;}
-  if(crit||g.texts.length<25||random(g)<.12)floating(g,e.x,e.y-e.r,Math.round(amount),crit?'#ffdf78':'#f4e9cb',crit);
+  const dealt=Math.min(e.hp,amount);e.hp-=amount;g.damage+=dealt;e.hurt=.13;e.hitstop=crit?.035:.018;
+  // A fast projectile can finish beyond its target. Its velocity, not its final position, defines the impulse.
+  const impulse=origin.kind&&Math.hypot(origin.vx||0,origin.vy||0)>0?direction(origin.vx,origin.vy):direction(e.x-origin.x,e.y-origin.y);
+  if(knock){const mass=e.type==='king'?.1:e.type==='elite'?.35:1;e.kx+=impulse.x*knock*g.stats.knock*mass;e.ky+=impulse.y*knock*g.stats.knock*mass;}
+  effect(g,'impact',e.x,e.y-25,crit?14:8,crit?'#ffe6a1':'#f7dda8',.14,{angle:Math.atan2(impulse.y,impulse.x),crit});
+  if(g.time>=g.feedback.nextImpactAt){g.feedback.nextImpactAt=g.time+.12;g.hitstop=Math.max(g.hitstop,crit?.018:.007);g.shake=Math.max(g.shake,crit?1.1:.38);}
+  else if(crit)g.shake=Math.max(g.shake,1.1);
+  if(crit||g.texts.length<16||random(g)<.1)floating(g,e.x,e.y-48,Math.round(amount),crit?'#ffdf78':'#f4e9cb',crit);
   if(!g.hitEvent){emit(g,'impact');g.hitEvent=true;}
   if(e.hp<=0)kill(g,e);
 }
@@ -144,7 +159,7 @@ function areaHit(g,x,y,r,damage,knock=0) {nearby(g,x,y,r,e=>hit(g,e,damage,knock
 function projectile(g,kind,x,y,vx,vy,damage,extra={}) {
   if(g.projectiles.length>=LIMITS.projectiles)return;
   if(!extra.hostile&&Math.hypot(x-g.player.x,y-g.player.y)<26){
-    const a=g.player.aim??Math.atan2(vy,vx),m=weaponPose(g.player,a);x=m.x;y=m.y;
+    const m=g.castOrigin||weaponPose(g.player);x=m.x;y=m.y;
     if(kind==='bottle'){extra.ox=x;extra.oy=y;}
   }
   g.projectiles.push({kind,x,y,vx,vy,damage,life:2,age:0,r:6,pierce:0,hits:[],...extra});
@@ -155,19 +170,26 @@ function cast(g,id) {
   const p=g.player,w=g.weapons[id],s=g.stats,rank=w.rank,evo=w.evolved,target=nearest(g),amount=s.amount;
   if(!target&&id!=='bloom'&&id!=='briar')return;
   const damage=damageFor(g,id),angle=target?Math.atan2(target.y-p.y,target.x-p.x):Math.atan2(p.fy,p.fx);
-  p.attack=.22;p.aim=angle;p.attackWeapon=id;
+  const primary=Object.hasOwn(g.weapons,g.startWeapon)?g.startWeapon:Object.keys(g.weapons)[0];
+  const ownsPose=id===primary||p.attack<=0;
+  if(ownsPose){p.attack=.24;p.attackWindup=0;p.aim=angle;p.attackWeapon=id;}
+  const muzzle=weaponPose({...p,attack:.24},angle);g.castOrigin=muzzle;
+  emit(g,'attack',{weapon:id,angle,x:muzzle.x,y:muzzle.y,primary:ownsPose});
+  if(['acorn','moon','bees','returning'].includes(id))effect(g,'muzzle',muzzle.x,muzzle.y,9,WEAPONS[id].color,.085,{angle,weapon:id});
   if(id==='acorn'){
     const count=Math.min(11,1+amount+Math.floor(rank/4)+(evo?3:0));
     for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(evo?.15:.10);projectile(g,'acorn',p.x,p.y-7,Math.cos(a)*580*s.projectileSpeed,Math.sin(a)*580*s.projectileSpeed,damage,{r:6*s.area,pierce:Math.floor(rank/3)+(evo?5:0),evolved:evo,life:1.7});}
     emit(g,'shot');
   }else if(id==='moon'){
+    emit(g,'whoosh');
     const count=1+amount+Math.floor(rank/4)+(evo?2:0);
     for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*.3;projectile(g,'moon',p.x,p.y,Math.cos(a)*460*s.projectileSpeed,Math.sin(a)*460*s.projectileSpeed,damage,{r:(evo?25:15)*s.area,pierce:999,life:2.2*s.duration,evolved:evo,turned:false,returnAfter:.65*s.duration,flySpeed:540*s.projectileSpeed});}
   }else if(id==='bees'){
+    emit(g,'buzz');
     const count=1+amount+Math.floor(rank/3)+(evo?3:0);
     for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*.5;projectile(g,'bee',p.x,p.y-18,Math.cos(a)*240*s.projectileSpeed,Math.sin(a)*240*s.projectileSpeed,damage,{r:8,life:3*s.duration,pierce:evo?3:0,target:target.id,evolved:evo,flySpeed:390*s.projectileSpeed});}
   }else if(id==='storm'){
-    const targets=g.enemies.filter(e=>!e.dead&&dist(e,p)<650).sort((a,b)=>dist(a,p)-dist(b,p));
+    const targets=g.enemies.filter(e=>!e.dead&&guardAlert(g,e)&&dist(e,p)<650).sort((a,b)=>dist(a,p)-dist(b,p));
     const count=Math.min(targets.length,1+amount+Math.floor(rank/3)+(evo?3:0));
     for(let i=0;i<count;i++){
       const e=targets[i];if(!e)continue;
@@ -176,6 +198,7 @@ function cast(g,id) {
     }
     emit(g,'zap');
   }else if(id==='lantern'){
+    emit(g,'throw');
     const count=1+Math.floor(rank/4)+Math.floor(amount/2);
     for(let i=0;i<count;i++){const a=i*2.4+g.time,x=target.x+Math.cos(a)*i*65,y=target.y+Math.sin(a)*i*65;projectile(g,'bottle',p.x,p.y,0,0,damage,{life:.32,flight:.32,tx:x,ty:y,ox:p.x,oy:p.y,fieldRadius:(65+rank*5)*(evo?1.45:1)*s.area,fieldLife:(2.5+rank*.12)*s.duration,evolved:evo});}
   }else if(id==='returning'){
@@ -186,7 +209,7 @@ function cast(g,id) {
     const count=4+amount;
     for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*.55;projectile(g,'bee',p.x+Math.cos(a)*60,p.y+Math.sin(a)*48,Math.cos(a)*300*s.projectileSpeed,Math.sin(a)*300*s.projectileSpeed,damage,{r:9,life:3.5*s.duration,pierce:3,target:target.id,evolved:true,flySpeed:440*s.projectileSpeed,union:'hive'});}
   }else if(id==='vine'){
-    const r=(112+rank*8)*s.area,spread=evo?Math.PI:1.15,face=Math.atan2(p.fy,p.fx);
+    const r=(112+rank*8)*s.area,spread=evo?Math.PI:1.15,face=angle;
     nearby(g,p.x,p.y,r,e=>{const a=Math.atan2(e.y-p.y,e.x-p.x),diff=Math.atan2(Math.sin(a-face),Math.cos(a-face));if(Math.abs(diff)<=spread)hit(g,e,damage,110);});
     effect(g,'slash',p.x,p.y,r,evo?'#f3b8cc':'#b8db8f',.26,{angle:face,spread});
     if(evo)g.delayed.push({at:g.time+.2,x:p.x,y:p.y,r:r*.85,damage:damage*.65,knock:45,color:'#e79fb6'});
@@ -197,6 +220,7 @@ function cast(g,id) {
     if(evo){g.delayed.push({at:g.time+.3,x:p.x,y:p.y,r:r*1.25,damage:damage*.75,knock:60,color:'#f1d6a0'});for(let i=0;i<8+amount;i++){const a=i*TAU/(8+amount)+g.time;projectile(g,'seed',p.x,p.y,Math.cos(a)*280*s.projectileSpeed,Math.sin(a)*280*s.projectileSpeed,damage*.5,{life:1.6,pierce:2,r:6});}}
     emit(g,'pulse');
   }
+  delete g.castOrigin;
 }
 export function useSignature(g) {
   if(g.phase!=='playing'||g.player.charge<100)return false;
@@ -244,17 +268,27 @@ function updateWeapons(g,dt) {
       if(w.evolved)nearby(g,g.player.x,g.player.y,orbit.radius+30,e=>{e.slow=.5;});
       if(id==='briar')continue;
     }
-    w.clock-=dt;if(w.clock>0)continue;
+    w.clock-=dt;
+    const primary=Object.hasOwn(g.weapons,g.startWeapon)?g.startWeapon:Object.keys(g.weapons)[0];
+    if(id===primary&&w.clock>0&&w.clock<.085&&g.player.attack<=0){const target=nearest(g);if(target){g.player.attackWindup=w.clock;g.player.attackWeapon=id;g.player.aim=Math.atan2(target.y-g.player.y,target.x-g.player.x);}}
+    if(w.clock>0)continue;
     cast(g,id);w.clock=weaponStats(g,id).cooldown;
   }
 }
-function hostileShot(g,e,a,speed=120) {projectile(g,'enemy',e.x,e.y-20,Math.cos(a)*speed,Math.sin(a)*speed,e.damage,{hostile:true,r:7,life:6});}
+function hostileShot(g,e,a,speed=120) {projectile(g,'enemy',e.x,e.y,Math.cos(a)*speed,Math.sin(a)*speed,e.damage,{hostile:true,r:7,life:e.type==='spore'?4:6});}
 function updateEnemies(g,dt) {
   const p=g.player;
   for(const e of g.enemies){
     if(e.dead)continue;e.age+=dt;e.clock-=dt;e.hurt=Math.max(0,e.hurt-dt);e.slow=Math.max(0,e.slow-dt);
+    if(e.hitstop>0){e.hitstop=Math.max(0,e.hitstop-dt);continue;}
+    const wasCharging=e.mode==='charge';
     const destination=g.decoy&&e.type!=='king'?g.decoy:p;
     let d=direction(destination.x-e.x,destination.y-e.y),speed=e.speed*(e.slow>0?.62:1),distance=dist(e,p);
+    if(e.supplyGuard&&e.home){
+      // Territorial guards keep the supply encounter in its clearing, including on small screens.
+      const chasing=guardAlert(g,e)&&dist(p,e.home)<340&&dist(e,e.home)<225;
+      if(!chasing){const a=e.patrolAngle+e.age*.18,target={x:e.home.x+Math.cos(a)*70,y:e.home.y+Math.sin(a)*58};d=direction(target.x-e.x,target.y-e.y);speed=dist(e,target)>7?24:0;}
+    }
     if(e.type==='runner'){
       if(e.mode==='windup'){speed=0;e.windup-=dt;if(e.windup<=0){e.mode='charge';e.charge=.32;}}
       else if(e.mode==='charge'){d={x:e.dx,y:e.dy};speed=340;e.charge-=dt;if(e.charge<=0){e.mode='recover';e.recover=.65;}}
@@ -263,11 +297,24 @@ function updateEnemies(g,dt) {
     }
     if(e.type==='spore'){
       if(distance<220)speed=-speed*.5;else if(distance<340)speed=0;
-      if(e.mode==='windup'){speed=0;e.windup-=dt;if(e.windup<=0){e.mode='recover';e.recover=.35;e.clock=3.1;hostileShot(g,e,Math.atan2(e.dy,e.dx));effect(g,'muzzle',e.x,e.y-15,10,'#d4a2e6',.12);}}
+      if(e.mode==='windup'){speed=0;e.windup-=dt;if(e.windup<=0){e.mode='recover';e.recover=.35;e.clock=3.1;hostileShot(g,e,Math.atan2(e.dy,e.dx));effect(g,'muzzle',e.x,e.y,10,'#d4a2e6',.12,{angle:Math.atan2(e.dy,e.dx),hostile:true});}}
       else if(e.mode==='recover'){speed=0;e.recover-=dt;if(e.recover<=0)e.mode='walk';}
-      else if(e.clock<=0&&distance<650){e.mode='windup';e.windup=.7;e.dx=d.x;e.dy=d.y;speed=0;}
+      else if(e.clock<=0&&distance<450){e.mode='windup';e.windup=.7;e.dx=d.x;e.dy=d.y;speed=0;}
     }
-    if(e.type==='elite'&&e.clock<=0){e.clock=7;for(let i=0;i<4;i++){const a=i*TAU/4;spawnEnemy(g,'shroom',e.x+Math.cos(a)*55,e.y+Math.sin(a)*55);}effect(g,'ring',e.x,e.y,65,'#d3a1a0',.6);}
+    if(e.nestGuardian){
+      if(!e.reinforced&&e.hp<=e.maxHp*.5){
+        e.reinforced=true;
+        for(let i=0;i<2;i++){const a=i*Math.PI+e.age;spawnEnemy(g,'runner',e.x+Math.cos(a)*180,e.y+Math.sin(a)*180,{clock:.8});}
+        emit(g,'surge');
+      }
+      if(e.mode==='windup'){speed=0;e.windup-=dt;if(e.windup<=0){e.mode='recover';e.recover=.45;e.clock=5.5;}}
+      else if(e.mode==='recover'){speed=0;e.recover-=dt;if(e.recover<=0)e.mode='walk';}
+      else if(e.clock<=0&&distance<600){
+        e.mode='windup';e.windup=.9;speed=0;
+        const a=Math.atan2(p.y-e.y,p.x-e.x);
+        for(let i=-1;i<=1;i++)if(g.fields.length<LIMITS.fields)g.fields.push({hostile:true,ownerId:e.id,x:p.x+Math.cos(a+Math.PI/2)*i*92,y:p.y+Math.sin(a+Math.PI/2)*i*92,r:43,life:1.45,warning:.9,tick:0,damage:12});
+      }
+    }else if(e.type==='elite'&&e.clock<=0){e.clock=7;for(let i=0;i<4;i++){const a=i*TAU/4;spawnEnemy(g,'shroom',e.x+Math.cos(a)*55,e.y+Math.sin(a)*55);}effect(g,'ring',e.x,e.y,65,'#d3a1a0',.6);}
     if(e.type==='king'){
       const enraged=e.hp<e.maxHp*.45||g.time>BOSS_SECONDS+100;
       if(e.mode==='windup'){
@@ -290,16 +337,18 @@ function updateEnemies(g,dt) {
     const bucket=g.grid?.get(`${Math.floor(e.x/96)},${Math.floor(e.y/96)}`);
     if(bucket&&bucket.length<35)for(const other of bucket){if(e===other||other.dead)continue;const dx=e.x-other.x,dy=e.y-other.y,l2=dx*dx+dy*dy,reach=(e.r+other.r)*.62;if(l2>0&&l2<reach*reach){const l=Math.sqrt(l2);sx+=dx/l*12;sy+=dy/l*12;}}
     const oldX=e.x,oldY=e.y;moveActor(g,e,(d.x*speed+e.kx+sx)*dt,(d.y*speed+e.ky+sy)*dt,e.r*.7);e.walk=(e.walk||0)+Math.hypot(e.x-oldX,e.y-oldY);e.fx=d.x;e.fy=d.y;e.kx*=Math.exp(-8*dt);e.ky*=Math.exp(-8*dt);
-    if(distance<e.r+12)hurtPlayer(g,e.damage,e);
+    if(dist(e,p)<e.r+12)hurtPlayer(g,e.damage,e,wasCharging?'charge':'contact');
     // Recycle stragglers at a screen edge; no rewards or off-screen kills.
-    if(distance>Math.max(g.view.width,g.view.height)*1.8&&e.type!=='elite'&&e.type!=='king'){
-      const a=random(g)*TAU;e.x=p.x+Math.cos(a)*(g.view.width*.65+80);e.y=p.y+Math.sin(a)*(g.view.height*.65+80);
+    if(distance>Math.max(g.view.width,g.view.height)*1.8&&!e.supplyGuard&&e.type!=='elite'&&e.type!=='king'){
+      const a=random(g)*TAU;e.x=p.x+Math.cos(a)*Math.max(560,g.view.width*.65+80);e.y=p.y+Math.sin(a)*Math.max(420,g.view.height*.65+80);
     }
   }
 }
-function hurtPlayer(g,damage,origin) {
+function hurtPlayer(g,damage,origin,source=null) {
   const p=g.player;if(p.invincible>0||g.phase!=='playing')return;
   const value=Math.max(1,damage-g.stats.armor);p.hp-=value;g.metrics.damageTaken+=value;p.hurt=.35;p.invincible=.65;g.shake=4;
+  source??=origin?.kind==='enemy'?'projectile':origin?.hostile?'field':'contact';
+  g.metrics.damageBySource??={contact:0,charge:0,projectile:0,field:0};g.metrics.damageBySource[source]+=value;
   if(origin){const d=direction(p.x-origin.x,p.y-origin.y);moveActor(g,p,d.x*9,d.y*9,12);}
   floating(g,p.x,p.y-45,`−${Math.ceil(value)}`,'#ff9f9b',true);effect(g,'pop',p.x,p.y-20,16,'#f1a096',.16);emit(g,'hurt');
   if(p.hp<=0){p.hp=0;g.outcome='defeat';g.phase='result';emit(g,'defeat');}
@@ -330,7 +379,7 @@ function updateProjectiles(g,dt) {
       const t=l2?clamp(((e.x-oldX)*dx+(e.y-oldY)*dy)/l2,0,1):0;
       if(Math.hypot(e.x-oldX-dx*t,e.y-oldY-dy*t)>e.r+p.r)return;
       p.hits.push(e.id);const crit=random(g)<.08;
-      hit(g,e,p.damage*(crit?1.8:1),p.kind==='moon'?35:14,p,crit);
+      hit(g,e,p.damage*(crit?1.8:1),p.kind==='moon'?135:p.kind==='bee'?35:85,p,crit);
       if(p.evolved&&p.kind==='acorn'){areaHit(g,p.x,p.y,36*g.stats.area,p.damage*.3,12);effect(g,'pop',p.x,p.y,30,'#eab66c',.2);}
       if(p.pierce--<=0)p.life=0;
     });
@@ -349,13 +398,15 @@ function updateFields(g,dt) {
   g.delayed=g.delayed.filter(d=>!d.done);
 }
 function gainXP(g,value) {
+  g.metrics.xpCollected=(g.metrics.xpCollected||0)+value;g.metrics.xpGranted=(g.metrics.xpGranted||0)+value*g.stats.growth;
   g.xp+=value*g.stats.growth;
   while(g.xp>=xpCost(g.level)){g.xp-=xpCost(g.level);g.level++;g.pendingLevels++;if(g.metrics.firstLevelAt===null)g.metrics.firstLevelAt=g.time;}
 }
 function updateLoot(g,dt) {
   const p=g.player,magnet=g.stats.magnet;
+  for(const gem of g.gems.values())gem.age=(gem.age??1)+dt;
   for(const [key,gem] of g.gems)if(dist(gem,p)<magnet){g.gems.delete(key);g.flying.push({...gem,speed:150});}
-  for(const gem of g.flying){const d=direction(p.x-gem.x,p.y-gem.y);gem.speed+=1300*dt;gem.x+=d.x*gem.speed*dt;gem.y+=d.y*gem.speed*dt;if(dist(gem,p)<18+gem.speed*dt){gem.collected=true;gainXP(g,gem.value);emit(g,'xp');}}
+  for(const gem of g.flying){gem.age=(gem.age??1)+dt;const d=direction(p.x-gem.x,p.y-gem.y);gem.speed+=1300*dt;gem.x+=d.x*gem.speed*dt;gem.y+=d.y*gem.speed*dt;if(dist(gem,p)<18+gem.speed*dt){gem.collected=true;gainXP(g,gem.value);emit(g,'xp');}}
   g.flying=g.flying.filter(gem=>!gem.collected);
   for(const item of g.pickups){
     if(item.collected||dist(item,p)>(item.type==='coin'?magnet:28))continue;
@@ -391,8 +442,11 @@ export function draftChoices(g,excluded=[],advance=true) {
   if(advance)g.drafts++;
   const add=choice=>{if(choice){out.push(choice);pool=pool.filter(c=>c.id!==choice.id);}};
   const eligible=list=>{const fresh=list.filter(c=>!excluded.includes(c.id));return fresh.length?fresh:list;};
-  if(g.drafts<=2){const fresh=eligible(pool.filter(c=>c.kind==='weapon'&&!c.owned));if(fresh.length)add(fromPool(g,fresh));}
-  if(g.upgradeMisses>=2){const owned=eligible(pool.filter(c=>c.kind==='weapon'&&c.owned));if(owned.length)add(fromPool(g,owned));}
+  if(g.drafts<=2){
+    const primary=pool.find(c=>c.kind==='weapon'&&c.owned&&c.id===g.startWeapon);add(primary);
+    const fresh=eligible(pool.filter(c=>c.kind==='weapon'&&!c.owned));if(fresh.length)add(fromPool(g,fresh));
+  }
+  if(g.upgradeMisses>=2&&out.length<3&&!out.some(c=>c.kind==='weapon'&&c.owned)){const owned=eligible(pool.filter(c=>c.kind==='weapon'&&c.owned));if(owned.length)add(fromPool(g,owned));}
   while(out.length<3&&pool.length){
     const candidates=eligible(pool),owned=candidates.filter(c=>c.kind==='weapon'&&c.owned),fresh=candidates.filter(c=>c.kind==='weapon'&&!c.owned),passive=candidates.filter(c=>c.kind==='passive');
     const bags=[...[owned,owned,owned],...[fresh,fresh],...[passive,passive,passive]].filter(b=>b.length);
@@ -436,13 +490,16 @@ export function chestCandidates(g){
 }
 export function openChest(g,drop={canEvolve:true}) {
   if(g.phase!=='playing')return false;
-  const gold=35+Math.floor(random(g)*35),options=drop.canEvolve===true?chestCandidates(g):[],rewards=[];
+  const gold=35+Math.floor(random(g)*35),rewards=[];
+  const forged=drop.forgeWeapon&&g.weapons[drop.forgeWeapon]&&!g.weapons[drop.forgeWeapon].evolved&&g.weapons[drop.forgeWeapon].rank<WEAPONS[drop.forgeWeapon].max?drop.forgeWeapon:null;
+  if(forged){const before=g.weapons[forged].rank;g.weapons[forged].rank=Math.min(WEAPONS[forged].max,before+2);g.weapons[forged].clock=0;recordRank(g,forged);rewards.push({id:forged,evolved:false,amount:g.weapons[forged].rank-before});}
+  const options=drop.canEvolve===true?chestCandidates(g):[];
   if(!options.length){
     const available=Object.keys(g.weapons).filter(id=>BASE_WEAPON_IDS.includes(id)&&!g.weapons[id].evolved&&g.weapons[id].rank<WEAPONS[id].max);
-    const amount=random(g)<.2?3:1;
+    const amount=forged?0:random(g)<.2?3:1;
     for(let i=0;i<amount&&available.length;i++){const id=available.splice(Math.floor(random(g)*available.length),1)[0];g.weapons[id].rank++;g.weapons[id].clock=0;recordRank(g,id);rewards.push({id,evolved:false});}
   }
-  g.gold+=gold;g.metrics.chests++;g.chest={gold,rewards,options,canEvolve:drop.canEvolve===true};g.phase='chest';emit(g,'chest');return true;
+  g.gold+=gold;g.metrics.chests++;g.chest={gold,rewards,options,canEvolve:drop.canEvolve===true,source:drop.source||'elite'};g.phase='chest';emit(g,'chest');return true;
 }
 export function selectChest(g,id){
   if(g.phase!=='chest'||!g.chest?.canEvolve||!g.chest.options.some(o=>o.id===id))return false;
@@ -467,11 +524,15 @@ export function retreat(g){if(g.phase!=='paused')return false;g.outcome='retreat
 export function stepGame(g,dt,input={}) {
   if(g.phase!=='playing')return;
   if(!Number.isFinite(dt)||dt<=0)return;
-  dt=clamp(dt,0,.04);g.hitEvent=false;g.time=Math.min(RUN_SECONDS,g.time+dt);
+  dt=clamp(dt,0,.04);g.hitEvent=false;
+  g.feedback??={nextImpactAt:0,killWindowAt:0,killCount:0,nextCrowdAt:0};
+  const worldDt=Math.max(0,dt-Math.min(dt,g.hitstop));g.hitstop=Math.max(0,g.hitstop-dt);
+  g.time=Math.min(RUN_SECONDS,g.time+worldDt);
   if(g.time>=RUN_SECONDS){g.phase='result';g.outcome='victory';emit(g,'victory');return;}
   const p=g.player;
   p.hurt=Math.max(0,p.hurt-dt);p.invincible=Math.max(0,p.invincible-dt);p.guard=Math.max(0,p.guard-dt);p.attack=Math.max(0,p.attack-dt);p.dashCooldown=Math.max(0,p.dashCooldown-dt);
   p.signature=Math.max(0,(p.signature||0)-dt);
+  p.attackWindup=Math.max(0,(p.attackWindup||0)-dt);
   p.charge=clamp(p.charge+dt*.8,0,100);g.shake=Math.max(0,g.shake-dt*16);
   let x=Number.isFinite(input.x)?clamp(input.x,-1,1):0,y=Number.isFinite(input.y)?clamp(input.y,-1,1):0;const length=Math.hypot(x,y);if(length>1){x/=length;y/=length;}
   p.moving=length>.05;if(p.moving){p.fx=x/(Math.hypot(x,y)||1);p.fy=y/(Math.hypot(x,y)||1);if(p.attack<=0)p.aim=Math.atan2(p.fy,p.fx);}
@@ -481,10 +542,11 @@ export function stepGame(g,dt,input={}) {
   g.stats=deriveStats(g);
   if(input.skill)useSignature(g);if(input.dash)dash(g);
   const oldX=p.x,oldY=p.y;
-  if(p.dash>0){moveActor(g,p,p.fx*750*dt,p.fy*750*dt,12);p.dash-=dt;}else{moveActor(g,p,x*g.stats.speed*dt,y*g.stats.speed*dt,12);}
+  if(p.dash>0){moveActor(g,p,p.fx*750*dt,p.fy*750*dt,15);p.dash-=dt;}else{moveActor(g,p,x*g.stats.speed*dt,y*g.stats.speed*dt,15);}
   const moved=Math.hypot(p.x-oldX,p.y-oldY);p.walk+=moved;p.moving=moved>.01;
+  if(g.terrain&&length>.05&&moved<g.stats.speed*dt*Math.min(1,length)*.2)g.metrics.blockedSeconds=(g.metrics.blockedSeconds||0)+dt;
   p.hp=Math.min(p.maxHp,p.hp+g.stats.regen*dt);
-  updateDirector(g,dt);buildGrid(g);updateWeapons(g,dt);updateEnemies(g,dt);buildGrid(g);updateProjectiles(g,dt);updateFields(g,dt);
+  if(worldDt>0){updateDirector(g,worldDt);buildGrid(g);updateWeapons(g,worldDt);updateEnemies(g,worldDt);buildGrid(g);updateProjectiles(g,worldDt);updateFields(g,worldDt);}
   g.enemies=g.enemies.filter(e=>!e.dead);
   if(g.phase==='playing')updateLoot(g,dt);
   for(const fx of g.effects)fx.life-=dt;g.effects=g.effects.filter(fx=>fx.life>0);
@@ -550,7 +612,7 @@ export function unpackRun(text) {
     if(!Array.isArray(g.gems)||g.gems.length>25000)return null;
     const gemKeys=new Set();for(const entry of g.gems){if(!Array.isArray(entry)||entry.length!==2||typeof entry[0]!=='string'||entry[0].length>50||gemKeys.has(entry[0])||!gemValid(entry[1]))return null;gemKeys.add(entry[0]);}
     for(const gem of g.flying)if(!gemValid(gem)||!finite(gem.speed,0,1e6))return null;
-    for(const fx of g.effects)if(!vector(fx)||!['death','ring','pop','slash','bolt','dash','muzzle','splash'].includes(fx.type)||!finite(fx.r,0,2000)||!finite(fx.life,0,10)||!finite(fx.maxLife,0,10)||typeof fx.color!=='string')return null;
+    for(const fx of g.effects)if(!vector(fx)||!['death','ring','pop','slash','bolt','dash','muzzle','splash','impact'].includes(fx.type)||!finite(fx.r,0,2000)||!finite(fx.life,0,10)||!finite(fx.maxLife,0,10)||typeof fx.color!=='string')return null;
     for(const t of g.texts)if(!vector(t)||!finite(t.life,0,5)||!['string','number'].includes(typeof t.value)||typeof t.color!=='string')return null;
     for(const d of g.delayed)if(!vector(d)||!finite(d.at,0,RUN_SECONDS+10)||!finite(d.r,0,2000)||!finite(d.damage,0,1e7)||!finite(d.knock,0,1000))return null;
     if(g.decoy!==null&&(!vector(g.decoy)||!finite(g.decoy.life,0,3)))return null;
@@ -567,6 +629,8 @@ export function unpackRun(text) {
       // Reconstruct labels and requirements from trusted content, not save text.
       g.chest.options=options.filter(o=>g.chest.options.some(saved=>saved.id===o.id));
     }else if(g.chest!==undefined&&g.chest!==null)return null;
+    if(g.expedition)g.expedition.milestones??={};
+    g.feedback??={nextImpactAt:0,killWindowAt:0,killCount:0,nextCrowdAt:0};
     g.gems=new Map(g.gems);g.events=[];g.stats=deriveStats(g);return g;
   }catch{return null;}
 }

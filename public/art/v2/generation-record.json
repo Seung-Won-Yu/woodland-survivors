@@ -1,0 +1,90 @@
+{
+  "date": "2026-11-03",
+  "method": "built-in image_gen; no CLI/API fallback",
+  "promptRecordNote": "First four request briefs normalized for readability; subsequent correction/enemy/rear prompts retain full request text.",
+  "project": "woodland-survivors",
+  "records": [
+    {
+      "file": "party-walk-side.png",
+      "layout": "8 columns × 6 rows",
+      "prompt": "Create a production 2D game animation sprite sheet derived closely from the supplied character concept reference. Exactly 8 columns by 6 rows, 48 separate sprites on genuinely transparent background, 1536x1024, 192x170 cells. No labels, grid, floor or shadows. Foot baseline y154 and hip centered x96. Preserve warm richly shaded 16-bit pixel illustration, fur clusters, dark brown contours, cream muzzles, leather buckles, rolled canvas packs and brass accents. Each row is one original character: orange squirrel with striped curled tail/green tunic/acorn backpack; cream rabbit/teal scarf/bedroll; round hedgehog/broad quills/olive clothes/stowed leaf shield; slender orange fox/white tail tip/burgundy cape/belt mirror; squat purple-brown mole/brass miner helmet/big gloves/backpack; long brown otter/cream face/teal coat/collar/rolled pack/vial. All face right, hands empty at waist for composited weapons. Eight consecutive distinct walk/run poses: right contact, down, passing, lift, left contact, down, passing, lift. Actually redraw articulated knees, ankles, feet, arms; keep identity, clothes, scale, lighting and camera stable. Subtle delayed tail/ear motion. Safe margins, unclipped isolated sprites. Not minimal flat geometric icons.",
+      "references": [
+        "docs/reference/party-base.png"
+      ],
+      "saved_path": "public/art/v2/party-walk-side.png",
+      "sha256": "074baa8ba99ef12c8e2baf917b9a4906304db48046ab16ae146a1354e97b4424"
+    },
+    {
+      "file": "party-walk-front-back.png",
+      "layout": "8 columns × 6 rows; south cols0–3, north cols4–7",
+      "prompt": "Create a production animation sprite sheet matching the supplied six woodland animal character concepts. Exactly 8 columns by 6 rows, 1536x1024, genuinely transparent background, no text, grid, floor or shadow. Keep warm detailed pixel illustration, shaded fur, dark contours, cream faces, leather/brass equipment and all original character identities. Same six species rows and original costumes as reference. Empty hands for in-game weapons. Columns1–4: four genuinely different consecutive walk poses facing south toward viewer, slightly elevated RPG camera, alternating knees/feet and foot plant. Columns5–8: four consecutive walk poses facing north away from viewer, real backs of heads, ears, packs and tails. Fixed scale and planted-foot baseline y154 per 192x170 cell, hip x96, safe margins. No translated copies. Tail/ear lag subtle; silhouette, anatomy and materials remain consistent.",
+      "references": [
+        "docs/reference/party-base.png"
+      ],
+      "saved_path": "public/art/v2/party-walk-front-back.png",
+      "sha256": "09c0316bc64ddfd50c468e13f9632785b2a499cf6958d3357f47d347d59fca41"
+    },
+    {
+      "file": "party-combat.png",
+      "layout": "8 columns × 6 rows; east cols0–3, south cols4–7",
+      "prompt": "Create a coherent combat atlas of the six supplied woodland animal adventurers. Match warm richly shaded fur, brown pixel outlines, cream faces, original species silhouettes and leather/brass equipment. Exactly 8 columns x6 rows, 48 isolated sprites, 1536x1024, transparent background, no grid/text/floor/shadows. Fixed 192x170 cells, foot baseline154 and hip x96. Same six original species rows/costumes. Hands empty but act as holding composited weapon at chest/waist. Columns1–4 face right: anticipation with elbow draw-back/knees brace; attack release with forearm extending and chest leaning; follow-through/recovery; hit reaction with spine/head recoiling and knees bending. Columns5–8 repeat four states facing south toward viewer. Arms, shoulders, spine and head genuinely change; feet planted. Identity, size, camera, colors and clothes stable. No huge effects. Detailed sprites comparable to original reference, not simple polygon icons.",
+      "references": [
+        "docs/reference/party-base.png"
+      ],
+      "saved_path": "public/art/v2/party-combat.png",
+      "sha256": "1bc41bf6f973208a889bd905350d1aef4d49272a61a9a89f11ebfa4d7c5a24fa"
+    },
+    {
+      "file": "forest-atlas.png",
+      "layout": "6 columns ×4 rows; only top-row terrain patches consumed",
+      "prompt": "Create a production 2D environment atlas matching woodland camp reference's rich warm pixel illustration: gnarled oak bark, shaded mossy leaves, ochre dirt, jade/olive grass, amber light. 1536x1024, exactly6 columns x4 rows of256px cells, no characters/UI/text. Row1 six quiet seamless top-down opaque terrain patches: mossy grass, ochre dirt, grass variant, sparse leaf dirt, shadow fern floor, stony dirt. Row2 isolated props: three oak variations, moss boulder, small moss rocks, fallen log/mushrooms. Row3 isolated sites: ranger tent/crates, fire ring, wooden supply cart/acorn sacks/pennant, red mushroom nest, turquoise mossy spring, stone marker/lantern. Row4 detail props: ferns, ochre leaves, mushrooms, closed chest, open chest, sacks/lantern. Complete separated props, light upper-left, irregular natural textured shapes, no flat geometry. Terrain low contrast so combat reads.",
+      "references": [
+        "public/art/v2/camp-reference.png"
+      ],
+      "saved_path": "public/art/v2/forest-atlas.png",
+      "sha256": "58357da47c22af26402c81661cbcc033cad69e4612477199123e57259fbeae34"
+    },
+    {
+      "file": "forest-props.png",
+      "prompt": "Edit the supplied game environment atlas into a clean transparent game PROP sheet. Preserve the exact richly illustrated pixel art style, all existing prop identities, colors, gnarled oak bark, moss texture, warm ochre leaves, brass lantern, tent/cart/nest/spring. REMOVE the entire top row containing six square ground terrain textures. The output consists ONLY of the remaining 18 props, arranged EXACTLY 6 columns by 3 rows, landscape 1536x1024. Each cell is 256x341.3, each object centered horizontally and bottom-grounded at local y=320, safe transparent margins. Row 1: three oak trees, broad moss boulder, small moss rock cluster, fallen mushroom log. Row 2: ranger tent/crates, campfire ring, wooden supply cart, red mushroom nest, turquoise mossy spring, stone marker/lantern. Row 3: fern clump, ochre leaves, red mushrooms, closed chest, open chest, sacks/lantern. CRITICAL: background must be genuinely EMPTY alpha=0 outside each prop, with no white fill, gray checkerboard, tinted rectangular plates, floor or background texture. Do not draw a checkerboard representation of transparency. Clean cutouts with alpha and no opaque/semitransparent canvas behind them. Keep all 18 props completely intact and separated in their equal cells. No text, no outlines of cells, no extra scenery. Do not change existing art to vector polygons. This output is an actual game asset consumed on a dark woodland floor.",
+      "references": [
+        "public/art/v2/forest-atlas.png"
+      ],
+      "requestedTransparent": true,
+      "saved_path": "public/art/v2/forest-props.png",
+      "sha256": "47f85d27c81667a4cc03412c974b44211bf6257858fecc742115fdde89370d7c"
+    },
+    {
+      "file": "enemy-motion.png",
+      "prompt": "Create an actual 2D woodland survival game enemy animation atlas matching the supplied warm detailed pixel-illustrated animal adventurer and forest references. Use-case stylized-concept. EXACTLY 8 columns by 4 rows (32 complete sprites), landscape 1536x1024, 192x256 cells, genuinely transparent background alpha=0, no colored backing, no checkerboard, no ground shadows, no text or grid. Each character fits well within cell, consistent planted foot baseline local y=232, hip centered x=96. These are small expressive forest creatures with richly shaded natural textures and brown outlines, comparable in detail to the supplied adventurers, NOT simple geometric icons. Slightly elevated side/front three-quarter RPG camera, generally facing right. ROW 1: red-brown capped walking mushroom infantry, cream stalk face with two clear dark eyes, tiny root legs, layered mottled cap and light spots. Columns 1-6 genuinely different consecutive six-frame walking cycle with root feet alternating; col7 recoils from hit, cap tilted sideways; col8 collapses with cap falling. ROW 2: ochre/yellow capped fast mushroom runner with a small pointed horn and lower athletic stance. Columns 1-4 walk cycle; col5 crouches very low to wind up a rush, cap pulled back; col6 launches forward with legs extended; col7 charging stretched stride; col8 recovering out of breath crouched low. ROW 3: dusty-purple spore puffball shooter with small feet, expressive cream eyes, ridged round sac and a small central spore nozzle. Columns 1-4 short walking cycle; col5 inflates slightly; col6 inflates clearly and aims; col7 exhales a spore puff WITHOUT drawing projectile outside body; col8 deflates in recovery. ROW 4: mossy jade armored beetle, ridged shell with shaded plates, six tiny articulated legs, cream eye glints. Columns 1-6 distinct crawling poses; col7 shell twists on hit, col8 shell collapses. Creature proportions/colors/lighting invariant within every row. Foot contacts and body poses must genuinely change between frames, no repeated identical sprite copies. Leave clean transparent space around every isolated sprite and keep each row/cell aligned exactly.",
+      "references": [
+        "docs/reference/party-base.png",
+        "public/art/v2/camp-reference.png"
+      ],
+      "requestedTransparent": true,
+      "saved_path": "public/art/v2/enemy-motion.png",
+      "sha256": "4c6f81fd39ae8e4ca12b19ac49de903733471112216a8a9fd7b88d482a03d708"
+    },
+    {
+      "file": "party-combat-back.png",
+      "prompt": "Create a dedicated NORTH-FACING (back view, away from viewer) combat animation atlas of the six supplied woodland animal adventurers. Match their exact richly shaded warm pixel illustration, species silhouette, material details and palettes in the concept and directional reference. This is a transparent game sprite asset, not a scene. EXACTLY 4 columns by 6 rows = 24 sprites, portrait 1024x1536, 256x256 equal cells. Transparent empty alpha=0 background, no brown backing, no checkerboard, no labels, no grid, no floor or shadow. Grounded feet at local y=236, hip centered at x=128, all sprites complete with safe margins. Rows: orange squirrel with huge curled striped tail green tunic/acorn pack; cream rabbit long ears teal scarf bedroll and small white tail; round hedgehog broad quill back with leaf shield stowed; slender orange fox white tail tip burgundy cape and mirror; purple-brown mole brass helmet/light and broad leather pack/gloves; long brown otter cream collar teal tunic rolled pack/vial. All characters face NORTH so only back of head, shoulders and backpack are visible. Hands empty but positioned as gripping a separate composited weapon pointing north. Columns 1 anticipation: shoulders pull back and elbows bend; 2 attack release: shoulders press forward and both forearms extend north, real stance change; 3 recovery: shoulders/arms retract to ready position; 4 hit reaction: back arches, head and shoulders recoil, knees bend. Not four duplicates, not a bobbed single picture. Keep feet planted, head/body proportions, clothing, backpack and camera scale completely consistent in each row. Camera is elevated classic RPG view, same warm detailed texture and brown outlines as reference, NOT minimal icon or flat polygon style.",
+      "references": [
+        "docs/reference/party-base.png",
+        "public/art/v2/party-walk-front-back.png"
+      ],
+      "requestedTransparent": true,
+      "saved_path": "public/art/v2/party-combat-back.png",
+      "sha256": "113890913b91a96c417463b84dd6767104f5cde51ccadd0f5e79d2bd62082305"
+    }
+  ],
+  "actualLayoutNotes": {
+    "forestProps": "Output retained an empty top band: consumed as 6×4 atlas, rows1–3. Actual alpha0 verified.",
+    "walk": "8 side poses, 4 south, 4 north; west mirrors side. No lobby-pose copies.",
+    "normalization": "Source PNGs unchanged. Runtime isolates each actor's main alpha component plus antialiased edge, crops cell bounds, fixes foot pivot, composes separate upper/lower directions."
+  },
+  "copiedReference": {
+    "file": "public/art/v2/camp-reference.png",
+    "source": "Original project camp concept; used as the menu background and environment-generation reference.",
+    "sha256": "b6223fe66576ede5f357a9eb779e2570373b7cd8a2da9966db688a05477913dc"
+  }
+}
