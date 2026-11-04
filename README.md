@@ -1,7 +1,7 @@
 <h1 align="center">🌲 동물 수호대</h1>
 <p align="center"><strong>Woodland Survivors · 새벽숲 정찰 원정</strong><br>작은 동물 모험가와 함께 숲을 탐색하는 2D 서바이버 게임</p>
 <p align="center">
-  <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="게임 검사 및 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg"></a>
+  <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="게임 검사 및 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
   <img alt="개발판 0.4" src="https://img.shields.io/badge/version-0.4-d5b77b?style=flat-square">
   <img alt="HTML Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
   <img alt="외부 런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
