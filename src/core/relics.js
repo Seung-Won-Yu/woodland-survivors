@@ -1,5 +1,6 @@
-import {synergyAction,synergyReady} from './synergies.js';
+import {synergyAction,synergyReady,synergyMastered} from './synergies.js';
 export const RELIC_LIMIT=2;
+export const RELIC_SOURCES=['supply','trial','nest','midpoint'];
 export const RELICS={
   wind:{name:'바람 방울',tag:'이동 · 관통',color:'#bce0bc',description:'24m 이동하면 충전. 다음 무기 적중에서 관통 돌풍이 나갑니다.',pair:'motion'},
   thread:{name:'매듭 실타래',tag:'이동 · 추격',color:'#dfb58c',description:'살아남은 적 하나에 실을 묶습니다. 12m 이동하면 그 적에게 추가 피해.',pair:'motion'},
@@ -41,11 +42,11 @@ function proc(g,id,action){g.relics.stats[id].procs++;g.events.push({type:'relic
 export function tickRelics(g,moved){
   const r=g.relics,actions=[];if(!r.items.length)return actions;
   if(r.items.includes('wind'))r.wind.distance=Math.min(240,r.wind.distance+moved);
-  if(r.items.includes('shell')&&r.shell.shield===0&&g.player.still>=.7&&g.time>=r.shell.readyAt){r.shell.shield=12;actions.push(proc(g,'shell',{kind:'shield'}));}
+  if(r.items.includes('shell')&&r.shell.shield===0&&g.player.still>=.7&&g.time>=r.shell.readyAt){r.shell.shield=synergyMastered(g,'bastion')?20:12;actions.push(proc(g,'shell',{kind:'shield'}));}
   if(r.items.includes('thread')&&r.thread.target){
     const target=g.enemies.find(e=>e.id===r.thread.target&&!e.dead);
     if(!target||g.time>=r.thread.expiresAt||Math.hypot(target.x-g.player.x,target.y-g.player.y)>700){r.thread.target=0;r.thread.readyAt=g.time+.6;}
-    else if(g.player.walk-r.thread.walk>=120){actions.push(proc(g,'thread',synergyAction(g,'swarm',{kind:'target',target:target.id,damage:(24+g.level*1.6)*g.stats.damage})));r.thread.target=0;r.thread.readyAt=g.time+1.8;}
+    else if(g.player.walk-r.thread.walk>=120){actions.push(proc(g,'thread',synergyAction(g,'swarm',{kind:'target',target:target.id,damage:(24+g.level*1.6)*g.stats.damage})));r.thread.target=0;r.thread.readyAt=g.time+(synergyMastered(g,'swarm')?1.4:1.8);}
   }
   return actions;
 }
@@ -58,14 +59,14 @@ export function onRelicWeaponHit(g,e,{source},wasKnocked,angle){
 }
 export function onRelicWeaponKill(g,e,{source}){
   const r=g.relics;if(source!=='weapon'||!r.items.includes('seed'))return [];
-  r.seed.kills=Math.min(12,r.seed.kills+1);
-  if(r.seed.kills>=12&&g.time>=r.seed.readyAt&&g.pickups.filter(p=>p.relicId==='seed').length<2){r.seed.kills=0;r.seed.readyAt=g.time+5;return [proc(g,'seed',synergyAction(g,'garden',{kind:'seed',x:e.x,y:e.y}))];}
+  const mastered=synergyMastered(g,'garden'),needed=mastered?8:12;r.seed.kills=Math.min(needed,r.seed.kills+1);
+  if(r.seed.kills>=needed&&g.time>=r.seed.readyAt&&g.pickups.filter(p=>p.relicId==='seed').length<2){r.seed.kills=0;r.seed.readyAt=g.time+(mastered?4:5);return [proc(g,'seed',synergyAction(g,'garden',{kind:'seed',x:e.x,y:e.y}))];}
   return [];
 }
 export function onRelicHealing(g,actual,source){
   const r=g.relics;if(actual<=0||source==='relic'||!r.items.includes('tide'))return [];
   r.tide.healing=Math.min(15,r.tide.healing+actual);
-  if(r.tide.healing>=15&&g.time>=r.tide.readyAt){r.tide.healing=0;r.tide.readyAt=g.time+6;return [proc(g,'tide',synergyAction(g,'conductor',{kind:'burst',x:g.player.x,y:g.player.y,r:170,damage:(20+g.level*1.2)*g.stats.damage,knock:220}))];}
+  if(r.tide.healing>=15&&g.time>=r.tide.readyAt){r.tide.healing=0;r.tide.readyAt=g.time+6;return [proc(g,'tide',synergyAction(g,'conductor',{kind:'burst',x:g.player.x,y:g.player.y,r:synergyMastered(g,'conductor')?220:170,damage:(20+g.level*1.2)*g.stats.damage,knock:220}))];}
   return [];
 }
 export function absorbRelicShield(g,value){
@@ -79,7 +80,7 @@ export function relicReadout(g,id){
   if(id==='wind')return r.wind.distance>=240?'돌풍 준비':`충전 ${Math.floor(r.wind.distance/2.4)}%`;
   if(id==='thread')return r.thread.target?'이동하면 결산':`${n}회 발동`;
   if(id==='shell')return r.shell.shield>0?`보호막 ${Math.ceil(r.shell.shield)}`:g.time<r.shell.readyAt?`${Math.ceil(r.shell.readyAt-g.time)}초`:'멈추면 충전';
-  if(id==='seed')return `${r.seed.kills}/12 처치`;
+  if(id==='seed')return `${r.seed.kills}/${synergyMastered(g,'garden')?8:12} 처치`;
   if(id==='tide')return `${Math.floor(r.tide.healing)}/15 회복`;
   return `${n}회 파열`;
 }
@@ -88,5 +89,5 @@ export function validRelics(r){
   const number=(n,max=1e8)=>Number.isFinite(n)&&n>=0&&n<=max;
   const fields={wind:['distance','readyAt'],thread:['target','walk','expiresAt','readyAt'],shell:['shield','readyAt'],thorn:['readyAt'],seed:['kills','readyAt'],tide:['healing','readyAt']};
   for(const id of RELIC_IDS){if(!r[id]||!r.stats?.[id]||fields[id].some(k=>!number(r[id][k]))||['procs','damage','healed','absorbed'].some(k=>!number(r.stats[id][k])))return false;}
-  return Number.isInteger(r.thread.target)&&Number.isInteger(r.seed.kills)&&r.wind.distance<=240&&r.shell.shield<=12&&r.seed.kills<=12&&r.tide.healing<=15&&Array.isArray(r.discovered)&&r.discovered.length<=6&&new Set(r.discovered).size===r.discovered.length&&r.discovered.every(id=>Object.hasOwn(RELICS,id))&&Array.isArray(r.history)&&r.history.length<=12&&r.history.every(h=>Object.hasOwn(RELICS,h.id)&&number(h.time,1800)&&['supply','trial','nest'].includes(h.source)&&(h.replace===null||Object.hasOwn(RELICS,h.replace)));
+  return Number.isInteger(r.thread.target)&&Number.isInteger(r.seed.kills)&&r.wind.distance<=240&&r.shell.shield<=20&&r.seed.kills<=12&&r.tide.healing<=15&&Array.isArray(r.discovered)&&r.discovered.length<=6&&new Set(r.discovered).size===r.discovered.length&&r.discovered.every(id=>Object.hasOwn(RELICS,id))&&Array.isArray(r.history)&&r.history.length<=12&&r.history.every(h=>Object.hasOwn(RELICS,h.id)&&number(h.time,1e9)&&RELIC_SOURCES.includes(h.source)&&(h.replace===null||Object.hasOwn(RELICS,h.replace)));
 }

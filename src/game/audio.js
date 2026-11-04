@@ -1,4 +1,4 @@
-const IMPORTANT = ['hurt', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
+const IMPORTANT = ['hurt', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
 const IMPACTS = ['wood-impact', 'wood-kill', 'blade-impact', 'ember-impact'];
 const CASTS = ['acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
 
@@ -93,6 +93,10 @@ export function createAudio() {
     } else if (event === 'burst') {
       transient(now,.09,.035,1400);
       note(180,420,'triangle',now,.1,.025);
+    } else if(event==='rampage'){
+      note(220,440,'triangle',now,.1,.025);note(330,660,'sine',now+.06,.13,.02);transient(now,.05,.025,1800);
+    } else if(event==='horde'){
+      note(100,65,'triangle',now,.28,.035);note(150,100,'triangle',now+.12,.24,.025);
     } else if(event==='relic-proc'){
       note(590,790,'sine',now,.09,.018);note(885,1180,'sine',now+.025,.1,.011);
     } else if (event === 'guard-block') {

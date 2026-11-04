@@ -13,7 +13,7 @@ before(async()=>{
 after(async()=>{if(server)await new Promise(resolve=>server.close(resolve));});
 
 test('built game and motion lab resolve their dependencies under a project Pages prefix',async()=>{
-  const pending=[new URL('index.html',base),new URL('docs/motion-lab.html',base)],seen=new Set();
+  const pending=[new URL('index.html',base),new URL('docs/motion-lab.html',base),new URL('docs/combat-lab.html',base)],seen=new Set();
   while(pending.length){
     const url=pending.shift();if(seen.has(url.href))continue;seen.add(url.href);
     assert.ok(url.href.startsWith(base),`dependency escaped project path: ${url}`);

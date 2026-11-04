@@ -7,5 +7,6 @@ for(const name of await readdir('public/art/v2'))if(name.endsWith('.png'))await 
 await cp('public/fonts','dist/fonts',{recursive:true});
 await mkdir('dist/docs',{recursive:true});
 await cp('docs/motion-lab.html','dist/docs/motion-lab.html');
+await cp('docs/combat-lab.html','dist/docs/combat-lab.html');
 await writeFile('dist/.nojekyll','');
 console.log('Static build ready in dist/');

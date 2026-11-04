@@ -20,8 +20,8 @@ export const WEAPONS = {
   lantern:{name:'반딧불 병',tag:'장판 · 지속 피해',color:'#90ead1',max:8,damage:10,cooldown:1.75,recipe:'stone',evo:'별빛 연못',evoText:'넓어진 빛의 장판이 몸을 향해 모여들며 적을 끌어당깁니다.',description:'병이 깨진 자리에 피해를 주는 빛의 장판이 남습니다.'},
   vine:{name:'덩굴 채찍',tag:'부채꼴 · 밀쳐내기',color:'#eaa6af',max:8,damage:24,cooldown:1.2,recipe:'bark',evo:'장미 폭풍',evoText:'전방위 덩굴 뒤 장미 폭발이 이어집니다.',description:'바라보는 방향으로 넓게 휘둘러 적을 밀어냅니다.'},
   bloom:{name:'민들레 파동',tag:'파동 · 광역',color:'#e7dcad',max:8,damage:22,cooldown:1.65,recipe:'swift',evo:'만개한 봄',evoText:'겹겹의 꽃 파동과 날아가는 홀씨가 사방으로 퍼집니다.',description:'몸을 중심으로 적을 밀쳐내는 꽃 파동을 만듭니다.'},
-  returning:{name:'왕복 산탄',tag:'합체 · 왕복 관통',color:'#f2d39d',max:1,damage:66,cooldown:.7,union:true,icon:'moon',evo:'왕복 산탄',evoText:'관통 산탄이 넓게 퍼졌다 돌아오며 앞뒤를 함께 공격합니다.',description:'도토리와 부메랑을 합친 왕복 관통 산탄.'},
-  hive:{name:'보호 추적 벌떼',tag:'합체 · 궤도 추적',color:'#dce2a4',max:1,damage:65,cooldown:.95,union:true,icon:'bees',evo:'보호 추적 벌떼',evoText:'보호 궤도에서 벌떼가 출격하고 돌아와 주변을 지킵니다.',description:'진화 가시와 꿀벌을 합친 보호·추적 군체.'}
+  returning:{name:'왕복 산탄',tag:'최종 합체 · 폭발 관통',color:'#f2d39d',max:1,damage:88,cooldown:.6,union:true,icon:'moon',evo:'왕복 산탄',evoText:'금빛 산탄 날개가 적을 관통하며 폭발한 뒤 돌아와 다시 전장을 가릅니다.',description:'도토리의 폭발과 반달의 왕복을 한 무기에 모은 최종 합체.'},
+  hive:{name:'보호 추적 벌떼',tag:'최종 합체 · 출격과 귀환',color:'#dce2a4',max:1,damage:92,cooldown:.8,union:true,icon:'bees',evo:'보호 추적 벌떼',evoText:'가시 궤도가 몸을 지키고, 추적벌이 출격·귀환하며 방어 파동을 터뜨립니다.',description:'가시의 방어 궤도와 벌의 추적을 결합한 최종 군체.'}
 };
 export const BASE_WEAPON_IDS=Object.keys(WEAPONS).filter(id=>!WEAPONS[id].union);
 export const UNIONS={

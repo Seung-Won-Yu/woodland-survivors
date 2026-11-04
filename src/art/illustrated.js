@@ -68,7 +68,7 @@ export function drawIllustratedEnemy(c,art,e){
   if(e.hurt>.07&&(row===0||row===3))frame=6;
   else if(row===3&&e.mode==='windup')frame=4;
   if(e.dead&&(row===0||row===3))frame=7;
-  const b=art.enemies.cells[row][frame],ref=art.enemies.cells[row][0],height=e.type==='king'?152:e.type==='elite'?92:e.type==='warden'?59:row===3?51:row===2?64:58;
+  const b=art.enemies.cells[row][frame],ref=art.enemies.cells[row][0],height=e.bossRole==='midpoint'?118:e.type==='king'?152:e.type==='elite'?92:e.type==='warden'?59:row===3?51:row===2?64:58;
   const scale=height/ref.h,w=b.w*scale,h=b.h*scale,ground=Math.max(...art.enemies.cells[row].slice(0,6).map(b=>b.bottom));
   c.save();c.translate(e.x,e.y);if((e.fx||1)<0)c.scale(-1,1);if(e.hurt>0){c.filter='brightness(1.65)';c.transform(1,0,-.08,.95,0,0);}
   c.imageSmoothingEnabled=true;c.drawImage(art.enemies.image,b.x,b.y,b.w,b.h,(b.localX-art.enemies.w/2)*scale,(b.localY-ground)*scale,w,h);

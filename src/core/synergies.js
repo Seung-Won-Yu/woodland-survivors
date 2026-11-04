@@ -10,10 +10,13 @@ export const SYNERGY_IDS=Object.keys(SYNERGIES);
 export const createSynergies=()=>({stats:Object.fromEntries(SYNERGY_IDS.map(id=>[id,{procs:0,damage:0}])),discovered:[]});
 export const synergyReady=(g,id)=>g.relics.items.includes(SYNERGIES[id].relic)&&SYNERGIES[id].weapons.some(w=>Object.hasOwn(g.weapons,w));
 export const activeSynergies=g=>SYNERGY_IDS.filter(id=>synergyReady(g,id));
+export const synergyMastered=(g,id)=>synergyReady(g,id)&&SYNERGIES[id].weapons.some(w=>g.weapons[w]?.evolved);
+export const masteredSynergies=g=>SYNERGY_IDS.filter(id=>synergyMastered(g,id));
+export const MASTERY_TEXT={gale:'쌍돌풍이 돌아오며 더 넓게 관통',swarm:'추적벌 4마리 · 관통과 지속 강화',bastion:'보호막 20 · 소진 시 이중 가시 파동',bramble:'넓어진 덤불이 적을 끌어모음',garden:'8처치 발아 · 회복 +12 · 넓고 오래가는 정원',conductor:'넓어진 회복 파동 · 번개 최대 5연결'};
 export function synergyAction(g,id,action){
   if(!synergyReady(g,id))return action;
   g.synergies??=createSynergies();g.synergies.stats[id].procs++;
   if(!g.synergies.discovered.includes(id))g.synergies.discovered.push(id);
-  return {...action,synergy:id};
+  return {...action,synergy:id,mastered:synergyMastered(g,id)};
 }
 export function validSynergies(s){return !!s&&Array.isArray(s.discovered)&&s.discovered.length<=6&&new Set(s.discovered).size===s.discovered.length&&s.discovered.every(id=>SYNERGY_IDS.includes(id))&&SYNERGY_IDS.every(id=>s.stats?.[id]&&['procs','damage'].every(k=>Number.isFinite(s.stats[id][k])&&s.stats[id][k]>=0&&s.stats[id][k]<=1e12));}
