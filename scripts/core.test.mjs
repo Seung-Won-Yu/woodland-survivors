@@ -52,7 +52,7 @@ test('signature fan shots share one visible muzzle and an actual attack state',(
 test('runner prepares, charges in a locked direction, then recovers; spore warns before firing',()=>{
  const g=arena();g.weapons={};const e=spawnEnemy(g,'runner',200,0,{clock:0});stepGame(g,1/60);assert.equal(e.mode,'windup');const x=e.x;
  advance(g,.3);assert.equal(e.x,x);advance(g,.3);assert.equal(e.mode,'charge');const dx=e.dx;g.player.y=160;advance(g,.15);assert.equal(e.dx,dx);advance(g,.25);assert.equal(e.mode,'recover');
- const s=arena();s.weapons={};const spore=spawnEnemy(s,'spore',280,0,{clock:0});stepGame(s,1/60);assert.equal(spore.mode,'windup');assert.equal(s.projectiles.length,0);advance(s,.5);assert.equal(s.projectiles.length,0);advance(s,.3);assert.equal(spore.mode,'recover');assert.equal(s.projectiles.filter(p=>p.hostile).length,1);
+ const s=arena();s.weapons={};const spore=spawnEnemy(s,'spore',280,0,{clock:0,shotPattern:'fan'});stepGame(s,1/60);assert.equal(spore.mode,'windup');assert.equal(s.projectiles.length,0);advance(s,.5);assert.equal(s.projectiles.length,0);advance(s,.4);assert.equal(spore.mode,'recover');assert.equal(s.projectiles.filter(p=>p.hostile).length,3);
  pauseGame(g);assert.ok(unpackRun(packRun(g))===null,'incomplete weapon fixture is intentionally not a valid save');
 });
 test('supply is an actual proximity interaction, a one-time reward, and conditional gear changes stats',()=>{
@@ -73,9 +73,9 @@ test('the first two drafts offer both starting-weapon growth and a new shared we
  }
 });
 test('nest warns before fixed-position spore bursts and calls its two reinforcements only once',()=>{
- const g=arena();Object.assign(g.player,LANDMARKS.nest);g.player.invincible=100;interact(g);const e=g.enemies.find(e=>e.nestGuardian);g.enemies=[e];g.weapons={};e.clock=0;
+ const g=arena();Object.assign(g.player,LANDMARKS.nest);g.player.invincible=100;interact(g);const e=g.enemies.find(e=>e.nestGuardian);g.enemies=[e];g.weapons={};e.clock=0;e.guardianStyle='briar';
  stepGame(g,1/60);assert.equal(e.mode,'windup');assert.equal(g.fields.length,3);assert.ok(g.fields.every(f=>f.warning>0));const positions=g.fields.map(f=>[f.x,f.y]);
- advance(g,.5,{x:1});assert.deepEqual(g.fields.map(f=>[f.x,f.y]),positions);assert.equal(e.mode,'windup');advance(g,.5);assert.equal(e.mode,'recover');assert.ok(g.fields.every(f=>f.warning<0));
+ advance(g,.5,{x:1});assert.deepEqual(g.fields.map(f=>[f.x,f.y]),positions);assert.equal(e.mode,'windup');advance(g,.6);assert.equal(e.mode,'recover');assert.ok(g.fields.every(f=>f.warning<0));
  e.hp=e.maxHp*.49;stepGame(g,1/60);assert.equal(g.enemies.filter(e=>e.type==='runner').length,2);advance(g,1);assert.equal(g.enemies.filter(e=>e.type==='runner').length,2);
 });
 test('a defeated nest leaves a physical marked chest and is complete only after its reward is collected',()=>{
@@ -147,7 +147,7 @@ test('the return interval leaves a smaller final surge regardless of nest choice
 test('the scouting wave limits simultaneous spore shooters and their bullets expire in four seconds',()=>{
  const g=arena();g.weapons={};g.time=125;g.player.invincible=100;
  for(let i=0;i<4;i++)spawnEnemy(g,'spore',280+i*10,0,{clock:100,speed:0});g.seed=1972;g.spawn=0;stepGame(g,1/60);assert.equal(g.enemies.filter(e=>e.type==='spore').length,4);assert.ok(g.enemies.some(e=>e.type==='shroom'));
- g.spawn=1e6;g.enemies[0].clock=0;advance(g,1);const bullet=g.projectiles.find(p=>p.hostile);assert.ok(bullet);assert.ok(bullet.life<=4&&bullet.life>3);
+ g.spawn=1e6;g.enemies[0].clock=0;g.enemies[0].shotPattern='fan';advance(g,1);const bullet=g.projectiles.find(p=>p.hostile);assert.ok(bullet);assert.ok(bullet.life<=4&&bullet.life>3);
 });
 test('nest chest gives a readable two-rank starting-weapon reward before evolution readiness',()=>{
  const g=arena();openChest(g,{canEvolve:true,forgeWeapon:'acorn'});assert.equal(g.weapons.acorn.rank,3);assert.equal(g.chest.rewards[0].amount,2);assert.equal(closeChest(g),true);

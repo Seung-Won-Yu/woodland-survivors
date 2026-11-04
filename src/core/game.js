@@ -1,6 +1,8 @@
 import {weaponPose} from '../game/motion.js';
 import {moveActor} from '../game/terrain.js';
-import {createRelics,createRelicCache,tickRelics,onRelicWeaponHit,onRelicWeaponKill,onRelicHealing,absorbRelicShield,validRelics,RELICS} from './relics.js';
+import {createRelics,createRelicCache,tickRelics,onRelicWeaponHit,onRelicWeaponKill,onRelicHealing,absorbRelicShield,onRelicShieldBreak,validRelics,RELICS} from './relics.js';
+import {createSynergies,validSynergies,SYNERGIES} from './synergies.js';
+import {beetleBehavior,sporeBehavior,guardianBehavior,fieldContains,GUARDIANS} from './patterns.js';
 import {HEROES,WEAPONS,BASE_WEAPON_IDS,UNIONS,PASSIVES,UPGRADES,ENEMIES,SLOT_LIMIT,RUN_SECONDS,BOSS_SECONDS} from './content.js';
 import {weaponPool,unlocked,normalizeProfile} from './profile.js';
 
@@ -17,7 +19,7 @@ export function createGame(profile,hero='pip',hard=false,seed=Date.now()) {
   if(!Object.hasOwn(HEROES,hero)||!unlocked(profile,hero))hero='pip';
   const h=HEROES[hero],u=profile.upgrades;
   const g={version:2,runId:`${Date.now()}-${seed>>>0}-${hero}`,seed:seed>>>0,id:0,hero,hard:!!hard&&profile.wins>0,phase:'playing',time:0,level:1,xp:0,pendingLevels:0,kills:0,elites:0,kingKills:0,gold:0,damage:0,peakEnemies:0,
-    initialSeed:seed>>>0,relics:createRelics(),relicOffer:null,
+    initialSeed:seed>>>0,relics:createRelics(),relicOffer:null,synergies:createSynergies(),
     player:{x:0,y:0,fx:1,fy:0,hp:h.hp+u.vitality*10,maxHp:h.hp+u.vitality*10,hurt:0,invincible:1.5,walk:0,moving:false,wind:0,still:0,stillGrace:0,charge:0,dash:0,dashCooldown:0,attack:0,guard:0},
     weapons:{[h.weapon]:{rank:1,evolved:false,clock:.15}},passives:{},pool:weaponPool(profile),boosts:{...u},
     consumed:[],discovered:[h.weapon],maxRanks:{[h.weapon]:1},evolutions:[],unions:[],drafts:0,upgradeMisses:0,mastered:false,
@@ -47,7 +49,7 @@ function effect(g,type,x,y,r,color='#ebc780',life=.35,extra={}) {
 function floating(g,x,y,value,color='#f2dfb5',large=false) {
   if(g.texts.length>=LIMITS.texts)g.texts.shift();g.texts.push({x,y,value,color,large,life:large?.85:.55});
 }
-const specs={shroom:[15,51,7,12,2],runner:[12,109,9,11,3],beetle:[51,40,13,18,5],spore:[26,47,8,13,4],elite:[480,48,15,27,30],king:[104000,43,22,46,100]};
+const specs={shroom:[15,51,7,12,2],runner:[12,109,9,11,3],beetle:[51,40,13,18,5],warden:[51,40,13,18,5],spore:[26,47,8,13,4],elite:[480,48,15,27,30],king:[104000,43,22,46,100]};
 export function spawnEnemy(g,type,x,y,extra={}) {
   if(g.enemies.length>=LIMITS.enemies&&type!=='king')return null;
   const [baseHp,speed,damage,r,xp]=specs[type];
@@ -66,7 +68,7 @@ function edgeSpawn(g,type) {
 function enemyType(g) {
   const r=random(g),t=g.time;
   if(t>120&&r<.13)return g.expedition&&g.enemies.filter(e=>e.type==='spore'&&!e.dead).length>=4?'shroom':'spore';
-  if(t>70&&r<.30)return 'beetle';
+  if(t>70&&r<.30)return t>85&&r<.10?'warden':'beetle';
   if(t>28&&r<.50)return 'runner';
   return 'shroom';
 }
@@ -124,16 +126,27 @@ function addGem(g,x,y,value) {
 function trimPickups(g){while(g.pickups.length>LIMITS.pickups){let index=g.pickups.findIndex(p=>!['chest','relic'].includes(p.type));if(index<0)index=0;const [old]=g.pickups.splice(index,1);if(old.type==='coin')g.gold+=2;}}
 function resolveRelics(g,actions){
   for(const action of actions){
-    const {relicId:id}=action,context={source:'relic',relic:id};
-    if(action.kind==='wind'){projectile(g,'wind',action.x,action.y,Math.cos(action.angle)*720,Math.sin(action.angle)*720,action.damage,{r:16,pierce:99,life:.4,context});}
-    else if(action.kind==='target'){const e=g.enemies.find(e=>e.id===action.target&&!e.dead);if(e){hit(g,e,action.damage,0,g.player,false,context);effect(g,'relic',e.x,e.y-25,32,RELICS[id].color,.35,{relicId:id});}}
-    else if(action.kind==='burst'){areaHit(g,action.x,action.y,action.r,action.damage,action.knock,context);effect(g,'relic',action.x,action.y,action.r,RELICS[id].color,.4,{relicId:id});}
-    else if(action.kind==='seed'){g.pickups.push({id:++g.id,type:'heal',x:action.x,y:action.y,amount:8,relicId:'seed',expiresAt:g.time+16});}
+    const {relicId:id,synergy}=action,baseContext={source:'relic',relic:id},context={...baseContext,...(synergy?{synergy}:{})};
+    if(action.kind==='wind'){projectile(g,'wind',action.x,action.y,Math.cos(action.angle)*720,Math.sin(action.angle)*720,action.damage,{r:16,pierce:99,life:synergy==='gale'?1.25:.4,returning:synergy==='gale',returnSynergy:synergy==='gale'?'gale':undefined,returnAfter:.32,flySpeed:640,context:baseContext});}
+    else if(action.kind==='target'){const e=g.enemies.find(e=>e.id===action.target&&!e.dead);if(e){hit(g,e,action.damage,0,g.player,false,baseContext);effect(g,'relic',e.x,e.y-25,32,RELICS[id].color,.35,{relicId:id});if(synergy==='swarm')for(const offset of [-.35,.35]){const a=Math.atan2(e.y-g.player.y,e.x-g.player.x)+offset;projectile(g,'bee',g.player.x,g.player.y,Math.cos(a)*250,Math.sin(a)*250,action.damage*.3,{r:7,pierce:1,life:1.8,target:e.id,flySpeed:390,context});}}}
+    else if(action.kind==='burst'){
+      areaHit(g,action.x,action.y,action.r,action.damage,action.knock,synergy==='bastion'?context:baseContext);effect(g,'relic',action.x,action.y,action.r,RELICS[id].color,.4,{relicId:id});
+      if(synergy==='bramble')relicField(g,action.x,action.y,95,1.5,0,.8,context);
+      if(synergy==='conductor'){
+        let from={x:action.x,y:action.y};const visited=new Set();
+        for(let i=0;i<3;i++){const target=g.enemies.filter(e=>!e.dead&&!visited.has(e.id)&&dist(e,from)<(i?200:360)).sort((a,b)=>dist(a,from)-dist(b,from))[0];if(!target)break;visited.add(target.id);effect(g,'bolt',target.x,target.y,20,'#bddcdb',.28,{fromX:from.x,fromY:from.y});hit(g,target,(10+g.level*.8)*g.stats.damage,35,from,false,context);from=target;}
+      }
+    }
+    else if(action.kind==='seed'){g.pickups.push({id:++g.id,type:'heal',x:action.x,y:action.y,amount:8,relicId:'seed',expiresAt:g.time+16});if(synergy==='garden')relicField(g,action.x,action.y,75,3,(4+g.level*.25)*g.stats.damage,0,context);}
     else if(action.kind==='shield')effect(g,'relic',g.player.x,g.player.y-25,35,RELICS[id].color,.35,{relicId:id});
   }
 }
+function relicField(g,x,y,r,life,damage,slow,context){if(g.fields.length>=LIMITS.fields)g.fields.shift();g.fields.push({x,y,r,life,tick:0,damage,slow,context});}
 function kill(g,e,context={source:'weapon'}) {
   if(e.dead)return;e.dead=true;g.kills++;g.player.charge=clamp(g.player.charge+.9,0,100);
+  for(const f of g.fields)if(f.ownerId===e.id)f.life=0;
+  g.fields=g.fields.filter(f=>f.life>0);
+  if(e.nestGuardian){for(const q of g.projectiles)if(q.hostile&&q.ownerId===e.id)q.life=0;g.projectiles=g.projectiles.filter(q=>q.life>0);}
   addGem(g,e.x,e.y,e.xp*(1+Math.floor(g.time/180)));
   effect(g,'death',e.x,e.y,e.r,e.type==='beetle'?'#5dbfb3':'#e5b78b',.28,{enemyType:e.type,angle:Math.atan2(e.ky,e.kx)});
   emit(g,'kill');
@@ -156,14 +169,18 @@ function kill(g,e,context={source:'weapon'}) {
 }
 function hit(g,e,amount,knock=0,origin=g.player,crit=false,context=origin.context??g.castContext??{source:'weapon'}) {
   if(e.dead)return;
+  if(e.type==='warden'&&e.mode==='windup'&&e.attack==='brace'&&context.source==='weapon'){
+    const incoming=direction(origin.x-e.x,origin.y-e.y);if(incoming.x*e.dx+incoming.y*e.dy>.35)amount*=.6;
+  }
   amount*=e.type==='elite'||e.type==='king'?g.stats.eliteDamage:1;
   const dealt=Math.min(e.hp,amount);e.hp-=amount;g.damage+=dealt;e.hurt=.13;e.hitstop=crit?.035:.018;
   if(context.source==='relic'&&Object.hasOwn(RELICS,context.relic))g.relics.stats[context.relic].damage+=dealt;
+  if(context.synergy&&Object.hasOwn(SYNERGIES,context.synergy))g.synergies.stats[context.synergy].damage+=dealt;
   const wasKnocked=e.lastKnockedAt!==undefined&&g.time-e.lastKnockedAt<=2;
   // A fast projectile can finish beyond its target. Its velocity, not its final position, defines the impulse.
   const impulse=origin.kind&&Math.hypot(origin.vx||0,origin.vy||0)>0?direction(origin.vx,origin.vy):direction(e.x-origin.x,e.y-origin.y);
   if(knock){const mass=e.type==='king'?.1:e.type==='elite'?.35:1;e.kx+=impulse.x*knock*g.stats.knock*mass;e.ky+=impulse.y*knock*g.stats.knock*mass;if(context.source==='weapon')e.lastKnockedAt=g.time;}
-  effect(g,'impact',e.x,e.y-25,crit?14:8,crit?'#ffe6a1':'#f7dda8',.14,{angle:Math.atan2(impulse.y,impulse.x),crit});
+  effect(g,'impact',e.x,e.y-25,crit?14:8,crit?'#ffe6a1':WEAPONS[context.weapon]?.color||RELICS[context.relic]?.color||'#f7dda8',crit?.17:.14,{angle:Math.atan2(impulse.y,impulse.x),crit,weapon:context.weapon||null});
   if(g.time>=g.feedback.nextImpactAt){g.feedback.nextImpactAt=g.time+.12;g.hitstop=Math.max(g.hitstop,crit?.018:.007);g.shake=Math.max(g.shake,crit?1.1:.38);}
   else if(crit)g.shake=Math.max(g.shake,1.1);
   if(crit||g.texts.length<16||random(g)<.1)floating(g,e.x,e.y-48,Math.round(amount),crit?'#ffdf78':'#f4e9cb',crit);
@@ -192,7 +209,7 @@ function cast(g,id) {
   if(ownsPose){p.attack=.24;p.attackWindup=0;p.aim=angle;p.attackWeapon=id;}
   const muzzle=weaponPose({...p,attack:.24},angle);g.castOrigin=muzzle;
   emit(g,'attack',{weapon:id,angle,x:muzzle.x,y:muzzle.y,primary:ownsPose});
-  if(['acorn','moon','bees','returning'].includes(id))effect(g,'muzzle',muzzle.x,muzzle.y,9,WEAPONS[id].color,.085,{angle,weapon:id});
+  if(['acorn','moon','bees','returning','lantern'].includes(id))effect(g,'muzzle',muzzle.x,muzzle.y,9,WEAPONS[id].color,.085,{angle,weapon:id});
   if(id==='acorn'){
     const count=Math.min(11,1+amount+Math.floor(rank/4)+(evo?3:0));
     for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(evo?.15:.10);projectile(g,'acorn',p.x,p.y-7,Math.cos(a)*580*s.projectileSpeed,Math.sin(a)*580*s.projectileSpeed,damage,{r:6*s.area,pierce:Math.floor(rank/3)+(evo?5:0),evolved:evo,life:1.7});}
@@ -282,7 +299,7 @@ function updateWeapons(g,dt) {
       const orbit=orbitState(g,id),damage=damageFor(g,id)*(id==='hive'?.72:1);
       if(orbit.active)for(let i=0;i<orbit.count;i++){
         const a=g.time*orbit.speed+i*TAU/orbit.count,x=g.player.x+Math.cos(a)*orbit.radius,y=g.player.y+Math.sin(a)*orbit.radius*.8;
-        nearby(g,x,y,20*g.stats.area,e=>{if((e.orbitHit||0)>g.time)return;e.orbitHit=g.time+(w.evolved?.24:.42);hit(g,e,damage,45);if(w.evolved)e.slow=.8;});
+        nearby(g,x,y,20*g.stats.area,e=>{if((e.orbitHit||0)>g.time)return;e.orbitHit=g.time+(w.evolved?.24:.42);hit(g,e,damage,45,g.player,false,{source:'weapon',weapon:id});if(w.evolved)e.slow=.8;});
       }
       if(w.evolved)nearby(g,g.player.x,g.player.y,orbit.radius+30,e=>{e.slow=.5;});
       if(id==='briar')continue;
@@ -294,12 +311,14 @@ function updateWeapons(g,dt) {
     cast(g,id);w.clock=weaponStats(g,id).cooldown;
   }
 }
-function hostileShot(g,e,a,speed=120) {projectile(g,'enemy',e.x,e.y,Math.cos(a)*speed,Math.sin(a)*speed,e.damage,{hostile:true,r:7,life:e.type==='spore'?4:6});}
+function hostileShot(g,e,a,speed=120) {projectile(g,'enemy',e.x,e.y,Math.cos(a)*speed,Math.sin(a)*speed,e.damage,{hostile:true,ownerId:e.id,r:7,life:e.nestGuardian?3.5:e.type==='spore'?4:6});}
+function enemyField(g,field){if(g.fields.length<LIMITS.fields)g.fields.push(field);}
 function updateEnemies(g,dt) {
   const p=g.player;
+  const api={field:f=>enemyField(g,f),shot:(e,a,s)=>hostileShot(g,e,a,s),effect:(...args)=>effect(g,...args),emit:type=>emit(g,type),spawn:(...args)=>spawnEnemy(g,...args)};
   for(const e of g.enemies){
     if(e.dead)continue;e.age+=dt;e.clock-=dt;e.hurt=Math.max(0,e.hurt-dt);e.slow=Math.max(0,e.slow-dt);
-    if(e.hitstop>0){e.hitstop=Math.max(0,e.hitstop-dt);continue;}
+    e.freezeFrame=false;if(e.hitstop>0){e.hitstop=Math.max(0,e.hitstop-dt);e.freezeFrame=true;continue;}
     const wasCharging=e.mode==='charge';
     const destination=g.decoy&&e.type!=='king'?g.decoy:p;
     let d=direction(destination.x-e.x,destination.y-e.y),speed=e.speed*(e.slow>0?.62:1),distance=dist(e,p);
@@ -314,26 +333,10 @@ function updateEnemies(g,dt) {
       else if(e.mode==='recover'){speed=0;e.recover-=dt;if(e.recover<=0){e.mode='walk';e.clock=1.8;}}
       else if(distance<370&&e.clock<=0){e.mode='windup';e.windup=.55;e.dx=d.x;e.dy=d.y;speed=0;}
     }
-    if(e.type==='spore'){
-      if(distance<220)speed=-speed*.5;else if(distance<340)speed=0;
-      if(e.mode==='windup'){speed=0;e.windup-=dt;if(e.windup<=0){e.mode='recover';e.recover=.35;e.clock=3.1;hostileShot(g,e,Math.atan2(e.dy,e.dx));effect(g,'muzzle',e.x,e.y,10,'#d4a2e6',.12,{angle:Math.atan2(e.dy,e.dx),hostile:true});}}
-      else if(e.mode==='recover'){speed=0;e.recover-=dt;if(e.recover<=0)e.mode='walk';}
-      else if(e.clock<=0&&distance<450){e.mode='windup';e.windup=.7;e.dx=d.x;e.dy=d.y;speed=0;}
-    }
-    if(e.nestGuardian){
-      if(!e.reinforced&&e.hp<=e.maxHp*.5){
-        e.reinforced=true;
-        for(let i=0;i<2;i++){const a=i*Math.PI+e.age;spawnEnemy(g,'runner',e.x+Math.cos(a)*180,e.y+Math.sin(a)*180,{clock:.8});}
-        emit(g,'surge');
-      }
-      if(e.mode==='windup'){speed=0;e.windup-=dt;if(e.windup<=0){e.mode='recover';e.recover=.45;e.clock=5.5;}}
-      else if(e.mode==='recover'){speed=0;e.recover-=dt;if(e.recover<=0)e.mode='walk';}
-      else if(e.clock<=0&&distance<600){
-        e.mode='windup';e.windup=.9;speed=0;
-        const a=Math.atan2(p.y-e.y,p.x-e.x);
-        for(let i=-1;i<=1;i++)if(g.fields.length<LIMITS.fields)g.fields.push({hostile:true,ownerId:e.id,x:p.x+Math.cos(a+Math.PI/2)*i*92,y:p.y+Math.sin(a+Math.PI/2)*i*92,r:43,life:1.45,warning:.9,tick:0,damage:12});
-      }
-    }else if(e.type==='elite'&&e.clock<=0){e.clock=7;for(let i=0;i<4;i++){const a=i*TAU/4;spawnEnemy(g,'shroom',e.x+Math.cos(a)*55,e.y+Math.sin(a)*55);}effect(g,'ring',e.x,e.y,65,'#d3a1a0',.6);}
+    if(e.type==='warden')({d,speed}=beetleBehavior(g,e,dt,d,speed,distance,api));
+    if(e.type==='spore')({d,speed}=sporeBehavior(g,e,dt,d,speed,distance,api));
+    if(e.nestGuardian)({d,speed}=guardianBehavior(g,e,dt,d,speed,distance,api));
+    else if(e.type==='elite'&&e.clock<=0){e.clock=7;for(let i=0;i<4;i++){const a=i*TAU/4;spawnEnemy(g,'shroom',e.x+Math.cos(a)*55,e.y+Math.sin(a)*55);}effect(g,'ring',e.x,e.y,65,'#d3a1a0',.6);}
     if(e.type==='king'){
       const enraged=e.hp<e.maxHp*.45||g.time>BOSS_SECONDS+100;
       if(e.mode==='windup'){
@@ -351,12 +354,14 @@ function updateEnemies(g,dt) {
         }
       }
     }
+    if(e.nestGuardian&&(e.mode==='charge'||wasCharging))e.kx=e.ky=0;
     // A gentle local separation keeps the horde legible without O(n²) pairs.
     let sx=0,sy=0;
     const bucket=g.grid?.get(`${Math.floor(e.x/96)},${Math.floor(e.y/96)}`);
     if(bucket&&bucket.length<35)for(const other of bucket){if(e===other||other.dead)continue;const dx=e.x-other.x,dy=e.y-other.y,l2=dx*dx+dy*dy,reach=(e.r+other.r)*.62;if(l2>0&&l2<reach*reach){const l=Math.sqrt(l2);sx+=dx/l*12;sy+=dy/l*12;}}
+    if(e.nestGuardian&&(e.mode==='charge'||wasCharging))sx=sy=0;
     const oldX=e.x,oldY=e.y;moveActor(g,e,(d.x*speed+e.kx+sx)*dt,(d.y*speed+e.ky+sy)*dt,e.r*.7);e.walk=(e.walk||0)+Math.hypot(e.x-oldX,e.y-oldY);e.fx=d.x;e.fy=d.y;e.kx*=Math.exp(-8*dt);e.ky*=Math.exp(-8*dt);
-    if(dist(e,p)<e.r+12)hurtPlayer(g,e.damage,e,wasCharging?'charge':'contact');
+    if(dist(e,p)<e.r+12)hurtPlayer(g,e.damage,e,wasCharging||e.mode==='charge'?'charge':'contact');
     // Recycle stragglers at a screen edge; no rewards or off-screen kills.
     if(distance>Math.max(g.view.width,g.view.height)*1.8&&!e.supplyGuard&&e.type!=='elite'&&e.type!=='king'){
       const a=random(g)*TAU;e.x=p.x+Math.cos(a)*Math.max(560,g.view.width*.65+80);e.y=p.y+Math.sin(a)*Math.max(420,g.view.height*.65+80);
@@ -365,11 +370,13 @@ function updateEnemies(g,dt) {
 }
 function hurtPlayer(g,damage,origin,source=null) {
   const p=g.player;if(p.invincible>0||g.phase!=='playing')return;
-  const incoming=Math.max(1,damage-g.stats.armor),absorbed=absorbRelicShield(g,incoming),value=incoming-absorbed;
+  const incoming=Math.max(1,damage-g.stats.armor),shieldBefore=g.relics.shell.shield,absorbed=absorbRelicShield(g,incoming),value=incoming-absorbed;
+  if(shieldBefore>0&&g.relics.shell.shield===0)resolveRelics(g,onRelicShieldBreak(g));
   if(absorbed>0){emit(g,'guard-block');effect(g,'relic',p.x,p.y-25,36,RELICS.shell.color,.25,{relicId:'shell'});p.invincible=.3;}
   if(value<=0)return;
   p.hp-=value;g.metrics.damageTaken+=value;p.hurt=.35;p.invincible=.65;g.shake=4;
   source??=origin?.kind==='enemy'?'projectile':origin?.hostile?'field':'contact';
+  if(origin?.pattern){g.metrics.patternDamage??={};g.metrics.patternDamage[origin.pattern]=(g.metrics.patternDamage[origin.pattern]||0)+value;}
   g.metrics.damageBySource??={contact:0,charge:0,projectile:0,field:0};g.metrics.damageBySource[source]+=value;
   if(origin){const d=direction(p.x-origin.x,p.y-origin.y);moveActor(g,p,d.x*9,d.y*9,12);}
   floating(g,p.x,p.y-45,`−${Math.ceil(value)}`,'#ff9f9b',true);effect(g,'pop',p.x,p.y-20,16,'#f1a096',.16);emit(g,'hurt');
@@ -383,10 +390,10 @@ function updateProjectiles(g,dt) {
       if(p.life<=0){if(g.fields.length>=LIMITS.fields)g.fields.shift();g.fields.push({x:p.tx,y:p.ty,r:p.fieldRadius,life:p.fieldLife,tick:0,damage:p.damage,evolved:p.evolved,context:p.context});effect(g,'splash',p.tx,p.ty,p.fieldRadius,'#81d6b5',.45);p.life=0;}
       continue;
     }
-    if(p.kind==='moon'&&p.age>(p.returnAfter||.65)){
-      if(!p.turned){p.turned=true;p.hits=[];}
+    if((p.kind==='moon'||p.returning)&&p.age>(p.returnAfter||.65)){
+      if(!p.turned){p.turned=true;p.hits=[];if(p.returnSynergy)p.context={...p.context,synergy:p.returnSynergy};}
       const d=direction(g.player.x-p.x,g.player.y-p.y);p.vx=d.x*(p.flySpeed||540);p.vy=d.y*(p.flySpeed||540);
-      if(dist(p,g.player)<18&&p.age>.9){p.life=0;continue;}
+      if(dist(p,g.player)<18&&(p.returning||p.age>.9)){p.life=0;continue;}
     }
     if(p.kind==='bee'){
       let target=g.enemies.find(e=>e.id===p.target&&!e.dead);if(!target)target=nearest(g,p,500);
@@ -409,11 +416,14 @@ function updateProjectiles(g,dt) {
   g.projectiles=g.projectiles.filter(p=>p.life>0);
 }
 function updateFields(g,dt) {
+  const frozen=new Set(g.enemies.filter(e=>e.freezeFrame&&!e.dead).map(e=>e.id));
   for(const f of g.fields){
-    f.life-=dt;f.tick-=dt;
+    if(f.life<=0)continue;
+    if(f.hostile&&f.warning>0&&frozen.has(f.ownerId))continue;
+    f.life-=dt;f.tick-=dt;if(f.life<=0)continue;
     if(f.evolved&&!f.hostile){const d=direction(g.player.x-f.x,g.player.y-f.y);if(dist(f,g.player)>10){f.x+=d.x*30*dt;f.y+=d.y*30*dt;}}
-    if(f.hostile){f.warning-=dt;if(f.warning<=0&&dist(f,g.player)<f.r+10)hurtPlayer(g,f.damage,f);}
-    else if(f.tick<=0){f.tick=.32;nearby(g,f.x,f.y,f.r,e=>{hit(g,e,f.damage,0,g.player,false,f.context??{source:'weapon'});if(f.evolved){const d=direction(f.x-e.x,f.y-e.y);e.kx+=d.x*18;e.ky+=d.y*18;}});}
+    if(f.hostile){f.warning-=dt;if(f.warning<=0&&fieldContains(f,g.player))hurtPlayer(g,f.damage,f);}
+    else if(f.tick<=0){f.tick=.32;nearby(g,f.x,f.y,f.r,e=>{if(f.damage>0)hit(g,e,f.damage,0,g.player,false,f.context??{source:'weapon'});if(f.slow)e.slow=Math.max(e.slow,f.slow);if(f.evolved){const d=direction(f.x-e.x,f.y-e.y);e.kx+=d.x*18;e.ky+=d.y*18;}});}
   }
   g.fields=g.fields.filter(f=>f.life>0);
   for(const d of g.delayed)if(!d.done&&d.at<=g.time){d.done=true;areaHit(g,d.x,d.y,d.r,d.damage,d.knock,d.context??{source:'weapon'});effect(g,'ring',d.x,d.y,d.r,d.color,.45);}
@@ -475,6 +485,10 @@ export function draftChoices(g,excluded=[],advance=true) {
   if(g.drafts<=2){
     const primary=pool.find(c=>c.kind==='weapon'&&c.owned&&c.id===g.startWeapon);add(primary);
     const fresh=eligible(pool.filter(c=>c.kind==='weapon'&&!c.owned));if(fresh.length)add(fromPool(g,fresh));
+  }
+  if(g.drafts>2&&g.drafts%3===0&&out.length<3){
+    const linked=pool.filter(c=>c.kind==='weapon'&&!c.owned&&!excluded.includes(c.id)&&Object.values(SYNERGIES).some(s=>g.relics.items.includes(s.relic)&&s.weapons.includes(c.id)&&!s.weapons.some(w=>g.weapons[w])));
+    if(linked.length)add(fromPool(g,linked));
   }
   if(g.upgradeMisses>=2&&out.length<3&&!out.some(c=>c.kind==='weapon'&&c.owned)){const owned=eligible(pool.filter(c=>c.kind==='weapon'&&c.owned));if(owned.length)add(fromPool(g,owned));}
   while(out.length<3&&pool.length){
@@ -557,6 +571,7 @@ export function stepGame(g,dt,input={}) {
   dt=clamp(dt,0,.04);g.hitEvent=false;
   g.feedback??={nextImpactAt:0,killWindowAt:0,killCount:0,nextCrowdAt:0};
   g.relics??=createRelics();
+  g.synergies??=createSynergies();
   const worldDt=Math.max(0,dt-Math.min(dt,g.hitstop));g.hitstop=Math.max(0,g.hitstop-dt);
   g.time=Math.min(RUN_SECONDS,g.time+worldDt);
   if(g.time>=RUN_SECONDS){g.phase='result';g.outcome='victory';emit(g,'victory');return;}
@@ -595,7 +610,7 @@ const integer=(value,min=0,max=1e8)=>Number.isInteger(value)&&finite(value,min,m
 const vector=value=>plain(value)&&finite(value.x)&&finite(value.y);
 const uniqueKnown=(values,known,max)=>Array.isArray(values)&&values.length<=max&&new Set(values).size===values.length&&values.every(id=>typeof id==='string'&&known.includes(id));
 const timers=(object,keys)=>keys.every(key=>finite(object[key],-10,1e6));
-const validContext=c=>c===undefined||(plain(c)&&['weapon','signature','relic'].includes(c.source)&&(c.weapon===undefined||Object.hasOwn(WEAPONS,c.weapon))&&(c.source!=='relic'||Object.hasOwn(RELICS,c.relic)));
+const validContext=c=>c===undefined||(plain(c)&&['weapon','signature','relic'].includes(c.source)&&(c.weapon===undefined||Object.hasOwn(WEAPONS,c.weapon))&&(c.source!=='relic'||Object.hasOwn(RELICS,c.relic))&&(c.synergy===undefined||(c.source==='relic'&&Object.hasOwn(SYNERGIES,c.synergy)&&SYNERGIES[c.synergy].relic===c.relic)));
 function validTree(value,depth=0,budget={n:0}){
   if(depth>16||++budget.n>250000)return false;
   if(value===null||typeof value==='boolean'||typeof value==='string')return typeof value!=='string'||value.length<500;
@@ -610,6 +625,7 @@ export function unpackRun(text) {
     const g=JSON.parse(text),weaponIds=Object.keys(WEAPONS),passiveIds=Object.keys(PASSIVES);
     if(!plain(g)||!validTree(g)||g.version!==2||!Object.hasOwn(HEROES,g.hero)||g.outcome!==null||g.banked!==false||!['paused','choice','chest','relic'].includes(g.phase))return null;
     g.relics??=createRelics();if(!validRelics(g.relics))return null;
+    g.synergies??=createSynergies();if(!validSynergies(g.synergies))return null;
     if(!finite(g.time,0,RUN_SECONDS-.00001)||!integer(g.seed,0,4294967295)||!integer(g.id)||!integer(g.level,1,9999)||!finite(g.xp,0,1e8)||!integer(g.pendingLevels,0,1000))return null;
     if(!integer(g.relics.thread.target,0,g.id))return null;
     g.initialSeed??=g.expedition?.seed??g.seed;if(!integer(g.initialSeed,0,4294967295))return null;
@@ -636,14 +652,29 @@ export function unpackRun(text) {
       if(e.mode==='windup'&&!finite(e.windup,0,2))return null;
       if(e.mode==='recover'&&!finite(e.recover,0,2))return null;
       if(e.mode==='charge'&&(!finite(e.charge,0,2)||!finite(e.dx,-1,1)||!finite(e.dy,-1,1)))return null;
+      if(e.attack!==undefined&&!['brace','lob','fan','spores','charge'].includes(e.attack))return null;
+      if(e.attack!==undefined&&['windup','charge'].includes(e.mode)&&(!finite(e.dx,-1,1)||!finite(e.dy,-1,1)))return null;
+      if(e.nestGuardian&&e.attack!==undefined&&['windup','charge'].includes(e.mode)&&(![1,2].includes(e.patternPower)||!finite(e.patternAngle,-Math.PI,Math.PI)))return null;
+      if(e.guardianStyle!==undefined&&!Object.hasOwn(GUARDIANS,e.guardianStyle))return null;
+      if(e.bossPhase!==undefined&&![1,2].includes(e.bossPhase))return null;
+      if(e.patternPower!==undefined&&![1,2].includes(e.patternPower))return null;
+      if(e.patternAngle!==undefined&&!finite(e.patternAngle,-Math.PI,Math.PI))return null;
+      if(e.shotPattern!==undefined&&!['fan','lob'].includes(e.shotPattern))return null;
+      if(e.cycle!==undefined&&!integer(e.cycle,0,10000))return null;
       enemyIds.add(e.id);
     }
     for(const shot of g.projectiles){
       if(!validContext(shot.context))return null;
+      if(shot.returnSynergy!==undefined&&(shot.returnSynergy!=='gale'||shot.kind!=='wind'||shot.returning!==true))return null;
       if(!vector(shot)||!['acorn','moon','bee','enemy','seed','bottle','wind'].includes(shot.kind)||!finite(shot.vx,-5000,5000)||!finite(shot.vy,-5000,5000)||!finite(shot.damage,0,1e7)||!finite(shot.life,0,100)||!finite(shot.age,0,100)||!finite(shot.r,0,200)||!integer(shot.pierce,-1,1000)||!Array.isArray(shot.hits)||shot.hits.length>1000||shot.hits.some(id=>!integer(id,1,g.id)))return null;
       if(shot.kind==='bottle'&&(!['tx','ty','ox','oy','fieldRadius','fieldLife'].every(k=>finite(shot[k]))))return null;
     }
-    for(const f of g.fields)if(!validContext(f.context)||!vector(f)||!finite(f.r,1,1000)||!finite(f.life,0,100)||!finite(f.tick,-1,100)||!finite(f.damage,0,1e7)||(f.hostile&&!finite(f.warning,-10,10)))return null;
+    for(const f of g.fields){
+      if(!validContext(f.context)||!vector(f)||!finite(f.r,1,1000)||!finite(f.life,0,100)||!finite(f.tick,-1,100)||!finite(f.damage,0,1e7)||(f.hostile&&!finite(f.warning,-10,10)))return null;
+      if(f.shape!==undefined&&(f.shape!=='cone'||!finite(f.angle,-Math.PI,Math.PI)||!finite(f.spread,.1,Math.PI)))return null;
+      if(f.slow!==undefined&&!finite(f.slow,0,5))return null;
+      if(f.ownerId!==undefined&&!integer(f.ownerId,1,g.id))return null;
+    }
     for(const item of g.pickups){
       if(!vector(item)||!integer(item.id,1,g.id)||!['chest','coin','heal','magnet','relic'].includes(item.type)||(item.type==='chest'&&typeof item.canEvolve!=='boolean'))return null;
       if(item.type==='relic'&&(!Array.isArray(item.deck)||item.deck.length!==6||new Set(item.deck).size!==6||item.deck.some(id=>!Object.hasOwn(RELICS,id))||!['supply','trial','nest'].includes(item.source)))return null;

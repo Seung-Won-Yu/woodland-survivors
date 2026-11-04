@@ -84,7 +84,7 @@ test('clearing a trial recovers only earned nearby XP through visible flying gem
   assert.ok(sawFlying);assert.equal(g.metrics.xpCollected,5);assert.equal(g.xp,5);assert.equal(g.gems.get('far').value,7);assert.equal(g.level,1);assert.equal(g.gems.has('near'),false);
 });
 test('an in-flight hostile shot does not inherit a player relic context and restores correctly',()=>{
-  const g=arena(['wind']);g.weapons={acorn:{rank:1,evolved:false,clock:10}};spawnEnemy(g,'spore',350,0,{clock:0,speed:0});advance(g,.8);assert.ok(g.projectiles.some(p=>p.hostile));assert.ok(g.projectiles.filter(p=>p.hostile).every(p=>p.context===undefined));assert.ok(unpackRun(packRun(g)));
+  const g=arena(['wind']);g.weapons={acorn:{rank:1,evolved:false,clock:10}};spawnEnemy(g,'spore',350,0,{clock:0,speed:0,shotPattern:'fan'});advance(g,1);assert.ok(g.projectiles.some(p=>p.hostile));assert.ok(g.projectiles.filter(p=>p.hostile).every(p=>p.context===undefined));assert.ok(unpackRun(packRun(g)));
 });
 test('relic choices and in-flight provenance survive packing; malformed state is rejected',()=>{
   const g=arena();openRelicCache(g,cacheWith(g,['wind','shell']));const packed=packRun(g),restored=unpackRun(packed);assert.ok(restored);assert.deepEqual(restored.relicOffer.options,['wind','shell']);

@@ -1,3 +1,4 @@
+import {synergyAction,synergyReady} from './synergies.js';
 export const RELIC_LIMIT=2;
 export const RELICS={
   wind:{name:'바람 방울',tag:'이동 · 관통',color:'#bce0bc',description:'24m 이동하면 충전. 다음 무기 적중에서 관통 돌풍이 나갑니다.',pair:'motion'},
@@ -44,27 +45,27 @@ export function tickRelics(g,moved){
   if(r.items.includes('thread')&&r.thread.target){
     const target=g.enemies.find(e=>e.id===r.thread.target&&!e.dead);
     if(!target||g.time>=r.thread.expiresAt||Math.hypot(target.x-g.player.x,target.y-g.player.y)>700){r.thread.target=0;r.thread.readyAt=g.time+.6;}
-    else if(g.player.walk-r.thread.walk>=120){actions.push(proc(g,'thread',{kind:'target',target:target.id,damage:(24+g.level*1.6)*g.stats.damage}));r.thread.target=0;r.thread.readyAt=g.time+1.8;}
+    else if(g.player.walk-r.thread.walk>=120){actions.push(proc(g,'thread',synergyAction(g,'swarm',{kind:'target',target:target.id,damage:(24+g.level*1.6)*g.stats.damage})));r.thread.target=0;r.thread.readyAt=g.time+1.8;}
   }
   return actions;
 }
 export function onRelicWeaponHit(g,e,{source},wasKnocked,angle){
   const r=g.relics,actions=[];if(source!=='weapon'||!r.items.length)return actions;
-  if(r.items.includes('wind')&&r.wind.distance>=240&&g.time>=r.wind.readyAt){r.wind.distance=0;r.wind.readyAt=g.time+.8;actions.push(proc(g,'wind',{kind:'wind',x:e.x,y:e.y,angle,damage:(18+g.level*1.2)*g.stats.damage}));}
+  if(r.items.includes('wind')&&r.wind.distance>=240&&g.time>=r.wind.readyAt){r.wind.distance=0;r.wind.readyAt=g.time+.8;actions.push(proc(g,'wind',synergyAction(g,'gale',{kind:'wind',x:e.x,y:e.y,angle,damage:(18+g.level*1.2)*g.stats.damage})));}
   if(r.items.includes('thread')&&!e.dead&&!r.thread.target&&g.time>=r.thread.readyAt){r.thread={target:e.id,walk:g.player.walk,expiresAt:g.time+4.5,readyAt:r.thread.readyAt};}
-  if(r.items.includes('thorn')&&wasKnocked&&g.time>=r.thorn.readyAt){r.thorn.readyAt=g.time+1.2;actions.push(proc(g,'thorn',{kind:'burst',x:e.x,y:e.y,r:75,damage:(10+g.level*.7)*g.stats.damage,knock:25}));}
+  if(r.items.includes('thorn')&&wasKnocked&&g.time>=r.thorn.readyAt){r.thorn.readyAt=g.time+1.2;actions.push(proc(g,'thorn',synergyAction(g,'bramble',{kind:'burst',x:e.x,y:e.y,r:75,damage:(10+g.level*.7)*g.stats.damage,knock:25})));}
   return actions;
 }
 export function onRelicWeaponKill(g,e,{source}){
   const r=g.relics;if(source!=='weapon'||!r.items.includes('seed'))return [];
   r.seed.kills=Math.min(12,r.seed.kills+1);
-  if(r.seed.kills>=12&&g.time>=r.seed.readyAt&&g.pickups.filter(p=>p.relicId==='seed').length<2){r.seed.kills=0;r.seed.readyAt=g.time+5;return [proc(g,'seed',{kind:'seed',x:e.x,y:e.y})];}
+  if(r.seed.kills>=12&&g.time>=r.seed.readyAt&&g.pickups.filter(p=>p.relicId==='seed').length<2){r.seed.kills=0;r.seed.readyAt=g.time+5;return [proc(g,'seed',synergyAction(g,'garden',{kind:'seed',x:e.x,y:e.y}))];}
   return [];
 }
 export function onRelicHealing(g,actual,source){
   const r=g.relics;if(actual<=0||source==='relic'||!r.items.includes('tide'))return [];
   r.tide.healing=Math.min(15,r.tide.healing+actual);
-  if(r.tide.healing>=15&&g.time>=r.tide.readyAt){r.tide.healing=0;r.tide.readyAt=g.time+6;return [proc(g,'tide',{kind:'burst',x:g.player.x,y:g.player.y,r:170,damage:(20+g.level*1.2)*g.stats.damage,knock:220})];}
+  if(r.tide.healing>=15&&g.time>=r.tide.readyAt){r.tide.healing=0;r.tide.readyAt=g.time+6;return [proc(g,'tide',synergyAction(g,'conductor',{kind:'burst',x:g.player.x,y:g.player.y,r:170,damage:(20+g.level*1.2)*g.stats.damage,knock:220}))];}
   return [];
 }
 export function absorbRelicShield(g,value){
@@ -72,6 +73,7 @@ export function absorbRelicShield(g,value){
   const absorbed=Math.min(value,g.relics.shell.shield);g.relics.shell.shield-=absorbed;g.relics.stats.shell.absorbed+=absorbed;
   if(g.relics.shell.shield===0)g.relics.shell.readyAt=g.time+8;return absorbed;
 }
+export function onRelicShieldBreak(g){return synergyReady(g,'bastion')?[{...synergyAction(g,'bastion',{kind:'burst',x:g.player.x,y:g.player.y,r:115,damage:(12+g.level*.8)*g.stats.damage,knock:160}),relicId:'shell'}]:[];}
 export function relicReadout(g,id){
   const r=g.relics,n=r.stats[id].procs;
   if(id==='wind')return r.wind.distance>=240?'돌풍 준비':`충전 ${Math.floor(r.wind.distance/2.4)}%`;

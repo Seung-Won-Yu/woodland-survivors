@@ -2,13 +2,13 @@
 <p align="center"><strong>Woodland Survivors · 새벽숲 정찰 원정</strong><br>작은 동물 모험가와 함께 숲을 탐색하는 2D 서바이버 게임</p>
 <p align="center">
   <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="게임 검사 및 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
-  <img alt="개발판 0.5" src="https://img.shields.io/badge/version-0.5-d5b77b?style=flat-square">
+  <img alt="개발판 0.6" src="https://img.shields.io/badge/version-0.6-d5b77b?style=flat-square">
   <img alt="HTML Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
   <img alt="외부 런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
 <p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 브라우저에서 플레이</strong></a> · <a href="https://yu-reka.github.io/woodland-survivors/docs/motion-lab.html">모션 미리보기</a> · <a href="#로컬에서-실행">로컬 실행</a></p>
 
-![바람 유물을 충전하며 바람숲 제단의 마지막 5초를 버티는 실제 플레이 화면](docs/images/field-trial.jpg)
+![실타래 군집 빌드로 돌진 숲지기의 공격 경로를 피하는 실제 플레이 화면](docs/images/boss-v6.jpg)
 
 ## 숲을 둘러보고, 싸우고, 돌아오기
 
@@ -45,7 +45,29 @@
 
 새 원정마다 제단 위치와 유물 후보가 달라집니다. 결과에서는 유물의 발동·피해·회복·방어 기여를 확인하고 **같은 숲 재도전 / 새로운 숲**을 고릅니다. 발견 유물과 최근 12회 기록은 이 브라우저에 저장하며, 다음 원정의 기본 능력치는 동일합니다.
 
-<p align="center"><img src="docs/images/relic-choice-mobile.jpg" width="290" alt="모바일에서 이동형 바람 방울과 정지형 도토리 갑주를 비교하는 실제 선택 화면"></p>
+<p align="center"><img src="docs/images/synergy-mobile-v6.jpg" width="290" alt="모바일에서 실타래와 갑주의 무기 연계를 비교하는 실제 선택 화면"></p>
+
+### 무기와 유물을 맞추면 공격 방식도 달라집니다
+
+| 연계 | 조합 | 전투에서 바뀌는 점 |
+| :-- | :-- | :-- |
+| **왕복 기류** | 바람 방울 + 도토리 탄 / 반달 | 돌풍이 대원에게 돌아오며 앞뒤를 관통 |
+| **실타래 군집** | 매듭 실타래 + 꿀벌 | 표식 결산에 추적벌 두 마리 추가 출격 |
+| **가시 방벽** | 도토리 갑주 + 회전 가시 | 보호막 소진 시 주변에 가시 반격 |
+| **붙잡는 덩굴** | 가시 매듭 + 덩굴 채찍 | 파열 지점에 감속 덤불을 남겨 길목 제어 |
+| **생명 정원** | 생명씨 주머니 + 반딧불 병 / 민들레 | 떨어진 회복 씨앗에서 빛의 피해 지대 생성 |
+| **천둥 물결** | 물결 조개 + 번개 꽃 | 실제 회복 파동에 최대 세 대상 번개 연계 |
+
+성장 선택과 유물 비교에서 완성할 연계를 미리 보여줍니다. 세 번째부터 매 세 번의 성장 제안에는, 가능한 경우 현재 유물과 맞는 미보유 무기 하나가 포함됩니다. 여섯 무기 제한과 제외 규칙은 그대로 적용합니다. 합체 무기도 원래 무기군의 연계를 이어받습니다.
+
+![매듭 실타래를 장착한 원정에서 꿀벌을 고르면 연계가 완성되는 성장 화면](docs/images/build-choice-v6.jpg)
+
+### 읽고 피하고, 빈틈에 몰아치기
+
+- **갑각 파수꾼**: 밝은 등무늬로 구분합니다. 전방을 버티며 0.9초 후 부채꼴 충격파를 쓰니 옆·뒤나 광역 공격을 노리세요. 일반 딱정벌레는 기존 전열 역할을 맡습니다.
+- **포자 사수**: 부채꼴 세 발 사격과 고정 위치 낙하 포자로 나뉩니다. 예고 뒤에 공격하며, 일반 위험지대는 동시에 최대 세 개입니다.
+- **둥지 숲지기**: 시드에 따라 돌진·포자 길목·방사 사격의 시작 순서가 달라집니다. 체력 절반에서는 2페이즈로 전환해 패턴이 강화됩니다. 공격 뒤 회복 시간이 반격할 틈입니다.
+- **무기 표현**: 반달의 왕복 회전·잔상, 병의 투척 회전, 꿀벌의 날갯짓, 꽃씨의 홀씨 모양과 무기별 적중·치명타 표현을 구분합니다.
 
 ### 함께 떠나는 수호대
 
@@ -105,7 +127,7 @@ npm run dev
 
 ## 개발 현황
 
-현재는 **0.5 개발판 · 첫 3분 정찰**입니다. 행동 유물, 선택형 필드 도전, 시드 변주와 원정 수첩을 연결했습니다. 30분 전체 원정, 영구 능력치 성장·해금 UI, 진행 중 원정의 저장·복구 UI는 아직 연결하지 않았습니다. 대원·시작 무기·음소거 설정과 수첩은 브라우저에 저장합니다.
+현재는 **0.6 개발판 · 첫 3분 정찰**입니다. 여섯 무기·유물 연계, 새 일반 적 역할과 둥지 2페이즈, 무기별 투사체·적중 표현을 연결했습니다. 30분 전체 원정, 영구 능력치 성장·해금 UI, 진행 중 원정의 저장·복구 UI는 아직 연결하지 않았습니다. 대원·시작 무기·음소거 설정과 수첩은 브라우저에 저장합니다.
 
 <details>
 <summary><strong>0.4 전투와 밸런스에서 다듬은 점</strong></summary>
@@ -118,7 +140,7 @@ npm run dev
 
 </details>
 
-검증 기준과 36회 모델 주행 요약은 [검증 기록](docs/VALIDATION.md), 보상과 발동 규칙의 의도는 [0.5 게임성 설계](docs/GAMEPLAY-V05.md)에 있습니다. 모델 주행은 정해진 입력 정책의 결과이며 사람이 느끼는 재미나 모든 시드의 균형을 증명하지 않습니다.
+검증 기준과 42회 모델 주행 요약은 [검증 기록](docs/VALIDATION.md), 연계·적·투사체의 세부 규칙은 [0.6 전투 설계](docs/GAMEPLAY-V06.md), 탐색 보상의 바탕은 [0.5 게임성 설계](docs/GAMEPLAY-V05.md)에 있습니다. 모델 주행은 정해진 입력 정책의 결과이며 사람이 느끼는 재미나 모든 시드의 균형을 증명하지 않습니다.
 
 ## 소스와 아트
 

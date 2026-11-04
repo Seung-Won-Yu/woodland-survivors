@@ -61,18 +61,20 @@ export function drawProp(c,art,row,col,x,y,width,alpha=1){
   const b=art.props.cells[row][col],height=width*b.h/b.w;c.save();c.globalAlpha*=alpha;c.imageSmoothingEnabled=true;c.drawImage(art.props.image,b.x,b.y,b.w,b.h,Math.round(x-width/2),Math.round(y-height),width,height);c.restore();
 }
 export function drawIllustratedEnemy(c,art,e){
-  const row=e.type==='beetle'?3:e.type==='spore'?2:e.type==='runner'?1:0;
+  const row=['beetle','warden'].includes(e.type)?3:e.type==='spore'?2:e.type==='runner'?1:0;
   let frame=Math.floor((e.walk||0)/9)%6;
   if(row===1){frame=Math.floor((e.walk||0)/11)%4;if(e.mode==='windup')frame=4;else if(e.mode==='charge')frame=5+Math.floor(e.age*13)%2;else if(e.mode==='recover')frame=7;}
   if(row===2){frame=Math.floor((e.walk||0)/13)%4;if(e.mode==='windup')frame=e.windup>.3?4:5;else if(e.mode==='recover')frame=e.recover>.2?6:7;}
   if(e.hurt>.07&&(row===0||row===3))frame=6;
+  else if(row===3&&e.mode==='windup')frame=4;
   if(e.dead&&(row===0||row===3))frame=7;
-  const b=art.enemies.cells[row][frame],ref=art.enemies.cells[row][0],height=e.type==='king'?152:e.type==='elite'?92:row===3?51:row===2?64:58;
+  const b=art.enemies.cells[row][frame],ref=art.enemies.cells[row][0],height=e.type==='king'?152:e.type==='elite'?92:e.type==='warden'?59:row===3?51:row===2?64:58;
   const scale=height/ref.h,w=b.w*scale,h=b.h*scale,ground=Math.max(...art.enemies.cells[row].slice(0,6).map(b=>b.bottom));
   c.save();c.translate(e.x,e.y);if((e.fx||1)<0)c.scale(-1,1);if(e.hurt>0){c.filter='brightness(1.65)';c.transform(1,0,-.08,.95,0,0);}
   c.imageSmoothingEnabled=true;c.drawImage(art.enemies.image,b.x,b.y,b.w,b.h,(b.localX-art.enemies.w/2)*scale,(b.localY-ground)*scale,w,h);
+  if(e.type==='warden'){c.strokeStyle='#dfd3a2';c.lineWidth=2;c.beginPath();c.moveTo(-9,-39);c.quadraticCurveTo(0,-54,11,-40);c.moveTo(0,-48);c.lineTo(0,-31);c.stroke();}
   if(e.type==='elite'||e.type==='king'){
-    c.fillStyle='#d9b970';c.beginPath();c.moveTo(-12,-height+8);c.lineTo(-15,-height-5);c.lineTo(-5,-height);c.lineTo(0,-height-10);c.lineTo(5,-height);c.lineTo(15,-height-5);c.lineTo(12,-height+8);c.fill();
+    c.fillStyle=e.bossPhase===2?'#d9956f':'#d9b970';c.beginPath();c.moveTo(-12,-height+8);c.lineTo(-15,-height-5);c.lineTo(-5,-height);c.lineTo(0,-height-10);c.lineTo(5,-height);c.lineTo(15,-height-5);c.lineTo(12,-height+8);c.fill();
   }
   c.restore();
 }

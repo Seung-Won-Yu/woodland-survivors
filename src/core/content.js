@@ -41,8 +41,9 @@ export const PASSIVES={
 export const ENEMIES={
   shroom:{name:'꼬마 버섯',row:0,hp:15,speed:51,damage:7,r:12,xp:2,description:'군단의 전열. 많이 모일수록 무섭지만 광역 공격에 약합니다.'},
   runner:{name:'돌격 버섯',row:0,hp:12,speed:109,damage:9,r:11,xp:3,description:'노란 갓의 빠른 추격자. 탄막 사이로 파고듭니다.'},
-  beetle:{name:'돌껍질 딱정벌레',row:1,hp:51,speed:40,damage:13,r:18,xp:5,description:'몸이 튼튼해 이동 경로를 막습니다. 관통 공격으로 뒤의 무리도 함께 노리세요.'},
-  spore:{name:'포자 사수',row:2,hp:26,speed:47,damage:8,r:13,xp:4,description:'거리를 두고 느린 포자탄을 발사합니다. 적을 한쪽으로 모으면 피하기 쉽습니다.'},
+  beetle:{name:'돌껍질 딱정벌레',row:1,hp:51,speed:40,damage:13,r:18,xp:5,description:'튼튼한 몸으로 이동 경로를 막습니다. 관통과 광역 공격으로 전열을 열어보세요.'},
+  warden:{name:'갑각 파수꾼',row:1,hp:51,speed:40,damage:13,r:18,xp:5,description:'등의 밝은 잎무늬가 표식. 웅크려 전방을 막고 충격파를 준비하니 옆이나 뒤를 노리세요.'},
+  spore:{name:'포자 사수',row:2,hp:26,speed:47,damage:8,r:13,xp:4,description:'거리를 유지하며 부채꼴 사격이나 고정 위치 낙하 포자를 예고합니다.'},
   elite:{name:'버섯 지휘관',row:3,hp:480,speed:48,damage:15,r:27,xp:30,description:'군단을 불러내는 정예. 10분 이후 등장한 지휘관은 진화 가능 상자를 남깁니다.'},
   king:{name:'버섯왕 모르가',row:3,hp:104000,speed:43,damage:22,r:46,xp:100,description:'27분에 군단과 함께 등장합니다. 처치하면 추가 보상을 얻으며, 30분 생존이 기본 목표입니다.'}
 };

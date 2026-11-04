@@ -1,5 +1,6 @@
 import {createGame,spawnEnemy,deriveStats,healPlayer,LIMITS} from '../core/game.js';
 import {createRelicCache,openRelicCache,relicHash} from '../core/relics.js';
+import {guardianStyle,GUARDIANS,PATTERN_NAMES} from '../core/patterns.js';
 import {normalizeProfile} from '../core/profile.js';
 import {BASE_WEAPON_IDS,HEROES,WEAPONS,SLOT_LIMIT} from '../core/content.js';
 import {ROCKS,TREE_TRUNKS,LANDMARKS,TRIAL_SPOTS} from './terrain.js';
@@ -36,11 +37,11 @@ export function interact(g){
     message(g,'바람숲 도전 · 원 안에서 20초! 1.5초 넘게 벗어나면 도전이 끝납니다.');return true;
   }
   if(s.id==='nest'){
-    const hp=360+g.time*3;s.state='active';const boss=spawnEnemy(g,'elite',s.x,s.y+105,{hp,maxHp:hp,speed:42,clock:2.4,canEvolve:true,nestGuardian:true});
+    const hp=360+g.time*3;s.state='active';const boss=spawnEnemy(g,'elite',s.x,s.y+105,{hp,maxHp:hp,speed:42,clock:2.4,canEvolve:true,nestGuardian:true,guardianStyle:guardianStyle(g.expedition.seed),bossPhase:1,cycle:0});
     g.expedition.guardianId=boss.id;
     g.expedition.milestones.nestAt=g.time;
     for(let i=0;i<4;i++){const a=i*Math.PI/2;spawnEnemy(g,'shroom',s.x+Math.cos(a)*145,s.y+Math.sin(a)*130);}
-    message(g,'둥지가 깨어났습니다! 붉은 포자 예고에서 벗어나세요.');return true;
+    message(g,`${GUARDIANS[boss.guardianStyle].name} 등장! 공격 예고를 피하고 회복 중인 빈틈을 노리세요.`);return true;
   }
   if(s.id==='camp'){
     if(g.time<180){message(g,`귀환까지 ${Math.ceil(180-g.time)}초 · 경험치를 모으거나 유물에 도전하세요.`);return false;}
@@ -103,7 +104,7 @@ export function expeditionObjective(g){
   const trial=ex.sites.find(s=>s.id==='trial');
   if(trial?.state==='active')return {title:`바람숲 도전 · ${Math.max(0,Math.ceil(20-g.time+ex.trial.startedAt))}초`,detail:ex.trial.outside>0?`원 안으로 돌아가세요 · 이탈 ${ex.trial.outside.toFixed(1)} / 1.5초`:'초록 원 안에서 버티세요 · 구르기와 밀치기로 틈 만들기'};
   if(nest.state==='cleared')return {title:'황금 상자 회수하기',detail:`지휘관이 쓰러진 곳 · 시작 무기 +2 / 진화 · ${healing}`};
-  if(nest.state==='active')return {title:'포자 예고를 피하며 지휘관 처치',detail:`체력 절반에서 돌격병 합류 · ${healing}`};
+  if(nest.state==='active'){const boss=g.enemies.find(e=>e.nestGuardian&&!e.dead);return {title:`${GUARDIANS[boss?.guardianStyle]?.name||'둥지 숲지기'} · ${boss?.bossPhase===2?'2페이즈':'1페이즈'}`,detail:`${boss?.mode==='windup'?`${PATTERN_NAMES[boss.attack]} 예고 · `:boss?.mode==='recover'?'공격 뒤 빈틈을 노리세요 · ':'체력 절반에서 패턴 강화 · '}${healing}`};}
   if(g.time>=150)return {title:'야영지로 돌아갈 길 확보',detail:`귀환까지 ${Math.ceil(180-g.time)}초 · ${healing}`};
   if(supply.state!=='spent')return {title:'보급과 회복 샘, 길을 고르세요',detail:`서쪽 보급: ${supply.state==='guarded'?`경비 ${g.enemies.filter(e=>e.supplyGuard&&!e.dead).length}마리`:'장비 선택'} · ${healing}`};
   const id=Object.hasOwn(g.weapons,g.startWeapon)?g.startWeapon:Object.keys(g.weapons)[0],w=g.weapons[id],d=WEAPONS[id];
