@@ -8,6 +8,11 @@
 </p>
 <p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 브라우저에서 플레이</strong></a> · <a href="https://yu-reka.github.io/woodland-survivors/docs/motion-lab.html">모션 미리보기</a> · <a href="#로컬에서-실행">로컬 실행</a></p>
 
+
+> **개발 방향 정리 · 2026-11-04**
+> 주 레퍼런스는 MegaBonk와 Pokémon Survivor Burst입니다. [게임 기획](docs/GAME-DESIGN.md) · [대원별 특성/성장](docs/CHARACTER-DESIGN.md) · [시스템 역분석](docs/SYSTEM-REVERSE-ENGINEERING.md) · [UI/UX 점검](docs/UX-DIRECTION-AUDIT.md).
+> 아래 공개판 소개는 0.6 기준입니다. 이 개발 분기의 0.7 캠페인·합체 시제품은 실험이며, 설계 0.8의 대원별 성장·새 진행 규칙은 구현 완료 상태가 아닙니다.
+
 ![실타래 군집 빌드로 돌진 숲지기의 공격 경로를 피하는 실제 플레이 화면](docs/images/boss-v6.jpg)
 
 ## 숲을 둘러보고, 싸우고, 돌아오기
