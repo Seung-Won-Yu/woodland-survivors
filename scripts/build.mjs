@@ -1,7 +1,7 @@
 import {mkdir,cp,rm,readdir,writeFile,readFile} from 'node:fs/promises';
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
-for(const name of ['index.html','woodland.html','prototype.html','favicon.svg','src'])await cp(name,`dist/${name}`,{recursive:true});
+for(const name of ['index.html','woodland.html','prototype.html','favicon.svg','mission-icon.svg','src'])await cp(name,`dist/${name}`,{recursive:true});
 for(const folder of ['v2','mission']){
  await mkdir(`dist/art/${folder}`,{recursive:true});
  for(const name of await readdir(`public/art/${folder}`))if(name.endsWith('.png'))await cp(`public/art/${folder}/${name}`,`dist/art/${folder}/${name}`);

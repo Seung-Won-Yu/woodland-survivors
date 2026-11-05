@@ -1,8 +1,8 @@
-import {createProfile,beginRun} from '../src/mission/profile.js';
-import {createMission,stepMission,chooseMission,missionAction,takeMissionEvents} from '../src/mission/model.js';
-import {BOSS_GATE} from '../src/mission/content.js';
+import {createProfile,beginRun,settleRun,buyResearch} from '../src/mission/profile.js';
+import {createMission,stepMission,chooseMission,missionAction,takeMissionEvents,segmentDistance} from '../src/mission/model.js';
+import {BOSS_GATE,RESEARCH,buildSynergies} from '../src/mission/content.js';
 
-const DT=1/60,MAX_SECONDS=600,SEEDS=[17,71],RUSH=process.argv.includes('--rush');
+const DT=1/60,MAX_SECONDS=600,SEEDS=[17,71],RUSH=process.argv.includes('--rush'),BUILDS=process.argv.includes('--builds'),JOURNEY=process.argv.includes('--journey');
 const round=(n,d=1)=>Number.isFinite(n)?Number(n.toFixed(d)):null;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const median=values=>{const a=values.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;};
@@ -14,7 +14,7 @@ function threatAt(s,x,y){
     if(d<safe)score+=500+(safe-d)*12;else if(d<safe+85)score+=(safe+85-d)*1.8;
   }
   for(const hazard of s.hazards){
-    if(hazard.hit)continue;const d=Math.hypot(x-hazard.x,y-hazard.y),soon=hazard.timer<.55;
+    if(hazard.hit)continue;const d=hazard.shape==='beam'?segmentDistance(x,y,hazard.x,hazard.y,hazard.x2,hazard.y2):Math.hypot(x-hazard.x,y-hazard.y),soon=hazard.timer<.55;
     if(d<hazard.r+25)score+=(soon?1200:250)+(hazard.r+25-d)*8;
   }
   for(const shot of s.enemyShots){
@@ -52,14 +52,16 @@ function danger(s){
 function weaponState(s,id){return s.weapons.find(w=>w?.id===id);}
 
 function scoreChoice(s,build,choice){
+  if(JOURNEY&&s.weapons.some(w=>w?.id==='n')&&['weapon','weapon-offer'].includes(choice.kind)&&choice.weapon==='s')return 26000;
   if(choice.kind==='sabotage')return choice.key==='plunder'?19000:1000;
   if(choice.kind==='tactic')return choice.key===(s.front===0?(build.hero==='fio'?'fusion':'assault'):'barrage')?30000:10000;
-  if(choice.kind==='union')return build.hero==='fio'?20000:100;
+  if(choice.kind==='union')return build.recipe?(choice.recipe===build.recipe||!choice.recipe&&build.recipe==='u'?25000:10):build.hero==='fio'?20000:100;
+  if(build.recipe){const desired=({u:['h','r'],v:['p','s'],n:['f','r']})[build.recipe];if(['weapon','weapon-offer'].includes(choice.kind)&&desired.includes(choice.weapon)){const old=s.weapons[choice.slot];return old&&!desired.includes(old.id)?24000:!old?23000:0;}if(choice.kind==='rank'&&desired.includes(s.weapons[choice.slot]?.id))return 22000;if(choice.kind==='evolve'&&desired.includes(s.weapons[choice.slot]?.id))return 18000;if(['weapon','weapon-offer'].includes(choice.kind))return -1000;}
   if(choice.kind==='evolve'){
     const weapon=s.weapons[choice.slot]?.id;
     return build.hero==='marco'&&weapon==='p'?18000:build.hero==='fio'&&['h','r'].includes(weapon)?13000:3000;
   }
-  if(choice.kind==='weapon'){
+  if(['weapon','weapon-offer'].includes(choice.kind)){
     if(build.hero==='fio'&&choice.weapon==='r')return 17000;
     if(build.hero==='fio'&&choice.weapon==='h')return 12000;
     if(build.hero==='marco'&&choice.weapon==='p')return 9000;
@@ -86,7 +88,7 @@ function handleChoice(s,build,state){
 
 function nextTarget(s,build,state){
   if(s.stage==='boss'){
-    const b=s.boss,p=s.player,a=Math.atan2(p.y-b.y,p.x-b.x)+(build.hero==='marco'?.38:.72),radius=p.slug?245:build.hero==='marco'?300:250;
+    const b=s.boss,p=s.player;if(s.front===0&&b.mode==='recover')return{x:b.x-Math.cos(b.angle)*230,y:b.y-Math.sin(b.angle)*230,id:'rear-engine'};if(s.front===1&&s.hazards.length)return{x:b.safeX,y:b.y+220,id:'safe-lane'};const a=Math.atan2(p.y-b.y,p.x-b.x)+(build.hero==='marco'?.38:.72),radius=p.slug?245:s.weapons.some(w=>w&&['s','f','v','n'].includes(w.id))?185:build.hero==='marco'?300:250;
     return {x:b.x+Math.cos(a)*radius,y:b.y+Math.sin(a)*radius,id:'boss-combat'};
   }
   const route=RUSH?['first','convoy']:['first','camp','convoy','prison',...(build.useSlug?['garage']:[]),...(s.front>0?['battery']:[])];
@@ -122,10 +124,10 @@ function maybeAct(s,build,state,target){
   }
 }
 
-function runMission({hero,seed,useSlug}){
-  const started=beginRun(createProfile(`pilot-${hero}-${seed}-${useSlug?'slug':'foot'}`),{hero,difficulty:'normal',seed});
+function runMission({hero,seed,useSlug,recipe=null,profile=null}){
+  const started=beginRun(profile||createProfile(`pilot-${hero}-${seed}-${useSlug?'slug':'foot'}`),{hero,difficulty:'normal',seed});
   if(!started.ok)throw new Error(started.reason);
-  const s=createMission(started.descriptor),build={hero,useSlug};
+  const s=createMission(started.descriptor),build={hero,useSlug,recipe};
   const state={bossAt:null,bossStarts:{},slugAtBoss:false,choices:[],nodeTimes:{},issues:[],actions:{skills:0,interactions:0,dashes:0},events:{}};
   let frames=0,previousDash=0;
   while(s.phase!=='result'&&s.t<MAX_SECONDS&&frames<MAX_SECONDS*60+5000){
@@ -147,23 +149,34 @@ function runMission({hero,seed,useSlug}){
   if(frames>=MAX_SECONDS*60+5000&&s.phase!=='result')state.issues.push('frame budget exhausted');
   const result=s.result;
   return {
-    hero,seed,useSlug,outcome:result?.won?'victory':result?'defeat':'incomplete',reason:result?.reason??s.phase,
+    ...(JOURNEY?{settledProfile:settleRun(started.profile,s).profile}:{}),synergies:buildSynergies(s.weapons),hero,seed,useSlug,recipe,outcome:result?.won?'victory':result?'defeat':'incomplete',reason:result?.reason??s.phase,
     time:round(result?.seconds??s.t),hp:round(s.player.hp),level:s.level,kills:s.stats.kills,elites:s.stats.elites,rescues:s.stats.rescues,outposts:s.stats.outposts,
     bossTtk:result?.won&&state.bossAt!==null?round(result.seconds-state.bossAt):null,slugAtBoss:state.slugAtBoss,bossHp:round(s.boss.hp),parts:Object.fromEntries(s.boss.parts.map(p=>[p.id,round(p.hp)])),
-    frontBattles:[...s.frontHistory.map(f=>({front:f.front,seconds:round(f.at-state.bossStarts[f.front])})),...(result?.won?[{front:2,seconds:round(result.seconds-state.bossStarts[2])}]:[])],frontHistory:s.frontHistory,bossStarts:state.bossStarts,tactics:s.tactics,nodeTimes:state.nodeTimes,unionAt:state.choices.find(c=>c.id==='union')?.time??null,choices:state.choices,weapons:s.weapons.map(w=>w&&({id:w.id,rank:w.rank,evolved:w.evolved,mods:w.mods})),cores:s.cores,
+    frontBattles:[...s.frontHistory.map(f=>({front:f.front,seconds:round(f.at-state.bossStarts[f.front])})),...(result?.won?[{front:2,seconds:round(result.seconds-state.bossStarts[2])}]:[])],frontHistory:s.frontHistory,bossStarts:state.bossStarts,tactics:s.tactics,nodeTimes:state.nodeTimes,unionAt:state.choices.find(c=>c.id==='union'||c.id.startsWith('union:'))?.time??null,choices:state.choices,weapons:s.weapons.map(w=>w&&({id:w.id,rank:w.rank,evolved:w.evolved,mods:w.mods})),cores:s.cores,
     stats:{...s.stats},actions:state.actions,events:state.events,issues:state.issues
   };
 }
 
+if(JOURNEY){
+ let profile=createProfile('research-journey'),runs=[];
+ for(const [index,recipe]of ['v','n','u','n','v'].entries()){
+  const run=runMission({hero:recipe==='v'?'marco':'fio',seed:17+index,useSlug:false,recipe,profile});profile=run.settledProfile;delete run.settledProfile;
+  const bought=[];for(const id of Object.keys(RESEARCH)){const result=buyResearch(profile,id);if(result.ok){profile=result.profile;bought.push(id);}}
+  const {choices,events,...compact}=run;runs.push({...compact,bought,researchAfter:[...profile.researched],balance:profile.wallet});
+ }
+ process.stdout.write(JSON.stringify({policy:'ordinary inputs, real settlement and research purchases between runs',runs,researched:profile.researched,orders:profile.orders},null,2)+'\n');
+}else{
 const runs=[];
-for(const seed of SEEDS)for(const hero of ['marco','fio'])for(const useSlug of (RUSH?[false]:[false,true]))runs.push(runMission({hero,seed,useSlug}));
+for(const seed of SEEDS)for(const hero of ['marco','fio'])for(const useSlug of (RUSH||BUILDS?[false]:[false,true]))for(const recipe of (BUILDS?['u','v','n']:[null]))runs.push(runMission({hero,seed,useSlug,recipe}));
 
 const aggregates=[];
-for(const hero of ['marco','fio'])for(const useSlug of (RUSH?[false]:[false,true])){
-  const set=runs.filter(r=>r.hero===hero&&r.useSlug===useSlug);
-  aggregates.push({hero,useSlug,wins:set.filter(r=>r.outcome==='victory').length,runs:set.length,medianTime:round(median(set.map(r=>r.time))),medianBossTtk:round(median(set.map(r=>r.bossTtk))),medianKills:round(median(set.map(r=>r.kills))),medianHp:round(median(set.map(r=>r.hp))),issues:set.flatMap(r=>r.issues)});
+for(const hero of ['marco','fio'])for(const useSlug of (RUSH||BUILDS?[false]:[false,true]))for(const recipe of (BUILDS?['u','v','n']:[null])){
+  const set=runs.filter(r=>r.hero===hero&&r.useSlug===useSlug&&(!BUILDS||r.recipe===recipe));
+  aggregates.push({hero,useSlug,recipe,wins:set.filter(r=>r.outcome==='victory').length,runs:set.length,medianTime:round(median(set.map(r=>r.time))),medianBossTtk:round(median(set.map(r=>r.bossTtk))),medianKills:round(median(set.map(r=>r.kills))),medianHp:round(median(set.map(r=>r.hp))),issues:set.flatMap(r=>r.issues)});
 }
 
 const report={rules:{dt:DT,maxSeconds:MAX_SECONDS,seeds:SEEDS,route:RUSH?'rush first/convoy/boss':'all field supplies and artillery positions'},policy:'public API only; state-aware threat steering, objective navigation, ordinary dash/skill/interact inputs',aggregates,runs};
 const output=process.argv.includes('--summary')?{rules:report.rules,policy:report.policy,aggregates,runs:runs.map(({choices,events,...run})=>({...run,choiceCount:choices.length}))}:report;
 process.stdout.write(`${JSON.stringify(output,null,2)}\n`);
+
+}

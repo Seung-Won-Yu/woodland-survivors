@@ -1,10 +1,10 @@
-import {RULESET,HEROES,WEAPONS,RESEARCH,FRONTS,TACTICS,frontSites,FIELD,BOSS_POSITION,BOSS_GATE,TRAINING,clamp} from './content.js';
+import {RULESET,HEROES,WEAPONS,RESEARCH,BASE_WEAPONS,UNIONS,weaponTags,acceptsMod,BOSS_GUIDES,FRONTS,TACTICS,frontSites,FIELD,BOSS_POSITION,BOSS_GATE,TRAINING,clamp} from './content.js';
 const TAU=Math.PI*2,copy=x=>JSON.parse(JSON.stringify(x)),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-const emptyStats=()=>({kills:0,elites:0,rescues:0,outposts:0,armorBreaks:0,weaponKills:{p:0,h:0,r:0},pMastery:false,overdriveKills:0,evolved:[],union:false,bestCombo:0,midbosses:0,evolvedKills:0,fronts:[],supplyPicks:[]});
+const emptyStats=()=>({kills:0,elites:0,rescues:0,outposts:0,armorBreaks:0,weaponKills:Object.fromEntries(BASE_WEAPONS.map(id=>[id,0])),pMastery:false,overdriveKills:0,evolved:[],union:false,unionIds:[],bestCombo:0,midbosses:0,evolvedKills:0,fronts:[],supplyPicks:[]});
 function rand(s){s.rngState=(s.rngState+0x6d2b79f5)>>>0;let t=s.rngState;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;}
 const pick=(s,items)=>items[Math.floor(rand(s)*items.length)];
 const weapon=id=>({id,rank:0,evolved:false,mods:[],cd:.1,shots:0});
-function makeBoss(front){const hp=[10000,16000,24000][front],partHp=[1500,1800,2200][front];return{...BOSS_POSITION,hp,maxHp:hp,r:65,active:false,mode:'idle',timer:2,angle:0,parts:[{id:'battery',ox:-65,oy:-3,hp:partHp,maxHp:partHp,r:28},{id:'armor',ox:65,oy:-3,hp:partHp,maxHp:partHp,r:28}]};}
+function makeBoss(front){const hp=[10000,16000,24000][front],partHp=[1500,1800,2200][front];return{...BOSS_POSITION,hp,maxHp:hp,r:65,active:false,mode:'idle',timer:2,angle:Math.PI/2,cycle:0,coreOpen:0,safeX:0,parts:[{id:'battery',ox:front===1?-155:-65,oy:-3,hp:partHp,maxHp:partHp,r:28},{id:'armor',ox:front===1?155:65,oy:-3,hp:partHp,maxHp:partHp,r:28}]};}
 function completeFront(s){
  s.boss.active=false;s.stats.midbosses++;s.stats.fronts.push(s.front);s.frontHistory.push({front:s.front,at:s.t,seconds:s.t-s.frontStarted,kills:s.stats.kills});s.phase='choice';s.choiceType='tactic';s.choiceSite=`${FRONTS[s.front].boss} 격파 · 전술 보급`;
  const keys=s.front===0?['assault','fusion','armor']:['barrage','repair','requisition'];s.choices=keys.map(key=>({id:`tactic:${key}`,kind:'tactic',key,...TACTICS[key],title:TACTICS[key].title}));s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];emit(s,'boss-defeated');
@@ -36,7 +36,8 @@ export function restoreMission(raw){
  for(const key of ['x','y','hp','maxHp','aim','walk','charge','overdrive','dash','dashCd','skillCd','invuln','focus'])if(!finite(s.player[key]))fail();
  for(const key of ['enemies','shots','enemyShots','gems','hazards','zones','effects','numbers','events','sites','choices','researchPresented','weapons'])if(!Array.isArray(s[key]))fail();
  if(s.weapons.length!==2||s.weapons.some(w=>w&&(!WEAPONS[w.id]||!Number.isInteger(w.rank)||w.rank<0||w.rank>3||!Array.isArray(w.mods)||!finite(w.cd))))fail();
- if(!finite(s.boss.x)||!finite(s.boss.y)||!finite(s.boss.hp)||!Array.isArray(s.boss.parts)||s.boss.parts.length!==2||s.boss.parts.some(p=>!finite(p.hp)))fail();
+ if(['x','y','hp','maxHp','r','timer','angle','coreOpen','cycle','safeX'].some(key=>!finite(s.boss[key]))||!['idle','walk','charge','windup','recover','sweep-windup','sweep','expose','reload'].includes(s.boss.mode)||!Array.isArray(s.boss.parts)||s.boss.parts.length!==2||s.boss.parts.some(p=>['hp','maxHp','ox','oy','r'].some(key=>!finite(p[key]))))fail();
+ if(s.hazards.some(h=>h.shape==='beam'&&(['x2','y2','width','r','timer','life'].some(key=>!finite(h[key]))||typeof h.hit!=='boolean')))fail();
  for(const list of [s.enemies,s.shots,s.enemyShots,s.gems,s.hazards,s.zones])if(list.some(o=>!finite(o.x)||!finite(o.y)))fail();
  if(s.enemies.some(e=>!['rifle','shield','mortar','officer'].includes(e.type)||!finite(e.hp)||!finite(e.speed)||!finite(e.timer)))fail();
  for(const key of ['level','xp','pendingLevels','rerolls','cores','idCounter','waveClock'])if(!finite(s[key]))fail();
@@ -44,8 +45,8 @@ export function restoreMission(raw){
  if(!Array.isArray(s.stats.evolved)||!finite(s.stats.kills)||!finite(s.level)||!finite(s.rngState)||!finite(s.spawnClock))fail();
  if(s.phase==='result')fail();
  if(s.phase==='choice'){
-  if(!['level','supply','tactic'].includes(s.choiceType)||!s.choices.length||s.choices.some(c=>typeof c.id!=='string'||!['rank','weapon','mod','evolve','union','utility','resupply','tactic','sabotage'].includes(c.kind)))fail();
-  for(const c of s.choices){if(c.kind==='tactic'&&!TACTICS[c.key])fail();if(c.kind==='weapon'&&(!WEAPONS[c.weapon]||![0,1].includes(c.slot)))fail();if(c.kind==='mod'&&!RESEARCH[c.mod])fail();if(c.kind==='utility'&&!['power','vitality','magnet','tempo','projectile'].includes(c.key))fail();try{if(!chooseMission(copy(s),c.id))fail();}catch{fail();}}
+  if(!['level','supply','tactic','replace'].includes(s.choiceType)||!s.choices.length||s.choices.some(c=>typeof c.id!=='string'||!['rank','weapon','mod','evolve','union','utility','resupply','tactic','sabotage','weapon-offer','keep'].includes(c.kind)))fail();
+  for(const c of s.choices){if(c.kind==='tactic'&&!TACTICS[c.key])fail();if((c.kind==='weapon'||c.kind==='weapon-offer')&&!WEAPONS[c.weapon])fail();if(c.kind==='weapon'&&![0,1].includes(c.slot))fail();if(c.kind==='mod'&&!RESEARCH[c.mod])fail();if(c.kind==='utility'&&!['power','vitality','magnet','tempo','projectile'].includes(c.key))fail();try{if(!chooseMission(copy(s),c.id))fail();}catch{fail();}}
  }
  return s;
 }
@@ -71,12 +72,18 @@ function targets(s){
 function targetFor(s,bossPriority=false){let best=null,score=Infinity;const p=s.player;for(const e of targets(s)){const d=dist(e,p);if(d>760)continue;let cost=d;if(e.siteId){const site=s.sites.find(n=>n.id===e.siteId);if(site&&dist(site,p)<270)cost*=.25;}if(e.type==='part')cost*=bossPriority?.2:.65;if(e.type==='core')cost*=bossPriority?.3:.8;if(cost<score){score=cost;best=e;}}return best;}
 function projectile(s,w,angle,damage,pierce=1,extra={}){
  if(s.shots.length>=280)return;
- const p=s.player,reach=p.slug?57:26;if(!extra.rocket&&s.tactics.includes('assault'))pierce+=2;if(extra.rocket&&w.id==='u'&&s.tactics.includes('fusion'))extra={...extra,blast:extra.blast*1.25};s.shots.push({id:++s.idCounter,x:p.x+Math.cos(angle)*reach,y:p.y+Math.sin(angle)*reach,vx:Math.cos(angle)*(extra.speed||760),vy:Math.sin(angle)*(extra.speed||760),angle,weapon:w.id,tags:w.id==='u'?['h','r']:[w.id],damage,pierce,hits:[],life:extra.rocket?1.5:.85,rocket:false,blast:0,...extra});
+ const p=s.player,reach=p.slug?57:26;if(!extra.rocket&&s.tactics.includes('assault'))pierce+=2;if(UNIONS[w.id]&&s.tactics.includes('fusion'))damage*=1.15;s.shots.push({id:++s.idCounter,x:p.x+Math.cos(angle)*reach,y:p.y+Math.sin(angle)*reach,vx:Math.cos(angle)*(extra.speed||760),vy:Math.sin(angle)*(extra.speed||760),angle,weapon:w.id,tags:weaponTags(w.id),damage,pierce,hits:[],life:extra.rocket?1.5:.85,rocket:false,blast:0,...extra});
 }
 function fireWeapon(s,w){
  const p=s.player,target=targetFor(s);if(!target)return;const a=Math.atan2(target.y-p.y,target.x-p.x);p.aim=a;p.attack=.12;w.shots++;
  const grown=w.rank,training=1+(s.snapshot.training.firepower||0)*.03,power=(1+s.boosts.power*.12)*training,over=p.overdrive>0;
- if(w.id==='r'){
+ if(w.id==='s'||w.id==='v'){
+  const count=(w.id==='v'?8:6+grown*2)+(w.mods.includes('s-flechette')?2:0);for(let i=0;i<count;i++)projectile(s,w,a+(i-(count-1)/2)*.085,(w.id==='v'?25:15+grown*4)*power,w.evolved?3:grown>=2?2:1,{life:.32,speed:820,width:4,pellet:true,shred:w.mods.includes('s-flechette')});
+  if(w.id==='v')for(const side of [-1,1])projectile(s,w,a+side*.025,100*power,14,{width:9,speed:1200,life:.7,rail:true,split:w.mods.includes('p-split')});emit(s,'burst');s.shake=Math.max(s.shake,2);
+ }else if(w.id==='f'||w.id==='n'){
+  const count=w.id==='n'||grown>=3||w.evolved?3:1;for(let i=0;i<count;i++)projectile(s,w,a+(i-(count-1)/2)*.19,(w.id==='n'?26:9+grown*3)*power,6,{life:.42+(grown>=1?.1:0),speed:480,width:13,flame:true,burn:grown>=2?2.1:1.4});
+  if(w.id==='n')projectile(s,w,a,95*power,1,{rocket:true,homing:true,speed:470,blast:102,fire:true});emit(s,'whoosh');
+ }else if(w.id==='r'){
   const count=1+(grown>=2?1:0)+(w.evolved?1:0);for(let i=0;i<count;i++)projectile(s,w,a+(i-(count-1)/2)*.12,(58+grown*15)*(w.evolved?1.45:1)*power,1,{rocket:true,speed:390,blast:68+(grown>=1?22:0)+(w.evolved?20:0),fire:w.mods.includes('r-incendiary')});emit(s,'throw');
  }else{
   const count=(w.id==='p'?(grown>=2?2:1):grown>=1?2:1)+(w.evolved?(w.id==='p'?3:1):0)+(over&&s.hero==='fio'?1:0)+Math.min(1,s.boosts.projectile);
@@ -94,14 +101,22 @@ function damage(s,e,amount,tags,source='bullet',angle=0){
   if(s.hero==='marco'){if(p.focusId===e.id)p.focus=Math.min(3,p.focus+.14);else{p.focusId=e.id;p.focus=.3;}p.focusTime=2;amount*=1+p.focus*.12;}
   amount*=source==='blast'?.55:.28;
   if(s.hero==='marco'&&tags.includes('p'))amount*=1.8;
-  if(b.mode==='recover')amount*=1.4;
+  if(b.mode==='recover'||b.mode==='expose')amount*=1.4;
+  if(b.burn>0&&s.weapons.some(w=>w?.mods.includes('f-catalyst'))&&(source==='blast'||tags.includes('s')))amount*=1.35;
+  if(b.exposed>0&&source==='bullet'&&tags.some(t=>['p','h','s'].includes(t)))amount*=1.25;
   if(e.type==='part'){
    e.part.hp-=amount;
-   if(e.part.hp<=0){s.stats.armorBreaks++;fx(s,'explosion',e.x,e.y,{r:100,life:.65});emit(s,'crowd-break');s.shake=6;}
-  }else{const broken=b.parts.filter(part=>part.hp<=0).length;amount*=broken===0?.35:broken===1?.7:1.1;b.hp-=amount;if(b.hp<=0)s.pendingWin=true;}
+   if(e.part.hp<=0){s.stats.armorBreaks++;if(s.front===2&&b.parts.every(part=>part.hp<=0)){b.mode='expose';b.timer=3.6;b.coreOpen=3.6;emit(s,'boss-warning');}fx(s,'explosion',e.x,e.y,{r:100,life:.65});emit(s,'crowd-break');s.shake=6;}
+  }else{const broken=b.parts.filter(part=>part.hp<=0).length;
+   if(s.front===0){const d=dist(p,b)||1,rear=((p.x-b.x)*Math.cos(b.angle)+(p.y-b.y)*Math.sin(b.angle))/d<-.35;amount*=b.mode==='recover'?(rear?2.8:.65):.12;}
+   else if(s.front===1)amount*=broken===2?1.35:broken===1?.4:.08;
+   else amount*=b.coreOpen>0||b.mode==='expose'?2:0;
+   b.hp-=amount;if(b.hp<=0)s.pendingWin=true;}
   if(s.numbers.length<30)s.numbers.push({x:e.x,y:e.y-65,n:Math.round(amount),age:0,life:.55});return;
  }
  if(e.dead)return;
+ if(e.burn>0&&s.weapons.some(w=>w?.mods.includes('f-catalyst'))&&(source==='blast'||tags.includes('s')))amount*=1.35;
+ if(e.exposed>0&&source==='bullet'&&tags.some(t=>['p','h','s'].includes(t)))amount*=1.25;
  if(e.type==='shield'&&source==='bullet'){const face=Math.atan2(p.y-e.y,p.x-e.x);if(Math.cos(face-angle-Math.PI)>.65)amount*=.45;}
  e.hp-=amount;e.hurt=.12;const push=source==='blast'?10:3;e.x+=Math.cos(angle)*push;e.y+=Math.sin(angle)*push;
  if(e.hp>0){emit(s,'wood-impact');return;}
@@ -122,7 +137,7 @@ function damage(s,e,amount,tags,source='bullet',angle=0){
 }
 function blast(s,x,y,r,amount,tags,fire=false){
  fx(s,'explosion',x,y,{r,life:.5});emit(s,'power-kill');s.shake=Math.max(s.shake,3);
- for(const e of targets(s))if(dist(e,{x,y})<r+e.r)damage(s,e,amount,tags,'blast',Math.atan2(e.y-y,e.x-x));
+ for(const e of targets(s))if(dist(e,{x,y})<r+e.r){damage(s,e,amount,tags,'blast',Math.atan2(e.y-y,e.x-x));if(tags.includes('r')&&s.weapons.some(w=>w?.mods.includes('r-conductor'))){const marked=['part','core'].includes(e.type)?s.boss:e;marked.exposed=2.5;}}
  if(fire&&s.zones.length<20)s.zones.push({x,y,r:r*.7,damage:amount*.18,tags,life:2.5,tick:.2});
 }
 function hurtPlayer(s,amount,x,y){
@@ -135,28 +150,29 @@ function emitEnemyShot(s,x,y,a,speed=190){if(s.enemyShots.length>=100)return;s.e
 function hazard(s,x,y,r=52,delay=.9){if(s.hazards.length<20)s.hazards.push({x,y,r,timer:delay,life:delay+.2,hit:false});}
 function siteChoices(s,site){
  if(site.kind==='battery')return[{id:'sabotage:silence',kind:'sabotage',key:'silence',title:'포격 통신 교란',label:'보스 공략 지원',desc:'이번 전선 보스의 포격을 한 발로 줄입니다. 지금 무장을 유지합니다.'},{id:'sabotage:plunder',kind:'sabotage',key:'plunder',title:'시험 탄약 회수',label:'완성 화력 지원',desc:'주무기 숙련 +1. 이미 3단계면 피해 +12% · HP +20. 보스 포격은 유지됩니다.'}];
- const slots=s.weapons,primary=slots[0],candidates=['p','h','r'].filter(id=>!slots.some(w=>w?.id===id||w?.id==='u'&&['h','r'].includes(id)));const newGun=candidates.length?pick(s,candidates):null;
+ const slots=s.weapons,primary=slots[0],all=BASE_WEAPONS.filter(id=>!slots.some(w=>acceptsMod(w,id))),partner=Object.values(UNIONS).find(u=>u.parts.includes(primary.id))?.parts.find(id=>id!==primary.id),pool=[...all];
+ const candidates=[];if(all.includes(partner)){candidates.push(partner);pool.splice(pool.indexOf(partner),1);}while(candidates.length<2&&pool.length){const id=pick(s,pool);pool.splice(pool.indexOf(id),1);candidates.push(id);}const newGun=slots.some(w=>!w)?candidates[0]:(all.length?pick(s,all):null);
  const cards=[];
- if(site.id==='convoy'&&s.weapons.some(w=>w?.id==='h'&&w.rank===3)&&s.weapons.some(w=>w?.id==='r'&&w.rank===3)&&s.cores>0)cards.push(unionCard());
- if(primary.id==='u')cards.push(utilityCard('power'));else if(primary.rank<3)cards.push(upgradeCard(primary,0));else if(!primary.evolved&&s.cores>0)cards.push(evolveCard(primary,0));else cards.push(utilityCard('power'));
+ if(s.cores>0){const recipe=readyUnion(s);if(recipe)cards.push(unionCard(recipe));}
+ if(cards.some(c=>c.kind==='union')){}else if(UNIONS[primary.id])cards.push(utilityCard('power'));else if(primary.rank<3)cards.push(upgradeCard(primary,0));else if(!primary.evolved&&s.cores>0)cards.push(evolveCard(primary,0));else cards.push(utilityCard('power'));
  const empty=slots.findIndex(w=>!w);
  if(empty>=0)for(const id of candidates)cards.push({id:`weapon:${id}:${empty}`,kind:'weapon',weapon:id,slot:empty,title:`${WEAPONS[id].name} 확보`,label:'새 지원 무기',desc:WEAPONS[id].desc});
- else if(newGun)for(let i=0;i<2;i++)cards.push({id:`weapon:${newGun}:${i}`,kind:'weapon',weapon:newGun,slot:i,title:`${WEAPONS[newGun].name} 장착`,label:`${i?'지원':'주'}무기 교체`,desc:`${WEAPONS[slots[i].id].name} ${slots[i].rank}단계와 해당 총 개조를 교체합니다.`});
- if(site.kind!=='supply')cards.push({id:'resupply',kind:'resupply',title:'전투 정비',label:'체력 +35 · 강화 탄창',desc:'지금 총을 유지하고 회복합니다. 피오는 강화 사격도 이어집니다.'});
+ else if(newGun)cards.push({id:`offer:${newGun}`,kind:'weapon-offer',weapon:newGun,title:`${WEAPONS[newGun].name} 확보`,label:'무장 교체 · 위치 선택',desc:WEAPONS[newGun].desc+' · 다음 선택에서 교체할 슬롯을 고릅니다.'});
+ if(empty<0||site.kind!=='supply')cards.push({id:'resupply',kind:'resupply',title:'현재 무장 정비',label:'무장 유지 · 체력 +35',desc:'총을 바꾸지 않고 회복·강화 탄창을 보급합니다.'});
  return cards.slice(0,3);
 }
-const unionCard=()=>({id:'union',kind:'union',title:WEAPONS.u.name,label:'H + R 최종 합체 · 핵심 1',desc:'두 무기를 한 칸으로. 관통 사격의 적중이 유도 로켓을 발사합니다.'});
+const readyUnion=s=>Object.keys(UNIONS).find(id=>UNIONS[id].parts.every(part=>s.weapons.some(w=>w?.id===part&&w.rank===3)));
+const unionCard=(id='u')=>({id:id==='u'?'union':`union:${id}`,kind:'union',recipe:id,title:WEAPONS[id].name,label:`${WEAPONS[id].short} 최종 합체 · 핵심 1`,desc:UNIONS[id].desc+' · 두 무기를 한 칸으로, 연구 개조 유지.'});
 const upgradeCard=(w,slot)=>({id:`rank:${slot}`,kind:'rank',slot,title:`${WEAPONS[w.id].name} ${w.rank+1}단계`,label:'무기 숙련',desc:WEAPONS[w.id].ranks[w.rank]});
 const evolveCard=(w,slot)=>({id:`evolve:${slot}`,kind:'evolve',slot,title:WEAPONS[w.id].evolution,label:'무기 진화 · 핵심 1',desc:'탄 수·관통·폭발이 크게 강화됩니다. 지금 장비의 투자를 유지합니다.'});
 function utilityCard(key){const map={power:['화력 집중','모든 무기 피해 +12%'],vitality:['야전 응급처치','이번 판 최대 HP +10 · 체력 +25'],magnet:['전장 회수','경험치 회수 반경 +25%'],tempo:['속사 기동','모든 무기 공격 간격 −7%'],projectile:['추가 탄환','사격 무기 탄 수 +1']};return{id:`utility:${key}`,kind:'utility',key,title:map[key][0],label:'전술 보조',desc:map[key][1]};}
 export function availableUpgrades(s){
- const cards=[];const h=s.weapons.find(w=>w?.id==='h'),r=s.weapons.find(w=>w?.id==='r');
- if(h?.rank===3&&r?.rank===3&&s.cores>0)cards.push(unionCard());
- s.weapons.forEach((w,slot)=>{if(w&&w.id!=='u'&&w.rank===3&&!w.evolved&&s.cores>0)cards.push(evolveCard(w,slot));});
+ const cards=[],recipe=readyUnion(s);if(recipe&&s.cores>0)cards.push(unionCard(recipe));
+ s.weapons.forEach((w,slot)=>{if(w&&!UNIONS[w.id]&&w.rank===3&&!w.evolved&&s.cores>0)cards.push(evolveCard(w,slot));});
  const mods=[];
- for(const id of s.snapshot.researched){const def=RESEARCH[id],slot=s.weapons.findIndex(w=>(w?.id===def.weapon||w?.id==='u'&&['h','r'].includes(def.weapon))&&w.rank>=1&&!w.mods.includes(id));if(slot>=0)mods.push({id:`mod:${id}`,kind:'mod',mod:id,slot,title:def.name,label:'연구한 개조',desc:def.desc,fresh:s.snapshot.freshMods.includes(id)&&!s.researchPresented.includes(id)});}
+ for(const id of s.snapshot.researched){const def=RESEARCH[id],slot=s.weapons.findIndex(w=>acceptsMod(w,def.weapon)&&w.rank>=1&&!w.mods.includes(id));if(slot>=0)mods.push({id:`mod:${id}`,kind:'mod',mod:id,slot,title:def.name,label:'연구한 개조',desc:def.desc,fresh:s.snapshot.freshMods.includes(id)&&!s.researchPresented.includes(id)});}
  const fresh=mods.find(c=>c.fresh);if(fresh)cards.unshift(fresh);
- const ranked=s.weapons.map((w,i)=>w&&w.id!=='u'&&w.rank<3?upgradeCard(w,i):null).filter(Boolean);if(ranked.length)cards.push(pick(s,ranked));
+ const ranked=s.weapons.map((w,i)=>w&&!UNIONS[w.id]&&w.rank<3?upgradeCard(w,i):null).filter(Boolean);if(ranked.length)cards.push(pick(s,ranked));
  if(mods.length)cards.push(pick(s,mods));
  const utilities=['power','vitality','magnet','tempo','projectile'].filter(k=>(s.boosts[k]||0)<(k==='projectile'?1:3));
  while(cards.length<6&&utilities.length){const key=pick(s,utilities);utilities.splice(utilities.indexOf(key),1);cards.push(utilityCard(key));}
@@ -169,24 +185,25 @@ function openLevel(s){if(s.pendingLevels<=0||s.phase!=='playing')return;s.pendin
 export function rerollMission(s){if(s.phase!=='choice'||s.choiceType!=='level'||s.rerolls<=0)return false;s.rerolls--;s.choices=availableUpgrades(s);emit(s,'choose');return true;}
 export function chooseMission(s,id){
  if(s.phase!=='choice')return false;const c=s.choices.find(c=>c.id===id);if(!c)return false;
+ if(c.kind==='weapon-offer'){if(!WEAPONS[c.weapon])return false;s.choiceType='replace';s.choiceSite=`${WEAPONS[c.weapon].name} · 교체 위치`;s.choices=s.weapons.map((w,slot)=>({id:`weapon:${c.weapon}:${slot}`,kind:'weapon',weapon:c.weapon,slot,title:`${slot===0?'주무기':'지원무기'} 교체`,label:`${WEAPONS[w.id].short} → ${WEAPONS[c.weapon].short}`,desc:`${WEAPONS[w.id].name} ${w.rank}단계와 개조를 교체합니다.`}));s.choices.push({id:'keep',kind:'keep',title:'현재 무장 유지',label:'교체 취소',desc:'총과 개조를 그대로 유지하고 전투로 돌아갑니다.'});return true;}
  if(c.kind==='rank'){const w=s.weapons[c.slot];if(!w||w.rank>=3)return false;w.rank++;if(w.id==='p'&&w.rank===3)s.stats.pMastery=true;}
  else if(c.kind==='weapon')s.weapons[c.slot]=weapon(c.weapon);
  else if(c.kind==='mod'){const w=s.weapons[c.slot];if(!w||w.mods.includes(c.mod))return false;w.mods.push(c.mod);}
  else if(c.kind==='evolve'){const w=s.weapons[c.slot];if(!w||w.rank<3||w.evolved||s.cores<=0)return false;s.cores--;w.evolved=true;if(!s.stats.evolved.includes(w.id))s.stats.evolved.push(w.id);s.surge+=60;blast(s,s.player.x,s.player.y,190,160,[w.id]);s.player.hp=Math.min(s.player.maxHp,s.player.hp+25);emit(s,'forge-evolve');}
  else if(c.kind==='union'){
-  if(s.cores<=0||!s.weapons.some(w=>w?.id==='h'&&w.rank===3)||!s.weapons.some(w=>w?.id==='r'&&w.rank===3))return false;
-  s.cores--;const mods=s.weapons.flatMap(w=>w?.mods||[]);s.weapons=[{...weapon('u'),rank:3,evolved:true,mods},null];s.stats.union=true;s.surge+=100;blast(s,s.player.x,s.player.y,230,210,['h','r']);emit(s,'forge-union');
+  const recipe=c.recipe||'u';if(s.cores<=0||!UNIONS[recipe]||!UNIONS[recipe].parts.every(part=>s.weapons.some(w=>w?.id===part&&w.rank===3)))return false;
+  s.cores--;const mods=[...new Set(s.weapons.flatMap(w=>w?.mods||[]))];s.weapons=[{...weapon(recipe),rank:3,evolved:true,mods},null];s.stats.union=true;s.stats.unionIds.push(recipe);s.surge+=100;blast(s,s.player.x,s.player.y,230,210,weaponTags(recipe));emit(s,'forge-union');
  }else if(c.kind==='tactic'){
   if(!TACTICS[c.key]||s.tactics.includes(c.key))return false;s.tactics.push(c.key);s.stats.supplyPicks.push(c.key);s.cores++;
-  if(c.key==='assault'){const w=s.weapons[0];if(w.id!=='u'&&w.rank<3)w.rank++;if(w.id==='p'&&w.rank===3)s.stats.pMastery=true;}
-  if(c.key==='fusion')for(const w of s.weapons)if(w&&['h','r'].includes(w.id)&&w.rank<3)w.rank++;
+  if(c.key==='assault'){const w=s.weapons[0];if(!UNIONS[w.id]&&w.rank<3)w.rank++;if(w.id==='p'&&w.rank===3)s.stats.pMastery=true;}
+  if(c.key==='fusion')for(const w of s.weapons)if(w&&BASE_WEAPONS.includes(w.id)&&w.rank<3)w.rank++;
   if(c.key==='armor'){s.armorVoucher=true;if(s.player.slug)s.player.slugHp=160;}
   if(c.key==='barrage')s.barrageAt=Math.floor(s.stats.kills/35);
   if(c.key==='repair'){s.player.maxHp+=20;s.player.hp=s.player.maxHp;}
-  if(c.key==='requisition'){const w=s.weapons.find(w=>w&&s.snapshot.researched.some(id=>(RESEARCH[id].weapon===w.id||w.id==='u'&&['h','r'].includes(RESEARCH[id].weapon))&&!w.mods.includes(id)));if(w){const id=s.snapshot.researched.find(id=>(RESEARCH[id].weapon===w.id||w.id==='u'&&['h','r'].includes(RESEARCH[id].weapon))&&!w.mods.includes(id));w.mods.push(id);s.researchPresented.push(id);}else if(s.weapons[0].id!=='u'&&s.weapons[0].rank<3)s.weapons[0].rank++;else s.boosts.power++;}
+  if(c.key==='requisition'){const w=s.weapons.find(w=>w&&s.snapshot.researched.some(id=>acceptsMod(w,RESEARCH[id].weapon)&&!w.mods.includes(id)));if(w){const id=s.snapshot.researched.find(id=>acceptsMod(w,RESEARCH[id].weapon)&&!w.mods.includes(id));w.mods.push(id);s.researchPresented.push(id);}else if(!UNIONS[s.weapons[0].id]&&s.weapons[0].rank<3)s.weapons[0].rank++;else s.boosts.power++;}
   advanceFront(s);
  }else if(c.kind==='sabotage'){
-  if(!['silence','plunder'].includes(c.key))return false;if(c.key==='silence')s.boss.suppressed=true;else{const w=s.weapons[0];if(w.id!=='u'&&w.rank<3)w.rank++;else s.boosts.power++;s.player.hp=Math.min(s.player.maxHp,s.player.hp+20);}s.stats.supplyPicks.push(c.key);
+  if(!['silence','plunder'].includes(c.key))return false;if(c.key==='silence')s.boss.suppressed=true;else{const w=s.weapons[0];if(!UNIONS[w.id]&&w.rank<3)w.rank++;else s.boosts.power++;s.player.hp=Math.min(s.player.maxHp,s.player.hp+20);}s.stats.supplyPicks.push(c.key);
  }else if(c.kind==='utility'){
   if(c.key==='vitality'){s.boosts.vitality=(s.boosts.vitality||0)+1;s.player.maxHp+=10;s.player.hp=Math.min(s.player.maxHp,s.player.hp+25);}else s.boosts[c.key]++;
  }else if(c.kind==='resupply'){s.player.hp=Math.min(s.player.maxHp,s.player.hp+35);s.player.charge=100;s.player.overdrive=Math.max(3,s.player.overdrive);}
@@ -250,19 +267,28 @@ function updateSites(s){
   }
  }
 }
+function lane(s,x,y,x2,y2,width=62,delay=1.1){if(s.hazards.length<20)s.hazards.push({shape:'beam',x,y,x2,y2,width,r:width,timer:delay,life:delay+.25,hit:false});}
+export function bossStatus(s){const b=s.boss;if(s.front===0)return b.mode==='windup'?'돌진 예고! 옆으로 회피':b.mode==='charge'?'돌진 중 · 경로를 벗어나세요':b.mode==='recover'?'후면 엔진 노출 · 뒤에서 피해 ×2.8':'전면 장갑 · 돌진을 유도하세요';if(s.front===1)return b.parts.every(p=>p.hp<=0)?'포대 정지 · 본체 집중 사격':`안전 통로 ${b.safeX<0?'왼쪽':b.safeX>0?'오른쪽':'중앙'} · 남은 포대부터 파괴`;return b.coreOpen>0?'코어 노출! 완성 화력을 집중하세요':b.mode==='sweep-windup'?'레이저 예고 · 옆으로 이동':b.mode==='sweep'?'회전 레이저 · 빔을 가로질러 회피':'코어 잠김 · 포탑과 궤도부터 파괴';}
 function updateBoss(s,dt){
- const b=s.boss,p=s.player;if(!b.active)return;b.timer-=dt;
- if(b.mode==='charge'){b.x+=Math.cos(b.angle)*420*dt;b.y+=Math.sin(b.angle)*420*dt;if(b.timer<=0){b.mode='recover';b.timer=2.3;fx(s,'text',b.x,b.y-100,{text:'빈틈! 피해 ×1.4',life:1.2});}}
- else if(b.mode==='windup'){if(b.timer<=0){b.mode='charge';b.timer=.62;emit(s,'boss-charge');}}
- else if(b.mode==='recover'){if(b.timer<=0){b.mode='walk';b.timer=1.6;}}
- else if(b.timer<=0){
-  if((s.front===0||b.hp<b.maxHp*.55)&&rand(s)<.55){b.mode='windup';b.timer=.9;b.angle=Math.atan2(p.y-b.y,p.x-b.x);emit(s,'boss-warning');}
-  else{const battery=b.parts[0].hp>0,count=battery&&!b.suppressed?(s.front===1?6:3):1;for(let i=0;i<count;i++)hazard(s,p.x+(i-1)*75,p.y+(i%2)*45,54,1.05);
-   const a=Math.atan2(p.y-b.y,p.x-b.x);for(let i=-2;i<=2;i++)emitEnemyShot(s,b.x,b.y+25,a+i*.23,160);
-   b.mode='recover';b.timer=s.front===1?2.8:2.2;emit(s,'boss-warning');}
+ const b=s.boss,p=s.player;if(!b.active)return;b.timer-=dt;b.coreOpen=Math.max(0,b.coreOpen-dt);b.exposed=Math.max(0,(b.exposed||0)-dt);
+ if(b.burn>0){b.burn-=dt;b.burnTick=(b.burnTick||0)-dt;if(b.burnTick<=0){b.burnTick=.3;damage(s,{id:'core',type:'core',x:b.x,y:b.y,r:51},b.burnDamage||9,b.burnTags||['f'],'fire');}}
+ if(s.front===0){
+  if(b.mode==='charge'){b.x+=Math.cos(b.angle)*470*dt;b.y+=Math.sin(b.angle)*470*dt;if(b.timer<=0){b.mode='recover';b.timer=3;fx(s,'text',b.x,b.y-105,{text:'후면 엔진 노출!',life:1.6});}}
+  else if(b.mode==='windup'){if(b.timer<=0){b.mode='charge';b.timer=.8;emit(s,'boss-charge');}}
+  else if(b.timer<=0){if(b.mode==='recover'){b.mode='walk';b.timer=1;}else{b.mode='windup';b.timer=1;b.angle=Math.atan2(p.y-b.y,p.x-b.x);emit(s,'boss-warning');}}
+ }else if(s.front===1){
+  if(b.timer<=0){b.cycle++;b.safeX=[-210,0,210][b.cycle%3];const active=b.parts.map(p=>p.hp>0);let emitted=0;for(const n of [-2,-1,0,1,2]){const x=n*210;if(Math.abs(x-b.safeX)<100||n<0&&!active[0]||n>0&&!active[1]||b.suppressed&&emitted>=1)continue;emitted++;lane(s,x,b.y-170,x,b.y+440,58,1.15);}for(const part of b.parts)if(part.hp>0){const a=Math.atan2(p.y-(b.y+part.oy),p.x-(b.x+part.ox));for(const offset of [-.17,.17])emitEnemyShot(s,b.x+part.ox,b.y+part.oy,a+offset,150);}b.mode='recover';b.timer=3.4;emit(s,'boss-warning');}
+ }else{
+  const broken=b.parts.every(part=>part.hp<=0);
+  if(b.mode==='sweep'){b.angle+=dt*1.25;if(segmentDistance(p.x,p.y,b.x,b.y,b.x+Math.cos(b.angle)*740,b.y+Math.sin(b.angle)*740)<(p.slug?45:29))hurtPlayer(s,13,b.x,b.y);}
+  if(b.timer<=0){
+   if(broken){if(b.mode==='expose'){b.mode='reload';b.timer=1.4;for(const dx of (b.suppressed?[0]:[-100,0,100]))hazard(s,p.x+dx,p.y,45,1);}else{b.mode='expose';b.timer=3.6;b.coreOpen=3.6;}}
+   else if(b.mode==='sweep-windup'){b.mode='sweep';b.timer=1.4;emit(s,'boss-charge');}
+   else if(b.mode==='sweep'){b.mode='recover';b.timer=1.8;}
+   else{b.cycle++;if(b.cycle%2===0&&b.parts[0].hp>0){b.mode='sweep-windup';b.timer=1.05;b.angle=Math.atan2(p.y-b.y,p.x-b.x)-.65;}else{const a=Math.atan2(p.y-b.y,p.x-b.x);for(let i=-4;i<=4;i++)emitEnemyShot(s,b.x,b.y,a+i*.19,180);if(b.parts[1].hp>0)for(const dx of (b.suppressed?[0]:[-90,0,90]))hazard(s,p.x+dx,p.y,50,1.1);b.mode='recover';b.timer=2.1;}emit(s,'boss-warning');}
+  }
  }
- b.x=clamp(b.x,-600,600);b.y=clamp(b.y,BOSS_POSITION.y-210,BOSS_POSITION.y+210);
- if(dist(p,b)<b.r+15)hurtPlayer(s,18,b.x,b.y);
+ b.x=clamp(b.x,-600,600);b.y=clamp(b.y,BOSS_POSITION.y-210,BOSS_POSITION.y+210);if(dist(p,b)<b.r+15)hurtPlayer(s,18,b.x,b.y);
 }
 export function stepMission(s,dt,input={x:0,y:0}){
  if(s.phase!=='playing')return;dt=clamp(dt,0,.05);if(!dt)return;
@@ -286,7 +312,7 @@ export function stepMission(s,dt,input={x:0,y:0}){
  if(s.surge>0&&s.enemies.filter(e=>!e.dead).length<150){const amount=Math.min(10,s.surge);s.surge-=amount;for(let i=0;i<amount;i++){const a=rand(s)*TAU;spawn(s,'rifle',p.x+Math.cos(a)*330,p.y+Math.sin(a)*330);}}
  s.waveClock-=dt;if(s.waveClock<=0){s.waveClock=22;const a=Math.atan2(p.fy,p.fx)+(rand(s)>.5?.7:-.7);fx(s,'reinforce',p.x+Math.cos(a)*250,p.y+Math.sin(a)*250,{life:1.5,pending:true,angle:a});emit(s,'horde');}
  for(const e of s.enemies){
-  if(e.dead){e.deathLife-=dt;continue;}e.age+=dt;e.hurt=Math.max(0,e.hurt-dt);e.slow=Math.max(0,e.slow-dt);e.timer-=dt;
+  if(e.dead){e.deathLife-=dt;continue;}e.age+=dt;e.hurt=Math.max(0,e.hurt-dt);e.slow=Math.max(0,e.slow-dt);e.exposed=Math.max(0,(e.exposed||0)-dt);if(e.burn>0){e.burn-=dt;e.burnTick=(e.burnTick||0)-dt;if(e.burnTick<=0){e.burnTick=.3;damage(s,e,e.burnDamage||9,e.burnTags||['f'],'fire');if(e.dead)continue;}}e.timer-=dt;
   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1;e.aim=Math.atan2(dy,dx);
   let speed=e.speed*(e.slow>0?.45:1);if(e.type==='mortar'&&d<230)speed=0;
   if(e.mode==='windup'){speed=0;if(e.timer<=0){hazard(s,p.x,p.y,43,1);e.mode='walk';e.timer=4.5;}}
@@ -307,7 +333,9 @@ export function stepMission(s,dt,input={x:0,y:0}){
    if(shot.hits.includes(e.id)||segmentDistance(e.x,e.y,ox,oy,shot.x,shot.y)>e.r+(shot.width||4))continue;
    shot.hits.push(e.id);
    if(shot.rocket){blast(s,shot.x,shot.y,shot.blast,shot.damage,shot.tags,shot.fire);shot.life=0;break;}
-   damage(s,e,shot.damage*(shot.skill&&['part','core'].includes(e.type)?.65:1),shot.tags,'bullet',shot.angle);fx(s,'hit',e.x,e.y-23,{life:.15,angle:shot.angle});
+   if(shot.flame){const burning=['part','core'].includes(e.type)?s.boss:e;burning.burn=shot.burn;burning.burnDamage=shot.damage*.45;burning.burnTags=shot.tags;}
+   const close=shot.pellet&&dist(s.player,e)<240;let impact=shot.damage*(close?1.6:1);if(shot.shred&&close&&e.type==='part')impact*=1.25;
+   damage(s,e,impact*(shot.skill&&['part','core'].includes(e.type)?.65:1),shot.tags,'bullet',shot.angle);fx(s,'hit',e.x,e.y-23,{life:.15,angle:shot.angle});
    if(shot.split&&!shot.fragment){for(const side of [-1,1])if(s.shots.length<280)s.shots.push({...shot,id:++s.idCounter,x:e.x,y:e.y,vx:Math.cos(shot.angle+side*.65)*640,vy:Math.sin(shot.angle+side*.65)*640,angle:shot.angle+side*.65,damage:shot.damage*.5,pierce:2,hits:[e.id],life:.35,split:false,fragment:true});}
    if(shot.ricochet&&!shot.bounced){const other=targets(s).filter(o=>!shot.hits.includes(o.id)&&dist(o,e)<230).sort((a,b)=>dist(a,e)-dist(b,e))[0];if(other){shot.angle=Math.atan2(other.y-e.y,other.x-e.x);shot.vx=Math.cos(shot.angle)*800;shot.vy=Math.sin(shot.angle)*800;shot.pierce++;shot.bounced=true;}}
    if(shot.tags.includes('h')&&!shot.fragment&&s.weapons.some(w=>w?.mods.includes('h-capacitor'))){s.capacitor=(s.capacitor||0)+1;if(s.capacitor>=18){s.capacitor=0;p.charge=Math.min(100,p.charge+12);blast(s,e.x,e.y,100,70,['h']);}}
@@ -316,8 +344,8 @@ export function stepMission(s,dt,input={x:0,y:0}){
   }
  }
  for(const shot of s.enemyShots){const ox=shot.x,oy=shot.y;shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;shot.life-=dt;if(segmentDistance(p.x,p.y,ox,oy,shot.x,shot.y)<(p.slug?28:13)){hurtPlayer(s,7,shot.x-shot.vx*.1,shot.y-shot.vy*.1);shot.life=0;}}
- for(const h of s.hazards){h.timer-=dt;h.life-=dt;if(!h.hit&&h.timer<=0){h.hit=true;fx(s,'enemy-explosion',h.x,h.y,{r:h.r,life:.35});if(dist(p,h)<h.r+(p.slug?22:9))hurtPlayer(s,12,h.x,h.y);}}
- for(const z of s.zones){z.life-=dt;z.tick-=dt;if(z.tick<=0){z.tick=.3;for(const e of targets(s))if(dist(z,e)<z.r+e.r)damage(s,e,z.damage,z.tags,'fire');}}
+ for(const h of s.hazards){h.timer-=dt;h.life-=dt;if(!h.hit&&h.timer<=0){h.hit=true;fx(s,'enemy-explosion',h.x,h.y,{r:h.r,life:.35});if((h.shape==='beam'?segmentDistance(p.x,p.y,h.x,h.y,h.x2,h.y2)<h.width+(p.slug?22:9):dist(p,h)<h.r+(p.slug?22:9)))hurtPlayer(s,12,h.x,h.y);}}
+ for(const z of s.zones){z.life-=dt;z.tick-=dt;if(z.tick<=0){z.tick=.3;for(const e of targets(s))if(dist(z,e)<z.r+e.r){const burning=['part','core'].includes(e.type)?s.boss:e;burning.burn=Math.max(burning.burn||0,.6);burning.burnTags=z.tags;burning.burnDamage=z.damage*.3;damage(s,e,z.damage,z.tags,'fire');}}}
  for(const g of s.gems){g.age+=dt;const d=dist(g,p),range=135*(1+(s.snapshot.training.pickup||0)*.1+s.boosts.magnet*.25);if(d<range||g.age>8){const step=Math.min(d,(360+g.age*12)*dt);g.x+=(p.x-g.x)/(d||1)*step;g.y+=(p.y-g.y)/(d||1)*step;}if(d<25){gainXp(s,g.value);g.done=true;if(g.ammo){p.charge=100;if(s.hero==='fio')p.overdrive=Math.max(p.overdrive,3);}emit(s,'xp');}}
  for(const f of s.effects){f.age+=dt;if(f.pending&&f.type==='reinforce'&&f.age>=1.25){f.pending=false;for(let i=0;i<12;i++)spawn(s,i%5?'rifle':'shield',f.x+Math.cos(f.angle+Math.PI/2)*(i-5.5)*22,f.y+Math.sin(f.angle+Math.PI/2)*(i-5.5)*22);}}
  for(const n of s.numbers)n.age+=dt;

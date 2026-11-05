@@ -60,8 +60,8 @@ test('supply follows clearing actual guards, grants rescue once, and gives a mea
 test('ordinary levels guarantee an owned weapon investment and rerolls spend per-run charges only',()=>{
  const s=begun().run;s.phase='choice';s.choiceType='level';s.choices=availableUpgrades(s);assert.ok(s.choices.some(c=>c.kind==='rank'));assert.equal(chooseMission(s,'invalid'),false);assert.ok(rerollMission(s));assert.equal(s.rerolls,0);assert.equal(rerollMission(s),false);
 });
-test('an empty support slot always offers both missing guns, so Fio can deliberately build H/R',()=>{
- for(const seed of [17,71]){const s=begun('fio',seed).run,node=s.sites[0];s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);for(const e of s.enemies)if(e.siteId===node.id){e.dead=true;e.deathLife=0;}stepMission(s,dt);assert.deepEqual(s.choices.filter(c=>c.kind==='weapon').map(c=>c.weapon),['p','r']);assert.ok(chooseMission(s,'weapon:r:1'));assert.equal(s.weapons[1].id,'r');}
+test('an empty support slot offers its fusion partner and a seeded alternative',()=>{
+ for(const seed of [17,71]){const s=begun('fio',seed).run,node=s.sites[0];s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);for(const e of s.enemies)if(e.siteId===node.id){e.dead=true;e.deathLife=0;}stepMission(s,dt);assert.equal(s.choices.filter(c=>c.kind==='weapon').length,2);assert.ok(s.choices.some(c=>c.weapon==='r'));assert.ok(chooseMission(s,'weapon:r:1'));assert.equal(s.weapons[1].id,'r');}
 });
 test('base evolution and H/R union need no lobby research and keep prior modifications',()=>{
  const s=begun('fio').run;s.weapons=[{id:'h',rank:3,evolved:true,mods:['h-ricochet'],cd:1},{id:'r',rank:3,evolved:false,mods:['r-incendiary'],cd:1}];s.cores=1;s.phase='choice';s.choiceType='level';s.choices=availableUpgrades(s);assert.ok(s.choices.some(c=>c.kind==='union'));assert.ok(chooseMission(s,'union'));assert.equal(s.weapons[0].id,'u');assert.equal(s.weapons[1],null);assert.equal(s.cores,0);assert.deepEqual(s.weapons[0].mods,['h-ricochet','r-incendiary']);
@@ -77,7 +77,7 @@ test('P split cannot recursively split; arrays remain bounded during dense colli
  assert.ok(s.shots.length<=280);assert.ok(s.shots.filter(o=>o.fragment).every(o=>!o.split));assert.ok(s.effects.length<=160);
 });
 test('boss victory snapshots all same-tick kills and is terminal',()=>{
- const s=begun().run;quiet(s);s.front=2;s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode='recover';s.boss.timer=9;s.player.x=s.boss.x+110;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;
+ const s=begun().run;quiet(s);s.front=2;s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode=s.front===2?'expose':'recover';s.boss.coreOpen=s.front===2?4:0;s.boss.timer=9;s.player.x=s.boss.x+110;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;
  const template=begun().run.enemies[0];s.enemies=[{...template,id:999,x:s.boss.x+30,y:s.boss.y,hp:1,speed:0,timer:999}];step(s,.5);assert.equal(s.result.won,true);assert.deepEqual(s.result.stats,s.stats);const raw=packMission(s);step(s,5);assert.deepEqual(packMission(s),raw);
 });
 test('time passing beyond six minutes never causes an automatic loss or XP cutoff',()=>{
@@ -105,7 +105,7 @@ test('invalid saved choice cards and active result snapshots recover instead of 
  for(const cards of [[{id:'x',kind:'rank'}],[{id:'x',kind:'unknown'}],[{id:'x',kind:'utility',key:'unknown'}]]){const raw=packMission(s);raw.choices=cards;assert.throws(()=>restoreMission(raw));}
  const bad=packMission(s);bad.choiceType='unknown';assert.throws(()=>restoreMission(bad));endMission(s,'retreat');assert.throws(()=>restoreMission(packMission(s)));
 });
-function beatFront(s){quiet(s);s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode='recover';s.boss.timer=9;s.player.x=s.boss.x+150;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;step(s,1);}
+function beatFront(s){quiet(s);s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode=s.front===2?'expose':'recover';s.boss.coreOpen=s.front===2?4:0;s.boss.timer=9;s.player.x=s.boss.x+150;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;step(s,1);}
 test('two midboss rewards carry the build across fronts, only the third boss ends the mission',()=>{
  const s=begun().run;s.xp=7;beatFront(s);assert.equal(s.result,null);assert.equal(s.phase,'choice');assert.equal(s.choiceType,'tactic');assert.equal(s.stats.midbosses,1);const time=s.t,rank=s.weapons[0].rank;assert.doesNotThrow(()=>restoreMission(packMission(s)));assert.ok(chooseMission(s,'tactic:assault'));assert.equal(s.front,1);assert.equal(s.t,time);assert.equal(s.weapons[0].rank,rank);assert.equal(s.xp,7);assert.ok(s.tactics.includes('assault'));assert.ok(s.sites.some(n=>n.id==='battery'));
  beatFront(s);assert.equal(s.stats.midbosses,2);assert.ok(chooseMission(s,'tactic:barrage'));assert.equal(s.front,2);beatFront(s);assert.ok(s.result.won);assert.deepEqual(s.stats.fronts,[0,1]);assert.equal(s.frontHistory.length,2);
@@ -123,7 +123,7 @@ test('guard waves reserve capacity even when the ambient horde is at its cap',()
  const s=begun().run,template=s.enemies[0],node=s.sites.find(n=>n.id==='camp');s.enemies=Array.from({length:200},(_,i)=>({...template,id:1000+i,x:node.x+500+i,y:node.y}));s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);assert.equal(s.enemies.filter(e=>e.siteId===node.id).length,node.guards);assert.ok(s.enemies.length<=200);
 });
 test('artillery supply makes a real boss pattern choice instead of awarding a cosmetic label',()=>{
- const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');s.phase='choice';s.choiceType='supply';s.choices=[{id:'sabotage:silence',kind:'sabotage',key:'silence'}];assert.ok(chooseMission(s,'sabotage:silence'));quiet(s);s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;stepMission(s,dt);assert.equal(s.hazards.length,1);
+ const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');s.phase='choice';s.choiceType='supply';s.choices=[{id:'sabotage:silence',kind:'sabotage',key:'silence'}];assert.ok(chooseMission(s,'sabotage:silence'));quiet(s);s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;stepMission(s,dt);assert.equal(s.hazards.length,1);assert.ok(s.hazards.every(h=>h.shape==='beam'));
 });
 test('midboss and union research unlock from settled performance, and new profile fields survive reload',()=>{
  const b=begun();b.run.stats.midbosses=1;b.run.stats.union=true;b.run.stats.kills=500;endMission(b.run,'retreat');const paid=settleRun(b.profile,b.run).profile;assert.ok(researchReady(paid,'p-execution'));assert.ok(researchReady(paid,'h-capacitor'));assert.equal(parseProfile(JSON.stringify(paid)).progress.midbossMarco,1);assert.equal(parseProfile(JSON.stringify(paid)).progress.unions,1);
@@ -161,4 +161,63 @@ test('H capacitor research turns its hit threshold into real charge and splash d
 });
 test('union missiles turn toward a moving target with bounded steering rather than remaining straight rockets',()=>{
  const s=begun('fio').run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.player.invuln=99;s.weapons=[{id:'u',rank:3,evolved:true,mods:[],cd:0,shots:0,proc:5},null];s.enemies=[{...template,id:901,x:170,y:0,hp:10000,speed:0,timer:999}];step(s,.2);const missile=s.shots.find(o=>o.homing);assert.ok(missile);const before=missile.angle;s.enemies[0].y=170;stepMission(s,dt);assert.ok(missile.angle>before);assert.ok(missile.angle-before<=dt*6+.0001);
+});
+test('P/S and F/R unions consume both guns, inherit research, and restore their distinct identities',()=>{
+ for(const [recipe,parts] of [['v',['p','s']],['n',['f','r']]]){const s=begun().run;s.weapons=parts.map(id=>({id,rank:3,evolved:true,mods:id==='s'?['s-flechette']:id==='f'?['f-catalyst']:[],cd:0,shots:0}));s.cores=1;s.phase='choice';s.choiceType='level';s.choices=availableUpgrades(s);assert.ok(chooseMission(s,`union:${recipe}`));assert.equal(s.weapons[0].id,recipe);assert.equal(s.weapons[1],null);assert.deepEqual(s.stats.unionIds,[recipe]);assert.equal(restoreMission(packMission(s)).weapons[0].id,recipe);assert.ok(s.weapons[0].mods.length);}
+});
+test('seeded supplies expose new weapons and an occupied loadout can pivot to another fusion path',()=>{
+ const offered=new Set(),pivots=new Set();for(let seed=1;seed<=20;seed++){for(const full of [false,true]){const s=begun('marco',seed).run;if(full)s.weapons[1]={id:'h',rank:1,evolved:false,mods:[],cd:0,shots:0};const node=s.sites[0];s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);for(const e of s.enemies)if(e.siteId===node.id)e.dead=true;stepMission(s,dt);for(const c of s.choices)if(['weapon','weapon-offer'].includes(c.kind))(full?pivots:offered).add(c.weapon);}}
+ assert.ok(offered.has('s'));assert.ok(offered.has('f'));assert.ok(pivots.has('s'));assert.ok(pivots.has('f'));assert.ok(pivots.has('r'));
+});
+test('shotgun bursts have a short range and flamethrowers leave real persistent burns',()=>{
+ function scene(id,x){const s=begun().run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.player.invuln=99;s.weapons[0]={id,rank:0,evolved:false,mods:[],cd:0,shots:0};s.enemies=[{...template,id:777,x,y:0,hp:1000,speed:0,timer:999}];step(s,.45);return s;}
+ assert.ok(scene('s',130).enemies[0].hp<1000);assert.equal(scene('s',370).enemies[0].hp,1000);const flame=scene('f',120);assert.ok(flame.enemies[0].burn>0);assert.ok(flame.enemies[0].hp<1000);assert.ok(flame.shots.some(o=>o.flame));
+});
+test('catalyst research makes burning targets amplify the other gun rather than just renaming a flame',()=>{
+ function hp(mod){const s=begun().run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.weapons=[{id:'f',rank:1,evolved:false,mods:mod?['f-catalyst']:[],cd:99,shots:0},null];s.enemies=[{...template,id:770,x:90,y:0,hp:1000,speed:0,timer:999,burn:2,burnTick:99}];s.shots=[{id:1,x:70,y:0,vx:1000,vy:0,angle:0,weapon:'s',tags:['s'],damage:20,pierce:1,hits:[],life:1,pellet:true}];stepMission(s,.02);return s.enemies[0].hp;}
+ assert.ok(hp(true)<hp(false));
+});
+test('new S/F kill counters and fusion discoveries persist through payout and reload',()=>{
+ const b=begun();b.run.stats.weaponKills.s=160;b.run.stats.weaponKills.f=170;b.run.stats.union=true;b.run.stats.unionIds=['n'];endMission(b.run,'retreat');const p=settleRun(b.profile,b.run).profile,loaded=parseProfile(JSON.stringify(p));assert.equal(loaded.progress.weaponKills.s,160);assert.equal(loaded.progress.weaponKills.f,170);assert.deepEqual(loaded.progress.fusions,['n']);assert.ok(researchReady(loaded,'s-flechette'));assert.ok(researchReady(loaded,'f-catalyst'));assert.equal(loaded.progress.unions,0);
+});
+test('new recipe research remains compatible after fusion and ingredients are excluded from later supplies',()=>{
+ const s=begun().run;s.weapons=[{id:'n',rank:3,evolved:true,mods:[],cd:0,shots:0},null];s.snapshot.researched=['f-catalyst'];s.snapshot.freshMods=['f-catalyst'];assert.equal(availableUpgrades(s)[0].id,'mod:f-catalyst');const node=s.sites[0];s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);for(const e of s.enemies)if(e.siteId===node.id)e.dead=true;stepMission(s,dt);assert.ok(s.choices.filter(c=>c.kind==='weapon').every(c=>!['f','r'].includes(c.weapon)));
+});
+test('carrier rewards attacking the exposed rear while the final core rejects damage until it opens',()=>{
+ function loss(front,mode,rear){const s=begun().run;quiet(s);s.front=front;s.stage='boss';s.boss.active=true;s.boss.hp=10000;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode=mode;s.boss.timer=9;s.boss.coreOpen=mode==='expose'?4:0;s.boss.angle=Math.PI/2;s.player.x=s.boss.x;s.player.y=s.boss.y+(rear?-180:180);s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;step(s,.25);return 10000-s.boss.hp;}
+ assert.ok(loss(0,'recover',true)>loss(0,'recover',false)*3);assert.equal(loss(2,'walk',false),0);assert.ok(loss(2,'expose',false)>0);
+});
+test('artillery lanes preserve the advertised safe corridor and losing a side cannon removes its lanes',()=>{
+ function scene(broken){const s=begun().run;quiet(s);s.front=1;s.stage='boss';s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;if(broken)s.boss.parts[0].hp=0;s.player.invuln=99;stepMission(s,dt);return s;}
+ const both=scene(false),one=scene(true);assert.ok(both.hazards.length>one.hazards.length);assert.ok(both.hazards.every(h=>h.shape==='beam'&&Math.abs(h.x-both.boss.safeX)>h.width));
+});
+test('each boss runs a different attack state sequence without adding waiting gates to the map',()=>{
+ const seen=[];for(let front=0;front<3;front++){const s=begun().run;quiet(s);s.front=front;s.stage='boss';s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;s.player.x=450;s.player.y=s.boss.y+280;s.player.invuln=99;s.weapons[0].cd=99;const modes=new Set();for(let i=0;i<720;i++){stepMission(s,dt);modes.add(s.boss.mode);}seen.push(modes);}
+ assert.ok(seen[0].has('charge'));assert.ok(!seen[1].has('charge'));assert.ok(!seen[1].has('sweep'));assert.ok(seen[2].has('sweep-windup'));assert.ok(seen[2].has('sweep'));
+});
+test('0.13 recovery retains its extended economic contract after the ruleset changes',()=>{
+ const input={rules:'operation-0.13.0',kills:3000,midbosses:2,armorBreaks:6,outposts:6};assert.deepEqual(calculateSettlement(input),calculateSettlement({...input,rules:RULESET}));const old=createProfile();old.progress.unions=1;delete old.progress.fusions;assert.deepEqual(parseProfile(JSON.stringify(old)).progress.fusions,['u']);
+});
+test('a weapon offer lets the player choose a slot or cancel without deleting an invested gun',()=>{
+ const s=begun().run;s.weapons[0].rank=3;s.weapons[1]={id:'h',rank:2,evolved:false,mods:['h-capacitor'],cd:0,shots:0};s.phase='choice';s.choiceType='supply';s.choices=[{id:'offer:f',kind:'weapon-offer',weapon:'f'}];const before=structuredClone(s.weapons);assert.ok(chooseMission(s,'offer:f'));assert.equal(s.choiceType,'replace');assert.equal(s.choices.length,3);assert.doesNotThrow(()=>restoreMission(packMission(s)));assert.ok(chooseMission(s,'keep'));assert.deepEqual(s.weapons,before);
+ s.phase='choice';s.choices=[{id:'offer:f',kind:'weapon-offer',weapon:'f'}];chooseMission(s,'offer:f');assert.ok(chooseMission(s,'weapon:f:0'));assert.equal(s.weapons[0].id,'f');assert.deepEqual(s.weapons[1],before[1]);
+});
+test('conductor research marks a rocket target and increases the other gun damage',()=>{
+ function damageAfter(mod){const s=begun().run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.weapons=[{id:'r',rank:0,evolved:false,mods:mod?['r-conductor']:[],cd:99,shots:0},null];s.enemies=[{...template,id:790,x:90,y:0,hp:1000,speed:0,timer:999}];const shot={id:1,x:70,y:0,vx:1000,vy:0,angle:0,weapon:'r',tags:['r'],damage:1,pierce:1,hits:[],life:1,rocket:true,blast:50};s.shots=[shot];stepMission(s,.02);const before=s.enemies[0].hp;s.shots=[{...shot,id:2,weapon:'p',tags:['p'],rocket:false,damage:20,hits:[]}];stepMission(s,.02);return before-s.enemies[0].hp;}
+ assert.equal(damageAfter(false),20);assert.equal(damageAfter(true),25);
+});
+test('new fusion clear orders pay once and their discoveries survive profile reload',()=>{
+ const b=begun();b.run.stats.union=true;b.run.stats.unionIds=['v'];endMission(b.run,'victory');const one=settleRun(b.profile,b.run);assert.ok(one.profile.orders.includes('breacher-clear'));assert.ok(!one.profile.orders.includes('napalm-clear'));assert.ok(one.receipt.award.orders.some(o=>o.id==='breacher-clear'&&o.credits===180));assert.ok(parseProfile(JSON.stringify(one.profile)).progress.fusions.includes('v'));
+});
+test('incomplete boss physics and beam saves are rejected instead of resuming a frozen fight',()=>{
+ const s=begun().run;for(const key of ['timer','angle','coreOpen','cycle','maxHp']){const raw=packMission(s);delete raw.boss[key];assert.throws(()=>restoreMission(raw));}const raw=packMission(s);delete raw.boss.parts[0].ox;assert.throws(()=>restoreMission(raw));for(const field of ['r','hit']){const saved=packMission(s);saved.hazards=[{shape:'beam',x:0,y:0,x2:0,y2:300,width:60,r:60,timer:1,life:1.2,hit:false}];delete saved.hazards[0][field];assert.throws(()=>restoreMission(saved));}
+});
+test('carrier side shots do not receive the rear engine bonus',()=>{
+ function loss(side){const s=begun().run;quiet(s);s.stage='boss';s.boss.active=true;s.boss.hp=10000;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode='recover';s.boss.timer=9;s.boss.angle=Math.PI/2;s.player.x=side?180:0;s.player.y=s.boss.y+(side?0:-180);s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].cd=0;step(s,.25);return 10000-s.boss.hp;}assert.ok(loss(false)>loss(true)*3);
+});
+test('artillery core becomes progressively weaker after one and two cannon breaks',()=>{
+ function loss(broken){const s=begun().run;quiet(s);s.front=1;s.stage='boss';s.boss.active=true;s.boss.hp=10000;s.boss.parts.forEach((p,i)=>{p.hp=i<broken?0:p.maxHp;p.ox=i===0?-500:500;});s.boss.mode='recover';s.boss.timer=9;s.player.x=0;s.player.y=s.boss.y+180;s.player.invuln=99;s.weapons[0].cd=99;s.shots=[{id:1,x:0,y:s.boss.y+80,vx:0,vy:-1000,angle:-Math.PI/2,weapon:'p',tags:['p'],damage:100,pierce:1,hits:[],life:1}];step(s,.05);return 10000-s.boss.hp;}assert.ok(loss(0)<loss(1));assert.ok(loss(1)<loss(2));
+});
+test('suppression also reduces final-boss mortar salvos, not only the railway lanes',()=>{
+ function count(suppressed){const s=begun().run;quiet(s);s.front=2;s.stage='boss';s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;s.boss.suppressed=suppressed;s.player.invuln=99;stepMission(s,dt);return s.hazards.length;}assert.equal(count(false),3);assert.equal(count(true),1);
 });

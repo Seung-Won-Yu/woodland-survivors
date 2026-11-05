@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#202c29">
+<meta name="theme-color" content="#172638">
 <meta name="description" content="교두보 탈환. 마르코와 피오로 전장을 돌파하고, 크레딧을 연구에 투자해 다시 출격하는 서바이버 팬 시제품.">
 <title>교두보 탈환 · 서바이버 작전실</title>
-<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="icon" href="./mission-icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./src/mission/style.css">
+<link rel="stylesheet" href="./src/mission/arcade.css">
 </head>
 <body>
+<div id="hangar-backdrop" aria-hidden="true"></div>
 <canvas id="mission-world" aria-label="교두보 탈환 전투 화면"></canvas>
 <div class="screen-shade" aria-hidden="true"></div>
 <header id="combat-hud" hidden>
@@ -20,7 +22,7 @@
 <aside id="boss-panel" hidden><div><b id="boss-name">모덴군 지휘전차</b><span id="boss-state"></span></div><div class="boss-bar"><i id="boss-hp-fill"></i></div><small id="boss-parts"></small></aside>
 <aside id="combat-map" hidden><canvas id="tactical-map" width="136" height="112" aria-label="전술 지도"></canvas><button id="target-map">목표 선택 <span>M</span></button></aside>
 <div id="combat-objective" hidden><span>지휘전차를 파괴하라</span><b id="target-name"></b><small id="target-reward"></small></div>
-<footer id="combat-loadout" hidden><div id="combat-weapons"></div><div class="xp-bar"><i id="combat-xp"></i></div><small id="evolution-ready"></small></footer>
+<footer id="combat-loadout" hidden><div id="combat-weapons"></div><div class="xp-bar"><i id="combat-xp"></i></div><small id="evolution-ready"></small><small id="combat-build"></small></footer>
 <div id="mission-stick" hidden aria-label="드래그하여 이동"><div></div><span>이동</span></div>
 <div id="mission-actions" hidden><button id="mission-dash"><kbd>SPACE</kbd><b>회피</b><span>준비</span></button><button id="mission-skill"><kbd>E</kbd><b>전술기</b><span></span></button></div>
 <button id="mission-interact" hidden><kbd>F</kbd><b></b><span></span></button>

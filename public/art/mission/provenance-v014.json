@@ -1,0 +1,18 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-11-05",
+  "assets": [
+    {
+      "path": "public/art/mission/hangar-v014.png",
+      "prompt": "Use case: stylized-concept. Asset type: actual landscape background artwork for the lobby of a military arcade survivor game, not a UI mockup. Wide 16:9 composition. Gorgeous crisp 1990s Neo Geo inspired pixel art with hand-placed-looking chunky pixels, strong dark contours and richly shaded limited colors. An improvised coastal military hangar at dusk: heavy riveted steel ceiling, hanging amber industrial lamps, a compact silver-gray captured arcade tank under repair on the right, stacked olive ammunition crates and fuel drums around its tracks, open hangar doors beyond showing orange sunset over blue harbor cranes and distant smoke, hazard-striped floor and a few scattered cartridges. No people: the game will overlay a character separately. Leave the center-left floor relatively open and dark for text and interface overlays. A vivid orange/golden pool of light around the tank and cool navy shadows around the building, cinematic depth, adventurous and slightly playful arcade tone. The environment should feel tactile and illustrated, much richer than a plain green menu. Full bleed landscape game artwork. No text, letters, emblems, UI, buttons, logos, watermark, title, or framing.",
+      "transparent_background": false,
+      "source": "exec-10e91c5a-3f3f-4e6c-9588-5a5829875900.png"
+    },
+    {
+      "path": "public/art/mission/environment-v014.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent production environment spritesheet for a top-down military arcade survivor game. ONE SQUARE PNG, actual transparent background, exactly FOUR equal columns by FOUR equal rows. Sixteen separate full objects, each fully contained in its own equal cell with generous transparent margins, consistent 3/4 overhead top-down perspective and dark pixel outlines. Beautiful crisp Neo Geo inspired chunky pixel art, weathered metal, saturated rust orange, olive, warm sand and muted teal. Row 1 left to right: tropical palm tree; low coastal sandbag bunker; broken concrete wall with barbed wire; coastal gun emplacement. Row 2: orange shipping container; navy shipping container; green freight railcar; stacked wood ammo crates. Row 3: dock crane base with arm inside cell; floodlight tower; fuel drum cluster; steel watchtower. Row 4: round blast crater with rubble; small bush and rocky sand cluster; rolled barbed-wire barricade; steel repair gantry. Objects have solid readable silhouettes, a tight ground shadow only. Each of 16 cells must show a complete DIFFERENT single prop centered near cell baseline at 85 percent height. No checkerboard, scene, landscape, grid lines, cell borders, text, numerals, logos, or watermark. Transparent sheet only.",
+      "transparent_background": true,
+      "source": "exec-7562d860-0a8c-4e78-833b-761108da67af.png"
+    }
+  ]
+}

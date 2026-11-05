@@ -2,13 +2,13 @@
 <p align="center"><strong>OPERATION BREAKWATER · 교두보 탈환</strong><br>마르코의 집중 사격, 피오의 강화 탄창.<br>전장에서 무기를 완성하고, 확보한 성과로 다음 출격을 준비하는 팬 시제품.</p>
 <p align="center">
 <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
-<img alt="0.13 세 전선 작전" src="https://img.shields.io/badge/version-0.13-d5b77b?style=flat-square">
+<img alt="0.14 병기 실증" src="https://img.shields.io/badge/version-0.14-d5b77b?style=flat-square">
 <img alt="Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
-<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 작전실에서 출격</strong></a> · <a href="docs/METAL-SLUG-SURVIVORS-CONCEPT.md">게임 기획</a> · <a href="docs/META-PROGRESSION-ECONOMY.md">기지와 경제</a> · <a href="docs/VALIDATION-V013.md">구현·검증 기록</a></p>
+<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 작전실에서 출격</strong></a> · <a href="docs/METAL-SLUG-SURVIVORS-CONCEPT.md">게임 기획</a> · <a href="docs/META-PROGRESSION-ECONOMY.md">기지와 경제</a> · <a href="docs/VALIDATION-V014.md">구현·검증 기록</a></p>
 
-![중간 보스 격파 뒤 다음 전선의 빌드를 결정하는 전술 보급](docs/images/v013-midboss-supply.png)
+![야전 격납고에서 대원과 작전을 준비하는 새 로비](docs/images/v014-hangar-desktop.png)
 
 ### 준비 → 전투 → 정산 → 연구 → 재출격
 
@@ -42,14 +42,14 @@
 | 시작 무장 | 권총 P | 기관총 H |
 | 고유 성장 | 같은 표적 연속 적중 → 집중 3단계 | 사격·처치·보급 → 강화 탄창 충전 |
 | 전술기 E | 관통 집중 사격 | 두 무기 강화 사격 |
-| 주력 완성 예 | P 3단계 → 장갑 관통 권총 | H·R 3단계 + 핵심 → 미사일 호위 기관포 |
+| 주력 완성 예 | P 진화 / P+S 레일 브리처 | H+R 미사일 / F+R 네이팜으로 전환 |
 | 재도전 해금 | P 진화로 완주 → 산개 교범 | 강화 중 누적 300처치 → 신속 교범 |
 
-P·H·R 모두 진화할 수 있습니다. 연구는 P 관통 분열·H 도탄·R 점화 탄두·P 약점 파열·H 축전 탄창 후보를 영구 해금합니다. 새로 연구한 개조는 해당 총을 1단계 이상 강화하면 첫 적합한 성장 후보에 등장합니다. 매판 총기와 XP는 다시 성장시키며, 완성 무기를 기지에서 구매하지 않습니다.
+P·H·R·S·F 모두 진화할 수 있습니다. 기본 총 3단계 두 개와 핵심으로 **H+R 미사일, P+S 관통 파쇄, F+R 소이 병기**를 조립합니다. 가득 찬 무장은 새 총을 고른 뒤 교체 슬롯을 선택하거나 취소할 수 있습니다. 연구는 P 관통 분열·H 도탄·R 점화 탄두·P 약점 파열·H 축전 탄창·S 플레셰트·F 촉매 연료·R 전도 탄두 후보를 영구 해금합니다. 새로 연구한 개조는 해당 총을 1단계 이상 강화하면 첫 적합한 성장 후보에 등장합니다. 매판 총기와 XP는 다시 성장시키며, 완성 무기를 기지에서 구매하지 않습니다.
 
-중간 보스 격파·합체 실적으로 새로운 연구를 열고, 세 전선 돌파·완성 화력 900처치·합체 완주의 지령으로 최초 보상을 받습니다. 800처치 이후에도 구간별 수당과 점수가 증가합니다. 기지에서 최근 보고서와 병영의 남은 지령을 볼 수 있습니다.
+중간 보스 격파·합체 실적으로 새로운 연구를 열고, 세 전선 돌파·완성 화력 900처치·합체 완주·P+S/F+R 실증의 지령으로 최초 보상을 받습니다. 800처치 이후에도 구간별 수당과 점수가 증가합니다. 기지에서 최근 보고서와 병영의 남은 지령을 볼 수 있습니다.
 
-전장은 보병·방패병·박격포병·증원 장교로 구성했습니다. 지휘전차는 포격·확산 사격·돌진 뒤 회복 빈틈을 드러내고, 부위 파괴에 따라 약해집니다. 진화·합체에는 주변 폭발, 관통·다탄두·유도탄, 적 경직과 짧은 타격 정지를 적용했습니다.
+전장은 보병·방패병·박격포병·증원 장교로 구성했습니다. 장갑 수송차는 돌진 뒤 **후면 엔진**, 철도 포격대는 **좌우 포대와 안전 통로**, 지휘전차는 **부위 파괴 뒤 노출 코어**가 공략 대상입니다. 연구를 섞으면 화상 대상에 산탄·폭발이 강해지고, 로켓 표식에 관통탄이 강해집니다. 진화·합체에는 주변 폭발, 관통·다탄두·유도탄, 적 경직과 짧은 타격 정지를 적용했습니다.
 
 ### 조작
 
@@ -67,9 +67,9 @@ P·H·R 모두 진화할 수 있습니다. 연구는 P 관통 분열·H 도탄·
 
 ### 현재 범위와 확인할 것
 
-0.13은 **두 대원과 하나의 작전 안에 세 전선을 구현한 개발 버전**입니다. 다음 별도 작전·에리·타마는 아직 구현하지 않았습니다. 초기 계정으로 구출·보급을 챙기는 이상적인 자동 주행 8회는 전투 시간 약 **3분 46초~5분 5초**에 완주했습니다. 선택 고민과 이동 오차가 있는 실제 플레이의 목표는 4~6분이며, 모든 플레이어에게 이 길이를 보장하지 않습니다. 우회 목표를 생략한 4회는 약 2분~2분 33초에 완주했습니다.
+0.14는 **두 대원과 하나의 작전 안에 세 전선을 구현한 개발 버전**입니다. 다음 별도 작전·에리·타마는 아직 구현하지 않았습니다. 초기 계정으로 구출·보급을 챙기는 이상적인 자동 주행 8회는 전투 시간 약 **3분 41초~5분 1초**에 완주했습니다. 선택 고민과 이동 오차가 있는 실제 플레이의 목표는 4~6분이며, 모든 플레이어에게 이 길이를 보장하지 않습니다. 세 합체를 목표로 한 12회도 모두 해당 병기를 조립해 완주했습니다. 실제 정산·연구 구매를 연결한 5판으로 연구 8종과 교차 효과를 확인했습니다.
 
-이는 처리량·규칙의 검증이며 사람의 재미를 증명하지 않습니다. 390px·320px 화면, 실제 중간 보스 격파와 전선 전환·합체·연구 후 재출격은 확인했습니다. 실기기 두 손 동시 조작과 저사양 장시간 성능은 추가 확인 대상입니다. 기존 기지 재화·연구는 유지하며 0.12 진행 중 판은 확보 성과를 정산한 뒤 새 규칙으로 출격합니다.
+이는 처리량·규칙의 검증이며 사람의 재미를 증명하지 않습니다. 390px·320px 화면, 실제 중간 보스 격파와 전선 전환·합체·연구 후 재출격은 확인했습니다. 실기기 두 손 동시 조작과 저사양 장시간 성능은 추가 확인 대상입니다. 기존 기지 재화·연구는 유지하며 이전 규칙의 진행 중 판은 확보 성과를 정산한 뒤 새 규칙으로 출격합니다.
 
 ### 로컬 실행
 
@@ -85,15 +85,16 @@ npm run dev
 
 | 명령 | 용도 |
 | :-- | :-- |
-| `npm test` | 기존 게임 + 작전 규칙 207개 검사 |
-| `npm run test:mission` | 작전·경제·저장·진화 검사 41개 |
+| `npm test` | 기존 게임 + 작전 규칙 224개 검사 |
+| `npm run test:mission` | 작전·경제·저장·진화 검사 58개 |
 | `node scripts/mission-pilot.mjs --summary` | 초기 계정 8회 전체 보급 경로 주행 |
-| `node scripts/mission-pilot.mjs --rush --summary` | 우회 목표를 생략하는 4회 주행 |
+| `node scripts/mission-pilot.mjs --builds --summary` | 3합체 × 2대원 × 2시드 12회 주행 |
+| `node scripts/mission-pilot.mjs --journey` | 실제 정산·구매를 연결하는 연구 여정 5판 |
 | `npm run build` | 정적 배포 파일 생성 |
 | `npm run test:pages` | 저장소 하위 경로·자산·모듈 버전 검사 |
 | `npm run preview` | `http://127.0.0.1:5201/woodland-survivors/` |
 
-`src/mission/`가 새 모델·화면·렌더·저장을 소유합니다. 기존 원정의 전투 모델을 가져오지 않고 오디오·터치 입력만 재사용합니다. `main` 푸시 시 [GitHub Actions](.github/workflows/pages.yml)가 검사 → 빌드 → Pages 검사 → 배포를 실행합니다. `dist/`는 커밋하지 않습니다. 포크 배포는 **Settings → Pages → Source → GitHub Actions**입니다.
+`src/mission/`가 모델·화면·렌더·저장을 소유합니다. 새 격납고 배경과 환경 소품, 금속 상자 UI는 기존 캐릭터 원화와 연결했습니다. 기존 원정의 전투 모델을 가져오지 않고 오디오·터치 입력만 재사용합니다. `main` 푸시 시 [GitHub Actions](.github/workflows/pages.yml)가 검사 → 빌드 → Pages 검사 → 배포를 실행합니다. `dist/`는 커밋하지 않습니다. 포크 배포는 **Settings → Pages → Source → GitHub Actions**입니다.
 
 ### 이전 실험
 
@@ -102,4 +103,4 @@ npm run dev
 
 별도 주소에서 기존 원화·게임을 보존했습니다. 저장 키도 분리했습니다.
 
-메탈슬러그 캐릭터·설정에서 착안한 비공식 팬 시제품입니다. 게임에서 추출한 자산·코드는 사용하지 않았습니다. [새 아트 제작 기록](docs/MISSION-ART-V012.md) · [기존 아트 기록](docs/ART-PROVENANCE.md). 코드·아트 재사용 라이선스는 아직 정하지 않았습니다. Galmuri는 동봉된 [SIL OFL 1.1](public/fonts/woodland/LICENSE.txt)을 따릅니다.
+메탈슬러그 캐릭터·설정에서 착안한 비공식 팬 시제품입니다. 게임에서 추출한 자산·코드는 사용하지 않았습니다. [새 격납고·환경 아트와 프롬프트](docs/MISSION-ART-V014.md) · [기존 아트 기록](docs/ART-PROVENANCE.md). 코드·아트 재사용 라이선스는 아직 정하지 않았습니다. Galmuri는 동봉된 [SIL OFL 1.1](public/fonts/woodland/LICENSE.txt)을 따릅니다.

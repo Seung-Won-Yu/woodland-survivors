@@ -1,0 +1,755 @@
+{
+  "policy": "ordinary inputs, real settlement and research purchases between runs",
+  "runs": [
+    {
+      "synergies": [],
+      "hero": "marco",
+      "seed": 17,
+      "useSlug": false,
+      "recipe": "v",
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 289.1,
+      "hp": 130,
+      "level": 20,
+      "kills": 3269,
+      "elites": 6,
+      "rescues": 5,
+      "outposts": 6,
+      "bossTtk": 6.4,
+      "slugAtBoss": false,
+      "bossHp": -306.5,
+      "parts": {
+        "battery": -35.2,
+        "armor": -71.2
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 9.4
+        },
+        {
+          "front": 1,
+          "seconds": 7.7
+        },
+        {
+          "front": 2,
+          "seconds": 6.4
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 98.46666666666236,
+          "seconds": 98.46666666666236,
+          "kills": 683
+        },
+        {
+          "front": 1,
+          "at": 199.06666666671723,
+          "seconds": 100.60000000005486,
+          "kills": 1807
+        }
+      ],
+      "bossStarts": {
+        "0": 89.09999999999623,
+        "1": 191.38333333337778,
+        "2": 282.6833333334049
+      },
+      "tactics": [
+        "assault",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 20.3,
+        "0:camp": 42.2,
+        "0:convoy": 63.2,
+        "0:prison": 83.5,
+        "1:first": 103.8,
+        "1:camp": 121.9,
+        "1:convoy": 142.7,
+        "1:prison": 164.1,
+        "1:battery": 183,
+        "2:first": 203.7,
+        "2:camp": 219.1,
+        "2:convoy": 239.3,
+        "2:prison": 256.1,
+        "2:battery": 273.3
+      },
+      "unionAt": 42.2,
+      "weapons": [
+        {
+          "id": "v",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 12,
+      "stats": {
+        "kills": 3269,
+        "elites": 6,
+        "rescues": 5,
+        "outposts": 6,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 3135,
+          "h": 96,
+          "r": 96,
+          "s": 3040,
+          "f": 0
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [],
+        "union": true,
+        "unionIds": [
+          "v"
+        ],
+        "bestCombo": 2606,
+        "midbosses": 2,
+        "evolvedKills": 3106,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "assault",
+          "plunder",
+          "barrage",
+          "plunder"
+        ]
+      },
+      "actions": {
+        "skills": 42,
+        "interactions": 3,
+        "dashes": 53
+      },
+      "issues": [],
+      "bought": [
+        "p-split",
+        "p-execution",
+        "s-flechette"
+      ],
+      "researchAfter": [
+        "p-split",
+        "p-execution",
+        "s-flechette"
+      ],
+      "balance": 1603
+    },
+    {
+      "synergies": [],
+      "hero": "fio",
+      "seed": 18,
+      "useSlug": false,
+      "recipe": "n",
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 254.2,
+      "hp": 130,
+      "level": 20,
+      "kills": 3854,
+      "elites": 6,
+      "rescues": 5,
+      "outposts": 6,
+      "bossTtk": 5.6,
+      "slugAtBoss": false,
+      "bossHp": -31.5,
+      "parts": {
+        "battery": -173.6,
+        "armor": -126.7
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 10.8
+        },
+        {
+          "front": 1,
+          "seconds": 14.7
+        },
+        {
+          "front": 2,
+          "seconds": 5.6
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 90.41666666666282,
+          "seconds": 90.41666666666282,
+          "kills": 870
+        },
+        {
+          "front": 1,
+          "at": 178.8166666667011,
+          "seconds": 88.40000000003829,
+          "kills": 2090
+        }
+      ],
+      "bossStarts": {
+        "0": 79.6333333333301,
+        "1": 164.10000000002273,
+        "2": 248.60000000008998
+      },
+      "tactics": [
+        "fusion",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 11.9,
+        "0:camp": 26.5,
+        "0:convoy": 54.7,
+        "0:prison": 73.9,
+        "1:first": 95.7,
+        "1:camp": 110.6,
+        "1:convoy": 128.4,
+        "1:prison": 142.8,
+        "1:battery": 156.4,
+        "2:first": 183,
+        "2:camp": 196.7,
+        "2:convoy": 213.7,
+        "2:prison": 227.8,
+        "2:battery": 241.6
+      },
+      "unionAt": 54.7,
+      "weapons": [
+        {
+          "id": "n",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        {
+          "id": "s",
+          "rank": 1,
+          "evolved": false,
+          "mods": [
+            "s-flechette"
+          ]
+        }
+      ],
+      "cores": 12,
+      "stats": {
+        "kills": 3854,
+        "elites": 6,
+        "rescues": 5,
+        "outposts": 6,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 0,
+          "h": 161,
+          "r": 3342,
+          "s": 246,
+          "f": 3353
+        },
+        "pMastery": false,
+        "overdriveKills": 3729,
+        "evolved": [],
+        "union": true,
+        "unionIds": [
+          "n"
+        ],
+        "bestCombo": 1791,
+        "midbosses": 2,
+        "evolvedKills": 3510,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "fusion",
+          "plunder",
+          "barrage",
+          "plunder"
+        ]
+      },
+      "actions": {
+        "skills": 50,
+        "interactions": 3,
+        "dashes": 32
+      },
+      "issues": [],
+      "bought": [
+        "h-ricochet",
+        "r-incendiary",
+        "f-catalyst",
+        "r-conductor"
+      ],
+      "researchAfter": [
+        "p-split",
+        "p-execution",
+        "s-flechette",
+        "h-ricochet",
+        "r-incendiary",
+        "f-catalyst",
+        "r-conductor"
+      ],
+      "balance": 2195
+    },
+    {
+      "synergies": [
+        "전도 파쇄 · 폭발 표식에 탄환 +25%"
+      ],
+      "hero": "fio",
+      "seed": 19,
+      "useSlug": false,
+      "recipe": "u",
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 214.1,
+      "hp": 130,
+      "level": 19,
+      "kills": 3453,
+      "elites": 6,
+      "rescues": 5,
+      "outposts": 6,
+      "bossTtk": 3.1,
+      "slugAtBoss": false,
+      "bossHp": -1.1,
+      "parts": {
+        "battery": -30.9,
+        "armor": -14.8
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 4.7
+        },
+        {
+          "front": 1,
+          "seconds": 3.5
+        },
+        {
+          "front": 2,
+          "seconds": 3.1
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 70.64999999999728,
+          "seconds": 70.64999999999728,
+          "kills": 741
+        },
+        {
+          "front": 1,
+          "at": 144.23333333334025,
+          "seconds": 73.58333333334298,
+          "kills": 1822
+        }
+      ],
+      "bossStarts": {
+        "0": 65.91666666666421,
+        "1": 140.7166666666708,
+        "2": 211.0500000000601
+      },
+      "tactics": [
+        "fusion",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 11.2,
+        "0:camp": 25.8,
+        "0:convoy": 44.4,
+        "0:prison": 60,
+        "1:first": 75.7,
+        "1:camp": 89.5,
+        "1:convoy": 105.8,
+        "1:prison": 119.9,
+        "1:battery": 133.5,
+        "2:first": 148.3,
+        "2:camp": 160.9,
+        "2:convoy": 177.2,
+        "2:prison": 191.2,
+        "2:battery": 203.9
+      },
+      "unionAt": 44.4,
+      "weapons": [
+        {
+          "id": "u",
+          "rank": 3,
+          "evolved": true,
+          "mods": [
+            "h-ricochet",
+            "r-incendiary",
+            "r-conductor"
+          ]
+        },
+        null
+      ],
+      "cores": 11,
+      "stats": {
+        "kills": 3453,
+        "elites": 6,
+        "rescues": 5,
+        "outposts": 6,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 0,
+          "h": 3403,
+          "r": 3144,
+          "s": 0,
+          "f": 0
+        },
+        "pMastery": false,
+        "overdriveKills": 3379,
+        "evolved": [
+          "h"
+        ],
+        "union": true,
+        "unionIds": [
+          "u"
+        ],
+        "bestCombo": 3459,
+        "midbosses": 2,
+        "evolvedKills": 3350,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "fusion",
+          "plunder",
+          "barrage",
+          "plunder"
+        ]
+      },
+      "actions": {
+        "skills": 42,
+        "interactions": 3,
+        "dashes": 18
+      },
+      "issues": [],
+      "bought": [
+        "h-capacitor"
+      ],
+      "researchAfter": [
+        "p-split",
+        "p-execution",
+        "s-flechette",
+        "h-ricochet",
+        "r-incendiary",
+        "f-catalyst",
+        "r-conductor",
+        "h-capacitor"
+      ],
+      "balance": 3307
+    },
+    {
+      "synergies": [
+        "열압 반응 · 연소 대상 폭발·산탄 +35%",
+        "전도 파쇄 · 폭발 표식에 탄환 +25%"
+      ],
+      "hero": "fio",
+      "seed": 20,
+      "useSlug": false,
+      "recipe": "n",
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 249.7,
+      "hp": 130,
+      "level": 20,
+      "kills": 3806,
+      "elites": 6,
+      "rescues": 5,
+      "outposts": 6,
+      "bossTtk": 5.4,
+      "slugAtBoss": false,
+      "bossHp": -14.8,
+      "parts": {
+        "battery": -34.3,
+        "armor": -15.5
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 10.5
+        },
+        {
+          "front": 1,
+          "seconds": 16.8
+        },
+        {
+          "front": 2,
+          "seconds": 5.4
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 83.41666666666322,
+          "seconds": 83.41666666666322,
+          "kills": 771
+        },
+        {
+          "front": 1,
+          "at": 173.65000000003033,
+          "seconds": 90.23333333336711,
+          "kills": 1986
+        }
+      ],
+      "bossStarts": {
+        "0": 72.93333333333048,
+        "1": 156.83333333335028,
+        "2": 244.30000000008656
+      },
+      "tactics": [
+        "fusion",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 10.2,
+        "0:camp": 27.1,
+        "0:convoy": 49.5,
+        "0:prison": 67,
+        "1:first": 88.7,
+        "1:camp": 103.4,
+        "1:convoy": 120.7,
+        "1:prison": 134.5,
+        "1:battery": 149.2,
+        "2:first": 177.9,
+        "2:camp": 191.7,
+        "2:convoy": 208.7,
+        "2:prison": 222.7,
+        "2:battery": 237
+      },
+      "unionAt": 49.5,
+      "weapons": [
+        {
+          "id": "n",
+          "rank": 3,
+          "evolved": true,
+          "mods": [
+            "r-incendiary",
+            "f-catalyst",
+            "r-conductor"
+          ]
+        },
+        {
+          "id": "s",
+          "rank": 1,
+          "evolved": false,
+          "mods": [
+            "s-flechette"
+          ]
+        }
+      ],
+      "cores": 12,
+      "stats": {
+        "kills": 3806,
+        "elites": 6,
+        "rescues": 5,
+        "outposts": 6,
+        "armorBreaks": 5,
+        "weaponKills": {
+          "p": 0,
+          "h": 148,
+          "r": 3387,
+          "s": 233,
+          "f": 3319
+        },
+        "pMastery": false,
+        "overdriveKills": 3713,
+        "evolved": [],
+        "union": true,
+        "unionIds": [
+          "n"
+        ],
+        "bestCombo": 1856,
+        "midbosses": 2,
+        "evolvedKills": 3529,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "fusion",
+          "plunder",
+          "barrage",
+          "plunder"
+        ]
+      },
+      "actions": {
+        "skills": 49,
+        "interactions": 3,
+        "dashes": 36
+      },
+      "issues": [],
+      "bought": [],
+      "researchAfter": [
+        "p-split",
+        "p-execution",
+        "s-flechette",
+        "h-ricochet",
+        "r-incendiary",
+        "f-catalyst",
+        "r-conductor",
+        "h-capacitor"
+      ],
+      "balance": 4767
+    },
+    {
+      "synergies": [],
+      "hero": "marco",
+      "seed": 21,
+      "useSlug": false,
+      "recipe": "v",
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 258.8,
+      "hp": 130,
+      "level": 19,
+      "kills": 3105,
+      "elites": 6,
+      "rescues": 5,
+      "outposts": 6,
+      "bossTtk": 6.5,
+      "slugAtBoss": false,
+      "bossHp": -488.7,
+      "parts": {
+        "battery": -28.5,
+        "armor": -97.9
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 9.4
+        },
+        {
+          "front": 1,
+          "seconds": 8.9
+        },
+        {
+          "front": 2,
+          "seconds": 6.5
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 95.16666666666255,
+          "seconds": 95.16666666666255,
+          "kills": 678
+        },
+        {
+          "front": 1,
+          "at": 180.28333333336894,
+          "seconds": 85.1166666667064,
+          "kills": 1667
+        }
+      ],
+      "bossStarts": {
+        "0": 85.76666666666308,
+        "1": 171.38333333336186,
+        "2": 252.35000000009296
+      },
+      "tactics": [
+        "assault",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 21,
+        "0:camp": 41.5,
+        "0:convoy": 62.4,
+        "0:prison": 80,
+        "1:first": 100.1,
+        "1:camp": 115.6,
+        "1:convoy": 133.5,
+        "1:prison": 148.6,
+        "1:battery": 164,
+        "2:first": 184.4,
+        "2:camp": 198.5,
+        "2:convoy": 216.4,
+        "2:prison": 230.6,
+        "2:battery": 245.1
+      },
+      "unionAt": 41.5,
+      "weapons": [
+        {
+          "id": "v",
+          "rank": 3,
+          "evolved": true,
+          "mods": [
+            "p-execution",
+            "p-split",
+            "s-flechette"
+          ]
+        },
+        null
+      ],
+      "cores": 12,
+      "stats": {
+        "kills": 3105,
+        "elites": 6,
+        "rescues": 5,
+        "outposts": 6,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 2995,
+          "h": 80,
+          "r": 80,
+          "s": 2879,
+          "f": 0
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [],
+        "union": true,
+        "unionIds": [
+          "v"
+        ],
+        "bestCombo": 1440,
+        "midbosses": 2,
+        "evolvedKills": 2937,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "assault",
+          "plunder",
+          "barrage",
+          "plunder"
+        ]
+      },
+      "actions": {
+        "skills": 37,
+        "interactions": 3,
+        "dashes": 43
+      },
+      "issues": [],
+      "bought": [],
+      "researchAfter": [
+        "p-split",
+        "p-execution",
+        "s-flechette",
+        "h-ricochet",
+        "r-incendiary",
+        "f-catalyst",
+        "r-conductor",
+        "h-capacitor"
+      ],
+      "balance": 6222
+    }
+  ],
+  "researched": [
+    "p-split",
+    "p-execution",
+    "s-flechette",
+    "h-ricochet",
+    "r-incendiary",
+    "f-catalyst",
+    "r-conductor",
+    "h-capacitor"
+  ],
+  "orders": [
+    "frontline-clear",
+    "evolution-sweep",
+    "fusion-clear",
+    "breacher-clear",
+    "napalm-clear"
+  ]
+}

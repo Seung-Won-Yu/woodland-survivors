@@ -8,7 +8,9 @@ function sheet(im){
  }const feet=cells.map(b=>b.footX).sort((a,b)=>a-b);rows.push({cells,ground:Math.max(...cells.map(b=>b.bottom)),anchor:feet[2],height:Math.max(...cells.map(b=>b.h))});}
  return {image:im,rows,cell};
 }
-export async function loadMissionArt(){const [operators,enemies,vehicles]=await Promise.all(['operators','enemies','vehicles'].map(image));return{operators:sheet(operators),enemies:sheet(enemies),vehicles:sheet(vehicles)};}
+export async function loadMissionArt(){const [operators,enemies,vehicles,environment]=await Promise.all(['operators','enemies','vehicles','environment-v014'].map(image));return{operators:sheet(operators),enemies:sheet(enemies),vehicles:sheet(vehicles),environment:sheet(environment)};}
 export function actor(c,atlas,row,frame,x,y,height,mirror=false){const r=atlas.rows[row],b=r.cells[frame%4],scale=height/r.height;c.save();c.translate(Math.round(x),Math.round(y));if(mirror)c.scale(-1,1);c.drawImage(atlas.image,b.sx,b.sy,b.w,b.h,(b.left-r.anchor)*scale,(b.top-r.ground)*scale,b.w*scale,b.h*scale);c.restore();}
 export function prop(c,art,row,col,x,y,width,alpha=1){const b=art.vehicles.rows[row].cells[col];c.save();c.globalAlpha*=alpha;c.drawImage(art.vehicles.image,b.sx,b.sy,b.w,b.h,x-width/2,y-b.h/b.w*width,width,b.h/b.w*width);c.restore();}
 export function operatorPortrait(canvas,art,hero,height=190){const c=canvas.getContext('2d'),dpr=Math.min(devicePixelRatio||1,2),w=canvas.clientWidth||200,h=canvas.clientHeight||210;canvas.width=w*dpr;canvas.height=h*dpr;c.scale(dpr,dpr);c.imageSmoothingEnabled=false;actor(c,art.operators,hero==='fio'?2:0,0,w*.45,h*.94,Math.min(height,h*.9));}
+
+export function environmentProp(c,art,row,col,x,y,width,alpha=1){const atlas=art.environment,b=atlas.rows[row].cells[col];c.save();c.globalAlpha*=alpha;c.drawImage(atlas.image,b.sx,b.sy,b.w,b.h,x-width/2,y-b.h/b.w*width,width,b.h/b.w*width);c.restore();}
