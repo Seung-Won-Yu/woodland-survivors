@@ -1,0 +1,581 @@
+{
+  "date": "2026-11-05",
+  "sourceCommit": "f23c440e219e7255797d7b32839d923f43db65a2",
+  "driver": "scripts/journey-pilot.mjs",
+  "view": {
+    "width": 390,
+    "height": 720
+  },
+  "step": 0.016666666666666666,
+  "controlledEquipmentOrHp": false,
+  "nest": false,
+  "trial": false,
+  "runs": [
+    {
+      "hero": "bram",
+      "seed": 1437,
+      "target": "bees -> hive",
+      "style": "counter",
+      "union": {
+        "id": "hive",
+        "core": "bees",
+        "branch": "counter"
+      },
+      "outcome": "victory",
+      "time": 262.9,
+      "hp": 15.1,
+      "level": 24,
+      "kills": 1260,
+      "firstCacheAt": 7,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 140.1,
+          "duration": 73.4,
+          "kills": 436
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 221.2,
+          "duration": 28.2,
+          "kills": 1126
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 262.9,
+          "duration": 41.7,
+          "kills": 1260
+        }
+      ],
+      "weapons": {
+        "hive": {
+          "rank": 1,
+          "evolved": true,
+          "core": "bees",
+          "branch": "counter"
+        }
+      },
+      "damageTaken": 275,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "bram",
+      "seed": 1437,
+      "target": "briar + bees (양쪽 진화)",
+      "style": "counter",
+      "union": null,
+      "outcome": "victory",
+      "time": 308.2,
+      "hp": 68.1,
+      "level": 26,
+      "kills": 1478,
+      "firstCacheAt": 7,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 140.1,
+          "duration": 73.4,
+          "kills": 436
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 224.1,
+          "duration": 26.7,
+          "kills": 1164
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 308.2,
+          "duration": 82.7,
+          "kills": 1478
+        }
+      ],
+      "weapons": {
+        "briar": {
+          "rank": 8,
+          "evolved": true
+        },
+        "bees": {
+          "rank": 8,
+          "evolved": true
+        }
+      },
+      "damageTaken": 288,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "bram",
+      "seed": 1437,
+      "target": "briar + bees (양쪽 진화)",
+      "style": "guard",
+      "union": null,
+      "outcome": "victory",
+      "time": 306.7,
+      "hp": 43,
+      "level": 26,
+      "kills": 1472,
+      "firstCacheAt": 7,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 140.1,
+          "duration": 73.4,
+          "kills": 436
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 223.3,
+          "duration": 25.9,
+          "kills": 1165
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 306.7,
+          "duration": 82.9,
+          "kills": 1472
+        }
+      ],
+      "weapons": {
+        "briar": {
+          "rank": 8,
+          "evolved": true
+        },
+        "bees": {
+          "rank": 8,
+          "evolved": true
+        }
+      },
+      "damageTaken": 297,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "pip",
+      "seed": 1437,
+      "target": "acorn + moon (양쪽 진화)",
+      "style": "focus",
+      "union": null,
+      "outcome": "victory",
+      "time": 256.1,
+      "hp": 81,
+      "level": 27,
+      "kills": 1539,
+      "firstCacheAt": 2.9,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 110.9,
+          "duration": 46.3,
+          "kills": 386
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 217.2,
+          "duration": 53.7,
+          "kills": 1398
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 256.1,
+          "duration": 38.8,
+          "kills": 1539
+        }
+      ],
+      "weapons": {
+        "acorn": {
+          "rank": 8,
+          "evolved": true
+        },
+        "moon": {
+          "rank": 8,
+          "evolved": true
+        }
+      },
+      "damageTaken": 28,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "pip",
+      "seed": 1437,
+      "target": "moon -> returning",
+      "style": "spread",
+      "union": {
+        "id": "returning",
+        "core": "moon",
+        "branch": "focus"
+      },
+      "outcome": "victory",
+      "time": 303.8,
+      "hp": 72,
+      "level": 27,
+      "kills": 1799,
+      "firstCacheAt": 2.9,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 107.6,
+          "duration": 43,
+          "kills": 388
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 230.3,
+          "duration": 68.1,
+          "kills": 1518
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 303.8,
+          "duration": 72.6,
+          "kills": 1799
+        }
+      ],
+      "weapons": {
+        "returning": {
+          "rank": 1,
+          "evolved": true,
+          "core": "moon",
+          "branch": "focus"
+        }
+      },
+      "damageTaken": 37,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "bram",
+      "seed": 1437,
+      "target": "briar -> hive",
+      "style": "guard",
+      "union": {
+        "id": "hive",
+        "core": "briar",
+        "branch": "guard"
+      },
+      "outcome": "victory",
+      "time": 283,
+      "hp": 71.2,
+      "level": 26,
+      "kills": 1430,
+      "firstCacheAt": 7,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 142.6,
+          "duration": 76,
+          "kills": 445
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 235.6,
+          "duration": 23.2,
+          "kills": 1269
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 283,
+          "duration": 46,
+          "kills": 1430
+        }
+      ],
+      "weapons": {
+        "hive": {
+          "rank": 1,
+          "evolved": true,
+          "core": "briar",
+          "branch": "guard"
+        }
+      },
+      "damageTaken": 321,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "pip",
+      "seed": 1437,
+      "target": "acorn -> returning",
+      "style": "focus",
+      "union": {
+        "id": "returning",
+        "core": "acorn",
+        "branch": "spread"
+      },
+      "outcome": "victory",
+      "time": 385.2,
+      "hp": 59,
+      "level": 30,
+      "kills": 2117,
+      "firstCacheAt": 2.9,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 103,
+          "duration": 38.9,
+          "kills": 383
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 281.5,
+          "duration": 125.1,
+          "kills": 1708
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 385.2,
+          "duration": 101.7,
+          "kills": 2117
+        }
+      ],
+      "weapons": {
+        "returning": {
+          "rank": 1,
+          "evolved": true,
+          "core": "acorn",
+          "branch": "spread"
+        }
+      },
+      "damageTaken": 52,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "bram",
+      "seed": 2048,
+      "target": "briar -> hive",
+      "style": "guard",
+      "union": {
+        "id": "hive",
+        "core": "briar",
+        "branch": "guard"
+      },
+      "outcome": "victory",
+      "time": 298.1,
+      "hp": 77.6,
+      "level": 25,
+      "kills": 1295,
+      "firstCacheAt": 5.8,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 180.2,
+          "duration": 101.4,
+          "kills": 524
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 240.9,
+          "duration": 13.8,
+          "kills": 1092
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 298.1,
+          "duration": 55.8,
+          "kills": 1295
+        }
+      ],
+      "weapons": {
+        "hive": {
+          "rank": 1,
+          "evolved": true,
+          "core": "briar",
+          "branch": "guard"
+        }
+      },
+      "damageTaken": 269,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "pip",
+      "seed": 2048,
+      "target": "acorn -> returning",
+      "style": "focus",
+      "union": {
+        "id": "returning",
+        "core": "acorn",
+        "branch": "spread"
+      },
+      "outcome": "victory",
+      "time": 316.6,
+      "hp": 68,
+      "level": 27,
+      "kills": 1775,
+      "firstCacheAt": 3.3,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 142.9,
+          "duration": 63.6,
+          "kills": 549
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 217.5,
+          "duration": 26.9,
+          "kills": 1392
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 316.6,
+          "duration": 98.3,
+          "kills": 1775
+        }
+      ],
+      "weapons": {
+        "returning": {
+          "rank": 1,
+          "evolved": true,
+          "core": "acorn",
+          "branch": "spread"
+        }
+      },
+      "damageTaken": 32,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "bram",
+      "seed": 71,
+      "target": "briar -> hive",
+      "style": "guard",
+      "union": {
+        "id": "hive",
+        "core": "briar",
+        "branch": "guard"
+      },
+      "outcome": "victory",
+      "time": 284,
+      "hp": 76.4,
+      "level": 25,
+      "kills": 1302,
+      "firstCacheAt": 7.3,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 167.2,
+          "duration": 94.5,
+          "kills": 547
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 224.7,
+          "duration": 15.2,
+          "kills": 1086
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 284,
+          "duration": 58.1,
+          "kills": 1302
+        }
+      ],
+      "weapons": {
+        "hive": {
+          "rank": 1,
+          "evolved": true,
+          "core": "briar",
+          "branch": "guard"
+        }
+      },
+      "damageTaken": 266,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    },
+    {
+      "hero": "pip",
+      "seed": 71,
+      "target": "acorn -> returning",
+      "style": "focus",
+      "union": {
+        "id": "returning",
+        "core": "acorn",
+        "branch": "spread"
+      },
+      "outcome": "victory",
+      "time": 292.3,
+      "hp": 68,
+      "level": 27,
+      "kills": 1678,
+      "firstCacheAt": 2.8,
+      "bosses": [
+        {
+          "region": 1,
+          "boss": "보급로 수문장",
+          "at": 120.5,
+          "duration": 47.7,
+          "kills": 474
+        },
+        {
+          "region": 2,
+          "boss": "포자 군락의 어미",
+          "at": 197.3,
+          "duration": 29.5,
+          "kills": 1311
+        },
+        {
+          "region": 3,
+          "boss": "숲의 군주 모르가",
+          "at": 292.3,
+          "duration": 93.5,
+          "kills": 1678
+        }
+      ],
+      "weapons": {
+        "returning": {
+          "rank": 1,
+          "evolved": true,
+          "core": "acorn",
+          "branch": "spread"
+        }
+      },
+      "damageTaken": 72,
+      "targetComplete": true,
+      "runtimeBugs": [],
+      "warnings": []
+    }
+  ]
+}
