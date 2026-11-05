@@ -1,9 +1,11 @@
 import {mkdir,cp,rm,readdir,writeFile,readFile} from 'node:fs/promises';
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
-for(const name of ['index.html','prototype.html','favicon.svg','src'])await cp(name,`dist/${name}`,{recursive:true});
-await mkdir('dist/art/v2',{recursive:true});
-for(const name of await readdir('public/art/v2'))if(name.endsWith('.png'))await cp(`public/art/v2/${name}`,`dist/art/v2/${name}`);
+for(const name of ['index.html','woodland.html','prototype.html','favicon.svg','src'])await cp(name,`dist/${name}`,{recursive:true});
+for(const folder of ['v2','mission']){
+ await mkdir(`dist/art/${folder}`,{recursive:true});
+ for(const name of await readdir(`public/art/${folder}`))if(name.endsWith('.png'))await cp(`public/art/${folder}/${name}`,`dist/art/${folder}/${name}`);
+}
 await cp('public/fonts','dist/fonts',{recursive:true});
 await mkdir('dist/docs',{recursive:true});
 await cp('docs/motion-lab.html','dist/docs/motion-lab.html');

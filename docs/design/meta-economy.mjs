@@ -10,7 +10,7 @@ export const TRAINING={
  reroll:{prices:[160,280],perRank:1}
 };
 export const RESEARCH=[
- {id:'p-focus',cost:200},{id:'h-ricochet',cost:240},{id:'r-incendiary',cost:280}
+ {id:'p-split',cost:200},{id:'h-ricochet',cost:240},{id:'r-incendiary',cost:280}
 ];
 export const EXPANSION_RESEARCH=[
  {id:'p-return',operation:2,cost:400},{id:'h-incendiary',operation:2,cost:500},{id:'r-bounce',operation:2,cost:600},

@@ -1,0 +1,579 @@
+{
+  "rules": {
+    "dt": 0.016666666666666666,
+    "maxSeconds": 600,
+    "seeds": [
+      17,
+      71
+    ]
+  },
+  "policy": "public API only; state-aware threat steering, objective navigation, ordinary dash/skill/interact inputs",
+  "aggregates": [
+    {
+      "hero": "marco",
+      "useSlug": false,
+      "wins": 2,
+      "runs": 2,
+      "medianTime": 101.1,
+      "medianBossTtk": 21.6,
+      "medianKills": 566,
+      "medianHp": 130,
+      "issues": []
+    },
+    {
+      "hero": "marco",
+      "useSlug": true,
+      "wins": 2,
+      "runs": 2,
+      "medianTime": 120.7,
+      "medianBossTtk": 19.2,
+      "medianKills": 828,
+      "medianHp": 150,
+      "issues": []
+    },
+    {
+      "hero": "fio",
+      "useSlug": false,
+      "wins": 2,
+      "runs": 2,
+      "medianTime": 74.8,
+      "medianBossTtk": 12.6,
+      "medianKills": 412.5,
+      "medianHp": 100,
+      "issues": []
+    },
+    {
+      "hero": "fio",
+      "useSlug": true,
+      "wins": 2,
+      "runs": 2,
+      "medianTime": 89.1,
+      "medianBossTtk": 10.8,
+      "medianKills": 612.5,
+      "medianHp": 100,
+      "issues": []
+    }
+  ],
+  "runs": [
+    {
+      "hero": "marco",
+      "seed": 17,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 102.7,
+      "hp": 130,
+      "level": 12,
+      "kills": 558,
+      "elites": 1,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 23.6,
+      "slugAtBoss": false,
+      "bossHp": -15,
+      "parts": {
+        "battery": -69.9,
+        "armor": -16.3
+      },
+      "nodeTimes": {
+        "first": 21,
+        "camp": 34.3,
+        "convoy": 55,
+        "prison": 71.9
+      },
+      "unionAt": null,
+      "weapons": [
+        {
+          "id": "p",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 2,
+      "stats": {
+        "kills": 558,
+        "elites": 1,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 558,
+          "h": 0,
+          "r": 0
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [
+          "p"
+        ],
+        "union": false,
+        "bestCombo": 514
+      },
+      "actions": {
+        "skills": 15,
+        "interactions": 1,
+        "dashes": 20
+      },
+      "issues": [],
+      "choiceCount": 15
+    },
+    {
+      "hero": "marco",
+      "seed": 17,
+      "useSlug": true,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 117,
+      "hp": 150,
+      "level": 14,
+      "kills": 765,
+      "elites": 2,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 20.3,
+      "slugAtBoss": true,
+      "bossHp": -60.1,
+      "parts": {
+        "battery": -26.3,
+        "armor": -50.5
+      },
+      "nodeTimes": {
+        "first": 21,
+        "camp": 34.3,
+        "convoy": 55,
+        "prison": 71.9,
+        "garage": 85.5
+      },
+      "unionAt": null,
+      "weapons": [
+        {
+          "id": "p",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 2,
+      "stats": {
+        "kills": 765,
+        "elites": 2,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 762,
+          "h": 3,
+          "r": 3
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [
+          "p"
+        ],
+        "union": false,
+        "bestCombo": 739,
+        "slugCaptured": 1
+      },
+      "actions": {
+        "skills": 22,
+        "interactions": 2,
+        "dashes": 25
+      },
+      "issues": [],
+      "choiceCount": 17
+    },
+    {
+      "hero": "fio",
+      "seed": 17,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 75.4,
+      "hp": 100,
+      "level": 11,
+      "kills": 445,
+      "elites": 1,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 12.3,
+      "slugAtBoss": false,
+      "bossHp": -0.5,
+      "parts": {
+        "battery": -2.8,
+        "armor": -22.6
+      },
+      "nodeTimes": {
+        "first": 14.7,
+        "camp": 26.1,
+        "convoy": 42.5,
+        "prison": 57.1
+      },
+      "unionAt": 43.2,
+      "weapons": [
+        {
+          "id": "u",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 1,
+      "stats": {
+        "kills": 445,
+        "elites": 1,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 0,
+          "h": 428,
+          "r": 262
+        },
+        "pMastery": false,
+        "overdriveKills": 446,
+        "evolved": [
+          "h"
+        ],
+        "union": true,
+        "bestCombo": 443
+      },
+      "actions": {
+        "skills": 15,
+        "interactions": 1,
+        "dashes": 7
+      },
+      "issues": [],
+      "choiceCount": 14
+    },
+    {
+      "hero": "fio",
+      "seed": 17,
+      "useSlug": true,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 89.9,
+      "hp": 100,
+      "level": 13,
+      "kills": 634,
+      "elites": 2,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 10.4,
+      "slugAtBoss": true,
+      "bossHp": -13,
+      "parts": {
+        "battery": -14.7,
+        "armor": -11.8
+      },
+      "nodeTimes": {
+        "first": 14.7,
+        "camp": 26.1,
+        "convoy": 42.5,
+        "prison": 57.1,
+        "garage": 69.6
+      },
+      "unionAt": 43.2,
+      "weapons": [
+        {
+          "id": "u",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 1,
+      "stats": {
+        "kills": 634,
+        "elites": 2,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 0,
+          "h": 617,
+          "r": 451
+        },
+        "pMastery": false,
+        "overdriveKills": 636,
+        "evolved": [
+          "h"
+        ],
+        "union": true,
+        "bestCombo": 636,
+        "slugCaptured": 1
+      },
+      "actions": {
+        "skills": 20,
+        "interactions": 2,
+        "dashes": 11
+      },
+      "issues": [],
+      "choiceCount": 16
+    },
+    {
+      "hero": "marco",
+      "seed": 71,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 99.4,
+      "hp": 130,
+      "level": 13,
+      "kills": 574,
+      "elites": 1,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 19.6,
+      "slugAtBoss": false,
+      "bossHp": -38.4,
+      "parts": {
+        "battery": -76.5,
+        "armor": -2.8
+      },
+      "nodeTimes": {
+        "first": 18.1,
+        "camp": 35,
+        "convoy": 55.3,
+        "prison": 72.8
+      },
+      "unionAt": null,
+      "weapons": [
+        {
+          "id": "p",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 2,
+      "stats": {
+        "kills": 574,
+        "elites": 1,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 574,
+          "h": 0,
+          "r": 0
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [
+          "p"
+        ],
+        "union": false,
+        "bestCombo": 562
+      },
+      "actions": {
+        "skills": 15,
+        "interactions": 1,
+        "dashes": 18
+      },
+      "issues": [],
+      "choiceCount": 16
+    },
+    {
+      "hero": "marco",
+      "seed": 71,
+      "useSlug": true,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 124.4,
+      "hp": 150,
+      "level": 15,
+      "kills": 891,
+      "elites": 2,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 18.1,
+      "slugAtBoss": true,
+      "bossHp": -11.4,
+      "parts": {
+        "battery": -73.3,
+        "armor": -63.6
+      },
+      "nodeTimes": {
+        "first": 18.1,
+        "camp": 35,
+        "convoy": 55.3,
+        "prison": 72.8,
+        "garage": 92
+      },
+      "unionAt": null,
+      "weapons": [
+        {
+          "id": "p",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 2,
+      "stats": {
+        "kills": 891,
+        "elites": 2,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 878,
+          "h": 13,
+          "r": 13
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [
+          "p"
+        ],
+        "union": false,
+        "bestCombo": 893,
+        "slugCaptured": 1
+      },
+      "actions": {
+        "skills": 23,
+        "interactions": 2,
+        "dashes": 26
+      },
+      "issues": [],
+      "choiceCount": 18
+    },
+    {
+      "hero": "fio",
+      "seed": 71,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 74.3,
+      "hp": 100,
+      "level": 11,
+      "kills": 380,
+      "elites": 1,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 12.8,
+      "slugAtBoss": false,
+      "bossHp": -3.5,
+      "parts": {
+        "battery": -19.8,
+        "armor": -4.4
+      },
+      "nodeTimes": {
+        "first": 12.6,
+        "camp": 23.7,
+        "convoy": 40.6,
+        "prison": 55.5
+      },
+      "unionAt": 42.9,
+      "weapons": [
+        {
+          "id": "u",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 1,
+      "stats": {
+        "kills": 380,
+        "elites": 1,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 0,
+          "h": 373,
+          "r": 194
+        },
+        "pMastery": false,
+        "overdriveKills": 348,
+        "evolved": [
+          "h"
+        ],
+        "union": true,
+        "bestCombo": 359
+      },
+      "actions": {
+        "skills": 14,
+        "interactions": 1,
+        "dashes": 8
+      },
+      "issues": [],
+      "choiceCount": 14
+    },
+    {
+      "hero": "fio",
+      "seed": 71,
+      "useSlug": true,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 88.3,
+      "hp": 100,
+      "level": 13,
+      "kills": 591,
+      "elites": 2,
+      "rescues": 5,
+      "outposts": 2,
+      "bossTtk": 11.1,
+      "slugAtBoss": true,
+      "bossHp": -18.2,
+      "parts": {
+        "battery": -20.8,
+        "armor": -11.2
+      },
+      "nodeTimes": {
+        "first": 12.6,
+        "camp": 23.7,
+        "convoy": 40.6,
+        "prison": 55.5,
+        "garage": 67.8
+      },
+      "unionAt": 42.9,
+      "weapons": [
+        {
+          "id": "u",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 1,
+      "stats": {
+        "kills": 591,
+        "elites": 2,
+        "rescues": 5,
+        "outposts": 2,
+        "armorBreaks": 2,
+        "weaponKills": {
+          "p": 0,
+          "h": 584,
+          "r": 405
+        },
+        "pMastery": false,
+        "overdriveKills": 556,
+        "evolved": [
+          "h"
+        ],
+        "union": true,
+        "bestCombo": 586,
+        "slugCaptured": 1
+      },
+      "actions": {
+        "skills": 19,
+        "interactions": 2,
+        "dashes": 10
+      },
+      "issues": [],
+      "choiceCount": 16
+    }
+  ]
+}
