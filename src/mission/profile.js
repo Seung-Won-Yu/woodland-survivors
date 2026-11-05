@@ -33,8 +33,10 @@ export function parseProfile(raw){
 export function recoverActiveRun(p,reason='recovery'){
  const a=p.activeRun;if(!a)return{ok:false,reason:'복구할 작전이 없습니다.'};const c=a.checkpoint||{},old=c.stats||{};
  const stats={kills:nonnegative(old.kills),elites:nonnegative(old.elites),rescues:nonnegative(old.rescues),outposts:nonnegative(old.outposts),armorBreaks:nonnegative(old.armorBreaks),weaponKills:Object.fromEntries(BASE_WEAPONS.map(id=>[id,nonnegative(old.weaponKills?.[id])])),pMastery:old.pMastery===true,overdriveKills:nonnegative(old.overdriveKills),evolved:Array.isArray(old.evolved)?old.evolved.filter(id=>BASE_WEAPONS.includes(id)):[],union:old.union===true,bestCombo:nonnegative(old.bestCombo)};
+ for(const key of ['holdoutKills','holdoutScore','holdoutSeconds','bestDanger'])stats[key]=nonnegative(old[key]);
  stats.unionIds=Array.isArray(old.unionIds)?old.unionIds.filter(id=>UNIONS[id]):[];stats.midbosses=nonnegative(old.midbosses);stats.evolvedKills=nonnegative(old.evolvedKills);stats.fronts=Array.isArray(old.fronts)?old.fronts.filter(n=>[0,1].includes(n)):[];stats.supplyPicks=Array.isArray(old.supplyPicks)?old.supplyPicks.filter(id=>typeof id==='string'):[];
- return settleRun(p,{...a,researchPresented:Array.isArray(c.researchPresented)?c.researchPresented.filter(id=>RESEARCH[id]):[],result:{won:false,reason,seconds:nonnegative(c.t),hero:a.hero,stats,weapons:[],training:a.snapshot.training||{},doctrine:a.snapshot.doctrine}});
+ const extracted=reason==='retreat'&&a.rules===RULESET&&c.front===2&&c.stage==='holdout'&&c.cleared===true&&c.boss?.hp<=0&&c.player?.hp>0;
+ return settleRun(p,{...a,researchPresented:Array.isArray(c.researchPresented)?c.researchPresented.filter(id=>RESEARCH[id]):[],result:{won:extracted,reason:extracted?'victory':reason,seconds:nonnegative(c.t),hero:a.hero,stats,weapons:[],training:a.snapshot.training||{},doctrine:a.snapshot.doctrine}});
 }
 export function snapshotProfile(p){return {training:Object.fromEntries(Object.entries(p.training).map(([id,e])=>[id,e.rank])),researched:[...p.researched],freshMods:[...p.freshMods],doctrine:p.doctrines[p.selectedHero]};}
 export function beginRun(p,{hero=p.selectedHero,difficulty=p.difficulty,seed=1}={}){
@@ -42,7 +44,7 @@ export function beginRun(p,{hero=p.selectedHero,difficulty=p.difficulty,seed=1}=
  const next=copy(p);next.selectedHero=hero;next.difficulty=difficulty;const seq=next.nextSequence++;
  next.activeRun={id:`${p.id}:${seq}`,sequence:seq,rules:RULESET,operation:'breakwater',hero,difficulty,seed:seed>>>0,snapshot:snapshotProfile(next),checkpoint:null};return {ok:true,profile:next,descriptor:next.activeRun};
 }
-export function checkpointRun(p,run){if(p.activeRun?.id!==run.id)return {ok:false,reason:'현재 작전과 일치하지 않습니다.'};const next=copy(p);next.activeRun.checkpoint=copy(run);return {ok:true,profile:next};}
+export function checkpointRun(p,run){if(run.phase==='result')return{ok:false,reason:'완료한 작전은 바로 정산해야 합니다.'};if(p.activeRun?.id!==run.id)return {ok:false,reason:'현재 작전과 일치하지 않습니다.'};const next=copy(p);next.activeRun.checkpoint=copy(run);return {ok:true,profile:next};}
 export function settleRun(p,run){
  if(run.sequence<=p.lastSettledSequence)return {ok:true,alreadySettled:true,profile:p,receipt:p.lastReceipt?.runId===run.id?p.lastReceipt:null};
  if(!run.result||p.activeRun?.id!==run.id||p.activeRun.sequence!==run.sequence)return {ok:false,reason:'정산할 작전이 일치하지 않습니다.'};
@@ -57,9 +59,9 @@ export function settleRun(p,run){
  const newly=[];const grant=(id,condition)=>{if(condition&&!next.achievements.includes(id)){next.achievements.push(id);newly.push(id);}};
  grant('first-clear',r.won);grant('rescue-all',r.won&&r.stats.rescues===5);grant('marco-fan',r.won&&run.hero==='marco'&&r.stats.evolved.includes('p'));grant('fio-quick',next.progress.overdriveKills>=300);grant('s-rank',r.won&&award.grade==='S');
  const key=`${run.rules||RULESET}:${run.operation}:${run.difficulty}:${run.hero}`,old=next.records[key]||{score:0,kills:0,bestTime:null};
- next.records[key]={score:r.won?Math.max(old.score,award.score):old.score,kills:Math.max(old.kills,r.stats.kills),bestTime:r.won?Math.min(old.bestTime??Infinity,r.seconds):old.bestTime};
+ next.records[key]={score:r.won||(r.stats.midbosses||0)>0?Math.max(old.score,award.score):old.score,kills:Math.max(old.kills,r.stats.kills),bestTime:r.won?Math.min(old.bestTime??Infinity,r.seconds):old.bestTime};
  next.lastSettledSequence=run.sequence;next.activeRun=null;
- next.lastReceipt={runId:run.id,sequence:run.sequence,hero:run.hero,difficulty:run.difficulty,result:copy(r),award,balance:next.wallet,newly,seed:run.seed};
+ next.lastReceipt={runId:run.id,sequence:run.sequence,hero:run.hero,difficulty:run.difficulty,result:copy(r),award,balance:next.wallet,newly,seed:run.seed,record:{previousScore:old.score,bestScore:next.records[key].score,newBest:next.records[key].score>old.score}};
  return {ok:true,profile:next,receipt:next.lastReceipt};
 }
 export function buyTraining(p,id){const t=TRAINING[id],entry=p.training[id];if(!t||!entry)return{ok:false,reason:'훈련을 확인해 주세요.'};if(p.activeRun)return{ok:false,reason:'작전 정산 후 훈련할 수 있습니다.'};if(entry.rank>=t.prices.length)return{ok:false,reason:'훈련을 모두 완료했습니다.'};const cost=t.prices[entry.rank];if(p.wallet<cost)return{ok:false,reason:`${cost-p.wallet}C가 더 필요합니다.`};const next=copy(p);next.wallet-=cost;next.training[id].rank++;next.training[id].paid.push(cost);return{ok:true,profile:next};}

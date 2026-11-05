@@ -1,4 +1,4 @@
-export const RULESET='operation-0.14.0';
+export const RULESET='operation-0.15.0';
 export const HEROES={
  marco:{name:'마르코',english:'MARCO ROSSI',role:'정면을 여는 집중 사격',weapon:'p',color:'#edb36b',detail:'같은 표적을 연속 적중하면 집중 3단계. 관통과 보스 약점 피해가 강해집니다.',skill:'집중 사격'},
  fio:{name:'피오',english:'FIO GERMI',role:'보급으로 이어가는 압도적 연사',weapon:'h',color:'#a7c6a0',detail:'기관총으로 출발. 처치·탄약으로 충전하고 두 총의 강화 탄창을 함께 가동합니다.',skill:'전탄 보급'}
@@ -95,12 +95,12 @@ export function frontSites(front){
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const count=(n,max)=>clamp(Number.isFinite(n)?Math.floor(n):0,0,max);
 export function calculateSettlement(input,{firstReport=false,firstClear=false}={}){
- const extended=['operation-0.13.0',RULESET].includes(input.rules),k=count(input.kills,Number.MAX_SAFE_INTEGER),e=count(input.elites,extended?6:2),p=count(input.rescues,5),o=count(input.outposts,extended?6:2),b=count(input.armorBreaks,extended?6:2),won=!!input.won;
+ const extended=['operation-0.13.0','operation-0.14.0',RULESET].includes(input.rules),k=count(input.kills,Number.MAX_SAFE_INTEGER),e=count(input.elites,extended?6:2),p=count(input.rescues,5),o=count(input.outposts,extended?6:2),b=count(input.armorBreaks,extended?6:2),won=!!input.won;
  const components={kills:Math.floor(Math.min(k,800)/5)+(extended?Math.floor(Math.max(0,Math.min(k,4000)-800)/20)+Math.floor(Math.max(0,Math.min(k,8000)-4000)/50):0),...(extended?{midbosses:count(input.midbosses,2)*75}:{}),elites:e*25,rescues:p*20,outposts:o*50,armorBreaks:b*30,clear:won?300:0};
  const multiplier=input.difficulty==='dense'?1.15:1,repeatCredits=Math.floor(Object.values(components).reduce((a,b)=>a+b,0)*multiplier);
  const eligible=k>=50||p>0||o>0||b>0||won,oneTime={report:firstReport&&eligible?100:0,clear:firstClear&&won?200:0};
  const timeBonus=won?Math.max(0,600-count(input.seconds,Number.MAX_SAFE_INTEGER))*20:0;
- const score=Math.min(k,extended?8000:800)*10+(extended?count(input.midbosses,2)*5000:0)+e*250+p*300+o*800+b*1500+(won?10000:0)+timeBonus;
+ const score=Math.min(k,extended?8000:800)*10+(extended?count(input.midbosses,2)*5000:0)+e*250+p*300+o*800+b*1500+(won?10000:0)+timeBonus+count(input.holdoutScore,Number.MAX_SAFE_INTEGER);
  return {components,multiplier,repeatCredits,oneTime,totalCredits:repeatCredits+oneTime.report+oneTime.clear,score,grade:won?(score>=(extended?64000:30000)?'S':score>=(extended?50000:24000)?'A':score>=(extended?36000:18000)?'B':'C'):'미완료'};
 }
 export function researchReady(profile,id){const r=RESEARCH[id];if(!r)return false;if(id==='p-execution')return profile.progress.midbossMarco>0;if(id==='h-capacitor')return profile.progress.unions>0;return id==='p-split'?profile.progress.pMastery:(profile.progress.weaponKills[r.weapon]||0)>=(id==='r-conductor'?300:['s','f'].includes(r.weapon)?150:r.weapon==='h'?200:100);}

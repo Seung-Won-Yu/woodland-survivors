@@ -35,7 +35,7 @@ test('runtime illustrations and font files are served as actual binary assets',a
   assert.equal(images.length,8);
   for(const name of images){const response=await fetch(new URL(`art/v2/${name}`,base)),bytes=new Uint8Array(await response.arrayBuffer());assert.equal(response.status,200,name);assert.deepEqual([...bytes.slice(0,4)],[137,80,78,71],name);}
   for(const name of ['Galmuri11.woff2','Galmuri11-Bold.woff2']){const response=await fetch(new URL(`fonts/woodland/${name}`,base)),bytes=Buffer.from(await response.arrayBuffer());assert.equal(bytes.toString('ascii',0,4),'wOF2',name);}
-  for(const name of ['operators','enemies','vehicles','environment-v014','hangar-v014']){const response=await fetch(new URL(`art/mission/${name}.png`,base));const bytes=new Uint8Array(await response.arrayBuffer());assert.equal(response.status,200,name);assert.deepEqual([...bytes.slice(0,4)],[137,80,78,71],name);}
+  for(const name of ['operators','enemies','vehicles','environment-v014','hangar-v014','vehicle-layers-v015']){const response=await fetch(new URL(`art/mission/${name}.png`,base));const bytes=new Uint8Array(await response.arrayBuffer());assert.equal(response.status,200,name);assert.deepEqual([...bytes.slice(0,4)],[137,80,78,71],name);}
   await access('dist/.nojekyll');await access('dist/fonts/woodland/LICENSE.txt');
 });
 
@@ -54,7 +54,7 @@ test('entrypoints and transitive modules share one deployment version',async()=>
  assert.ok(html.includes(`src/mission/style.css?v=${version}`));assert.ok(html.includes(`src/mission/arcade.css?v=${version}`));
  const legacy=await readFile('dist/woodland.html','utf8');assert.ok(legacy.includes(`src/main.js?v=${version}`));
  const sprint=await readFile('dist/prototype.html','utf8');assert.ok(sprint.includes(`src/sprint/main.js?v=${version}`));assert.ok(sprint.includes(`src/sprint/style.css?v=${version}`));
- for(const path of ['src/main.js','src/mission/main.js','src/mission/model.js','src/mission/profile.js','src/mission/render.js','src/sprint/main.js','src/sprint/render.js','src/core/game.js','src/game/render.js','docs/progression-lab.html']){
+ for(const path of ['src/main.js','src/mission/main.js','src/mission/model.js','src/mission/profile.js','src/mission/render.js','src/mission/motion.js','src/mission/route.js','src/sprint/main.js','src/sprint/render.js','src/core/game.js','src/game/render.js','docs/progression-lab.html']){
   const source=await readFile('dist/'+path,'utf8');const imports=[...source.matchAll(/\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/g)];assert.ok(imports.length>0,path);
   for(const [,ref]of imports)assert.ok(ref.endsWith(`.js?v=${version}`),`${path}: ${ref}`);
  }
