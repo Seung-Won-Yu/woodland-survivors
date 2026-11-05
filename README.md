@@ -9,9 +9,10 @@
 <p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 브라우저에서 플레이</strong></a> · <a href="https://yu-reka.github.io/woodland-survivors/docs/motion-lab.html">모션 미리보기</a> · <a href="#로컬에서-실행">로컬 실행</a></p>
 
 
-> **개발 방향 정리 · 2026-11-04**
-> 주 레퍼런스는 MegaBonk와 Pokémon Survivor Burst입니다. [게임 기획](docs/GAME-DESIGN.md) · [대원별 특성/성장](docs/CHARACTER-DESIGN.md) · [시스템 역분석](docs/SYSTEM-REVERSE-ENGINEERING.md) · [UI/UX 점검](docs/UX-DIRECTION-AUDIT.md).
-> 아래 공개판 소개는 0.6 기준입니다. 이 개발 분기의 0.7 캠페인·합체 시제품은 실험이며, 설계 0.8의 대원별 성장·새 진행 규칙은 구현 완료 상태가 아닙니다.
+> **기획 재정립 · 2026-11-05**
+> 사용자 제공 MegaBonk PDF와 Pokémon Survivor Burst 캡처를 읽고 [자료 분석](docs/REFERENCE-ANALYSIS-V09.md) → [원정 설계 0.9](docs/GAME-DESIGN.md) → [다람쥐·고슴도치 설계](docs/CHARACTER-DESIGN.md)로 정리했습니다.
+> 새 기준은 **두 구역 돌파 → 별도 최종전 → 한 판 종료**입니다. 새 무기는 필드 보급, XP는 보유 무기 투자로 나누고, 사냥 할당량·추가 XP 제한·연속 분기 메뉴를 교체할 계획입니다.
+> 공개 Pages와 아래 소개는 0.6 기준입니다. [0.8 로컬 실험](docs/PROTOTYPE-V08.md)은 Git에 보관했으며 배포하지 않았습니다. 0.9 문서는 구현 완료 목록이 아닙니다.
 
 ![실타래 군집 빌드로 돌진 숲지기의 공격 경로를 피하는 실제 플레이 화면](docs/images/boss-v6.jpg)
 
