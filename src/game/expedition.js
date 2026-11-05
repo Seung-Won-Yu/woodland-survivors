@@ -2,6 +2,8 @@ import {createGame,spawnEnemy,deriveStats,healPlayer,LIMITS} from '../core/game.
 import {createRelicCache,openRelicCache,relicHash} from '../core/relics.js';
 import {guardianStyle,GUARDIANS,PATTERN_NAMES} from '../core/patterns.js';
 import {createCampaign,campaignStage,MIDPOINT_AT,ARMORY_AT,finalArrival,CAMPAIGN_BOSSES} from '../core/campaign.js';
+import {createFrontier,isFrontier,frontierStatus,challengeFrontier} from '../core/frontier.js';
+import {createMastery} from '../core/mastery.js';
 import {normalizeProfile} from '../core/profile.js';
 import {BASE_WEAPON_IDS,HEROES,WEAPONS,SLOT_LIMIT,formatTime} from '../core/content.js';
 import {ROCKS,TREE_TRUNKS,LANDMARKS,TRIAL_SPOTS} from './terrain.js';
@@ -18,9 +20,11 @@ export function createExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437
   g.weapons={[weapon]:{rank:1,evolved:false,clock:.15}};g.discovered=[weapon];g.maxRanks={[weapon]:1};g.pool=[...BASE_WEAPON_IDS];
   g.startWeapon=weapon;g.terrain=[...ROCKS,...TREE_TRUNKS];g.gear=null;g.nextElite=105;g.player.charge=35;
   if(mode==='campaign')g.campaign=createCampaign();
+  if(mode==='frontier'){g.campaign=createFrontier();g.mastery=createMastery(hero);g.player.charge=25;if(hero==='bram')g.player.hp=g.player.maxHp=135;g.rerolls=4;}
   const trial={id:'trial',name:'바람숲 제단',short:'20초 도전',...TRIAL_SPOTS[relicHash(seed,'clearing')%TRIAL_SPOTS.length],color:'#b5d5a3',hint:'F로 시작 · 원 안에서 20초 버티면 유물',state:'ready'};
   g.expedition={seed:seed>>>0,sites:[...SITES.map(s=>({...s,state:'ready'})),trial],trial:{startedAt:null,lastAt:0,outside:0,wave:0,pending:[]},nestKills:0,complete:false,log:[],milestones:{},toast:'서쪽은 보급, 남쪽은 회복 샘. 길을 골라 경험치를 모으세요.',toastUntil:8};
   if(g.campaign){const camp=g.expedition.sites.find(s=>s.id==='camp');camp.short='야영지';camp.hint='3분 수문장 · 5분 정비 보급 · 7분 최종전';g.expedition.toast='새벽까지 한 판! 3분 수문장, 5분 정비 보급, 7분 버섯왕. 먼저 빌드를 준비하세요.';}
+  if(isFrontier(g)){const camp=g.expedition.sites.find(s=>s.id==='camp');camp.short='도전 / 공방';camp.hint='사냥 진척 완료 → F 보스 도전';g.expedition.toast='사냥으로 수문장 도전 개방 → 인장으로 진화 → 무기 합체 → 버섯왕 격파!';g.stats=deriveStats(g);}
   g.enemies=[];
   for(let i=0;i<4;i++){const a=i*Math.PI/2;spawnEnemy(g,'shroom',Math.cos(a)*280,Math.sin(a)*240);}
   const supply=g.expedition.sites.find(s=>s.id==='supply');supply.state='guarded';
@@ -28,6 +32,7 @@ export function createExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437
   return g;
 }
 export function createCampaignExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437){return createExpedition(hero,weapon,seed,{mode:'campaign'});}
+export function createFrontierExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437){return createExpedition(hero,weapon,seed,{mode:'frontier'});}
 export function message(g,text){g.expedition.toast=text;g.expedition.toastUntil=g.time+5;g.expedition.log.push({time:Math.round(g.time),text});}
 export function nearestSite(g){return [...g.expedition.sites.filter(s=>['ready','guarded'].includes(s.state)),...g.pickups.filter(p=>p.type==='relic').map(p=>({...p,name:'숲의 유물 꾸러미',short:'유물',hint:'두 개 중 하나 선택 · 장착은 두 칸'}))].filter(s=>Math.hypot(s.x-g.player.x,s.y-g.player.y)<76).sort((a,b)=>Math.hypot(a.x-g.player.x,a.y-g.player.y)-Math.hypot(b.x-g.player.x,b.y-g.player.y))[0];}
 export function interact(g){
@@ -48,6 +53,7 @@ export function interact(g){
     message(g,`${GUARDIANS[boss.guardianStyle].name} 등장! 공격 예고를 피하고 회복 중인 빈틈을 노리세요.`);return true;
   }
   if(s.id==='camp'){
+    if(isFrontier(g)){if(challengeFrontier(g,(...args)=>spawnEnemy(g,...args))){message(g,`${frontierStatus(g).bossName} 도전! 예고를 피하고 공격 뒤 빈틈을 노리세요.`);return true;}const status=frontierStatus(g);message(g,status.stage==='boss'?'보스의 공격 뒤 빈틈을 노리세요.':`사냥 ${status.progress}/${status.target} · 진화·합체는 일시정지의 공방에서 확인`);return false;}
     if(g.campaign){message(g,g.campaign.mid.state==='active'?'야영지의 보급로 수문장을 처치하세요.':g.campaign.final.state==='active'?'버섯왕을 쓰러뜨리면 원정을 완주합니다.':g.time<MIDPOINT_AT?`수문장 등장까지 ${Math.ceil(MIDPOINT_AT-g.time)}초 · 빌드를 준비하세요.`:`최종전은 7분부터 · 5분 정비 상자와 무기 각성을 챙기세요.`);return false;}
     if(g.time<180){message(g,`귀환까지 ${Math.ceil(180-g.time)}초 · 경험치를 모으거나 유물에 도전하세요.`);return false;}
     g.expedition.milestones.returnAt=g.time;g.expedition.complete=true;g.phase='result';g.outcome='scouted';return true;
@@ -58,7 +64,7 @@ export function takeSupply(g,gear,replace=null){
   if(g.phase!=='supply'||!['boots','bark'].includes(gear))return false;
   const s=g.expedition.sites.find(s=>s.id==='supply');if(s.state!=='ready')return false;
   const recipe=WEAPONS[g.startWeapon].recipe;
-  if(!g.passives[recipe]&&Object.keys(g.passives).length>=SLOT_LIMIT){
+  if(!g.passives[recipe]&&Object.keys(g.passives).length>=(isFrontier(g)?4:SLOT_LIMIT)){
     if(!replace||!Object.hasOwn(g.passives,replace)){g.pendingSupplyGear=gear;return false;}
     delete g.passives[replace];
   }
@@ -99,10 +105,12 @@ export function updateExpedition(g){
     nest.state='cleared';ex.milestones.nestClearedAt=g.time;message(g,'지휘관 처치! 황금 상자를 회수하세요 · 시작 무기 +2 / 진화');
   }
   if(nest.state==='cleared'&&g.chest?.source==='nest'){nest.state='spent';ex.milestones.nestRewardAt=g.time;message(g,'둥지 보상을 확보했습니다. 새 힘으로 경험치를 모아 귀환하세요.');}
-  if(g.time>=150&&!ex.beaconCalled){ex.beaconCalled=true;message(g,g.campaign?'3분 수문장 등장까지 30초. 야영지 쪽으로 길을 열어두세요.':'귀환까지 30초. 마지막 공세의 틈을 타 야영지로 돌아갈 길을 고르세요.');}
+  if(!isFrontier(g)&&g.time>=150&&!ex.beaconCalled){ex.beaconCalled=true;message(g,g.campaign?'3분 수문장 등장까지 30초. 야영지 쪽으로 길을 열어두세요.':'귀환까지 30초. 마지막 공세의 틈을 타 야영지로 돌아갈 길을 고르세요.');}
   if(!g.campaign&&g.time>=180&&!ex.returnCalled){ex.returnCalled=true;message(g,'3분 정찰 완료! 야영지로 돌아가 F를 눌러 귀환하세요.');}
 }
 export function expeditionObjective(g){
+  if(isFrontier(g)){const s=frontierStatus(g),m=g.mastery,goal=s.stage==='boss'?`${s.bossName} 격파`:s.stage==='ready'?`도전 개방 · 야영지에서 F`:s.stage==='cleared'?'전리품 정비 후 다음 공세로':`${g.campaign.depth===1?'수문장 도전 준비':'최종 빌드 완성'} · 사냥 ${s.progress}/${s.target}`;return {title:goal,detail:s.stage==='ready'?'추가 성장에는 한계가 있습니다 · 인장으로 진화, 두 무기로 합체':`${g.campaign.depth===1?'1차 목표: 인장 확보':'2차 목표: 최종 합체로 버섯왕 격파'} · 위협 ${s.threat+1} · 둥지 선택 도전`};}
+
   const ex=g.expedition,supply=ex.sites.find(s=>s.id==='supply'),nest=ex.sites.find(s=>s.id==='nest'),spring=ex.sites.find(s=>s.id==='spring');
   const healing=spring.state==='spent'?'샘 사용 완료':`남쪽 샘: 체력 +40${g.player.hp<g.player.maxHp*.55?' · 회복이 필요합니다':''}`;
   if(!g.campaign&&g.time>=180)return {title:'야영지로 귀환하기',detail:'중앙 야영지에서 F · 정찰을 마무리하세요.'};

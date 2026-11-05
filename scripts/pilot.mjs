@@ -1,6 +1,8 @@
 import {pathToFileURL} from 'node:url';
 import {createExpedition,interact,takeSupply,updateExpedition} from '../src/game/expedition.js';
 import {stepGame,applyChoice,closeChest,selectChest,continueCampaign} from '../src/core/game.js';
+import {isFrontier,frontierStatus} from '../src/core/frontier.js';
+import {openForge,frontierForgeCandidates,claimBossReward} from '../src/core/game.js';
 import {WEAPONS,UNIONS} from '../src/core/content.js';
 import {LANDMARKS} from '../src/game/terrain.js';
 import {equipRelic,leaveRelicCache} from '../src/core/relics.js';
@@ -9,13 +11,14 @@ import {bankCampaign} from '../src/core/campaign.js';
 import {masteredSynergies} from '../src/core/synergies.js';
 const point=id=>[LANDMARKS[id].x,LANDMARKS[id].y];
 const route=[point('supply'),[-710,-560],[-260,-660],point('nest'),[950,-360],[920,-780],[100,-980],[-600,-850],[-950,-100],[-450,120],[0,100],[260,310],point('spring'),[-100,850],[460,850],[900,150],[800,-300]];
-export function pilot({hero='pip',weapon=undefined,seed=1437,seconds=215,mode='scout',stages=1,fusion=null,takeNest=true,takeRelics=false,takeTrial=false,combatStyle='mobile',relicPreference=['wind','thread','thorn','shell','seed','tide'],view=null}={}){
+export function pilot({hero='pip',weapon=undefined,seed=1437,seconds=215,mode='scout',stages=1,fusion=null,takeNest=true,takeRelics=false,takeTrial=false,combatStyle='mobile',branch='spread',relicPreference=['wind','thread','thorn','shell','seed','tide'],view=null}={}){
  const g=createExpedition(hero,weapon,seed,{mode}),start=g.startWeapon;let waypoint=0,supply=false,nestActivated=false,firstSupply=null,phaseCounts={},steps=0,dashes=0,choices=[],samples=[],relicChoices=[];
  const ignoredCaches=new Set();
  if(view)g.view={...view};
  for(let frame=0;frame<seconds*60+5000&&g.time<seconds&&g.phase!=='result';frame++){
-  if(g.phase==='crossroads'){if(g.campaign.cleared>=stages){bankCampaign(g);continue;}continueCampaign(g,g.campaign.depth%3===0?'vigor':g.campaign.depth%2===0?'tempo':'force');continue;}
+  if(g.phase==='crossroads'){if(isFrontier(g)){if(g.campaign.rewardPending){const needed=UNIONS[fusion]?.inputs.map(i=>WEAPONS[i.id].recipe).find(id=>!g.passives[id]);const id=needed?`catalyst:${needed}`:Object.keys(g.weapons).some(id=>!g.weapons[id].evolved&&g.weapons[id].rank<8)?`weapon:${Object.keys(g.weapons).find(id=>!g.weapons[id].evolved&&g.weapons[id].rank<8)}`:'heal';if(!claimBossReward(g,id))claimBossReward(g,'heal');continue;}if(frontierForgeCandidates(g).length){openForge(g);continue;}if(g.campaign.cleared>=stages){bankCampaign(g);continue;}continueCampaign(g,'frontier');continue;}if(g.campaign.cleared>=stages){bankCampaign(g);continue;}continueCampaign(g,g.campaign.depth%3===0?'vigor':g.campaign.depth%2===0?'tempo':'force');continue;}
   if(g.phase==='choice'){
+   if(g.choiceMode){let index=g.choices.findIndex(c=>c.id===branch||c.branch===(hero==='bram'?branch:branch));if(index<0)index=0;choices.push({time:Math.round(g.time),id:g.choices[index].id});applyChoice(g,index);continue;}
    const close=['briar','bloom','vine'],weapons=Object.keys(g.weapons);
    const fusionInputs=UNIONS[fusion]?.inputs||[];
    const score=c=>fusionInputs.some(i=>i.id===c.id)?150+(c.owned?8-(g.weapons[c.id]?.rank||0):15):c.kind==='weapon'&&!c.owned&&weapons.length===1?120+(close.includes(start)!==close.includes(c.id)?10:0):c.id===start?100:c.kind==='weapon'&&c.owned?45:c.id===WEAPONS[start].recipe?50:c.id==='bark'?40:c.id==='feather'?35:c.kind==='weapon'?20:10;
@@ -28,6 +31,7 @@ export function pilot({hero='pip',weapon=undefined,seed=1437,seconds=215,mode='s
    if(replace&&relicPreference.indexOf(id)>relicPreference.indexOf(replace)){ignoredCaches.add(g.relicOffer.cacheId);leaveRelicCache(g);continue;}
    relicChoices.push({time:Math.round(g.time),source:g.relicOffer.source,options:[...g.relicOffer.options],id,replace});equipRelic(g,id,replace);continue;
   }
+  if(isFrontier(g)&&!g.campaign.rewardPending&&frontierForgeCandidates(g).length){openForge(g);continue;}
   const p=g.player,returning=!g.campaign&&g.time>=180,target=returning?point('camp'):route[waypoint%route.length];
   if(returning&&Math.hypot(p.x,p.y-70)<68){interact(g);continue;}
   if(!returning&&Math.hypot(p.x-target[0],p.y-target[1])<55){
@@ -68,6 +72,7 @@ export function pilot({hero='pip',weapon=undefined,seed=1437,seconds=215,mode='s
    if(spring.state==='ready'&&p.hp<p.maxHp*.35){next=point('spring');if(Math.hypot(p.x-spring.x,p.y-spring.y)<65)interact(g);}
   }
   const milestone=g.pickups.find(q=>q.type==='chest'&&['midpoint','armory'].includes(q.source));if(milestone)next=[milestone.x,milestone.y];
+  if(isFrontier(g)&&frontierStatus(g).canChallenge){next=point('camp');if(Math.hypot(p.x-next[0],p.y-next[1])<65){interact(g);continue;}}
   const desired=Math.atan2(next[1]-p.y,next[0]-p.x);
   let best={score:Infinity,x:0,y:0};
   for(let i=-4;i<=4;i++){
@@ -90,6 +95,6 @@ export function pilot({hero='pip',weapon=undefined,seed=1437,seconds=215,mode='s
   if(g.time>=(samples.length+1)*30)samples.push({time:Math.round(g.time),level:g.level,hp:Math.round(p.hp),kills:g.kills,xpDropped:g.metrics.xpDropped,xpCollected:g.metrics.xpCollected,damageTaken:Math.round(g.metrics.damageTaken),damageBySource:{...g.metrics.damageBySource},x:Math.round(p.x),y:Math.round(p.y),mastered:masteredSynergies(g),weapons:Object.fromEntries(Object.entries(g.weapons).map(([id,w])=>[id,{rank:w.rank,evolved:w.evolved}]))});
   for(const e of g.enemies)phaseCounts[e.type+':'+e.mode]=(phaseCounts[e.type+':'+e.mode]||0)+1;
  }
- return {hero,weapon:start,seed,combatStyle,mode,fusion,unions:g.unions,firstUnionAt:g.metrics.firstUnionAt,campaign:g.campaign,bestStreak:g.metrics.bestStreak||0,peakEnemies:g.peakEnemies,weaponMetrics:g.metrics.weapons,mastered:masteredSynergies(g),gear:g.gear,patternDamage:g.metrics.patternDamage||{},takeNest,takeRelics,takeTrial,trial:g.expedition.sites.find(s=>s.id==='trial').state,relics:g.relics.items,relicStats:g.relics.stats,synergies:g.synergies,enemyPatterns:g.metrics.enemyPatterns||{},relicChoices,elapsed:Math.round(g.time*10)/10,hp:Math.round(g.player.hp),level:g.level,kills:g.kills,damage:Math.round(g.damage),supply,firstSupply,firstLevelAt:g.metrics.firstLevelAt,firstEvolutionAt:g.metrics.firstEvolutionAt,nestActivated,nest:g.expedition.sites.find(s=>s.id==='nest').state,milestones:g.expedition.milestones,choices,dashes,damageTaken:Math.round(g.metrics.damageTaken),xpDropped:g.metrics.xpDropped,xpCollected:g.metrics.xpCollected,xpRemaining:[...g.gems.values(),...g.flying].reduce((sum,gem)=>sum+gem.value,0),blockedSeconds:Math.round(g.metrics.blockedSeconds*10)/10,damageBySource:g.metrics.damageBySource,samples,weapons:g.weapons,evolutions:g.evolutions,phaseCounts,steps,waypoint,outcome:g.outcome};
+ return {hero,weapon:start,seed,combatStyle,branch,mastery:g.mastery,mode,fusion,unions:g.unions,firstUnionAt:g.metrics.firstUnionAt,campaign:g.campaign,bestStreak:g.metrics.bestStreak||0,peakEnemies:g.peakEnemies,weaponMetrics:g.metrics.weapons,mastered:masteredSynergies(g),gear:g.gear,patternDamage:g.metrics.patternDamage||{},takeNest,takeRelics,takeTrial,trial:g.expedition.sites.find(s=>s.id==='trial').state,relics:g.relics.items,relicStats:g.relics.stats,synergies:g.synergies,enemyPatterns:g.metrics.enemyPatterns||{},relicChoices,elapsed:Math.round(g.time*10)/10,hp:Math.round(g.player.hp),level:g.level,kills:g.kills,damage:Math.round(g.damage),supply,firstSupply,firstLevelAt:g.metrics.firstLevelAt,firstEvolutionAt:g.metrics.firstEvolutionAt,nestActivated,nest:g.expedition.sites.find(s=>s.id==='nest').state,milestones:g.expedition.milestones,choices,dashes,damageTaken:Math.round(g.metrics.damageTaken),xpDropped:g.metrics.xpDropped,xpCollected:g.metrics.xpCollected,xpRemaining:[...g.gems.values(),...g.flying].reduce((sum,gem)=>sum+gem.value,0),blockedSeconds:Math.round(g.metrics.blockedSeconds*10)/10,damageBySource:g.metrics.damageBySource,samples,weapons:g.weapons,evolutions:g.evolutions,phaseCounts,steps,waypoint,outcome:g.outcome};
 }
 if(import.meta.url===pathToFileURL(process.argv[1]||'').href){console.log(JSON.stringify(['pip','lune','bram','fox','mole','otter'].map(hero=>pilot({hero,mode:'campaign',seconds:660,takeNest:false,takeRelics:true,takeTrial:true})),null,2));}

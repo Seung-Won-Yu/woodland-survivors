@@ -8,5 +8,6 @@ await cp('public/fonts','dist/fonts',{recursive:true});
 await mkdir('dist/docs',{recursive:true});
 await cp('docs/motion-lab.html','dist/docs/motion-lab.html');
 await cp('docs/combat-lab.html','dist/docs/combat-lab.html');
+await cp('docs/progression-lab.html','dist/docs/progression-lab.html');
 await writeFile('dist/.nojekyll','');
 console.log('Static build ready in dist/');
