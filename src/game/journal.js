@@ -1,7 +1,10 @@
+import {RULESET} from '../core/journey.js';
 import {HEROES,BASE_WEAPON_IDS} from '../core/content.js';
 import {RELIC_IDS} from '../core/relics.js';
 import {SYNERGY_IDS} from '../core/synergies.js';
 export const JOURNAL_KEY='woodland-expedition-journal-v1';
+const knownRuleset=r=>['expedition-v09',RULESET].includes(r);
+const recordKey=r=>`${r.ruleset||'expedition-v09'}:${r.hero}:${r.style||'none'}:${r.difficulty}`;
 const uint=n=>Number.isInteger(n)&&n>=0&&n<=4294967295;
 export function normalizeJournal(raw){
   const j={discovered:[],synergies:[],runs:[],returns:0,clears:0,bestLevel:0,bestStage:0,bestKills:0,bestStreak:0,fastestClear:null,frontierHeroes:{},journeyRuns:[],journeyBest:{}};
@@ -14,8 +17,8 @@ export function normalizeJournal(raw){
   for(const k of ['bestStage','bestKills','bestStreak'])j[k]=Number.isSafeInteger(raw[k])&&raw[k]>=0?Math.min(1e8,raw[k]):0;
   j.fastestClear=Number.isFinite(raw.fastestClear)&&raw.fastestClear>=420&&raw.fastestClear<=1e9?raw.fastestClear:null;
   j.bestLevel=Number.isSafeInteger(raw.bestLevel)&&raw.bestLevel>=0?Math.min(9999,raw.bestLevel):0;
-  j.journeyRuns=(Array.isArray(raw.journeyRuns)?raw.journeyRuns:[]).filter(r=>r&&typeof r.id==='string'&&/^[a-zA-Z0-9-]{1,100}$/.test(r.id)&&r.ruleset==='expedition-v09'&&Object.hasOwn(HEROES,r.hero)&&BASE_WEAPON_IDS.includes(r.weapon)&&['normal','dense'].includes(r.difficulty)&&Number.isFinite(r.time)&&r.time>=0&&r.time<1e9&&Number.isInteger(r.stage)&&r.stage>=0&&r.stage<=3&&Number.isInteger(r.level)&&r.level>=1&&r.level<10000&&Number.isInteger(r.kills)&&r.kills>=0&&r.kills<1e8&&[null,'spread','focus','guard','counter'].includes(r.style)).slice(0,24).map(r=>({...r,cleared:r.stage===3&&r.cleared===true,finalized:r.finalized===true}));
-  for(const r of Object.values(raw.journeyBest||{}))if(r&&Object.hasOwn(HEROES,r.hero)&&[null,'spread','focus','guard','counter'].includes(r.style)&&['normal','dense'].includes(r.difficulty)&&['stage','kills','level'].every(k=>Number.isInteger(r[k])&&r[k]>=0&&r[k]<=1e8)&&(r.fastest===null||Number.isFinite(r.fastest)&&r.fastest>0&&r.fastest<1e9))j.journeyBest[`${r.hero}:${r.style||'none'}:${r.difficulty}`]={hero:r.hero,style:r.style,difficulty:r.difficulty,stage:Math.min(3,r.stage),kills:r.kills,level:r.level,fastest:r.fastest};
+  j.journeyRuns=(Array.isArray(raw.journeyRuns)?raw.journeyRuns:[]).filter(r=>r&&typeof r.id==='string'&&/^[a-zA-Z0-9-]{1,100}$/.test(r.id)&&knownRuleset(r.ruleset)&&Object.hasOwn(HEROES,r.hero)&&BASE_WEAPON_IDS.includes(r.weapon)&&['normal','dense'].includes(r.difficulty)&&Number.isFinite(r.time)&&r.time>=0&&r.time<1e9&&Number.isInteger(r.stage)&&r.stage>=0&&r.stage<=3&&Number.isInteger(r.level)&&r.level>=1&&r.level<10000&&Number.isInteger(r.kills)&&r.kills>=0&&r.kills<1e8&&[null,'spread','focus','guard','counter'].includes(r.style)).slice(0,24).map(r=>({...r,cleared:r.stage===3&&r.cleared===true,finalized:r.finalized===true}));
+  for(const r of Object.values(raw.journeyBest||{}))if(r&&knownRuleset(r.ruleset||'expedition-v09')&&Object.hasOwn(HEROES,r.hero)&&[null,'spread','focus','guard','counter'].includes(r.style)&&['normal','dense'].includes(r.difficulty)&&['stage','kills','level'].every(k=>Number.isInteger(r[k])&&r[k]>=0&&r[k]<=1e8)&&(r.fastest===null||Number.isFinite(r.fastest)&&r.fastest>0&&r.fastest<1e9))j.journeyBest[recordKey(r)]={ruleset:r.ruleset||'expedition-v09',hero:r.hero,style:r.style,difficulty:r.difficulty,stage:Math.min(3,r.stage),kills:r.kills,level:r.level,fastest:r.fastest};
   for(const r of j.journeyRuns)mergeJourneyBest(j,r);
   const seen=new Set();
   for(const r of Array.isArray(raw.runs)?raw.runs:[]){
@@ -58,6 +61,6 @@ function checkpointJourney(j,g){
 
 export function journeyUnlocked(j){return Object.values(j.journeyBest||{}).some(r=>r.fastest!==null);}
 function mergeJourneyBest(j,r){
- j.journeyBest??={};const key=`${r.hero}:${r.style||'none'}:${r.difficulty}`,old=j.journeyBest[key]||{stage:0,kills:0,level:0,fastest:null};
- j.journeyBest[key]={hero:r.hero,style:r.style,difficulty:r.difficulty,stage:Math.max(old.stage,r.stage),kills:Math.max(old.kills,r.kills),level:Math.max(old.level,r.level),fastest:r.cleared?Math.min(old.fastest??Infinity,r.time):old.fastest};
+ j.journeyBest??={};const key=recordKey(r),old=j.journeyBest[key]||{stage:0,kills:0,level:0,fastest:null};
+ j.journeyBest[key]={ruleset:r.ruleset||'expedition-v09',hero:r.hero,style:r.style,difficulty:r.difficulty,stage:Math.max(old.stage,r.stage),kills:Math.max(old.kills,r.kills),level:Math.max(old.level,r.level),fastest:r.cleared?Math.min(old.fastest??Infinity,r.time):old.fastest};
 }

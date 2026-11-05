@@ -1,13 +1,14 @@
 import {BASE_WEAPON_IDS,WEAPONS} from './content.js';
+export const RULESET='expedition-v10';
 export const isJourney=g=>g.campaign?.version===3;
 export const REGIONS=[
- {id:'road',name:'보급로',boss:'보급로 수문장',role:'warden',hp:5200,damage:12,recommended:9,color:'#dfc489'},
- {id:'grove',name:'군락 심부',boss:'포자 군락의 어미',role:'matriarch',hp:42000,damage:16,recommended:21,color:'#aac6ad'},
- {id:'heart',name:'수호목 공터',boss:'숲의 군주 모르가',role:'sovereign',hp:155000,damage:20,recommended:26,color:'#dfb8b1'}
+ {id:'road',name:'보급로',boss:'보급로 수문장',role:'warden',hp:3500,damage:12,recommended:9,color:'#dfc489'},
+ {id:'grove',name:'군락 심부',boss:'포자 군락의 어미',role:'matriarch',hp:34000,damage:16,recommended:21,color:'#aac6ad'},
+ {id:'heart',name:'수호목 공터',boss:'숲의 군주 모르가',role:'sovereign',hp:115000,damage:20,recommended:26,color:'#dfb8b1'}
 ];
 const encounter=()=>({state:'waiting',id:null,spawnedAt:null,defeatedAt:null});
 export function createJourney(difficulty='normal'){
- return {version:3,ruleset:'expedition-v09',mode:'expedition',difficulty,regionIndex:0,depth:1,stageState:'hunting',stageStartedAt:0,cleared:0,seals:0,rewardPending:false,transitionPending:false,records:[],encounter:encounter(),boosts:{force:0,tempo:0,vigor:0,overflow:0},nextHordeAt:32,hordes:0,overrunAnnounced:false,styleChosen:false};
+ return {version:3,ruleset:RULESET,mode:'expedition',difficulty,regionIndex:0,depth:1,stageState:'hunting',stageStartedAt:0,cleared:0,seals:0,rewardPending:false,transitionPending:false,records:[],encounter:encounter(),boosts:{force:0,tempo:0,vigor:0,overflow:0},nextHordeAt:32,hordes:0,overrunAnnounced:false,styleChosen:false};
 }
 export function journeyStatus(g){
  const c=g.campaign,r=REGIONS[c.regionIndex],elapsed=g.time-c.stageStartedAt;
@@ -51,7 +52,7 @@ export function cacheWeaponChoices(g,site){
 export function validJourney(c,g){
  const integer=(n,a=0,b=1e8)=>Number.isInteger(n)&&n>=a&&n<=b;
  const time=n=>Number.isFinite(n)&&n>=0&&n<=g.time;
- if(c.ruleset!=='expedition-v09'||c.mode!=='expedition'||!['normal','dense'].includes(c.difficulty)||!integer(c.regionIndex,0,2)||c.depth!==c.regionIndex+1||!['hunting','boss','cleared','complete'].includes(c.stageState)||!time(c.stageStartedAt)||!integer(c.cleared,0,3)||!integer(c.seals,0,Math.min(2,c.cleared))||typeof c.rewardPending!=='boolean'||typeof c.transitionPending!=='boolean'||typeof c.styleChosen!=='boolean'||typeof c.overrunAnnounced!=='boolean'||!Number.isFinite(c.nextHordeAt)||!integer(c.hordes))return false;
+ if(c.ruleset!==RULESET||c.mode!=='expedition'||!['normal','dense'].includes(c.difficulty)||!integer(c.regionIndex,0,2)||c.depth!==c.regionIndex+1||!['hunting','boss','cleared','complete'].includes(c.stageState)||!time(c.stageStartedAt)||!integer(c.cleared,0,3)||!integer(c.seals,0,Math.min(2,c.cleared))||typeof c.rewardPending!=='boolean'||typeof c.transitionPending!=='boolean'||typeof c.styleChosen!=='boolean'||typeof c.overrunAnnounced!=='boolean'||!Number.isFinite(c.nextHordeAt)||!integer(c.hordes))return false;
  if(c.seals+g.evolutions.length!==Math.min(2,c.cleared))return false;
  if(!c.boosts||['force','tempo','vigor','overflow'].some(k=>c.boosts[k]!==0)||!Array.isArray(c.records)||c.records.length!==c.cleared||c.records.some((r,i)=>r.region!==i||!time(r.time)||!Number.isFinite(r.duration)||r.duration<0||!integer(r.kills)))return false;
  const e=c.encounter,live=g.enemies.filter(e=>e.bossRole&&!e.dead);if(!e||!['waiting','active','defeated'].includes(e.state))return false;

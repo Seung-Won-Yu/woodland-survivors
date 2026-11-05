@@ -1,11 +1,11 @@
-const IMPORTANT = ['hurt', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
-const IMPACTS = ['wood-impact', 'wood-kill', 'blade-impact', 'ember-impact'];
-const CASTS = ['acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
+const IMPORTANT = ['hurt', 'forge-union', 'forge-evolve', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
+const IMPACTS = ['power-kill', 'wood-impact', 'wood-kill', 'blade-impact', 'ember-impact'];
+const CASTS = ['scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
 
 export function selectAudioEvents(events) {
   const has = event => events.has(event);
   const important = IMPORTANT.find(has);
-  const impact = has('kill')&&has('wood-impact')?'wood-kill':IMPACTS.find(has);
+  const impact = has('power-kill')?'power-kill':has('kill')&&has('wood-impact')?'wood-kill':IMPACTS.find(has);
   const cast = CASTS.find(has);
   // One foreground cue plus one contact, never one voice per enemy.
   if (important === 'hurt' || important === 'elite-break' || important === 'crowd-break') return [important];
@@ -75,7 +75,11 @@ export function createAudio() {
     if ((event !== 'hurt' && now - (lastLane.get(lane) ?? -1) < (lane === 'impact' ? .085 : .045)) || now - (lastEvent.get(event) ?? -1) < cooldown) return;
     lastLane.set(lane, now);
     lastEvent.set(event, now);
-    if(event==='acorn-shot'){
+    if(event==='forge-union'||event==='forge-evolve'){const union=event==='forge-union';transient(now,.07,.045,union?950:1400);note(110,55,'triangle',now,.16,.035);[1,1.5,2].forEach((ratio,i)=>note(330*ratio,440*ratio,'sine',now+i*.06,.15,.02));}
+    else if(event==='power-kill'){transient(now,.04,.05,1100);note(140,42,'triangle',now,.1,.038);note(790,1200,'sine',now+.01,.06,.013);}
+    else if(event==='scatter-shot'){transient(now,.035,.03,1800);note(180,65,'triangle',now,.09,.03);note(78,45,'sine',now,.1,.018);}
+    else if(event==='swarm-shot'){transient(now,.025,.02,2400);note(240,170,'triangle',now,.06,.014);}
+    else if(event==='acorn-shot'){
       transient(now,.022,.023,2100);note(230,85,'triangle',now,.065,.028);note(90,55,'sine',now,.075,.018);
     }else if(event==='wood-kill'){
       transient(now,.035,.046,1300);note(190,52,'triangle',now,.09,.033);note(900,1250,'sine',now+.012,.045,.013);

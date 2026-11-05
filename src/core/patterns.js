@@ -10,7 +10,7 @@ export const guardianStyle=seed=>Object.keys(GUARDIANS)[relicHash(seed,'guardian
 function record(g,id){g.metrics.enemyPatterns??={};g.metrics.enemyPatterns[id]=(g.metrics.enemyPatterns[id]||0)+1;}
 export function chargeProfile(e){return e.bossRole==='midpoint'?{speed:290,duration:e.patternPower===2?.65:.55}:e.bossRole==='final'?{speed:e.patternPower===2?360:330,duration:e.patternPower===2?.72:.65}:{speed:e.patternPower===2?360:320,duration:e.patternPower===2?.6:.48};}
 export function bossShotProfile(e){const speed=e.attack==='volley'?135:e.patternPower===2?145:120,life=3.5;return {speed,life,range:speed*life+18};}
-function chargeStep(e,dt){const duration=Math.min(dt,e.charge);e.charge=Math.max(0,e.charge-duration);const speed=chargeProfile(e).speed*duration/dt;if(e.charge<1e-8){e.mode='recover';e.recover=e.bossRole?1.1:.95;e.clock=e.bossRole?(e.bossPhase===2?3.6:4.6):e.bossPhase===2?3.1:4.1;}return {d:{x:e.dx,y:e.dy},speed};}
+function chargeStep(e,dt){const duration=Math.min(dt,e.charge);e.charge=Math.max(0,e.charge-duration);const speed=chargeProfile(e).speed*duration/dt;if(e.charge<1e-8){e.mode='recover';e.recover=e.encounterRole?1.35:e.bossRole?1.1:.95;e.clock=e.bossRole?(e.bossPhase===2?3.6:4.6):e.bossPhase===2?3.1:4.1;}return {d:{x:e.dx,y:e.dy},speed};}
 export function bossShotAngles(e){
   if(e.attack==='volley'){const n=e.patternPower===2?7:5;return Array.from({length:n},(_,i)=>e.patternAngle+(i-(n-1)/2)*.22);}
   if(e.attack==='crown'){const n=e.patternPower===2?20:16;return Array.from({length:n},(_,i)=>e.patternAngle+i*TAU/n).filter(a=>Math.abs(Math.atan2(Math.sin(a-e.patternAngle),Math.cos(a-e.patternAngle)))>.42);}
@@ -94,7 +94,7 @@ export function scheduledBossBehavior(g,e,dt,d,speed,distance,api){
     if(e.windup<=0){
       if(e.attack==='charge'){e.mode='charge';e.charge=chargeProfile(e).duration;return chargeStep(e,dt);}
       for(const a of bossShotAngles(e))api.shot(e,a,bossShotProfile(e).speed);
-      e.mode='recover';e.recover=1.1;e.clock=e.bossPhase===2?3.6:4.6;
+      e.mode='recover';e.recover=e.encounterRole?1.35:1.1;e.clock=e.bossPhase===2?3.6:4.6;
     }
   }else if(e.mode==='charge')return chargeStep(e,dt);
   else if(e.mode==='recover'){speed=0;e.recover-=dt;if(e.recover<=0)e.mode='walk';}

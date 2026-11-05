@@ -2,16 +2,18 @@
 <p align="center"><strong>Woodland Survivors · 새벽숲 원정</strong><br>작은 동물 수호자의 성장을 한 판의 결전까지 이어가는 2D 서바이버</p>
 <p align="center">
 <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="게임 검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
-<img alt="0.9 개발판" src="https://img.shields.io/badge/version-0.9-d5b77b?style=flat-square">
+<img alt="0.10 개발판" src="https://img.shields.io/badge/version-0.10-d5b77b?style=flat-square">
 <img alt="HTML Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
 <p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 브라우저에서 플레이</strong></a> · <a href="docs/GAME-DESIGN.md">게임 기획</a> · <a href="docs/PRESENTATION-V09.md">화면·연출 기준</a> · <a href="#로컬-실행">로컬 실행</a></p>
 
-> **0.9 원정 구현 · 2026-11-05**
-> 보급로 → 군락 심부 → 수호목 결전. 정찰 타이머와 사냥 할당량을 대신해 **세 보스의 격파**가 한 판의 목표가 됩니다. 자료 분석, 성장 규칙, 화면 표현을 먼저 정리하고 그 계약에 맞춰 구현했습니다. 배포·검증 범위는 [0.9 검증 기록](docs/VALIDATION-V09.md)에 기록합니다.
+> **0.10 전투·모바일 개선 · 2026-11-05**
+> 보급로 → 군락 심부 → 수호목 결전. 정찰 타이머와 사냥 할당량을 대신해 **세 보스의 격파**가 한 판의 목표가 됩니다. 자료 분석, 성장 규칙, 화면 표현을 먼저 정리하고 그 계약에 맞춰 구현했습니다. 배포·검증 범위는 [0.10 검증 기록](docs/VALIDATION-V010.md)에 기록합니다.
 
-![보급로부터 군주 결전까지 목표가 보이는 0.9 출전 화면](docs/images/v09-camp.png)
+![진화와 결전을 준비하는 0.10 출전 화면](docs/images/v010-camp.png)
+
+이번 버전은 보스의 공격 후 빈틈(+45% 무기 피해), 집중 조준, 수호형 벌떼의 표적 분산을 연결했습니다. 공방 준비 알림·변신 완성 표시·처치음과 모바일 누름 즉시 반응도 다듬었습니다. [변경 계약](docs/COMBAT-V010.md) · [실패를 포함한 검증 결과](docs/VALIDATION-V010.md)
 
 ### 한 판의 흐름
 
@@ -95,7 +97,7 @@ npm run dev
 
 `main` 푸시 시 [GitHub Actions](.github/workflows/pages.yml)가 검사 → 빌드 → Pages 경로 검사 → 배포를 실행합니다. PR에서는 검사와 빌드만 실행합니다. `dist/`는 커밋하지 않습니다. 포크에서는 **Settings → Pages → Source → GitHub Actions**를 선택하세요.
 
-모델 주행은 정해진 조작 정책의 재현 결과입니다. 사람이 느끼는 타격감과 재미, 모든 시작 무기·시드의 균형을 증명하지 않습니다. [검증 기록](docs/VALIDATION-V09.md)에 실제 검사와 남은 범위를 구분합니다. 진행 중 원정의 저장·복구 UI, 영구 능력치 상점, 무한 모드는 이번 버전에 포함하지 않습니다.
+모델 주행은 정해진 조작 정책의 재현 결과입니다. 사람이 느끼는 타격감과 재미, 모든 시작 무기·시드의 균형을 증명하지 않습니다. [검증 기록](docs/VALIDATION-V010.md)에 실제 검사와 남은 범위를 구분합니다. 진행 중 원정의 저장·복구 UI, 영구 능력치 상점, 무한 모드는 이번 버전에 포함하지 않습니다.
 
 ### 설계와 소스
 

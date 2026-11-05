@@ -10,11 +10,11 @@ import {equipRelic,leaveRelicCache} from '../src/core/relics.js';
 import {fieldContains,chargeProfile} from '../src/core/patterns.js';
 
 // Examples:
-//   node work/journey-pilot.mjs
-//   node work/journey-pilot.mjs --hero bram --style counter --no-union
-//   node work/journey-pilot.mjs --hero pip --style spread --core moon --partner acorn
-//   node work/journey-pilot.mjs --hero pip --trial --seed 1437 --seconds 900
-//   node work/journey-pilot.mjs --hero bram --no-union --out work/journey-results/bram.json
+//   node scripts/journey-pilot.mjs
+//   node scripts/journey-pilot.mjs --hero bram --style counter --no-union
+//   node scripts/journey-pilot.mjs --hero pip --style spread --core moon --partner acorn
+//   node scripts/journey-pilot.mjs --hero pip --trial --seed 1437 --seconds 900
+//   node scripts/journey-pilot.mjs --hero bram --no-union --out work/journey-results/bram.json
 const DT=1/60;
 const SAMPLE_TIMES=[20,60,120,180,240,300,420,600,900];
 const DEFAULTS={
@@ -176,7 +176,7 @@ function navigationTarget(g,build,state){
   const caches=g.expedition.sites.filter(s=>s.kind==='armory'&&['ready','guarded'].includes(s.state)&&!state.inspectedCaches.has(siteKey(g,s)));
   const wanted=caches.find(s=>!g.weapons[build.partner]&&s.primary)||caches[0];if(wanted)return {...wanted,action:'interact'};
   const regionElapsed=g.time-g.campaign.stageStartedAt,targetLevel=g.campaign.regionIndex===0?9:21;
-  const prepared=g.campaign.regionIndex===1&&!build.union?[build.core,build.partner].every(id=>(g.weapons[id]?.rank||0)>=8):g.level>=targetLevel||regionElapsed>=150;
+  const prepared=g.campaign.regionIndex===1&&(state.prepare||!build.union)?targetComplete(g,build)||[build.core,build.partner].every(id=>(g.weapons[id]?.rank||0)>=8):g.level>=targetLevel||regionElapsed>=150;
   if(status.canChallenge&&prepared){
     const gate=g.expedition.sites.find(s=>s.kind==='gate');return {...gate,action:'interact',challenge:true};
   }
@@ -190,7 +190,7 @@ export function runJourneyPilot(options={}){
   const config={...DEFAULTS,...options},base=BUILDS[config.hero||'pip'];if(!base)throw new Error(`Unsupported hero: ${config.hero}`);
   const build={...base,...config.build},g=createJourneyExpedition(config.hero||'pip',base.weapon,config.seed,{difficulty:'normal'});
   g.view={...config.view};
-  const state={takeTrial:config.takeTrial,trialAttempted:false,inspectedCaches:new Set(),ignoredRelics:new Set(),patrol:0,lastRegion:0,timeline:[],runtimeBugs:[],warnings:[],samples:[],sampleIndex:0};
+  const state={prepare:!!config.prepare,takeTrial:config.takeTrial,trialAttempted:false,inspectedCaches:new Set(),ignoredRelics:new Set(),patrol:0,lastRegion:0,timeline:[],runtimeBugs:[],warnings:[],samples:[],sampleIndex:0};
   let menuFrames=0,frame=0;
   for(;frame<config.seconds*60+20000&&g.time<config.seconds&&g.phase!=='result';frame++){
     if(g.campaign.regionIndex!==state.lastRegion){state.lastRegion=g.campaign.regionIndex;state.patrol=0;state.inspectedCaches.clear();actionLog(state,g,'region',{name:REGIONS[g.campaign.regionIndex].name});}
@@ -243,7 +243,7 @@ function cliOptions(args){
   const value=flag=>{const i=args.indexOf(flag);return i>=0?args[i+1]:undefined;};
   const hero=value('--hero'),seed=Number(value('--seed')),seconds=Number(value('--seconds')),style=value('--style'),core=value('--core'),partner=value('--partner'),union=value('--union');
   const build={...(style?{style}:{}),...(core?{core}:{}),...(partner?{partner}:{}),...(union?{union}:{}),...(args.includes('--no-union')?{union:null}:{})};
-  return {...(hero?{hero}:{}),...(Number.isFinite(seed)?{seed}:{}),...(Number.isFinite(seconds)?{seconds}:{}),...(args.includes('--trial')?{takeTrial:true}:{}),...(Object.keys(build).length?{build}:{})};
+  return {...(hero?{hero}:{}),...(Number.isFinite(seed)?{seed}:{}),...(Number.isFinite(seconds)?{seconds}:{}),...(args.includes('--trial')?{takeTrial:true}:{}),...(args.includes('--prepare')?{prepare:true}:{}),...(Object.keys(build).length?{build}:{})};
 }
 
 if(import.meta.url===pathToFileURL(process.argv[1]||'').href){
