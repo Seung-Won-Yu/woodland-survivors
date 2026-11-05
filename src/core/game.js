@@ -1,3 +1,5 @@
+import {isJourney,journeyStatus,coreVariant,cacheWeaponChoices,cacheDeck,transformationName} from './journey.js';
+import {createHeroGrowth,growthCharge,growthCast,growthHit,growthTick,growthKill,growthBlock,styleChoices,validHeroGrowth} from './hero-growth.js';
 import {isFrontier,recordHunt} from './frontier.js';
 import {MASTERY,WEAPON_BRANCHES,beginCast,pipHit,bramAward,tickMastery,chargeSignature,unlockMastery,branchChoices,selectBranch,validMastery} from './mastery.js';
 import {weaponPose} from '../game/motion.js';
@@ -35,20 +37,20 @@ export function createGame(profile,hero='pip',hard=false,seed=Date.now()) {
 }
 export function deriveStats(g) {
   const p=g.passives,h=HEROES[g.hero],u=g.boosts,c=g.campaign?.boosts||{};
-  return {damage:(1+(p.berry||0)*.12+(u.might||0)*.05)*(1+(c.force||0)*.18+(c.overflow||0)*.025),
+  return {damage:(g.boon?.until>g.time?1.35:1)*(1+(p.berry||0)*.12+(u.might||0)*.05)*(1+(c.force||0)*.18+(c.overflow||0)*.025),
     eliteDamage:g.hero==='fox'?1.2:1,
     area:(1+(p.leaf||0)*.12)*(g.hero==='mole'&&(g.player.still>=.6||g.player.stillGrace>0)?1.25:1)*(1+(c.force||0)*.05),
     duration:(1+(p.dew||0)*.2)*(g.hero==='otter'?1.25:1),
     cooldown:Math.max(.12,(g.gear==='boots'&&g.player.moving?.9:1)*(1-(p.feather||0)*.07)*(1-(g.hero==='lune'?g.player.wind*.05:0))/(1+(c.tempo||0)*.1)),
-    amount:(p.twin||0)+(g.hero==='pip'?1:0),projectileSpeed:1+(p.swift||0)*.15,
-    speed:(isFrontier(g)&&g.hero==='bram'?166:h.speed)*(g.gear==='boots'?1.12:1),armor:(g.hero==='bram'?2:0)+(p.bark||0)+(g.gear==='bark'&&g.player.still>.5?3:0),magnet:94+(u.magnet||0)*12+(p.stone||0)*22,
+    amount:(p.twin||0)+(g.hero==='pip'?1:0)+(isJourney(g)&&g.hero==='pip'&&g.mastery.branch==='spread'?2:0),projectileSpeed:1+(p.swift||0)*.15,
+    speed:((isFrontier(g)||isJourney(g))&&g.hero==='bram'?166:h.speed)*(g.gear==='boots'?1.12:1),armor:(g.hero==='bram'?2:0)+(p.bark||0)+(g.gear==='bark'&&g.player.still>.5?3:0),magnet:94+(u.magnet||0)*12+(p.stone||0)*22,
     growth:1+(u.growth||0)*.05+(p.stone||0)*.06,regen:(u.recovery||0)*.08,knock:1};
 }
 function emit(g,type,data={}){g.events.push({type,...data});}
 function weaponMetric(g,id,kind,value=1){
   if(!Object.hasOwn(WEAPONS,id))return;
   g.metrics.weapons??={};g.metrics.weapons[id]??=Object.fromEntries(['opening','build','final'].map(key=>[key,{damage:0,hits:0,casts:0}]));
-  const phase=g.time<180?'opening':g.time<420?'build':'final';g.metrics.weapons[id][phase][kind]+=value;
+  const phase=isJourney(g)?['opening','build','final'][g.campaign.regionIndex]:g.time<180?'opening':g.time<420?'build':'final';g.metrics.weapons[id][phase][kind]+=value;
 }
 function effect(g,type,x,y,r,color='#ebc780',life=.35,extra={}) {
   if(g.effects.length>=LIMITS.effects)g.effects.shift();
@@ -61,8 +63,8 @@ const specs={shroom:[15,51,7,12,2],runner:[12,109,9,11,3],beetle:[51,40,13,18,5]
 export function spawnEnemy(g,type,x,y,extra={}) {
   if(g.enemies.length>=LIMITS.enemies&&type!=='king')return null;
   const [baseHp,speed,damage,r,xp]=specs[type];
-  const scaling=isFrontier(g)?(type==='king'?1:type==='elite'?1+Math.min(g.time,600)/180:1+Math.min(g.time,540)/135):type==='king'?1:type==='elite'?1+g.time/(g.campaign?150:80):Math.pow(1+Math.min(g.time,g.campaign?480:RUN_SECONDS)/75,1.05);
-  const hp=Math.min(1e7,baseHp*scaling*(g.hard?1.35:1)*(g.campaign?Math.pow(1.18,Math.min(40,g.campaign.depth-1)):1));
+  const scaling=isJourney(g)?(type==='king'?1:(type==='elite'?2:1)*(1+g.campaign.regionIndex*1.5+Math.min(180,g.time-g.campaign.stageStartedAt)/180)):isFrontier(g)?(type==='king'?1:type==='elite'?1+Math.min(g.time,600)/180:1+Math.min(g.time,540)/135):type==='king'?1:type==='elite'?1+g.time/(g.campaign?150:80):Math.pow(1+Math.min(g.time,g.campaign?480:RUN_SECONDS)/75,1.05);
+  const hp=Math.min(1e7,baseHp*scaling*(g.hard?1.35:1)*(g.campaign&&!isJourney(g)?Math.pow(1.18,Math.min(40,g.campaign.depth-1)):1));
   const e={id:++g.id,type,x,y,hp,maxHp:hp,canEvolve:g.time>=(g.campaign?180:600),speed:speed*(1+Math.min(.35,g.time/2200))*(g.hard?1.12:1),damage:damage+(g.campaign?Math.min(g.time,480):g.time)/180,r,xp,hurt:0,slow:0,kx:0,ky:0,clock:2+random(g)*2,age:0,mode:'walk',dead:false,...extra};
   g.enemies.push(e);return e;
 }
@@ -81,6 +83,7 @@ function enemyType(g) {
   return 'shroom';
 }
 function updateDirector(g,dt) {
+  if(isJourney(g)){updateJourneyDirector(g,dt);return;}
   if(g.campaign)updateCampaign(g,(...args)=>spawnEnemy(g,...args));
   const bossFight=!!g.campaign&&(g.campaign.mid.state==='active'||g.campaign.final.state==='active');
   const returning=!g.campaign&&!!g.expedition&&g.time>=150;
@@ -134,14 +137,16 @@ function bramCounter(g){
 }
 function offerBranch(g){if(!isFrontier(g)||g.phase!=='playing')return;const choices=branchChoices(g);if(choices.length){g.choices=choices;g.choiceMode=choices[0].kind;g.phase='choice';emit(g,'level');}}
 export function frontierForgeCandidates(g){
+  if(isJourney(g))return journeyForgeCandidates(g);
   if(!isFrontier(g))return [];
   const out=evolutionCandidates(g).filter(()=>g.campaign.seals>0).map(id=>({id:`evolve:${id}`,weapon:id,kind:'evolution',name:WEAPONS[id].evo,description:`${WEAPONS[id].evoText} 인장 1개 소비 · 촉매 유지`,consumes:[id],catalyst:WEAPONS[id].recipe}));
   for(const r of unionCandidates(g))for(const input of r.inputs.filter(i=>g.weapons[i.id].evolved)){const branch=g.weapons[input.id].branch||'기본';out.unshift({id:`union:${r.id}:${input.id}`,weapon:r.id,kind:'union',core:input.id,name:r.name,description:`계승: ${WEAPONS[input.id].evo} · ${branchLabel(input.id,branch)}. 인장 추가 소비 없음.`,consumes:r.inputs.map(i=>i.id),catalyst:null});}
   return out;
 }
 export function branchLabel(id,branch){return (WEAPON_BRANCHES[id]||WEAPON_BRANCHES[id==='returning'?'acorn':'briar']||[]).find(b=>b[0]===branch)?.[1]||'기본 궤적';}
-export function openForge(g){if(!isFrontier(g)||!['playing','paused','crossroads'].includes(g.phase)||g.campaign.rewardPending)return false;const returnPhase=g.phase;g.chest={gold:0,rewards:[],options:frontierForgeCandidates(g),canEvolve:true,source:'forge',optionalUnion:true,returnPhase};g.phase='chest';return true;}
+export function openForge(g){if(isJourney(g)){if(!['playing','paused'].includes(g.phase))return false;const returnPhase=g.phase;g.chest={source:'journey',bossLoot:false,gold:0,rewards:[],options:journeyForgeCandidates(g),canEvolve:true,optionalUnion:true,returnPhase};g.phase='chest';return true;}if(!isFrontier(g)||!['playing','paused','crossroads'].includes(g.phase)||g.campaign.rewardPending)return false;const returnPhase=g.phase;g.chest={gold:0,rewards:[],options:frontierForgeCandidates(g),canEvolve:true,source:'forge',optionalUnion:true,returnPhase};g.phase='chest';return true;}
 export function claimBossReward(g,id){
+  if(isJourney(g))return claimJourneyReward(g,id);
   if(!isFrontier(g)||g.phase!=='crossroads'||!g.campaign.rewardPending)return false;
   if(id==='heal')healPlayer(g,g.player.maxHp*.5);
   else if(id.startsWith('weapon:')){const key=id.slice(7),w=g.weapons[key];if(!w||w.evolved||w.rank>=8)return false;w.rank++;w.clock=0;recordRank(g,key);}
@@ -194,13 +199,13 @@ function resolveRelics(g,actions){
 }
 function relicField(g,x,y,r,life,damage,slow,context,pull=0){if(g.fields.length>=LIMITS.fields)g.fields.shift();g.fields.push({x,y,r,life,tick:0,damage,slow,pull,context});}
 function kill(g,e,context={source:'weapon'}) {
-  if(e.dead)return;e.dead=true;g.kills++;if(isFrontier(g))chargeSignature(g,.9);else g.player.charge=clamp(g.player.charge+.9,0,100);
+  if(e.dead)return;e.dead=true;g.kills++;if(isJourney(g))growthKill(g,e,context);else if(isFrontier(g))chargeSignature(g,.9);else g.player.charge=clamp(g.player.charge+.9,0,100);
   if(isFrontier(g)){recordHunt(g,e,xpCost);if(g.hero==='bram'&&['weapon','signature'].includes(context.source)&&dist(e,g.player)<=150&&(g.player.still>=.55||g.player.guard>0||g.player.stillGrace>0))bramAward(g,e,e.type==='elite'?8:2);}
   if(g.campaign){const f=g.feedback;f.streak=g.time<=(f.streakUntil||0)?(f.streak||0)+1:1;f.streakUntil=g.time+2;g.metrics.bestStreak=Math.max(g.metrics.bestStreak||0,f.streak);if([12,30,60,100].includes(f.streak))emit(g,'rampage',{count:f.streak});}
   for(const f of g.fields)if(f.ownerId===e.id)f.life=0;
   g.fields=g.fields.filter(f=>f.life>0);
   if(e.nestGuardian||e.bossRole){for(const q of g.projectiles)if(q.hostile&&q.ownerId===e.id)q.life=0;g.projectiles=g.projectiles.filter(q=>q.life>0);}
-  addGem(g,e.x,e.y,e.xp*(isFrontier(g)?.65:1+Math.floor(g.time/180)),!!e.bossRole);
+  addGem(g,e.x,e.y,e.xp*(isJourney(g)?.85:isFrontier(g)?.65:1+Math.floor(g.time/180)),!!e.bossRole);
   effect(g,'death',e.x,e.y,e.r,e.type==='beetle'?'#5dbfb3':'#e5b78b',.28,{enemyType:e.type,angle:Math.atan2(e.ky,e.kx)});
   emit(g,'kill');
   resolveRelics(g,onRelicWeaponKill(g,e,context));
@@ -209,7 +214,7 @@ function kill(g,e,context={source:'weapon'}) {
     if(g.time-f.killWindowAt>.12){f.killWindowAt=g.time;f.killCount=0;}
     if(++f.killCount>=3&&g.time>=f.nextCrowdAt){f.nextCrowdAt=g.time+.4;f.killCount=0;g.shake=Math.max(g.shake,1.4);g.hitstop=Math.max(g.hitstop,.018);emit(g,'crowd-break');}
   }
-  if(e.bossRole){finishCampaignBoss(g,e);if(e.bossRole==='midpoint')createRelicCache(g,'midpoint',e.x+65,e.y-10);trimPickups(g);return;}
+  if(e.bossRole){finishCampaignBoss(g,e);if(isJourney(g)&&g.chest)g.chest.options=journeyForgeCandidates(g);if(!isJourney(g)&&e.bossRole==='midpoint')createRelicCache(g,'midpoint',e.x+65,e.y-10);trimPickups(g);return;}
   if(e.type==='king'){g.kingKills++;g.gold+=120;g.pickups.push({id:++g.id,type:'chest',x:e.x,y:e.y,canEvolve:true});g.shake=6;emit(g,'bossDown');trimPickups(g);return;}
   if(e.type==='elite'){
     g.elites++;g.pickups.push({id:++g.id,type:'chest',x:e.x,y:e.y,canEvolve:e.canEvolve,forgeWeapon:e.nestGuardian?g.startWeapon:null,source:e.nestGuardian?'nest':'elite'});if(e.nestGuardian)createRelicCache(g,'nest',e.x+60,e.y-15);g.fields=g.fields.filter(f=>f.ownerId!==e.id);g.hitstop=.04;g.shake=3;emit(g,'eliteDown');
@@ -217,12 +222,14 @@ function kill(g,e,context={source:'weapon'}) {
     const r=random(g);
     if(r<.013)g.pickups.push({id:++g.id,type:'heal',x:e.x,y:e.y});
     else if(r<.016)g.pickups.push({id:++g.id,type:'magnet',x:e.x,y:e.y});
-    else if(r<.028)g.pickups.push({id:++g.id,type:'coin',x:e.x,y:e.y});
+    else if(r<.028&&!isJourney(g))g.pickups.push({id:++g.id,type:'coin',x:e.x,y:e.y});
   }
   trimPickups(g);
 }
 function hit(g,e,amount,knock=0,origin=g.player,crit=false,context=origin.context??g.castContext??{source:'weapon'}) {
   if(e.dead)return;
+  if(isJourney(g)&&growthHit(g,e,context))journeySplinters(g,e);
+  if(isJourney(g)&&g.hero==='pip'&&context.source==='weapon'){if(g.mastery.branch==='focus'&&['elite','king'].includes(e.type))amount*=1.2;if(g.mastery.focusUntil>g.time)amount*=1.3;}
   if(isFrontier(g)&&pipHit(g,e,context))pipSupport(g,e);
   if(isFrontier(g)&&g.weapons[context.weapon]?.branch==='focus'&&['elite','king'].includes(e.type))amount*=1.25;
   if(e.type==='warden'&&e.mode==='windup'&&e.attack==='brace'&&context.source==='weapon'){
@@ -254,15 +261,15 @@ function projectile(g,kind,x,y,vx,vy,damage,extra={}) {
   }
   g.projectiles.push({kind,x,y,vx,vy,damage,life:2,age:0,r:6,pierce:0,hits:[],context:extra.hostile?undefined:g.castContext??{source:'weapon',weapon:kind},...extra});
 }
-export function weaponStats(g,id,rank=g.weapons[id]?.rank||1){const w=g.weapons[id],d=WEAPONS[id],evo=!!w?.evolved&&!d.union;return {damage:(d.damage+(rank-1)*3.3)*g.stats.damage*(evo?1.65:1),cooldown:d.cooldown*g.stats.cooldown*(1-Math.min(.28,(rank-1)*.035))*(g.campaign&&w?.evolved?.85:1),rank,evolved:evo};}
+export function weaponStats(g,id,rank=g.weapons[id]?.rank||1){const w=g.weapons[id],d=WEAPONS[id],evo=!!w?.evolved&&!d.union;return {damage:(d.damage+(rank-1)*3.3)*g.stats.damage*(evo?(isJourney(g)?1.9:1.65):1),cooldown:d.cooldown*g.stats.cooldown*(1-Math.min(.28,(rank-1)*.035))*(g.campaign&&w?.evolved?.85:1),rank,evolved:evo};}
 function damageFor(g,id){return weaponStats(g,id).damage;}
 function cast(g,id) {
   const p=g.player,w=g.weapons[id],s=g.stats,rank=w.rank,evo=w.evolved,target=nearest(g),amount=s.amount;
   if(!target&&id!=='bloom'&&id!=='briar'&&!WEAPONS[id].union)return;
   weaponMetric(g,id,'casts');
-  g.castContext={source:'weapon',weapon:id,...(isFrontier(g)?{castId:beginCast(g)}:{})};
-  const branch=isFrontier(g)?w.branch:null,heroBranch=g.mastery?.branch;
-  const damage=damageFor(g,id)*(branch==='spread'?(id==='moon'?.85:.8):branch==='counter'?1.25:1)*(heroBranch==='spread'?.87:heroBranch==='focus'&&g.mastery.focusUntil>g.time?1.3:1),angle=target?Math.atan2(target.y-p.y,target.x-p.x):Math.atan2(p.fy,p.fx);
+  g.castContext={source:'weapon',weapon:id,...(isJourney(g)?{castId:growthCast(g)}:isFrontier(g)?{castId:beginCast(g)}:{})};
+  const branch=isJourney(g)&&WEAPONS[id].union?coreVariant(id,w.core):isFrontier(g)?w.branch:null,heroBranch=isJourney(g)?null:g.mastery?.branch;
+  const damage=damageFor(g,id)*(isJourney(g)&&g.hero==='pip'&&g.mastery.branch==='spread'?.85:1)*(branch==='spread'?(id==='moon'?.85:.8):branch==='counter'?1.25:1)*(heroBranch==='spread'?.87:heroBranch==='focus'&&g.mastery.focusUntil>g.time?1.3:1),angle=target?Math.atan2(target.y-p.y,target.x-p.x):Math.atan2(p.fy,p.fx);
   const primary=Object.hasOwn(g.weapons,g.startWeapon)?g.startWeapon:Object.keys(g.weapons)[0];
   const ownsPose=id===primary||p.attack<=0;
   if(ownsPose){p.attack=.24;p.attackWindup=0;p.aim=angle;p.attackWeapon=id;}
@@ -271,16 +278,16 @@ function cast(g,id) {
   if(['acorn','moon','bees','returning','lantern'].includes(id))effect(g,'muzzle',muzzle.x,muzzle.y,9,WEAPONS[id].color,.085,{angle,weapon:id});
   if(id==='acorn'){
     const count=Math.min(15,1+amount+Math.floor(rank/4)+(evo?3:0)+(branch==='spread'?2:0)+(heroBranch==='spread'?2:0));
-    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(branch==='focus'||heroBranch==='focus'?.035:branch==='spread'||heroBranch==='spread'?.19:evo?.15:.10);projectile(g,'acorn',p.x,p.y-7,Math.cos(a)*580*s.projectileSpeed,Math.sin(a)*580*s.projectileSpeed,damage,{r:6*s.area,pierce:Math.floor(rank/3)+(evo?5:0),evolved:evo,life:1.7});}
+    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(branch==='focus'||heroBranch==='focus'||isJourney(g)&&g.mastery.branch==='focus'?.035:branch==='spread'||heroBranch==='spread'||isJourney(g)&&g.hero==='pip'&&g.mastery.branch==='spread'?.19:evo?.15:.10);projectile(g,'acorn',p.x,p.y-7,Math.cos(a)*580*s.projectileSpeed,Math.sin(a)*580*s.projectileSpeed,damage,{r:6*s.area,pierce:Math.floor(rank/3)+(evo?5:0)+(isJourney(g)&&g.hero==='pip'?g.mastery.milestone:0),evolved:evo,life:1.7});}
     emit(g,'shot');
   }else if(id==='moon'){
     emit(g,'whoosh');
     const count=1+amount+Math.floor(rank/4)+(evo?2:0)+(branch==='spread'?1:0)+(heroBranch==='spread'?1:0);
-    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(branch==='focus'?.08:.3);projectile(g,'moon',p.x,p.y,Math.cos(a)*460*s.projectileSpeed,Math.sin(a)*460*s.projectileSpeed,damage,{r:(evo?25:15)*s.area,pierce:999,life:2.2*s.duration,evolved:evo,turned:false,returnAfter:.65*s.duration,flySpeed:(branch==='focus'?675:540)*s.projectileSpeed});}
+    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(branch==='focus'||isJourney(g)&&g.hero==='pip'&&g.mastery.branch==='focus'?.08:.3);projectile(g,'moon',p.x,p.y,Math.cos(a)*460*s.projectileSpeed,Math.sin(a)*460*s.projectileSpeed,damage,{r:(evo?25:15)*s.area,pierce:999,life:2.2*s.duration,evolved:evo,turned:false,returnAfter:.65*s.duration,flySpeed:(branch==='focus'?675:540)*s.projectileSpeed});}
   }else if(id==='bees'){
     emit(g,'buzz');
     const count=1+amount+Math.floor(rank/3)+(evo?3:0)+(branch==='guard'?1:0);
-    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*.5;projectile(g,'bee',p.x,p.y-18,Math.cos(a)*240*s.projectileSpeed,Math.sin(a)*240*s.projectileSpeed,damage,{r:8,life:3*s.duration,pierce:evo?3:0,target:target.id,evolved:evo,flySpeed:(branch==='counter'?510:390)*s.projectileSpeed,defender:branch==='guard'});}
+    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(isJourney(g)&&g.hero==='pip'&&g.mastery.branch==='focus'?.12:.5);projectile(g,'bee',p.x,p.y-18,Math.cos(a)*240*s.projectileSpeed,Math.sin(a)*240*s.projectileSpeed,damage,{r:8,life:3*s.duration,pierce:(evo?3:0)+(isJourney(g)&&g.hero==='pip'?g.mastery.milestone:0),target:target.id,evolved:evo,flySpeed:(branch==='counter'?510:390)*s.projectileSpeed,defender:branch==='guard'});}
   }else if(id==='storm'){
     const targets=g.enemies.filter(e=>!e.dead&&guardAlert(g,e)&&dist(e,p)<650).sort((a,b)=>dist(a,p)-dist(b,p));
     const count=Math.min(targets.length,1+amount+Math.floor(rank/3)+(evo?3:0));
@@ -295,12 +302,12 @@ function cast(g,id) {
     const count=1+Math.floor(rank/4)+Math.floor(amount/2);
     for(let i=0;i<count;i++){const a=i*2.4+g.time,x=target.x+Math.cos(a)*i*65,y=target.y+Math.sin(a)*i*65;projectile(g,'bottle',p.x,p.y,0,0,damage,{life:.32,flight:.32,tx:x,ty:y,ox:p.x,oy:p.y,fieldRadius:(65+rank*5)*(evo?1.45:1)*s.area,fieldLife:(2.5+rank*.12)*s.duration,evolved:evo});}
   }else if(id==='returning'){
-    const count=7+amount+(branch==='spread'?4:0); 
-    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(branch==='focus'?.035:.18);projectile(g,'moon',p.x,p.y,Math.cos(a)*600*s.projectileSpeed,Math.sin(a)*600*s.projectileSpeed,damage,{r:17*s.area,pierce:999,life:2.5*s.duration,evolved:true,turned:false,returnAfter:.65*s.duration,flySpeed:630*s.projectileSpeed,union:'returning'});}
+    const count=Math.min(16,7+amount+(branch==='spread'?4:0));
+    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*(branch==='focus'?.035:.18);projectile(g,'moon',p.x,p.y,Math.cos(a)*600*s.projectileSpeed,Math.sin(a)*600*s.projectileSpeed,damage,{r:17*s.area,pierce:999,life:2.5*s.duration,evolved:true,turned:false,returnAfter:.65*s.duration,flySpeed:630*s.projectileSpeed,union:'returning',core:w.core});}
     emit(g,'shot');
   }else if(id==='hive'){
-    const count=6+amount+(branch==='guard'?2:0);
-    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*.45;projectile(g,'bee',p.x+Math.cos(a)*60,p.y+Math.sin(a)*48,Math.cos(a)*300*s.projectileSpeed,Math.sin(a)*300*s.projectileSpeed,damage,{r:10,life:2.8,pierce:5,target:target?.id||0,evolved:true,flySpeed:480*s.projectileSpeed,union:'hive',defender:branch==='guard',returnAfter:branch==='counter'?1.55:.8});}
+    const count=Math.min(16,6+(isJourney(g)&&branch==='guard'?0:amount)+(branch==='guard'?2:0));
+    for(let i=0;i<count;i++){const a=angle+(i-(count-1)/2)*.45;projectile(g,'bee',p.x+Math.cos(a)*60,p.y+Math.sin(a)*48,Math.cos(a)*300*s.projectileSpeed,Math.sin(a)*300*s.projectileSpeed,damage,{r:10,life:2.8,pierce:5,target:target?.id||0,evolved:true,flySpeed:(branch==='counter'?570:480)*s.projectileSpeed,union:'hive',core:w.core,defender:branch==='guard',returnAfter:branch==='counter'?1.55:.8});}
   }else if(id==='vine'){
     const r=(112+rank*8)*s.area,spread=evo?Math.PI:1.15,face=angle;
     nearby(g,p.x,p.y,r,e=>{const a=Math.atan2(e.y-p.y,e.x-p.x),diff=Math.atan2(Math.sin(a-face),Math.cos(a-face));if(Math.abs(diff)<=spread)hit(g,e,damage,110);});
@@ -330,7 +337,7 @@ export function useSignature(g) {
     p.dash=.3;p.invincible=1;
     for(let i=0;i<3;i++){const a=face+(i-1)*.24;projectile(g,'moon',p.x,p.y,Math.cos(a)*620,Math.sin(a)*620,damage,{r:25,pierce:999,life:2,evolved:true,returnAfter:.6,flySpeed:580});}
   }else if(g.hero==='bram'){
-    p.guard=g.mastery?.branch==='guard'?3:2;p.invincible=isFrontier(g)?0:2;areaHit(g,p.x,p.y,220,damage*1.5,350);effect(g,'ring',p.x,p.y,240,'#b8e0af',.65);
+    p.guard=isJourney(g)?2:g.mastery?.branch==='guard'?3:2;p.invincible=isFrontier(g)||isJourney(g)?0:2;if(isJourney(g)){g.mastery.extraGuard=28;effect(g,'ring',p.x,p.y,95,'#b8e0af',.45);}else areaHit(g,p.x,p.y,220,damage*1.5,350);effect(g,'ring',p.x,p.y,240,'#b8e0af',.65);
   }else if(g.hero==='fox'){
     g.decoy={x:p.x,y:p.y,life:3};effect(g,'ring',p.x,p.y,60,'#dba077',.5);p.invincible=1;
   }else if(g.hero==='mole'){
@@ -350,18 +357,18 @@ export function orbitState(g,id='briar') {
   const hive=id==='hive',rank=hive?8:w.rank,evolved=hive||w.evolved;
   const activeFor=(4+rank*.15)*g.stats.duration,rest=.55*g.stats.cooldown;
   const active=evolved||g.time%(activeFor+rest)<activeFor;
-  const branch=isFrontier(g)?w.branch:null;
-  return {active,count:(hive?4:2)+(branch==='guard'?2:0)+Math.floor(rank/3)+g.stats.amount+(evolved?2:0),radius:(57+rank*3)*(branch==='guard'?1.25:branch==='counter'?.85:1)*g.stats.area,speed:(evolved?2.5:1.9)*(branch==='counter'?1.35:1)*g.stats.projectileSpeed,hive};
+  const branch=isJourney(g)&&hive?coreVariant(id,w.core):isFrontier(g)?w.branch:null;
+  return {active,count:Math.min(isJourney(g)?10:40,(hive?4:2)+(branch==='guard'?2:0)+Math.floor(rank/3)+(isJourney(g)&&hive&&branch==='counter'?0:g.stats.amount)+(evolved?2:0)),radius:(57+rank*3)*(branch==='guard'?1.25:branch==='counter'?.85:1)*g.stats.area,speed:(evolved?2.5:1.9)*(branch==='counter'?1.35:1)*g.stats.projectileSpeed,hive};
 }
 function updateWeapons(g,dt) {
   if(g.player.signature>0)return;
   for(const [id,w] of Object.entries(g.weapons)){
     if(id==='briar'||id==='hive'){
       const orbit=orbitState(g,id),damage=damageFor(g,id)*(id==='hive'?.72:1)*(isFrontier(g)?w.branch==='guard'?.85:w.branch==='counter'?1.3:1:1);
-      if(isFrontier(g)&&g.hero==='pip'&&g.time>=(w.masteryCastAt||0)){w.masteryCastId=beginCast(g);w.masteryCastAt=g.time+.7;}
+      if((isFrontier(g)||isJourney(g))&&g.hero==='pip'&&g.time>=(w.masteryCastAt||0)){w.masteryCastId=isJourney(g)?growthCast(g):beginCast(g);w.masteryCastAt=g.time+.7;}
       if(orbit.active)for(let i=0;i<orbit.count;i++){
         const a=g.time*orbit.speed+i*TAU/orbit.count,x=g.player.x+Math.cos(a)*orbit.radius,y=g.player.y+Math.sin(a)*orbit.radius*.8;
-        nearby(g,x,y,20*g.stats.area,e=>{if((e.orbitHit||0)>g.time)return;e.orbitHit=g.time+(w.evolved?.24:.42);hit(g,e,damage,45,g.player,false,{source:'weapon',weapon:id,...(isFrontier(g)?{castId:w.masteryCastId}:{})});if(w.evolved)e.slow=.8;});
+        nearby(g,x,y,20*g.stats.area,e=>{if((e.orbitHit||0)>g.time)return;e.orbitHit=g.time+(w.evolved?.24:.42);hit(g,e,damage,45,g.player,false,{source:'weapon',weapon:id,...((isFrontier(g)||isJourney(g))?{castId:w.masteryCastId}:{})});if(w.evolved)e.slow=.8;});
       }
       if(w.evolved)nearby(g,g.player.x,g.player.y,orbit.radius+30,e=>{e.slow=.5;});
       if(id==='briar')continue;
@@ -381,6 +388,7 @@ function updateEnemies(g,dt) {
   for(const e of g.enemies){
     if(e.dead)continue;e.age+=dt;e.clock-=dt;e.hurt=Math.max(0,e.hurt-dt);e.slow=Math.max(0,e.slow-dt);
     e.freezeFrame=false;if(e.hitstop>0){e.hitstop=Math.max(0,e.hitstop-dt);e.freezeFrame=true;continue;}
+    if(isJourney(g)&&e.targetRole==='support-flower'){if(e.clock<=0){e.clock=5;e.cycle=(e.cycle||0)+1;enemyField(g,{hostile:true,ownerId:e.id,pattern:'roots',x:p.x,y:p.y,r:58,life:1.65,warning:1.1,tick:0,damage:12});}continue;}
     const wasCharging=e.mode==='charge';
     const destination=g.decoy&&e.type!=='king'?g.decoy:p;
     let d=direction(destination.x-e.x,destination.y-e.y),speed=e.speed*(e.slow>0?.62:1),distance=dist(e,p);
@@ -432,7 +440,8 @@ function updateEnemies(g,dt) {
   }
 }
 function hurtPlayer(g,damage,origin,source=null) {
-  const p=g.player;if(g.phase!=='playing'||p.invincible>0)return;let defenseCredited=false;
+  const p=g.player;if(g.phase!=='playing'||p.invincible>0)return;let defenseCredited=false,journeyBlocked=0,journeyEnemy=origin?.ownerId?g.enemies.find(e=>e.id===origin.ownerId):origin?.id?origin:null;
+  if(isJourney(g)&&g.hero==='bram'){const result=consumeJourneyGuard(g,damage,origin);damage=result.damage;journeyBlocked=result.blocked;journeyEnemy=result.enemy;}
   if(isFrontier(g)&&g.hero==='bram'){
     const m=g.mastery,front=origin?((origin.x-p.x)*p.fx+(origin.y-p.y)*p.fy)/(dist(origin,p)||1)>-.1:false;
     const braced=p.still>=.55||p.stillGrace>0,ready=g.time>=m.guardReadyAt;
@@ -444,11 +453,12 @@ function hurtPlayer(g,damage,origin,source=null) {
     }
   }
   if(p.invincible>0)return;
-  const incoming=Math.max(1,damage-g.stats.armor),shieldBefore=g.relics.shell.shield,absorbed=absorbRelicShield(g,incoming),value=incoming-absorbed;
+  const incoming=damage<=0?0:Math.max(1,damage-g.stats.armor),shieldBefore=g.relics.shell.shield,absorbed=absorbRelicShield(g,incoming),value=incoming-absorbed;
   if(isFrontier(g)&&g.hero==='bram'&&!defenseCredited){const enemy=origin?.ownerId?g.enemies.find(e=>e.id===origin.ownerId):origin?.id?origin:null,prevented=Math.min(damage,g.stats.armor)+absorbed;if(prevented>0)bramAward(g,enemy,Math.min(12,prevented),{boss:!!enemy?.bossRole,attackCycle:origin?.attackCycle??(enemy?.mode==='charge'?enemy.cycle:0)});}
+  if(isJourney(g)&&g.hero==='bram'&&journeyBlocked>0){growthBlock(g,journeyEnemy,journeyBlocked,origin?.attackCycle??(journeyEnemy?.mode==='charge'?journeyEnemy.cycle:0));emit(g,'guard-block');effect(g,'ring',p.x,p.y,42,'#bfd9ae',.18);}
   if(shieldBefore>0&&g.relics.shell.shield===0)resolveRelics(g,onRelicShieldBreak(g));
   if(absorbed>0){emit(g,'guard-block');effect(g,'relic',p.x,p.y-25,36,RELICS.shell.color,.25,{relicId:'shell'});p.invincible=.3;}
-  if(value<=0)return;
+  if(value<=0){if(journeyBlocked>0)p.invincible=Math.max(p.invincible,.22);return;}
   p.hp-=value;g.metrics.damageTaken+=value;p.hurt=.35;p.invincible=.65;g.shake=4;
   source??=origin?.kind==='enemy'?'projectile':origin?.hostile?'field':'contact';
   if(origin?.pattern){g.metrics.patternDamage??={};g.metrics.patternDamage[origin.pattern]=(g.metrics.patternDamage[origin.pattern]||0)+value;}
@@ -471,6 +481,8 @@ function updateProjectiles(g,dt) {
       if(dist(p,g.player)<18&&(p.returning||p.age>.9)){p.life=0;continue;}
     }
     if(p.kind==='bee'){
+      // An evolved companion can sting twice; a finite second pass avoids idle homing at an already-hit boss.
+      if(isJourney(g)&&p.evolved&&!p.union&&p.context?.source==='weapon'&&p.context.weapon==='bees'&&!p.restrike&&p.age>=1){p.restrike=true;p.hits=[];}
       if(p.union==='hive'&&p.age>(p.returnAfter||1.05)){
         if(!p.hiveReturning){p.hiveReturning=true;p.hits=[];}const d=direction(g.player.x-p.x,g.player.y-p.y);p.vx=d.x*p.flySpeed;p.vy=d.y*p.flySpeed;
         if(dist(p,g.player)<24+p.flySpeed*dt){areaHit(g,g.player.x,g.player.y,100*g.stats.area,p.damage*.35,80,p.context);effect(g,'ring',g.player.x,g.player.y,100*g.stats.area,'#e5d39b',.25);p.life=0;continue;}
@@ -545,6 +557,7 @@ function updateLoot(g,dt) {
   if(g.phase==='playing'){if(g.pendingLevels>0)offerLevel(g);else offerBranch(g);}
 }
 export function upgradeCandidates(g) {
+  if(isJourney(g))return journeyUpgradeCandidates(g);
   const entries=[],ids=[...new Set([...Object.keys(g.weapons),...g.pool])];
   for(const id of ids){
     const w=g.weapons[id],data=WEAPONS[id];
@@ -560,6 +573,7 @@ export function upgradeCandidates(g) {
   return entries;
 }
 export function draftChoices(g,excluded=[],advance=true) {
+  if(isJourney(g))return draftJourneyChoices(g,excluded,advance);
   let pool=upgradeCandidates(g);const out=[];
   if(advance)g.drafts++;
   const add=choice=>{if(choice){out.push(choice);pool=pool.filter(c=>c.id!==choice.id);}};
@@ -589,22 +603,24 @@ export function draftChoices(g,excluded=[],advance=true) {
   return out;
 }
 function offerLevel(g){
+  if(isJourney(g)&&g.level-g.pendingLevels+1>=10&&g.level>=10&&!g.campaign.styleChosen&&styleChoices(g).length){g.choiceMode='style';g.choices=styleChoices(g);g.phase='choice';emit(g,'level');return;}
   g.choices=draftChoices(g);
-  if(!g.choices.length){g.gold+=g.pendingLevels*2;if(g.campaign&&!isFrontier(g))g.campaign.boosts.overflow+=g.pendingLevels;g.pendingLevels=0;g.phase='playing';if(!g.mastered){g.mastered=true;emit(g,'mastery');}return;}
+  if(!g.choices.length){g.gold+=g.pendingLevels*2;if(g.campaign&&!isFrontier(g)&&!isJourney(g))g.campaign.boosts.overflow+=g.pendingLevels;g.pendingLevels=0;g.phase='playing';if(!g.mastered){g.mastered=true;emit(g,'mastery');}return;}
   g.phase='choice';emit(g,'level');
 }
 function recordRank(g,id){g.maxRanks[id]=Math.max(g.maxRanks[id]||0,g.weapons[id].rank);if(!g.discovered.includes(id))g.discovered.push(id);}
 export function applyChoice(g,index) {
   if(g.phase!=='choice'||!Number.isInteger(index)||!g.choices[index])return false;
   const choice=g.choices[index],{id,kind}=choice;
+  if(isJourney(g)&&kind==='style'){if(!styleChoices(g).some(c=>c.id===id)||g.choiceMode!=='style')return false;g.mastery.branch=id;g.campaign.styleChosen=true;growthTick(g,0);g.stats=deriveStats(g);g.pendingLevels=Math.max(0,g.pendingLevels-1);g.choices=[];delete g.choiceMode;g.phase='playing';if(g.pendingLevels>0)offerLevel(g);emit(g,'upgrade');return true;}
   if(isFrontier(g)&&['mastery','branch'].includes(kind)){const legal=branchChoices(g).find(c=>c.id===id&&c.kind===kind);if(!legal)return false;selectBranch(g,legal);g.choices=[];g.phase='playing';delete g.choiceMode;offerBranch(g);return true;}
   if(!upgradeCandidates(g).some(c=>c.id===id&&c.kind===kind))return false;
   if(kind==='weapon'){
     if(g.weapons[id]){g.weapons[id].rank++;g.weapons[id].clock=0;}
     else g.weapons[id]={rank:1,evolved:false,clock:0};
     recordRank(g,id);
-  }else if(kind==='passive')g.passives[id]=(g.passives[id]||0)+1;
-  g.stats=deriveStats(g);g.pendingLevels=Math.max(0,g.pendingLevels-1);g.choices=[];
+  }else if(kind==='passive')g.passives[id]=(g.passives[id]||0)+1;else if(kind==='boon'){if(id==='heal')healPlayer(g,g.player.maxHp*.25);else if(id==='power')g.boon={until:g.time+8};else g.metrics.bonusScore=(g.metrics.bonusScore||0)+25;}
+  if(isJourney(g))growthTick(g,0);g.stats=deriveStats(g);g.pendingLevels=Math.max(0,g.pendingLevels-1);g.choices=[];
   if(g.pendingLevels>0)offerLevel(g);else{g.phase='playing';offerBranch(g);}
   emit(g,'upgrade',{id});return true;
 }
@@ -617,8 +633,9 @@ export function reroll(g){
 export function banish(){return false;}
 export function skipChoice(){return false;}
 export function evolutionCandidates(g){return Object.keys(g.weapons).filter(id=>BASE_WEAPON_IDS.includes(id)&&!g.weapons[id].evolved&&g.weapons[id].rank===WEAPONS[id].max&&(g.passives[WEAPONS[id].recipe]||0)>0);}
-export function unionCandidates(g){if(isFrontier(g))return Object.values(UNIONS).filter(r=>!g.weapons[r.id]&&r.inputs.every(i=>g.weapons[i.id]?.rank===8)&&r.inputs.some(i=>g.weapons[i.id]?.evolved)&&r.inputs.every(i=>!WEAPON_BRANCHES[i.id]||g.weapons[i.id].branch));return Object.values(UNIONS).filter(recipe=>!g.weapons[recipe.id]&&!g.consumed.includes(recipe.id)&&recipe.inputs.every(input=>{const w=g.weapons[input.id];return w&&w.rank>=input.rank&&(!input.evolved||w.evolved);}));}
+export function unionCandidates(g){if(isJourney(g))return Object.values(UNIONS).filter(r=>!g.weapons[r.id]&&r.inputs.every(i=>g.weapons[i.id]?.rank===8)&&r.inputs.some(i=>g.weapons[i.id]?.evolved));if(isFrontier(g))return Object.values(UNIONS).filter(r=>!g.weapons[r.id]&&r.inputs.every(i=>g.weapons[i.id]?.rank===8)&&r.inputs.some(i=>g.weapons[i.id]?.evolved)&&r.inputs.every(i=>!WEAPON_BRANCHES[i.id]||g.weapons[i.id].branch));return Object.values(UNIONS).filter(recipe=>!g.weapons[recipe.id]&&!g.consumed.includes(recipe.id)&&recipe.inputs.every(input=>{const w=g.weapons[input.id];return w&&w.rank>=input.rank&&(!input.evolved||w.evolved);}));}
 export function chestCandidates(g,source=g.chest?.source){
+  if(isJourney(g))return source==='journey'?journeyForgeCandidates(g):[];
   if(isFrontier(g)){if(source!=='forge')return [];return frontierForgeCandidates(g);}
   const normal=[...unionCandidates(g).map(r=>({id:`union:${r.id}`,weapon:r.id,kind:'union',name:r.name,description:r.description,consumes:r.inputs.map(i=>i.id),catalyst:null})),
     ...evolutionCandidates(g).map(id=>({id:`evolve:${id}`,weapon:id,kind:'evolution',name:WEAPONS[id].evo,description:WEAPONS[id].evoText,consumes:[id],catalyst:WEAPONS[id].recipe}))];
@@ -628,6 +645,7 @@ export function chestCandidates(g,source=g.chest?.source){
   return normal;
 }
 export function openChest(g,drop={canEvolve:true}) {
+  if(isJourney(g))return openJourneyDrop(g,drop);
   if(g.phase!=='playing')return false;
   const gold=35+Math.floor(random(g)*35),rewards=[];
   const forged=drop.forgeWeapon&&g.weapons[drop.forgeWeapon]&&!g.weapons[drop.forgeWeapon].evolved&&g.weapons[drop.forgeWeapon].rank<WEAPONS[drop.forgeWeapon].max?drop.forgeWeapon:null;
@@ -642,6 +660,7 @@ export function openChest(g,drop={canEvolve:true}) {
   g.gold+=gold;g.metrics.chests++;g.chest={gold,rewards,options,canEvolve:drop.canEvolve===true,source:drop.source||'elite'};g.phase='chest';emit(g,'chest');return true;
 }
 export function selectChest(g,id){
+  if(isJourney(g))return transformJourneyWeapon(g,id);
   if(g.phase!=='chest'||!g.chest?.canEvolve||!g.chest.options.some(o=>o.id===id))return false;
   const option=chestCandidates(g).find(o=>o.id===id);if(!option)return false;
   if(isFrontier(g)&&option.kind==='evolution'){if(g.campaign.seals<1)return false;g.campaign.seals--;}
@@ -662,14 +681,14 @@ export function selectChest(g,id){
   if(isFrontier(g)&&g.chest.source==='forge'){g.chest.options=frontierForgeCandidates(g);g.chest.optionalUnion=true;}
   emit(g,option.kind==='union'?'union':'evolution',{id:option.weapon});return true;
 }
-export function closeChest(g){if(g.chest?.source==='forge'){if(g.phase!=='chest')return false;g.phase=g.chest.returnPhase;g.chest=null;return true;}if(g.phase!=='chest'||g.chest?.options.length&&!g.chest.optionalUnion)return false;if(g.campaign&&g.chest?.source==='midpoint')g.campaign.midpointClaimed=true;if(g.campaign&&g.chest?.source==='armory')g.campaign.armoryClaimed=true;g.chest=null;g.phase='playing';g.player.invincible=Math.max(g.player.invincible,1);return true;}
+export function closeChest(g){if(isJourney(g)){if(g.phase!=='chest'||g.chest?.source!=='journey'||g.campaign.rewardPending)return false;const phase=g.chest.returnPhase;g.chest=null;g.phase=phase;g.player.invincible=Math.max(g.player.invincible,1);return true;}if(g.chest?.source==='forge'){if(g.phase!=='chest')return false;g.phase=g.chest.returnPhase;g.chest=null;return true;}if(g.phase!=='chest'||g.chest?.options.length&&!g.chest.optionalUnion)return false;if(g.campaign&&g.chest?.source==='midpoint')g.campaign.midpointClaimed=true;if(g.campaign&&g.chest?.source==='armory')g.campaign.armoryClaimed=true;g.chest=null;g.phase='playing';g.player.invincible=Math.max(g.player.invincible,1);return true;}
 export function continueCampaign(g,reward){if(!advanceCampaign(g,reward))return false;healPlayer(g,g.player.maxHp*.25);g.stats=deriveStats(g);return true;}
 export function pauseGame(g,reason='manual'){if(g.phase!=='playing')return false;g.phase='paused';g.pauseReason=reason;return true;}
 export function resumeGame(g){if(g.phase!=='paused')return false;g.phase='playing';return true;}
 export function retreat(g){if(g.phase!=='paused')return false;g.outcome='retreat';g.phase='result';return true;}
 
 export function stepGame(g,dt,input={}) {
-  if(g.phase!=='playing')return;
+  if(g.phase!=='playing'||isJourney(g)&&g.campaign.transitionPending)return;
   if(!Number.isFinite(dt)||dt<=0)return;
   dt=clamp(dt,0,.04);g.hitEvent=false;
   g.feedback??={nextImpactAt:0,killWindowAt:0,killCount:0,nextCrowdAt:0};
@@ -682,12 +701,12 @@ export function stepGame(g,dt,input={}) {
   p.hurt=Math.max(0,p.hurt-dt);p.invincible=Math.max(0,p.invincible-dt);p.guard=Math.max(0,p.guard-dt);p.attack=Math.max(0,p.attack-dt);p.dashCooldown=Math.max(0,p.dashCooldown-dt);
   p.signature=Math.max(0,(p.signature||0)-dt);
   p.attackWindup=Math.max(0,(p.attackWindup||0)-dt);
-  if(isFrontier(g))chargeSignature(g,worldDt*.5);else p.charge=clamp(p.charge+dt*.8,0,100);
+  if(isJourney(g)){if(growthTick(g,worldDt)){emit(g,'mastery');floating(g,p.x,p.y-60,'특성 강화',HEROES[g.hero].color,true);}if(g.hero==='bram'&&g.level>=18&&g.mastery.branch==='guard'&&(p.still>=.55||p.stillGrace>0))nearby(g,p.x,p.y,145,e=>{e.slow=.35;});}else if(isFrontier(g))chargeSignature(g,worldDt*.5);else p.charge=clamp(p.charge+dt*.8,0,100);
   if(isFrontier(g)){tickMastery(g);if(unlockMastery(g)){emit(g,'mastery');floating(g,p.x,p.y-60,`숙련 ${g.mastery.tier}`,HEROES[g.hero].color,true);}if(g.hero==='bram'&&g.mastery.tier===3&&g.mastery.branch==='guard'&&p.still>=.55)nearby(g,p.x,p.y,145,e=>{e.slow=.25;});}g.shake=Math.max(0,g.shake-dt*16);
   let x=Number.isFinite(input.x)?clamp(input.x,-1,1):0,y=Number.isFinite(input.y)?clamp(input.y,-1,1):0;const length=Math.hypot(x,y);if(length>1){x/=length;y/=length;}
   p.moving=length>.05;if(p.moving){p.fx=x/(Math.hypot(x,y)||1);p.fy=y/(Math.hypot(x,y)||1);if(p.attack<=0)p.aim=Math.atan2(p.fy,p.fx);}
   p.wind=clamp(p.wind+(p.moving?dt:-dt*3),0,3);
-  if(p.moving){p.still=0;p.stillGrace=Math.max(0,p.stillGrace-dt);}else{p.still+=dt;if(p.still>=.6)p.stillGrace=isFrontier(g)&&g.hero==='bram'?1.4:.35;}
+  if(p.moving){p.still=0;p.stillGrace=Math.max(0,p.stillGrace-dt);}else{p.still+=dt;if(p.still>=.6)p.stillGrace=(isFrontier(g)||isJourney(g))&&g.hero==='bram'?(isJourney(g)?1.2:1.4):.35;}
   if(g.decoy){g.decoy.life-=dt;if(g.decoy.life<=0)g.decoy=null;}
   g.stats=deriveStats(g);
   if(input.skill)useSignature(g);if(input.dash)dash(g);
@@ -727,7 +746,7 @@ export function unpackRun(text) {
   try{
     if(typeof text!=='string'||text.length>4e6)return null;
     const g=JSON.parse(text),weaponIds=Object.keys(WEAPONS),passiveIds=Object.keys(PASSIVES);
-    if(!plain(g)||!validTree(g)||g.version!==2||!Object.hasOwn(HEROES,g.hero)||g.outcome!==null||g.banked!==false||!['paused','choice','chest','relic','crossroads'].includes(g.phase))return null;
+    if(!plain(g)||!validTree(g)||g.version!==2||!Object.hasOwn(HEROES,g.hero)||g.outcome!==null||g.banked!==false||!['paused','choice','chest','relic','crossroads','cache'].includes(g.phase))return null;
     g.relics??=createRelics();if(!validRelics(g.relics))return null;
     g.synergies??=createSynergies();if(!validSynergies(g.synergies))return null;
     if(!finite(g.time,0,g.campaign?1e9:RUN_SECONDS-.00001)||!integer(g.seed,0,4294967295)||!integer(g.id)||!integer(g.level,1,9999)||!finite(g.xp,0,1e8)||!integer(g.pendingLevels,0,1000))return null;
@@ -771,7 +790,13 @@ export function unpackRun(text) {
       enemyIds.add(e.id);
     }
     if(g.campaign!==undefined&&!validCampaign(g.campaign,g))return null;
-    if(g.phase==='crossroads'&&(!g.campaign||(isFrontier(g)?g.campaign.cleared!==g.campaign.depth:g.campaign.final.state!=='defeated')))return null;
+    if(g.phase==='crossroads'&&(isJourney(g)||!g.campaign||(isFrontier(g)?g.campaign.cleared!==g.campaign.depth:g.campaign.final.state!=='defeated')))return null;
+    if(isJourney(g)){if(!validHeroGrowth(g.mastery,g)||Object.keys(g.weapons).length>4||Object.keys(g.passives).length>4||g.phase==='crossroads')return null;for(const [id,w] of Object.entries(g.weapons))if(WEAPONS[id].union&&(!UNIONS[id].inputs.some(i=>i.id===w.core)||!g.evolutions.includes(w.core)))return null;
+      if(!g.expedition||!Array.isArray(g.expedition.sites)||g.expedition.sites.length>9||g.expedition.sites.some(s=>!vector(s)||!['ready','guarded','active','cleared','spent','abandoned','locked'].includes(s.state)||s.kind==='armory'&&!uniqueKnown(s.deck,BASE_WEAPON_IDS,8)))return null;
+      const expectedSites=g.campaign.regionIndex===2?['gate']:['camp','gate','exit','supply','armory-b','spring','nest','trial'];if(g.expedition.sites.length!==expectedSites.length||new Set(g.expedition.sites.map(s=>s.id)).size!==expectedSites.length||g.expedition.sites.some(s=>!expectedSites.includes(s.id)||(s.id==='supply'||s.id==='armory-b')&&(s.kind!=='armory'||JSON.stringify(s.deck)!==JSON.stringify(cacheDeck(g.initialSeed,`${g.campaign.regionIndex}:${s.id==='supply'?0:1}`)))))return null;
+      if(g.boon&&(!finite(g.boon.until,0,g.time+8.01)))return null;
+      if(g.phase==='cache'){const site=g.expedition.sites.find(s=>s.id===g.cacheOffer?.siteId);if(!site||site.kind!=='armory'||site.state!=='ready'||!Array.isArray(g.cacheOffer.options))return null;const choices=cacheWeaponChoices(g,site),expected=choices.length?choices:journeyUpgradeCandidates(g).slice(0,3);if(JSON.stringify(g.cacheOffer.options)!==JSON.stringify(expected))return null;}else if(g.cacheOffer)return null;
+    }else if(g.phase==='cache')return null;
     if(isFrontier(g)){if(!validMastery(g.mastery,g)||Object.keys(g.weapons).length>4||Object.keys(g.passives).length>4)return null;
       for(const [id,w] of Object.entries(g.weapons)){if(WEAPON_BRANCHES[id]&&w.rank>=4&&!w.branch&&!['choice','chest'].includes(g.phase))return null;if(WEAPONS[id].union&&(!UNIONS[id].inputs.some(i=>i.id===w.core)||!g.evolutions.includes(w.core)||!WEAPON_BRANCHES[w.core]?.some(b=>b[0]===w.branch)))return null;}
     }
@@ -811,19 +836,20 @@ export function unpackRun(text) {
     if(g.metrics.weapons!==undefined&&(!plain(g.metrics.weapons)||Object.entries(g.metrics.weapons).some(([id,stages])=>!weaponIds.includes(id)||!plain(stages)||Object.keys(stages).some(k=>!['opening','build','final'].includes(k))||['opening','build','final'].some(stage=>!plain(stages[stage])||['damage','hits','casts'].some(k=>!finite(stages[stage][k],0,1e12))))))return null;
     if(g.phase==='choice'){
       if((!g.choiceMode&&g.pendingLevels<1)||!g.choices.length||new Set(g.choices.map(c=>c.id)).size!==g.choices.length)return null;
-      if(g.choiceMode&&!['mastery','branch'].includes(g.choiceMode))return null;
-      const valid=g.choiceMode?branchChoices(g):upgradeCandidates(g);if(g.choices.some(c=>!plain(c)||!valid.some(v=>v.id===c.id&&v.kind===c.kind)))return null;
+      if(g.choiceMode&&!['mastery','branch','style'].includes(g.choiceMode))return null;
+      const valid=g.choiceMode==='style'&&isJourney(g)?styleChoices(g):g.choiceMode?branchChoices(g):upgradeCandidates(g);if(g.choices.some(c=>!plain(c)||!valid.some(v=>v.id===c.id&&v.kind===c.kind)))return null;
     if(g.choiceMode)g.choices=valid.filter(v=>g.choices.some(c=>c.id===v.id));
     }else if(g.choices.length||g.choiceMode)return null;
     if(g.phase==='chest'){
+      if(isJourney(g)&&(g.chest?.source!=='journey'||!['playing','paused'].includes(g.chest.returnPhase)||typeof g.chest.bossLoot!=='boolean'))return null;
       if(!plain(g.chest)||!integer(g.chest.gold,0,10000)||!Array.isArray(g.chest.options)||!Array.isArray(g.chest.rewards)||typeof g.chest.canEvolve!=='boolean')return null;
       if(g.chest.source==='forge'&&(!isFrontier(g)||!['playing','paused','crossroads'].includes(g.chest.returnPhase)))return null;
-      if(g.chest.source!=='forge'&&g.chest.optionalUnion!==undefined&&(typeof g.chest.optionalUnion!=='boolean'||g.chest.optionalUnion&&(g.chest.source!=='armory'||!g.chest.options.length||g.chest.options.some(o=>o.kind!=='union'))))return null;
+      if(!isJourney(g)&&g.chest.source!=='forge'&&g.chest.optionalUnion!==undefined&&(typeof g.chest.optionalUnion!=='boolean'||g.chest.optionalUnion&&(g.chest.source!=='armory'||!g.chest.options.length||g.chest.options.some(o=>o.kind!=='union'))))return null;
       const options=chestCandidates(g),available=new Set(options.map(o=>o.id));
-      if(g.chest.optionalUnion&&g.chest.options.some(saved=>!options.some(o=>o.id===saved.id&&o.kind==='union')))return null;
+      if(!isJourney(g)&&g.chest.optionalUnion&&g.chest.options.some(saved=>!options.some(o=>o.id===saved.id&&o.kind==='union')))return null;
       if(g.chest.options.length>10||g.chest.options.some(o=>!plain(o)||!available.has(o.id))||(g.chest.options.length&&!g.chest.canEvolve))return null;
       if(g.chest.rewards.length>3||g.chest.rewards.some(r=>{
-        if(!plain(r)||!weaponIds.includes(r.id)||(!g.weapons[r.id]&&!(g.chest.source==='forge'&&g.consumed.includes(r.id)))||typeof r.evolved!=='boolean'||r.union!==undefined&&typeof r.union!=='boolean')return true;
+        if(!plain(r)||!weaponIds.includes(r.id)||(!g.weapons[r.id]&&!(['forge','journey'].includes(g.chest.source)&&g.consumed.includes(r.id)))||typeof r.evolved!=='boolean'||r.union!==undefined&&typeof r.union!=='boolean')return true;
         if(r.union){const recipe=UNIONS[r.id];return !recipe||!r.evolved||!g.unions.includes(r.id)||!Array.isArray(r.consumed)||r.consumed.length!==recipe.inputs.length||recipe.inputs.some((input,i)=>r.consumed[i]!==input.id);}
         return !!WEAPONS[r.id].union||r.consumed!==undefined&&(!Array.isArray(r.consumed)||r.consumed.length!==1||r.consumed[0]!==r.id);
       }))return null;
@@ -834,4 +860,71 @@ export function unpackRun(text) {
     g.feedback??={nextImpactAt:0,killWindowAt:0,killCount:0,nextCrowdAt:0};
     g.gems=new Map(g.gems);g.events=[];g.stats=deriveStats(g);return g;
   }catch{return null;}
+}
+
+// Expedition 0.9 keeps field acquisition, XP growth and transformation separate.
+function updateJourneyDirector(g,dt){
+ const c=g.campaign,s=journeyStatus(g),boss=c.stageState==='boss',dense=c.difficulty==='dense'?1.25:1;
+ if(s.overrun&&!c.overrunAnnounced){c.overrunAnnounced=true;g.expedition.toast=s.canExit?'숲이 들끓습니다 · 추가 사냥은 위험합니다. 열린 출구로 이동하세요.':'숲이 들끓습니다 · 보스를 처치해 다음 구역 출구를 여세요.';g.expedition.toastUntil=g.time+6;emit(g,'surge');}
+ const clearingGrace=c.stageState==='cleared'&&!s.overrun;const cap=boss?90:[180,310,140][s.index],rate=(clearingGrace?1.2:boss?[2.2,3.8,4][s.index]:s.index===0?Math.min(10,3+s.elapsed*.035):Math.min(24,11+s.elapsed*.045))*dense*(s.overrun?1.5:1);
+ g.spawn-=dt;while(g.spawn<=0){g.spawn+=1/rate;if(g.enemies.length<cap){const roll=random(g),type=s.index===0?(s.elapsed>85&&roll<.06?'beetle':s.elapsed>40&&roll<.25?'runner':'shroom'):roll<.035&&g.enemies.filter(e=>e.type==='spore').length<3?'spore':roll<.12?'warden':roll<.24?'beetle':roll<.45?'runner':'shroom';edgeSpawn(g,type);}}
+ if(!boss&&!clearingGrace&&g.time>=c.nextHordeAt){c.nextHordeAt=g.time+(s.index?25:35);c.hordes++;const count=Math.round((s.index?95:32)*dense),radius=Math.max(580,Math.hypot(g.view.width,g.view.height)/2+80),angle=random(g)*TAU;for(let i=0;i<count&&g.enemies.length<cap;i++){const a=angle+(i/count-.5)*2.8;spawnEnemy(g,i%13===0?'beetle':'shroom',g.player.x+Math.cos(a)*radius,g.player.y+Math.sin(a)*radius);}emit(g,'surge');}
+ if(g.time>=g.nextElite){g.nextElite=g.time+90;if(!boss&&!clearingGrace)edgeSpawn(g,'elite');}
+ const sovereign=g.enemies.find(e=>e.encounterRole==='sovereign'&&!e.dead);
+ if(sovereign&&sovereign.hp<=sovereign.maxHp*.5&&!sovereign.flowersSpawned){sovereign.flowersSpawned=true;for(const x of [-230,230]){const hp=2200;spawnEnemy(g,'spore',x,-100,{targetRole:'support-flower',hp,maxHp:hp,speed:0,damage:0,xp:12,r:26,clock:3,cycle:0});effect(g,'ring',x,-100,70,'#dfb2c3',1);}g.expedition.toast='치유 꽃이 피어났습니다 · 꽃부터 제거하거나 군주에게 화력을 집중하세요.';g.expedition.toastUntil=g.time+7;}
+ if(sovereign)sovereign.hp=Math.min(sovereign.maxHp,sovereign.hp+g.enemies.filter(e=>e.targetRole==='support-flower'&&!e.dead).length*280*dt);
+ const matriarch=g.enemies.find(e=>e.encounterRole==='matriarch'&&!e.dead);
+ if(matriarch&&matriarch.age>=(matriarch.nextBrood??12)){matriarch.nextBrood=matriarch.age+15;for(let i=0;i<8;i++){const a=i*TAU/8;spawnEnemy(g,'shroom',matriarch.x+Math.cos(a)*380,matriarch.y+Math.sin(a)*380,{hp:40,maxHp:40});}emit(g,'surge');}
+ g.peakEnemies=Math.max(g.peakEnemies,g.enemies.length);
+}
+function journeySplinters(g,e){const context={source:'mastery',weapon:'acorn'};for(let i=0;i<3;i++){const a=i*TAU/3;projectile(g,'acorn',e.x,e.y,Math.cos(a)*520,Math.sin(a)*520,(12+g.level)*g.stats.damage,{r:4,pierce:2,life:.55,context});}}
+function consumeJourneyGuard(g,damage,origin){
+ const p=g.player,m=g.mastery,enemy=origin?.ownerId?g.enemies.find(e=>e.id===origin.ownerId):origin?.id?origin:null;
+ let blocked=0;const front=origin&&((origin.x-p.x)*p.fx+(origin.y-p.y)*p.fy)/(dist(origin,p)||1)>0,braced=p.still>=.55||p.stillGrace>0;
+ if(p.guard>0&&m.extraGuard>0){const take=Math.min(damage,m.extraGuard);m.extraGuard-=take;damage-=take;blocked+=take;}
+ if(damage>0&&braced&&front&&m.guardValue>0){const take=Math.min(damage,m.guardValue);m.guardValue-=take;damage-=take;blocked+=take;
+  if(m.guardValue<=0){m.guardReadyAt=g.time+(m.branch==='guard'?1.8:m.branch==='counter'?4:2.6);const strong=m.branch==='counter',r=strong?195:95,value=(12+g.level*1.6)*g.stats.damage*(strong?1.8:.7),context={source:'mastery',weapon:'briar'};g.delayed.push({at:g.time+.08,x:p.x,y:p.y,r,damage:value,knock:strong?180:80,color:'#badaaa',context});if(strong&&g.level>=18&&g.time>=(m.nextCounterAt||0)){m.nextCounterAt=g.time+3;for(let i=0;i<6;i++){const a=i*TAU/6;projectile(g,'moon',p.x,p.y,Math.cos(a)*380,Math.sin(a)*380,value*.65,{r:8,pierce:4,life:1.5,returnAfter:.5,context});}}}
+ }
+ return {damage,blocked,enemy};
+}
+function journeyUpgradeCandidates(g){
+ const out=[];for(const [id,w]of Object.entries(g.weapons))if(BASE_WEAPON_IDS.includes(id)&&!w.evolved&&w.rank<8)out.push({id,kind:'weapon',owned:true});
+ for(const [id,d]of Object.entries(PASSIVES))if((g.passives[id]||0)<d.max&&(g.passives[id]||Object.keys(g.passives).length<4))out.push({id,kind:'passive',owned:!!g.passives[id]});
+ return out.length?out:['heal','power','score'].map(id=>({id,kind:'boon',owned:false}));
+}
+function draftJourneyChoices(g,excluded,advance){
+ let pool=journeyUpgradeCandidates(g);const out=[];if(advance)g.drafts++;
+ const add=c=>{if(c){out.push(c);pool=pool.filter(x=>x.id!==c.id);}};
+ if(g.drafts<=2)add(pool.find(c=>c.id===g.startWeapon));
+ if(g.upgradeMisses>=2&&!out.some(c=>c.kind==='weapon'))add(fromPool(g,pool.filter(c=>c.kind==='weapon')));
+ if(g.drafts%4===0)add(pool.find(c=>c.kind==='passive'&&Object.keys(g.weapons).some(id=>g.weapons[id].rank>=6&&WEAPONS[id].recipe===c.id)));
+ while(pool.length&&out.length<3){const fresh=pool.filter(c=>!excluded.includes(c.id)),eligible=fresh.length?fresh:pool,weighted=eligible.flatMap(c=>Array(c.kind==='weapon'?4:3).fill(c));add(fromPool(g,weighted));}
+ if(advance)g.upgradeMisses=out.some(c=>c.kind==='weapon')?0:g.upgradeMisses+1;return out;
+}
+function journeyForgeCandidates(g){
+ const out=evolutionCandidates(g).filter(()=>g.campaign.seals>0).map(id=>({id:`evolve:${id}`,weapon:id,kind:'evolution',name:WEAPONS[id].evo,description:`${WEAPONS[id].evoText} · 인장 1개`,consumes:[id],catalyst:WEAPONS[id].recipe}));
+ for(const recipe of unionCandidates(g))for(const input of recipe.inputs.filter(i=>g.weapons[i.id].evolved))out.unshift({id:`union:${recipe.id}:${input.id}`,weapon:recipe.id,kind:'union',core:input.id,name:transformationName(recipe.id,input.id),description:recipe.id==='returning'?(input.id==='moon'?'좁은 왕복 탄도 · 귀환 화력 집중':'넓은 폭발 산탄 · 밀집한 적 관통'):(input.id==='bees'?'벌떼가 멀리 출격 · 가까운 방어는 줄어듭니다':'가까운 수호 궤도 · 짧은 벌떼 귀환'),consumes:recipe.inputs.map(i=>i.id),catalyst:null});return out;
+}
+function claimJourneyReward(g,id){
+ if(g.phase!=='chest'||!g.chest?.bossLoot||!g.campaign.rewardPending)return false;
+ if(id==='heal')healPlayer(g,g.player.maxHp*.5);
+ else if(id.startsWith('weapon:')){const key=id.slice(7),w=g.weapons[key];if(!w||w.evolved||w.rank>=8)return false;w.rank++;w.clock=0;recordRank(g,key);}
+ else if(id.startsWith('catalyst:')){const [key,replace]=id.slice(9).split(':');if(!PASSIVES[key]||g.passives[key]||!Object.keys(g.weapons).some(w=>WEAPONS[w].recipe===key))return false;if(Object.keys(g.passives).length>=4){if(!replace||!g.passives[replace])return false;delete g.passives[replace];}g.passives[key]=1;}
+ else if(id!=='skip')return false;
+ g.campaign.rewardPending=false;g.chest.options=journeyForgeCandidates(g);g.stats=deriveStats(g);return true;
+}
+function transformJourneyWeapon(g,id){
+ if(g.phase!=='chest'||g.chest?.source!=='journey')return false;const o=journeyForgeCandidates(g).find(o=>o.id===id);if(!o)return false;
+ if(o.kind==='union'){for(const input of o.consumes){delete g.weapons[input];if(!g.consumed.includes(input))g.consumed.push(input);}g.weapons[o.weapon]={rank:1,evolved:true,clock:0,core:o.core,branch:coreVariant(o.weapon,o.core)};g.unions.push(o.weapon);if(!g.discovered.includes(o.weapon))g.discovered.push(o.weapon);g.metrics.firstUnionAt??=g.time;}
+ else{g.campaign.seals--;g.weapons[o.weapon].evolved=true;g.weapons[o.weapon].clock=0;if(!g.evolutions.includes(o.weapon))g.evolutions.push(o.weapon);g.metrics.firstEvolutionAt??=g.time;}
+ g.chest.rewards=[{id:o.weapon,evolved:true,union:o.kind==='union',consumed:[...o.consumes]}];g.chest.options=journeyForgeCandidates(g);emit(g,o.kind==='union'?'union':'evolution',{id:o.weapon});return true;
+}
+function openJourneyDrop(g,drop){
+ if(g.phase!=='playing')return false;const available=Object.keys(g.weapons).filter(id=>BASE_WEAPON_IDS.includes(id)&&!g.weapons[id].evolved&&g.weapons[id].rank<8),id=available.includes(drop.forgeWeapon)?drop.forgeWeapon:available[0],rewards=[];
+ if(id){const before=g.weapons[id].rank;g.weapons[id].rank=Math.min(8,before+(drop.source==='nest'?2:1));g.weapons[id].clock=0;recordRank(g,id);rewards.push({id,evolved:false,amount:g.weapons[id].rank-before});}else healPlayer(g,g.player.maxHp*.15);
+ g.metrics.chests++;g.chest={source:'journey',bossLoot:false,gold:0,rewards,options:journeyForgeCandidates(g),canEvolve:true,optionalUnion:true,returnPhase:'playing'};g.phase='chest';emit(g,'chest');return true;
+}
+export function requestJourneyExit(g){
+ if(!isJourney(g)||g.phase!=='playing'||!journeyStatus(g).canExit)return false;
+ const value=[...g.gems.values(),...g.flying].reduce((s,gem)=>s+gem.value,0);g.gems.clear();g.flying=[];if(value)gainXP(g,value);g.campaign.transitionPending=true;if(g.pendingLevels)offerLevel(g);return true;
 }

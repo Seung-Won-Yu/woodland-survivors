@@ -15,7 +15,7 @@ export const WEAPONS = {
   acorn:{name:'도토리 탄',tag:'투사체 · 관통',color:'#efbe76',max:8,damage:17,cooldown:.72,recipe:'twin',evo:'도토리 폭풍',evoText:'부채꼴 관통탄이 적을 뚫고 연쇄 폭발합니다.',description:'가까운 적에게 도토리를 발사합니다.'},
   moon:{name:'반달 부메랑',tag:'왕복 · 관통',color:'#c5d5ff',max:8,damage:18,cooldown:1.55,recipe:'feather',evo:'은하의 궤적',evoText:'여러 개의 큰 반달이 왕복하며 전장을 가릅니다.',description:'앞으로 날아갔다 돌아오는 반달을 던집니다.'},
   briar:{name:'회전 가시',tag:'궤도 · 공간 확보',color:'#b6df9b',max:8,damage:13,cooldown:.55,recipe:'leaf',evo:'가시 성채',evoText:'촘촘한 가시가 쉬지 않고 회전하며 적을 밀어내고 느리게 만듭니다.',description:'몸 주변을 도는 가시로 접근하는 적을 공격합니다.'},
-  bees:{name:'꿀벌 동료',tag:'추적 · 소환',color:'#ffda7d',max:8,damage:13,cooldown:1.18,recipe:'dew',evo:'여왕의 행진',evoText:'벌떼가 오래 머무르며 먼 적까지 추적합니다.',description:'꿀벌이 가까운 적을 찾아 공격합니다.'},
+  bees:{name:'꿀벌 동료',tag:'추적 · 소환',color:'#ffda7d',max:8,damage:13,cooldown:1.18,recipe:'dew',evo:'여왕의 행진',evoText:'벌떼가 오래 머무르며 먼 적까지 추적합니다. 원정에서는 한 번 더 쏩니다.',description:'꿀벌이 가까운 적을 찾아 공격합니다.'},
   storm:{name:'번개 꽃',tag:'낙뢰 · 연쇄',color:'#b3dcf3',max:8,damage:29,cooldown:1.85,recipe:'berry',evo:'뇌우 정원',evoText:'적 사이를 건너뛰는 연쇄 낙뢰가 쏟아집니다.',description:'주변 적에게 범위 낙뢰를 떨어뜨립니다.'},
   lantern:{name:'반딧불 병',tag:'장판 · 지속 피해',color:'#90ead1',max:8,damage:10,cooldown:1.75,recipe:'stone',evo:'별빛 연못',evoText:'넓어진 빛의 장판이 몸을 향해 모여들며 적을 끌어당깁니다.',description:'병이 깨진 자리에 피해를 주는 빛의 장판이 남습니다.'},
   vine:{name:'덩굴 채찍',tag:'부채꼴 · 밀쳐내기',color:'#eaa6af',max:8,damage:24,cooldown:1.2,recipe:'bark',evo:'장미 폭풍',evoText:'전방위 덩굴 뒤 장미 폭발이 이어집니다.',description:'바라보는 방향으로 넓게 휘둘러 적을 밀어냅니다.'},

@@ -99,7 +99,7 @@ export function scheduledBossBehavior(g,e,dt,d,speed,distance,api){
   }else if(e.mode==='charge')return chargeStep(e,dt);
   else if(e.mode==='recover'){speed=0;e.recover-=dt;if(e.recover<=0)e.mode='walk';}
   else if(e.clock<=0&&distance<760){
-    const order=e.bossRole==='midpoint'?['volley','charge']:['crown','roots','charge'];
+    const order=e.encounterRole==='matriarch'?['roots','volley','roots']:e.bossRole==='midpoint'?['volley','charge']:['crown','roots','charge'];
     e.attack=order[(e.cycle||0)%order.length];e.cycle=(e.cycle||0)+1;e.mode='windup';e.windup=e.attack==='charge'?1:1.1;e.patternPower=e.bossPhase;e.patternAngle=Math.atan2(d.y,d.x);e.dx=d.x;e.dy=d.y;speed=0;
     if(e.attack==='roots'){
       const count=e.patternPower===2?5:3;

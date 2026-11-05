@@ -26,5 +26,6 @@ export function moveActor(g,a,dx,dy,r=12){
     a.x=Math.max(-WORLD_LIMIT+r,Math.min(WORLD_LIMIT-r,a.x+dx/n));
     a.y=Math.max(-WORLD_LIMIT+r,Math.min(WORLD_LIMIT-r,a.y+dy/n));
     for(const rock of g.terrain){const x=a.x-rock.x,y=a.y-rock.y,d=Math.hypot(x,y),reach=r+rock.r*.78;if(d<reach){a.x=rock.x+(d?x/d:1)*reach;a.y=rock.y+(d?y/d:0)*reach;}}
+    if(a===g.player&&g.world?.arenaRadius){const distance=Math.hypot(a.x,a.y+100),limit=g.world.arenaRadius-r;if(distance>limit){a.x=a.x/distance*limit;a.y=-100+(a.y+100)/distance*limit;}}
   }
 }

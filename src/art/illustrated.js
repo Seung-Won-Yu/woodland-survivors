@@ -61,7 +61,7 @@ export function drawProp(c,art,row,col,x,y,width,alpha=1){
   const b=art.props.cells[row][col],height=width*b.h/b.w;c.save();c.globalAlpha*=alpha;c.imageSmoothingEnabled=true;c.drawImage(art.props.image,b.x,b.y,b.w,b.h,Math.round(x-width/2),Math.round(y-height),width,height);c.restore();
 }
 export function drawIllustratedEnemy(c,art,e){
-  const row=['beetle','warden'].includes(e.type)?3:e.type==='spore'?2:e.type==='runner'?1:0;
+  const row=e.encounterRole==='warden'?3:e.encounterRole==='matriarch'?2:['beetle','warden'].includes(e.type)?3:e.type==='spore'?2:e.type==='runner'?1:0;
   let frame=Math.floor((e.walk||0)/9)%6;
   if(row===1){frame=Math.floor((e.walk||0)/11)%4;if(e.mode==='windup')frame=4;else if(e.mode==='charge')frame=5+Math.floor(e.age*13)%2;else if(e.mode==='recover')frame=7;}
   if(row===2){frame=Math.floor((e.walk||0)/13)%4;if(e.mode==='windup')frame=e.windup>.3?4:5;else if(e.mode==='recover')frame=e.recover>.2?6:7;}
@@ -73,8 +73,9 @@ export function drawIllustratedEnemy(c,art,e){
   c.save();c.translate(e.x,e.y);if((e.fx||1)<0)c.scale(-1,1);if(e.hurt>0){c.filter='brightness(1.65)';c.transform(1,0,-.08,.95,0,0);}
   c.imageSmoothingEnabled=true;c.drawImage(art.enemies.image,b.x,b.y,b.w,b.h,(b.localX-art.enemies.w/2)*scale,(b.localY-ground)*scale,w,h);
   if(e.type==='warden'){c.strokeStyle='#dfd3a2';c.lineWidth=2;c.beginPath();c.moveTo(-9,-39);c.quadraticCurveTo(0,-54,11,-40);c.moveTo(0,-48);c.lineTo(0,-31);c.stroke();}
+  if(e.encounterRole==='matriarch'){c.strokeStyle='#789774';c.lineWidth=5;for(const side of [-1,1]){c.beginPath();c.moveTo(side*20,-45);c.quadraticCurveTo(side*68,-75,side*57,-117);c.stroke();for(let i=0;i<3;i++){c.fillStyle=i%2?'#aabf9a':'#89a781';c.beginPath();c.ellipse(side*(35+i*8),-69-i*19,15,7,side*.5,0,Math.PI*2);c.fill();}}}
   if(e.type==='elite'||e.type==='king'){
-    c.fillStyle=e.bossPhase===2?'#d9956f':'#d9b970';c.beginPath();c.moveTo(-12,-height+8);c.lineTo(-15,-height-5);c.lineTo(-5,-height);c.lineTo(0,-height-10);c.lineTo(5,-height);c.lineTo(15,-height-5);c.lineTo(12,-height+8);c.fill();
+    c.fillStyle=e.encounterRole==='matriarch'?'#b7cda8':e.bossPhase===2?'#d9956f':'#d9b970';c.beginPath();c.moveTo(-12,-height+8);c.lineTo(-15,-height-5);c.lineTo(-5,-height);c.lineTo(0,-height-10);c.lineTo(5,-height);c.lineTo(15,-height-5);c.lineTo(12,-height+8);c.fill();
   }
   c.restore();
 }

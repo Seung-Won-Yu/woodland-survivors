@@ -1,3 +1,6 @@
+import {createJourney,isJourney,journeyStatus,REGIONS} from '../core/journey.js';
+import {createHeroGrowth} from '../core/hero-growth.js';
+import {setupJourneyRegion,journeyInteract,updateJourneyWorld} from './journey-world.js';
 import {createGame,spawnEnemy,deriveStats,healPlayer,LIMITS} from '../core/game.js';
 import {createRelicCache,openRelicCache,relicHash} from '../core/relics.js';
 import {guardianStyle,GUARDIANS,PATTERN_NAMES} from '../core/patterns.js';
@@ -14,13 +17,14 @@ export const SITES=[
   {id:'spring',name:'반딧불 샘',short:'회복 샘',...LANDMARKS.spring,color:'#9bd6cd',hint:'한 번 회복 +40 · 아직 남겨둘 수 있음'},
   {id:'camp',name:'수호대 야영지',short:'귀환',...LANDMARKS.camp,color:'#ebdca5',hint:'3분 생존 후 이곳으로 귀환'}
 ];
-export function createExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437,{mode='scout'}={}){
+export function createExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437,{mode='scout',difficulty='normal'}={}){
   const profile=normalizeProfile({bestTime:120,kills:500,elites:1,evolved:['acorn'],lanternRank:4,stormRank:4});
   const g=createGame(profile,hero,false,seed);
   g.weapons={[weapon]:{rank:1,evolved:false,clock:.15}};g.discovered=[weapon];g.maxRanks={[weapon]:1};g.pool=[...BASE_WEAPON_IDS];
   g.startWeapon=weapon;g.terrain=[...ROCKS,...TREE_TRUNKS];g.gear=null;g.nextElite=105;g.player.charge=35;
   if(mode==='campaign')g.campaign=createCampaign();
   if(mode==='frontier'){g.campaign=createFrontier();g.mastery=createMastery(hero);g.player.charge=25;if(hero==='bram')g.player.hp=g.player.maxHp=135;g.rerolls=4;}
+  if(mode==='journey'){g.campaign=createJourney(difficulty);g.mastery=createHeroGrowth();g.player.charge=25;if(hero==='bram')g.player.hp=g.player.maxHp=135;g.rerolls=4;}
   const trial={id:'trial',name:'바람숲 제단',short:'20초 도전',...TRIAL_SPOTS[relicHash(seed,'clearing')%TRIAL_SPOTS.length],color:'#b5d5a3',hint:'F로 시작 · 원 안에서 20초 버티면 유물',state:'ready'};
   g.expedition={seed:seed>>>0,sites:[...SITES.map(s=>({...s,state:'ready'})),trial],trial:{startedAt:null,lastAt:0,outside:0,wave:0,pending:[]},nestKills:0,complete:false,log:[],milestones:{},toast:'서쪽은 보급, 남쪽은 회복 샘. 길을 골라 경험치를 모으세요.',toastUntil:8};
   if(g.campaign){const camp=g.expedition.sites.find(s=>s.id==='camp');camp.short='야영지';camp.hint='3분 수문장 · 5분 정비 보급 · 7분 최종전';g.expedition.toast='새벽까지 한 판! 3분 수문장, 5분 정비 보급, 7분 버섯왕. 먼저 빌드를 준비하세요.';}
@@ -29,8 +33,10 @@ export function createExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437
   for(let i=0;i<4;i++){const a=i*Math.PI/2;spawnEnemy(g,'shroom',Math.cos(a)*280,Math.sin(a)*240);}
   const supply=g.expedition.sites.find(s=>s.id==='supply');supply.state='guarded';
   for(let i=0;i<4;i++){const a=i*Math.PI/2;spawnEnemy(g,'shroom',supply.x+Math.cos(a)*76,supply.y+Math.sin(a)*65,{supplyGuard:true,home:{x:supply.x,y:supply.y},patrolAngle:a,hp:42,maxHp:42,xp:4,damage:6,speed:46});}
+  if(isJourney(g))setupJourneyRegion(g);
   return g;
 }
+export function createJourneyExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437,options={}){return createExpedition(hero,weapon,seed,{...options,mode:'journey'});}
 export function createCampaignExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437){return createExpedition(hero,weapon,seed,{mode:'campaign'});}
 export function createFrontierExpedition(hero='pip',weapon=HEROES[hero].weapon,seed=1437){return createExpedition(hero,weapon,seed,{mode:'frontier'});}
 export function message(g,text){g.expedition.toast=text;g.expedition.toastUntil=g.time+5;g.expedition.log.push({time:Math.round(g.time),text});}
@@ -38,6 +44,7 @@ export function nearestSite(g){return [...g.expedition.sites.filter(s=>['ready',
 export function interact(g){
   if(g.phase!=='playing')return false;
   const s=nearestSite(g);if(!s)return false;
+  if(isJourney(g)){const result=journeyInteract(g,s);if(result!==null)return result;}
   if(s.type==='relic')return openRelicCache(g,g.pickups.find(p=>p.id===s.id));
   if(s.id==='supply'){if(s.state==='guarded'){message(g,'보급 주위 버섯을 물리치면 꾸러미를 회수할 수 있습니다.');return false;}g.phase='supply';return true;}
   if(s.id==='spring'){if(g.player.hp>=g.player.maxHp){message(g,'지금은 건강합니다. 샘을 남겨두세요.');return false;}const actual=healPlayer(g,40);s.state='spent';g.expedition.milestones.springAt=g.time;message(g,`반딧불 샘 · 체력 +${Math.ceil(actual)}`);g.events.push({type:'heal'});return true;}
@@ -76,6 +83,7 @@ export function takeSupply(g,gear,replace=null){
   g.phase='playing';g.stats=deriveStats(g);message(g,`${gear==='boots'?'순찰 장화':'나무껍질 망토'} 장착 · 옆에 남은 유물 꾸러미는 F로 확인`);return true;
 }
 export function updateExpedition(g){
+  if(isJourney(g)){updateJourneyWorld(g);return;}
   const ex=g.expedition,nest=ex.sites.find(s=>s.id==='nest');
   const trial=ex.sites.find(s=>s.id==='trial'),t=ex.trial;
   if(trial?.state==='active'&&g.phase!=='result'){
@@ -109,6 +117,8 @@ export function updateExpedition(g){
   if(!g.campaign&&g.time>=180&&!ex.returnCalled){ex.returnCalled=true;message(g,'3분 정찰 완료! 야영지로 돌아가 F를 눌러 귀환하세요.');}
 }
 export function expeditionObjective(g){
+  if(isJourney(g)){const s=journeyStatus(g),boss=g.enemies.find(e=>e.bossRole&&!e.dead),primary=Object.entries(g.weapons).sort((a,b)=>Number(b[1].evolved)-Number(a[1].evolved)||b[1].rank-a[1].rank)[0],build=`${WEAPONS[primary[0]].name} ${primary[1].evolved?'✦ 완성':`${primary[1].rank}/8`} · 인장 ${s.seals}`;return {title:boss?`${s.boss} · ${Math.ceil(boss.hp/boss.maxHp*100)}%`:s.canExit?'열린 출구로 다음 구역 진입':`${s.name} · 성장 후 보스 도전`,detail:boss?`붉은 예고 뒤 빈틈을 노리세요 · ${build}`:s.canExit?`남은 보급 ${s.remainingCaches}개 · ${Math.ceil(s.untilOverrun)}초 뒤 과밀 · 출구에서 XP 정산`: `권장 Lv.${s.recommended} · 언제든 도전 가능 · ${s.overrun?'과밀 공세':`${Math.ceil(s.untilOverrun)}초 뒤 과밀`} / ${build}`};}
+
   if(isFrontier(g)){const s=frontierStatus(g),m=g.mastery,goal=s.stage==='boss'?`${s.bossName} 격파`:s.stage==='ready'?`도전 개방 · 야영지에서 F`:s.stage==='cleared'?'전리품 정비 후 다음 공세로':`${g.campaign.depth===1?'수문장 도전 준비':'최종 빌드 완성'} · 사냥 ${s.progress}/${s.target}`;return {title:goal,detail:s.stage==='ready'?'추가 성장에는 한계가 있습니다 · 인장으로 진화, 두 무기로 합체':`${g.campaign.depth===1?'1차 목표: 인장 확보':'2차 목표: 최종 합체로 버섯왕 격파'} · 위협 ${s.threat+1} · 둥지 선택 도전`};}
 
   const ex=g.expedition,supply=ex.sites.find(s=>s.id==='supply'),nest=ex.sites.find(s=>s.id==='nest'),spring=ex.sites.find(s=>s.id==='spring');
@@ -132,6 +142,8 @@ export function expeditionObjective(g){
   return {title:nest.state==='spent'?'새 힘으로 경험치를 회수하세요':'경험치 사냥 · 유물 도전 · 위험 둥지',detail:`${w.evolved?d.evo:`${d.name} ${w.rank}/8 · 촉매 ${g.passives[d.recipe]?'✓':'필요'}`} · ${trial?.state==='ready'?'초록 제단: 20초 도전 · ':''}${healing}`};
 }
 export function expeditionMarkers(g){
+  if(isJourney(g))return [...g.expedition.sites.filter(s=>['ready','guarded','active'].includes(s.state)),...g.pickups.filter(p=>['chest','relic'].includes(p.type)).map(p=>({...p,short:p.type==='relic'?'유물':'강화 상자',color:'#e3c482'})),...g.enemies.filter(e=>e.bossRole&&!e.dead).map(e=>({...e,kind:'boss',short:REGIONS[g.campaign.regionIndex].boss,color:'#e4a39b'}))];
+
   return [...g.expedition.sites.filter(s=>!(s.id==='nest'&&s.state==='cleared')&&!['spent','abandoned'].includes(s.state)),
     ...g.pickups.filter(item=>['chest','relic'].includes(item.type)).map(item=>({...item,short:item.type==='relic'?'유물 꾸러미':item.source==='nest'?'둥지 상자':item.source==='midpoint'?'각성 상자':item.source==='armory'?'정비 상자':'전리품 상자',color:item.type==='relic'?'#b5d5a3':'#f0d48a'})),
     ...g.enemies.filter(e=>e.bossRole&&!e.dead).map(e=>({id:e.id,x:e.x,y:e.y,short:e.bossRole==='midpoint'?'수문장':'최종 보스',color:e.bossRole==='midpoint'?'#e6c084':'#dfb2c3'}))];

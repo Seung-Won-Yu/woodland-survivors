@@ -4,7 +4,7 @@ import {SYNERGY_IDS} from '../core/synergies.js';
 export const JOURNAL_KEY='woodland-expedition-journal-v1';
 const uint=n=>Number.isInteger(n)&&n>=0&&n<=4294967295;
 export function normalizeJournal(raw){
-  const j={discovered:[],synergies:[],runs:[],returns:0,clears:0,bestLevel:0,bestStage:0,bestKills:0,bestStreak:0,fastestClear:null,frontierHeroes:{}};
+  const j={discovered:[],synergies:[],runs:[],returns:0,clears:0,bestLevel:0,bestStage:0,bestKills:0,bestStreak:0,fastestClear:null,frontierHeroes:{},journeyRuns:[],journeyBest:{}};
   if(!raw||typeof raw!=='object')return j;
   for(const id of Object.keys(HEROES)){const r=raw.frontierHeroes?.[id];if(r&&['stage','kills','level'].every(k=>Number.isInteger(r[k])&&r[k]>=0&&r[k]<=1e8))j.frontierHeroes[id]={stage:r.stage,kills:r.kills,level:r.level,fastest:Number.isFinite(r.fastest)&&r.fastest>0&&r.fastest<=1e9?r.fastest:null};}
   j.discovered=[...new Set(Array.isArray(raw.discovered)?raw.discovered.filter(id=>RELIC_IDS.includes(id)):[])];
@@ -14,6 +14,9 @@ export function normalizeJournal(raw){
   for(const k of ['bestStage','bestKills','bestStreak'])j[k]=Number.isSafeInteger(raw[k])&&raw[k]>=0?Math.min(1e8,raw[k]):0;
   j.fastestClear=Number.isFinite(raw.fastestClear)&&raw.fastestClear>=420&&raw.fastestClear<=1e9?raw.fastestClear:null;
   j.bestLevel=Number.isSafeInteger(raw.bestLevel)&&raw.bestLevel>=0?Math.min(9999,raw.bestLevel):0;
+  j.journeyRuns=(Array.isArray(raw.journeyRuns)?raw.journeyRuns:[]).filter(r=>r&&typeof r.id==='string'&&/^[a-zA-Z0-9-]{1,100}$/.test(r.id)&&r.ruleset==='expedition-v09'&&Object.hasOwn(HEROES,r.hero)&&BASE_WEAPON_IDS.includes(r.weapon)&&['normal','dense'].includes(r.difficulty)&&Number.isFinite(r.time)&&r.time>=0&&r.time<1e9&&Number.isInteger(r.stage)&&r.stage>=0&&r.stage<=3&&Number.isInteger(r.level)&&r.level>=1&&r.level<10000&&Number.isInteger(r.kills)&&r.kills>=0&&r.kills<1e8&&[null,'spread','focus','guard','counter'].includes(r.style)).slice(0,24).map(r=>({...r,cleared:r.stage===3&&r.cleared===true,finalized:r.finalized===true}));
+  for(const r of Object.values(raw.journeyBest||{}))if(r&&Object.hasOwn(HEROES,r.hero)&&[null,'spread','focus','guard','counter'].includes(r.style)&&['normal','dense'].includes(r.difficulty)&&['stage','kills','level'].every(k=>Number.isInteger(r[k])&&r[k]>=0&&r[k]<=1e8)&&(r.fastest===null||Number.isFinite(r.fastest)&&r.fastest>0&&r.fastest<1e9))j.journeyBest[`${r.hero}:${r.style||'none'}:${r.difficulty}`]={hero:r.hero,style:r.style,difficulty:r.difficulty,stage:Math.min(3,r.stage),kills:r.kills,level:r.level,fastest:r.fastest};
+  for(const r of j.journeyRuns)mergeJourneyBest(j,r);
   const seen=new Set();
   for(const r of Array.isArray(raw.runs)?raw.runs:[]){
     if(j.runs.length===12)break;
@@ -24,6 +27,7 @@ export function normalizeJournal(raw){
 }
 export function discoverRelics(j,ids){j.discovered=[...new Set([...j.discovered,...ids.filter(id=>RELIC_IDS.includes(id))])];return j;}
 export function recordRun(j,g){
+  if(g.campaign?.version===3)return g.phase==='result'?checkpointJourney(j,g):false;
   if(g.campaign?.version===2)return g.phase==='result'?checkpointRun(j,g):false;
   if(g.phase!=='result'||j.runs.some(r=>r.id===g.runId))return false;
   const returned=g.outcome==='scouted',cleared=!!g.campaign?.cleared;
@@ -33,6 +37,7 @@ export function recordRun(j,g){
 }
 // Upsert at each boss: a later defeat or a closed tab cannot erase a cleared boss.
 export function checkpointRun(j,g){
+  if(g.campaign?.version===3)return checkpointJourney(j,g);
   if(g.campaign?.version!==2||!['crossroads','result'].includes(g.phase))return false;
   const old=j.runs.find(r=>r.id===g.runId);if(old?.finalized)return false;
   const stage=Math.max(old?.stage||0,g.campaign.cleared),finalized=g.phase==='result';
@@ -41,4 +46,18 @@ export function checkpointRun(j,g){
   j.frontierHeroes??={};const h=j.frontierHeroes[g.hero]||{stage:0,kills:0,level:0,fastest:null},finish=g.campaign.records.find(r=>r.depth===2)?.time;
   j.frontierHeroes[g.hero]={stage:Math.max(h.stage,stage),kills:Math.max(h.kills,g.kills),level:Math.max(h.level,g.level),fastest:finish?Math.min(h.fastest??Infinity,finish):h.fastest};
   discoverRelics(j,g.relics.discovered);j.synergies=[...new Set([...j.synergies,...g.synergies.discovered])];return true;
+}
+
+function checkpointJourney(j,g){
+ if(g.phase!=='result'&&!(g.phase==='chest'&&g.chest?.bossLoot))return false;
+ j.journeyRuns??=[];const old=j.journeyRuns.find(r=>r.id===g.runId);if(old?.finalized)return false;
+ const stage=Math.max(old?.stage||0,g.campaign.cleared),finalized=g.phase==='result';if(old&&old.stage===stage&&!finalized)return false;
+ const r={id:g.runId,ruleset:g.campaign.ruleset,difficulty:g.campaign.difficulty,hero:g.hero,weapon:g.startWeapon,style:g.mastery.branch,build:Object.entries(g.weapons).map(([id,w])=>({id,rank:w.rank,evolved:w.evolved,core:w.core||null})),passives:{...g.passives},relics:[...g.relics.items],seed:g.initialSeed,time:Math.round(g.time),level:g.level,kills:g.kills,stage,cleared:stage===3&&g.outcome==='victory',finalized};
+ j.journeyRuns=j.journeyRuns.filter(r=>r.id!==g.runId);j.journeyRuns.unshift(r);j.journeyRuns=j.journeyRuns.slice(0,24);mergeJourneyBest(j,r);discoverRelics(j,g.relics.discovered);return true;
+}
+
+export function journeyUnlocked(j){return Object.values(j.journeyBest||{}).some(r=>r.fastest!==null);}
+function mergeJourneyBest(j,r){
+ j.journeyBest??={};const key=`${r.hero}:${r.style||'none'}:${r.difficulty}`,old=j.journeyBest[key]||{stage:0,kills:0,level:0,fastest:null};
+ j.journeyBest[key]={hero:r.hero,style:r.style,difficulty:r.difficulty,stage:Math.max(old.stage,r.stage),kills:Math.max(old.kills,r.kills),level:Math.max(old.level,r.level),fastest:r.cleared?Math.min(old.fastest??Infinity,r.time):old.fastest};
 }

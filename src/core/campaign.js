@@ -1,3 +1,4 @@
+import {isJourney,finishJourneyBoss,validJourney} from './journey.js';
 import {moveActor} from '../game/terrain.js';
 import {isFrontier,frontierStatus,finishFrontier,advanceFrontier,validFrontier} from './frontier.js';
 export const MIDPOINT_AT=180,ARMORY_AT=300,FINAL_AT=420;
@@ -6,6 +7,7 @@ const encounter=()=>({state:'waiting',id:null,spawnedAt:null,defeatedAt:null});
 export const createCampaign=()=>({version:1,depth:1,cleared:0,firstClearedAt:null,challengeAt:null,boosts:{force:0,tempo:0,vigor:0,overflow:0},records:[],mid:encounter(),final:encounter(),midpointClaimed:false,armoryDropped:false,armoryClaimed:false,nextHordeAt:225,hordes:0});
 export const finalArrival=g=>g.campaign.depth>1?g.campaign.challengeAt:Math.max(FINAL_AT,(g.campaign?.mid.defeatedAt??0)+90);
 export function campaignStage(g){
+  if(isJourney(g))return g.campaign.regionIndex===0?'opening':g.campaign.regionIndex===1?'build':'final';
   if(isFrontier(g)){const s=frontierStatus(g);return s.stage==='boss'?(g.campaign.depth===1?'midpoint':'final'):s.stage==='cleared'?'cleared':g.campaign.depth>1?'build':'opening';}
   const c=g.campaign;if(!c)return 'scout';
   if(c.final.state==='defeated')return 'cleared';
@@ -15,6 +17,7 @@ export function campaignStage(g){
 }
 export function campaignMessage(g,text){const ex=g.expedition;if(!ex)return;ex.toast=text;ex.toastUntil=g.time+6;ex.log.push({time:Math.round(g.time),text});ex.log=ex.log.slice(-64);}
 export function updateCampaign(g,spawn){
+  if(isJourney(g))return;
   if(isFrontier(g))return;
   const c=g.campaign;if(!c)return;
   const arrive=(role,state)=>{
@@ -34,6 +37,7 @@ export function updateCampaign(g,spawn){
   }
 }
 export function finishCampaignBoss(g,e){
+  if(isJourney(g))return finishJourneyBoss(g,e);
   if(isFrontier(g))return finishFrontier(g,e);
   const role=e.bossRole,state=role==='midpoint'?g.campaign.mid:g.campaign.final;
   state.state='defeated';state.id=null;state.defeatedAt=g.time;g.kingKills++;
@@ -43,6 +47,7 @@ export function finishCampaignBoss(g,e){
   }else{const c=g.campaign;c.cleared=c.depth;c.firstClearedAt??=g.time;c.records.push({depth:c.depth,time:g.time,duration:g.time-state.spawnedAt,kills:g.kills});c.records=c.records.slice(-32);g.expedition.complete=true;g.phase='crossroads';g.events.push({type:'victory'});g.shake=6;}
 }
 export function advanceCampaign(g,reward){
+  if(isJourney(g))return false;
   if(isFrontier(g))return advanceFrontier(g);
   const c=g.campaign;if(g.phase!=='crossroads'||!c||c.final.state!=='defeated'||!['force','tempo','vigor'].includes(reward))return false;
   c.boosts[reward]++;if(reward==='vigor')g.player.maxHp+=20;
@@ -53,6 +58,7 @@ export function advanceCampaign(g,reward){
 }
 export function bankCampaign(g){if(g.phase!=='crossroads'||!g.campaign?.cleared)return false;g.phase='result';g.outcome='victory';return true;}
 export function validCampaign(c,g){
+  if(c?.version===3)return validJourney(c,g);
   if(c?.version===2)return validFrontier(c,g);
   if(!c||c.version!==1||!['midpointClaimed','armoryDropped','armoryClaimed'].every(k=>typeof c[k]==='boolean')||!Number.isFinite(c.nextHordeAt)||c.nextHordeAt<225||c.nextHordeAt>1e9+32||!Number.isInteger(c.hordes)||c.hordes<0||c.hordes>1e8)return false;
   if(!Number.isInteger(c.depth)||c.depth<1||c.depth>1e6||!Number.isInteger(c.cleared)||c.cleared!==(c.final?.state==='defeated'?c.depth:c.depth-1)||!c.boosts||!['force','tempo','vigor','overflow'].every(k=>Number.isInteger(c.boosts[k])&&c.boosts[k]>=0&&c.boosts[k]<=1e6)||c.boosts.force+c.boosts.tempo+c.boosts.vigor!==c.depth-1)return false;
