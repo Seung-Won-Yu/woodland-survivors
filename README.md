@@ -1,75 +1,66 @@
 <h1 align="center">🌲 동물 수호대</h1>
-<p align="center"><strong>Woodland Survivors · 새벽숲 원정</strong><br>작은 동물 수호자의 성장을 한 판의 결전까지 이어가는 2D 서바이버</p>
+<p align="center"><strong>Woodland Survivors · 두 갈래 숲길</strong><br>작은 다람쥐, 두 가지 성장. 2분 안에 숲을 돌파하는 전투 시제품.</p>
 <p align="center">
-<a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="게임 검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
-<img alt="0.10 개발판" src="https://img.shields.io/badge/version-0.10-d5b77b?style=flat-square">
+<a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
+<img alt="0.11 전투 시제품" src="https://img.shields.io/badge/version-0.11-d5b77b?style=flat-square">
 <img alt="HTML Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
-<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 브라우저에서 플레이</strong></a> · <a href="docs/GAME-DESIGN.md">게임 기획</a> · <a href="docs/PRESENTATION-V09.md">화면·연출 기준</a> · <a href="#로컬-실행">로컬 실행</a></p>
+<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/prototype.html"><strong>▶ 다람쥐 2분 전투 플레이</strong></a> · <a href="docs/SPRINT-PROTOTYPE.md">시제품 설계</a> · <a href="docs/VALIDATION-V011.md">검증과 남은 과제</a> · <a href="https://yu-reka.github.io/woodland-survivors/">기존 긴 원정</a></p>
 
-> **0.10 전투·모바일 개선 · 2026-11-05**
-> 보급로 → 군락 심부 → 수호목 결전. 정찰 타이머와 사냥 할당량을 대신해 **세 보스의 격파**가 한 판의 목표가 됩니다. 자료 분석, 성장 규칙, 화면 표현을 먼저 정리하고 그 계약에 맞춰 구현했습니다. 배포·검증 범위는 [0.10 검증 기록](docs/VALIDATION-V010.md)에 기록합니다.
+> **0.11 · 전투를 먼저 검증합니다**
+> 기존 다람쥐·몬스터·숲 원화를 유지하고, 두 성장 경로가 움직임을 바꾸는 짧은 전투를 별도로 만들었습니다. 장비 공방과 여러 구역을 돌기 전에 **적을 모으고, 성장하고, 쓸어 담는 경험**부터 다듬는 시제품입니다.
 
-![진화와 결전을 준비하는 0.10 출전 화면](docs/images/v010-camp.png)
+![행동의 차이를 먼저 보여주는 두 성장 선택](docs/images/v011-choice.png)
 
-이번 버전은 보스의 공격 후 빈틈(+45% 무기 피해), 집중 조준, 수호형 벌떼의 표적 분산을 연결했습니다. 공방 준비 알림·변신 완성 표시·처치음과 모바일 누름 즉시 반응도 다듬었습니다. [변경 계약](docs/COMBAT-V010.md) · [실패를 포함한 검증 결과](docs/VALIDATION-V010.md)
+### 같은 다람쥐, 다른 숲길
 
-### 한 판의 흐름
-
-| 보급로 | 군락 심부 | 수호목 공터 |
+| | 관통 사수 ↗ | 씨앗 덫꾼 ◉ |
 | :-- | :-- | :-- |
-| 무기 보급을 찾아 조합 시작 | 많은 적을 쓸어 담으며 빌드 완성 | 시야가 열린 별도 결전장 |
-| 수문장: 부채 사격과 직선 돌진 | 군락의 어미: 뿌리 예고·탄막·증원 | 군주 모르가: 돌진·방사탄·치유 꽃 |
-| 첫 인장으로 진화 준비 | 합체 또는 두 진화 무기를 유지 | 군주를 쓰러뜨리면 완주·기록 확정 |
+| 움직임 | 곧게 달려 관통을 충전하고 정면을 뚫기 | 이동하며 씨앗을 남기고 돌아 나와 적 유인 |
+| E 고유기 | 다섯 줄 관통 일제 사격 | 남긴 씨앗을 차례로 기폭 |
+| 대군 진화 | 세 줄 사격 + 다중 관통 파열 | 씨앗 15개 + 넓은 연쇄 폭발 |
+| 보스 진화 | 좁은 집중탄 + 보스 사격 피해 증가 | 보스에게 적중한 씨앗 재폭발 |
 
-공격은 자동입니다. 적을 모아 처치하고 청록빛 경험치를 회수하세요. 보스 표식은 처음부터 열려 있습니다. 권장 레벨은 안내이며, 원하는 때 직접 도전합니다. 오래 머물면 공세가 강해지지만 타이머가 플레이를 강제로 끝내지는 않습니다.
+공격은 자동입니다. 경험치를 회수하면 메뉴 없이 공격과 체력이 성장합니다. 구르기는 두 경로 모두 짧은 무적을 제공합니다. 고유기는 각 경로의 공격 방식을 직접 쓰는 버튼입니다.
 
-보스 격파 후 인장과 기록을 확보하고, 보상 패널에서 정비합니다. 전장에 돌아와 **열린 출구에서 F**를 누르면 남은 경험치를 일반 성장 선택으로 정산한 뒤 다음 구역에 진입합니다. 위험 둥지는 선택 도전입니다.
+### 2분의 흐름
 
-### 무기를 얻고, 키우고, 합치기
-
-| 선택 | 역할 |
+| 전투 시간 | 일어나는 일 |
 | :-- | :-- |
-| 구역마다 두 무기 보급 | 새 무기 확보. 첫 보급은 시작 무기의 합체 파트너와 다른 후보를 제시 |
-| 경험치 레벨업 | 보유 무기 강화 또는 보조 성장. 무기·보조 각각 4칸 |
-| 일반 진화 | 무기 8단계 + 맞는 촉매 + 보스 인장 1개. 촉매는 유지 |
-| 최종 합체 | 두 무기 모두 8단계 + 한쪽 진화. 두 슬롯을 하나로 합치고 진화 핵심을 선택 |
-| 공방 | 일시정지 메뉴에서 언제든 조건과 재료 확인. 준비된 조합을 유지해도 됨 |
+| 0–7초 | 기본 도토리 사격과 첫 무리 |
+| 7초 | 관통 / 씨앗 성장 선택. 즉시 새 공격 사용 |
+| 50초 | 대군 / 보스 진화 선택. 회복 + 주변 적을 터뜨리는 충격파 |
+| 50–90초 | 많은 적과 예고 증원. 진화 무기로 무리 돌파 |
+| 90초 | 큰뿔 수문장 등장. 돌진 예고를 피하고 회복 빈틈에 공격 |
+| 120초 이내 | 보스 격파 즉시 완주. HP 소진·시간 종료는 실패 |
 
-- **도토리 + 반달 → 왕복 산탄**: 도토리 핵심은 넓은 폭발 산개, 반달 핵심은 좁은 귀환 집중.
-- **가시 + 꿀벌 → 보호 벌떼**: 가시 핵심은 가까운 수호 궤도, 꿀벌 핵심은 먼 출격과 귀환.
-- 두 진화 무기를 유지하는 경로도 최종 군주를 잡을 수 있도록 비교합니다. 합체가 승리 필수 조건은 아닙니다.
-- 무기를 모두 키운 뒤에도 레벨업은 회복·8초 임시 화력·추가 기록 점수 중 명시적으로 선택합니다.
+선택과 일시정지는 전투 시간을 멈춥니다. 결과에서 **같은 숲의 반대 성장 경로**로 바로 재도전할 수 있습니다. 경로·진화별 최고 처치와 돌파 기록은 이 브라우저에 저장하며, 다음 판 능력치는 동일하게 시작합니다.
 
-### 다르게 성장하는 두 수호자
-
-| 대원 | 전투와 자동 성장 | Lv.10 선택 → Lv.18 완성 |
-| :-- | :-- | :-- |
-| **다람쥐** | 공격 수 +1. Lv.6·12·18 관통 증가. 실제 발사와 다중 적중으로 E 충전 | 넓게 퍼지는 **산개 포격** / 보스 반복 적중의 **집중 포격** |
-| **고슴도치** | HP 135·방어 2. 멈추면 용량이 있는 전방 가드. 이동 후 짧게 유지하며 차단·근접 무기 처치로 E 충전 | 큰 용량과 빠른 재정비의 **방벽** / 소진 뒤 넓게 되받는 **반격** |
-
-토끼·여우·두더지·수달도 기존 고유 특성으로 출전할 수 있습니다. 모든 대원이 여덟 시작 무기를 공유하며, 이번 성장 개편의 집중 대상은 다람쥐·고슴도치입니다.
-
-### 탐색과 유물
-
-회복 샘은 체력 +40을 한 번 제공합니다. 위험 둥지는 지휘관·강화 상자와 유물을, 바람숲 제단은 원 안에서 버티는 20초 도전과 유물을 제공합니다. 보급은 보류했다가 다시 열 수 있으며 구역을 떠나면 남긴 보급은 사라집니다.
-
-여섯 유물은 이동·정지·방어·무기 적중 조건을 바꿉니다. 후보 두 개 중 하나를 고르고 두 칸에 장착합니다. 가득 찼다면 교체 대상을 직접 고르거나 남겨둘 수 있습니다. 무기·유물 연계는 이번 판에서 사용하며 다음 원정은 같은 기본 능력으로 시작합니다.
-
-### 다시 도전할 이유
-
-보스마다 돌파 기록을 먼저 저장하고 최종 군주 격파를 완주로 구분합니다. **규칙 버전·대원·스타일·난이도별 최고 기록**은 최근 원정 목록이 밀려도 유지합니다. 첫 완주로 더 많은 적이 나오는 과밀 도전이 열립니다. 같은 시드 재도전으로 선택을 비교하거나 새 시드와 다른 합체 핵심을 시험할 수 있습니다. 기록은 이 브라우저에 저장됩니다.
+<details>
+<summary>모바일 대군 전투 화면 보기</summary>
+<br>
+<img src="docs/images/v011-horde-mobile.png" width="300" alt="모바일 크기에서 씨앗으로 적 무리를 처치하는 검수 화면">
+</details>
 
 ### 조작
 
 | 행동 | 키보드 | 모바일 |
 | :-- | :-- | :-- |
-| 이동 / 공격 | WASD·방향키 / 자동 | 왼쪽 스틱 / 자동 |
-| 회피 / 고유기 | Space / E | 구르기 / 고유기 버튼 |
-| 보급·보스·출구 | F | 상호작용 버튼 |
-| 성장 선택 | 1–3·클릭 | 카드 터치 |
-| 일시정지·공방 | Esc | Ⅱ 버튼 |
+| 이동 | WASD · 방향키 | 왼쪽 스틱 |
+| 구르기 | Space | 오른쪽 작은 버튼 |
+| 경로 고유기 | E | 오른쪽 큰 버튼 |
+| 성장 선택 | 1 · 2 · 클릭 | 카드 터치 |
+| 일시정지 | Esc | 상단 Ⅱ |
+
+시작·일시정지 화면에서 효과음과 흔들림·플래시 줄이기를 설정합니다. 모바일 크기·단일 포인터 입력과 터치 소유권은 검사했으며, 실제 휴대전화의 두 손 동시 조작은 추가 플레이 검증 대상으로 남아 있습니다.
+
+### 기존 긴 원정
+
+[새벽숲 원정](https://yu-reka.github.io/woodland-survivors/)도 계속 실행할 수 있습니다. 여러 대원·여덟 시작 무기·유물·진화와 합체·세 보스로 이어지는 기존 실험입니다. 새 시제품의 두 경로는 기존 원정에 아직 통합하지 않았습니다.
+
+- [원정 기획](docs/GAME-DESIGN.md) · [캐릭터 성장](docs/CHARACTER-DESIGN.md)
+- [제공 자료 분석](docs/REFERENCE-ANALYSIS-V09.md) · [0.10 검증](docs/VALIDATION-V010.md)
 
 ### 로컬 실행
 
@@ -81,36 +72,23 @@ cd woodland-survivors
 npm run dev
 ```
 
-개발 서버는 **http://127.0.0.1:5200/** 입니다.
+**http://127.0.0.1:5200/prototype.html** 에서 시제품을 실행합니다.
 
 | 명령 | 용도 |
 | :-- | :-- |
-| `npm test` | 전투·성장·3보스 진행·기록·저장 규칙 검사 |
-| `node scripts/journey-pilot.mjs --hero bram --no-union` | 장비·HP 주입 없이 입력 정책으로 원정 주행 |
-| `npm run build` | `dist/`에 정적 게임 생성 |
-| `npm run test:pages` | 빌드 후 저장소 하위 경로·자산 검사 |
-| `npm run preview` | 빌드를 `http://127.0.0.1:5201/woodland-survivors/`에서 확인 |
+| `npm test` | 기존 원정 + 시제품 + 입력 규칙 검사 |
+| `npm run test:sprint` | 시제품의 선택·충돌·종료·진화 검사 |
+| `node scripts/sprint-pilot.mjs --summary` | 능력치 주입 없이 두 경로 × 두 진화 입력 주행 |
+| `npm run build` | `dist/`에 정적 빌드 |
+| `npm run test:pages` | 저장소 하위 경로·자산·모듈 캐시 버전 검사 |
+| `npm run preview` | `http://127.0.0.1:5201/woodland-survivors/prototype.html` |
 
-[성장 검수실](docs/progression-lab.html)은 고정 장비·무적 조건을 명시한 연출 검수 도구입니다. 일반 원정 플레이 결과와 구분하며 기록을 저장하지 않습니다.
+### 소스와 검증
 
-### 배포와 검증
+`src/sprint/`는 시제품 모델·원화 렌더·UI·스타일입니다. 기존 `src/core/` 원정 모델을 가져오지 않습니다. `src/art/`의 원화와 걷기·공격 모션, `src/game/`의 오디오·터치 입력을 재사용합니다.
 
-`main` 푸시 시 [GitHub Actions](.github/workflows/pages.yml)가 검사 → 빌드 → Pages 경로 검사 → 배포를 실행합니다. PR에서는 검사와 빌드만 실행합니다. `dist/`는 커밋하지 않습니다. 포크에서는 **Settings → Pages → Source → GitHub Actions**를 선택하세요.
+`main` 푸시 시 [GitHub Actions](.github/workflows/pages.yml)가 검사 → 빌드 → Pages 검사 → 배포를 실행합니다. `dist/`는 커밋하지 않습니다. 포크는 **Settings → Pages → Source → GitHub Actions**를 사용하세요.
 
-모델 주행은 정해진 조작 정책의 재현 결과입니다. 사람이 느끼는 타격감과 재미, 모든 시작 무기·시드의 균형을 증명하지 않습니다. [검증 기록](docs/VALIDATION-V010.md)에 실제 검사와 남은 범위를 구분합니다. 진행 중 원정의 저장·복구 UI, 영구 능력치 상점, 무한 모드는 이번 버전에 포함하지 않습니다.
+모델 주행은 규칙과 처리량의 검증입니다. 사람의 재미나 모바일 체감, 네 진화의 동등한 난이도를 증명하지 않습니다. 실제 플레이에서 발견한 문제와 수정·미검증 범위는 [0.11 검증 기록](docs/VALIDATION-V011.md)에 구분했습니다.
 
-### 설계와 소스
-
-| 자료 | 내용 |
-| :-- | :-- |
-| [자료 분석](docs/REFERENCE-ANALYSIS-V09.md) | 제공된 MegaBonk PDF·Pokémon Survivor Burst 캡처의 사실과 적용 결정 |
-| [게임 기획](docs/GAME-DESIGN.md) | 목표·진행·성장·보상·반복 동기 |
-| [캐릭터 설계](docs/CHARACTER-DESIGN.md) | 성장 분기·충전·합체 수량 상한 |
-| [표현 설계](docs/PRESENTATION-V09.md) | 화면 우선순위·구역·예고·합체 탄도 |
-| `src/core/` | 전투·성장·진행·저장 모델 |
-| `src/game/` | 탐색·UI·지형·렌더·합성 사운드 |
-| `src/art/`, `public/art/v2/` | 기존 원화 기반 아틀라스·프레임·PNG |
-
-외부 게임의 자산·코드를 사용하지 않습니다. [아트 제작 기록](docs/ART-PROVENANCE.md) · [폰트 라이선스](public/fonts/woodland/LICENSE.txt) · [0.8 실험 보관](docs/PROTOTYPE-V08.md)
-
-코드와 게임 아트의 재사용 라이선스는 아직 정하지 않았습니다. Galmuri 폰트는 동봉된 SIL Open Font License 1.1을 따릅니다.
+외부 게임의 자산·코드를 사용하지 않습니다. [아트 제작 기록](docs/ART-PROVENANCE.md) · [폰트 라이선스](public/fonts/woodland/LICENSE.txt). 코드·게임 아트의 재사용 라이선스는 아직 정하지 않았습니다. Galmuri는 동봉된 SIL OFL 1.1을 따릅니다.

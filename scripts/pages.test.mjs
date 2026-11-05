@@ -13,7 +13,7 @@ before(async()=>{
 after(async()=>{if(server)await new Promise(resolve=>server.close(resolve));});
 
 test('built game and motion lab resolve their dependencies under a project Pages prefix',async()=>{
-  const pending=[new URL('index.html',base),new URL('docs/motion-lab.html',base),new URL('docs/combat-lab.html',base),new URL('docs/progression-lab.html',base)],seen=new Set();
+  const pending=[new URL('index.html',base),new URL('prototype.html',base),new URL('docs/motion-lab.html',base),new URL('docs/combat-lab.html',base),new URL('docs/progression-lab.html',base)],seen=new Set();
   while(pending.length){
     const url=pending.shift();if(seen.has(url.href))continue;seen.add(url.href);
     assert.ok(url.href.startsWith(base),`dependency escaped project path: ${url}`);
@@ -51,7 +51,8 @@ test('the published bundle excludes development records and does not rely on dom
 test('entrypoints and transitive modules share one deployment version',async()=>{
  const html=await readFile('dist/index.html','utf8'),version=html.match(/src\/main\.js\?v=([a-zA-Z0-9._-]+)/)?.[1];assert.ok(version);
  assert.ok(html.includes(`src/style.css?v=${version}`));
- for(const path of ['src/main.js','src/core/game.js','src/game/render.js','docs/progression-lab.html']){
+ const sprint=await readFile('dist/prototype.html','utf8');assert.ok(sprint.includes(`src/sprint/main.js?v=${version}`));assert.ok(sprint.includes(`src/sprint/style.css?v=${version}`));
+ for(const path of ['src/main.js','src/sprint/main.js','src/sprint/render.js','src/core/game.js','src/game/render.js','docs/progression-lab.html']){
   const source=await readFile('dist/'+path,'utf8');const imports=[...source.matchAll(/\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/g)];assert.ok(imports.length>0,path);
   for(const [,ref]of imports)assert.ok(ref.endsWith(`.js?v=${version}`),`${path}: ${ref}`);
  }

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d3025">
+<meta name="description" content="다람쥐의 두 갈래 숲길. 관통 사격과 씨앗 덫, 두 성장으로 2분 안에 수문장을 돌파하세요.">
+<title>두 갈래 숲길 · 다람쥐 전투 시제품</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./src/sprint/style.css">
+</head>
+<body>
+<canvas id="sprint" aria-label="다람쥐의 두 갈래 숲길 전투 화면"></canvas>
+<div class="shade" aria-hidden="true"></div>
+<header id="battle-hud" hidden>
+ <div class="vitals"><span class="mini">다람쥐 PIP <b id="rank">성장 1</b></span><div class="health"><i id="hp-fill"></i><span id="hp-text">100 / 100</span></div></div>
+ <div class="timer"><span id="stage">수문장까지</span><strong id="clock">1:30</strong></div>
+ <div class="hud-right"><span class="tally"><b id="kills">0</b> 처치</span><button id="pause" aria-label="일시정지">Ⅱ</button></div>
+</header>
+<section id="boss-hud" hidden aria-label="큰뿔 수문장 체력"><div><b>큰뿔 수문장</b><span id="boss-hint">길을 비켜라 · 돌진 뒤가 기회</span></div><div class="boss-health"><i id="boss-fill"></i></div></section>
+<div id="branch-hud" hidden><span id="branch-name">도토리 사격</span><b id="branch-tip">이동하며 경험치를 모으세요</b><div class="xp"><i id="xp-fill"></i></div></div>
+<div id="combo" hidden aria-live="off"></div>
+<div id="stick" hidden aria-label="드래그하여 이동"><div></div><span>이동</span></div>
+<div id="actions" hidden>
+ <button id="dash"><kbd>SPACE</kbd><b>구르기</b><span>준비</span></button>
+ <button id="skill" class="main-action"><kbd>E</kbd><b>성장 대기</b><span>7초에 개방</span></button>
+</div>
+<main id="panel"><section class="loading"><span class="eyebrow">WOODLAND SURVIVORS / 0.11</span><h1>숲길을 여는 중…</h1><p>기존 원화와 전투를 준비하고 있습니다.</p></section></main>
+<div id="announcement" role="status" aria-live="polite" class="sr-only"></div>
+<script type="module" src="./src/sprint/main.js"></script>
+</body>
+</html>

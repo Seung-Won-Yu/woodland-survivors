@@ -1,0 +1,1067 @@
+{
+  "rules": {
+    "duration": 120,
+    "branchAt": 7,
+    "evolveAt": 50,
+    "bossAt": 90,
+    "maxEnemies": 160
+  },
+  "dt": 0.016666666666666666,
+  "seeds": [
+    17,
+    71,
+    2026
+  ],
+  "policy": {
+    "active": "24-way threat-density steering, boss charge dodge, API dash/skill",
+    "afk": "zero movement and no actions after the ordinary path choice"
+  },
+  "aggregates": [
+    {
+      "mode": "active",
+      "path": "pierce",
+      "evolution": "crowd",
+      "runs": 3,
+      "wins": 3,
+      "medianTime": 98.93,
+      "medianBossTtk": 8.92,
+      "medianHp": 100,
+      "medianKills": 1093,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 164,
+        "evolved": 873,
+        "boss": 50
+      },
+      "branchStats": {
+        "multiShots": 169,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "trapKills": 0,
+        "bossDamage": 1440
+      }
+    },
+    {
+      "mode": "active",
+      "path": "pierce",
+      "evolution": "focus",
+      "runs": 3,
+      "wins": 3,
+      "medianTime": 103.28,
+      "medianBossTtk": 13.27,
+      "medianHp": 99,
+      "medianKills": 862,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 164,
+        "evolved": 532,
+        "boss": 166
+      },
+      "branchStats": {
+        "multiShots": 150,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "trapKills": 0,
+        "bossDamage": 1440
+      }
+    },
+    {
+      "mode": "active",
+      "path": "trail",
+      "evolution": "crowd",
+      "runs": 3,
+      "wins": 3,
+      "medianTime": 94.67,
+      "medianBossTtk": 4.65,
+      "medianHp": 100,
+      "medianKills": 1070,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 149,
+        "evolved": 821,
+        "boss": 103
+      },
+      "branchStats": {
+        "multiShots": 0,
+        "trapsLaid": 261,
+        "trapsTriggered": 259,
+        "trapKills": 952,
+        "bossDamage": 1440
+      }
+    },
+    {
+      "mode": "active",
+      "path": "trail",
+      "evolution": "focus",
+      "runs": 3,
+      "wins": 3,
+      "medianTime": 103.65,
+      "medianBossTtk": 13.63,
+      "medianHp": 100,
+      "medianKills": 1083,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 149,
+        "evolved": 766,
+        "boss": 147
+      },
+      "branchStats": {
+        "multiShots": 0,
+        "trapsLaid": 287,
+        "trapsTriggered": 275,
+        "trapKills": 943,
+        "bossDamage": 1440
+      }
+    },
+    {
+      "mode": "afk",
+      "path": "pierce",
+      "evolution": null,
+      "runs": 3,
+      "wins": 0,
+      "medianTime": 23.93,
+      "medianBossTtk": null,
+      "medianHp": 0,
+      "medianKills": 61,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 55,
+        "evolved": 0,
+        "boss": 0
+      },
+      "branchStats": {
+        "multiShots": 13,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "trapKills": 0,
+        "bossDamage": 0
+      }
+    },
+    {
+      "mode": "afk",
+      "path": "trail",
+      "evolution": null,
+      "runs": 3,
+      "wins": 0,
+      "medianTime": 25.7,
+      "medianBossTtk": null,
+      "medianHp": 0,
+      "medianKills": 36,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 30,
+        "evolved": 0,
+        "boss": 0
+      },
+      "branchStats": {
+        "multiShots": 0,
+        "trapsLaid": 4,
+        "trapsTriggered": 4,
+        "trapKills": 19,
+        "bossDamage": 0
+      }
+    }
+  ],
+  "runs": [
+    {
+      "mode": "active",
+      "seed": 17,
+      "path": "pierce",
+      "evolution": "crowd",
+      "requestedEvolution": "crowd",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 98.43,
+      "hp": 100,
+      "level": 22,
+      "kills": 1093,
+      "bossTtk": 8.42,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 164,
+        "evolved": 873,
+        "boss": 51
+      },
+      "stats": {
+        "pierceHits": 1153,
+        "multiShots": 166,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 23,
+        "dashes": 7,
+        "bossDamage": 1440.0000000000005
+      },
+      "actions": {
+        "skills": 23,
+        "dashes": 7
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 330,
+        "wood-kill": 1092,
+        "xp": 1073,
+        "whoosh": 7,
+        "level": 23,
+        "forge-evolve": 2,
+        "burst": 23,
+        "scatter-shot": 251,
+        "crowd-break": 72,
+        "horde": 4,
+        "hurt": 1,
+        "boss-arrival": 1,
+        "boss-warning": 4,
+        "boss-charge": 2,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 17,
+      "path": "pierce",
+      "evolution": "focus",
+      "requestedEvolution": "focus",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 103.2,
+      "hp": 100,
+      "level": 19,
+      "kills": 862,
+      "bossTtk": 13.18,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 164,
+        "evolved": 527,
+        "boss": 166
+      },
+      "stats": {
+        "pierceHits": 946,
+        "multiShots": 150,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 24,
+        "dashes": 12,
+        "bossDamage": 1439.9999999999998
+      },
+      "actions": {
+        "skills": 24,
+        "dashes": 12
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 86,
+        "wood-kill": 861,
+        "xp": 819,
+        "whoosh": 12,
+        "level": 20,
+        "forge-evolve": 2,
+        "burst": 24,
+        "scatter-shot": 268,
+        "crowd-break": 71,
+        "horde": 4,
+        "hurt": 2,
+        "boss-arrival": 1,
+        "boss-warning": 6,
+        "boss-charge": 3,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 17,
+      "path": "trail",
+      "evolution": "crowd",
+      "requestedEvolution": "crowd",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 102,
+      "hp": 100,
+      "level": 22,
+      "kills": 1092,
+      "bossTtk": 11.98,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 140,
+        "evolved": 841,
+        "boss": 105
+      },
+      "stats": {
+        "pierceHits": 190,
+        "multiShots": 0,
+        "trapKills": 975,
+        "trapsLaid": 272,
+        "trapsTriggered": 267,
+        "skillUses": 17,
+        "dashes": 7,
+        "bossDamage": 1440
+      },
+      "actions": {
+        "skills": 17,
+        "dashes": 7
+      },
+      "eventCounts": {
+        "acorn-shot": 192,
+        "wood-impact": 345,
+        "wood-kill": 1091,
+        "xp": 1052,
+        "level": 23,
+        "forge-evolve": 2,
+        "burst": 17,
+        "crowd-break": 63,
+        "whoosh": 7,
+        "horde": 4,
+        "hurt": 1,
+        "boss-arrival": 1,
+        "boss-warning": 5,
+        "boss-charge": 3,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 17,
+      "path": "trail",
+      "evolution": "focus",
+      "requestedEvolution": "focus",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 106.6,
+      "hp": 100,
+      "level": 21,
+      "kills": 1034,
+      "bossTtk": 16.58,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 140,
+        "evolved": 720,
+        "boss": 168
+      },
+      "stats": {
+        "pierceHits": 198,
+        "multiShots": 0,
+        "trapKills": 917,
+        "trapsLaid": 294,
+        "trapsTriggered": 284,
+        "skillUses": 23,
+        "dashes": 7,
+        "bossDamage": 1440.0000000000002
+      },
+      "actions": {
+        "skills": 23,
+        "dashes": 7
+      },
+      "eventCounts": {
+        "acorn-shot": 201,
+        "wood-impact": 370,
+        "wood-kill": 1033,
+        "xp": 1003,
+        "level": 22,
+        "forge-evolve": 2,
+        "burst": 23,
+        "crowd-break": 66,
+        "whoosh": 7,
+        "horde": 4,
+        "boss-arrival": 1,
+        "boss-warning": 8,
+        "boss-charge": 4,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 71,
+      "path": "pierce",
+      "evolution": "crowd",
+      "requestedEvolution": "crowd",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 98.93,
+      "hp": 100,
+      "level": 22,
+      "kills": 1093,
+      "bossTtk": 8.92,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 161,
+        "evolved": 878,
+        "boss": 49
+      },
+      "stats": {
+        "pierceHits": 1149,
+        "multiShots": 180,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 23,
+        "dashes": 5,
+        "bossDamage": 1439.999999999999
+      },
+      "actions": {
+        "skills": 23,
+        "dashes": 5
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 334,
+        "wood-kill": 1092,
+        "xp": 1079,
+        "whoosh": 5,
+        "level": 23,
+        "forge-evolve": 2,
+        "burst": 23,
+        "scatter-shot": 253,
+        "crowd-break": 68,
+        "horde": 4,
+        "boss-arrival": 1,
+        "boss-warning": 4,
+        "boss-charge": 2,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 71,
+      "path": "pierce",
+      "evolution": "focus",
+      "requestedEvolution": "focus",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 103.83,
+      "hp": 99,
+      "level": 19,
+      "kills": 858,
+      "bossTtk": 13.82,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 161,
+        "evolved": 532,
+        "boss": 160
+      },
+      "stats": {
+        "pierceHits": 944,
+        "multiShots": 139,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 24,
+        "dashes": 14,
+        "bossDamage": 1439.9999999999993
+      },
+      "actions": {
+        "skills": 24,
+        "dashes": 14
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 91,
+        "wood-kill": 857,
+        "xp": 804,
+        "whoosh": 14,
+        "level": 20,
+        "forge-evolve": 2,
+        "burst": 24,
+        "scatter-shot": 270,
+        "crowd-break": 65,
+        "horde": 4,
+        "hurt": 5,
+        "boss-arrival": 1,
+        "boss-warning": 6,
+        "boss-charge": 3,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 71,
+      "path": "trail",
+      "evolution": "crowd",
+      "requestedEvolution": "crowd",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 93.9,
+      "hp": 82,
+      "level": 21,
+      "kills": 1070,
+      "bossTtk": 3.88,
+      "phaseKills": {
+        "opening": 4,
+        "branch": 166,
+        "evolved": 821,
+        "boss": 79
+      },
+      "stats": {
+        "pierceHits": 175,
+        "multiShots": 0,
+        "trapKills": 952,
+        "trapsLaid": 256,
+        "trapsTriggered": 253,
+        "skillUses": 14,
+        "dashes": 11,
+        "bossDamage": 1440
+      },
+      "actions": {
+        "skills": 14,
+        "dashes": 11
+      },
+      "eventCounts": {
+        "acorn-shot": 176,
+        "wood-impact": 323,
+        "wood-kill": 1069,
+        "xp": 1017,
+        "level": 22,
+        "forge-evolve": 2,
+        "burst": 14,
+        "crowd-break": 59,
+        "horde": 4,
+        "whoosh": 11,
+        "hurt": 2,
+        "boss-arrival": 1,
+        "boss-warning": 2,
+        "boss-charge": 1,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 71,
+      "path": "trail",
+      "evolution": "focus",
+      "requestedEvolution": "focus",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 103.65,
+      "hp": 100,
+      "level": 22,
+      "kills": 1083,
+      "bossTtk": 13.63,
+      "phaseKills": {
+        "opening": 4,
+        "branch": 166,
+        "evolved": 766,
+        "boss": 147
+      },
+      "stats": {
+        "pierceHits": 196,
+        "multiShots": 0,
+        "trapKills": 943,
+        "trapsLaid": 287,
+        "trapsTriggered": 275,
+        "skillUses": 20,
+        "dashes": 10,
+        "bossDamage": 1440
+      },
+      "actions": {
+        "skills": 20,
+        "dashes": 10
+      },
+      "eventCounts": {
+        "acorn-shot": 196,
+        "wood-impact": 343,
+        "wood-kill": 1082,
+        "xp": 1055,
+        "level": 23,
+        "forge-evolve": 2,
+        "burst": 20,
+        "crowd-break": 64,
+        "horde": 4,
+        "whoosh": 10,
+        "boss-arrival": 1,
+        "boss-warning": 6,
+        "boss-charge": 3,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 2026,
+      "path": "pierce",
+      "evolution": "crowd",
+      "requestedEvolution": "crowd",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 99.23,
+      "hp": 100,
+      "level": 22,
+      "kills": 1093,
+      "bossTtk": 9.22,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 170,
+        "evolved": 868,
+        "boss": 50
+      },
+      "stats": {
+        "pierceHits": 1162,
+        "multiShots": 169,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 23,
+        "dashes": 12,
+        "bossDamage": 1439.9999999999986
+      },
+      "actions": {
+        "skills": 23,
+        "dashes": 12
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 320,
+        "wood-kill": 1092,
+        "xp": 971,
+        "whoosh": 12,
+        "level": 23,
+        "forge-evolve": 2,
+        "burst": 23,
+        "scatter-shot": 255,
+        "crowd-break": 69,
+        "horde": 4,
+        "hurt": 8,
+        "boss-arrival": 1,
+        "boss-warning": 4,
+        "boss-charge": 2,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 2026,
+      "path": "pierce",
+      "evolution": "focus",
+      "requestedEvolution": "focus",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 103.28,
+      "hp": 93,
+      "level": 20,
+      "kills": 1026,
+      "bossTtk": 13.27,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 170,
+        "evolved": 685,
+        "boss": 166
+      },
+      "stats": {
+        "pierceHits": 1112,
+        "multiShots": 174,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 24,
+        "dashes": 18,
+        "bossDamage": 1440.0000000000002
+      },
+      "actions": {
+        "skills": 24,
+        "dashes": 18
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 90,
+        "wood-kill": 1025,
+        "xp": 955,
+        "whoosh": 18,
+        "level": 21,
+        "forge-evolve": 2,
+        "burst": 24,
+        "scatter-shot": 269,
+        "crowd-break": 71,
+        "horde": 4,
+        "hurt": 9,
+        "boss-arrival": 1,
+        "boss-warning": 6,
+        "boss-charge": 3,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 2026,
+      "path": "trail",
+      "evolution": "crowd",
+      "requestedEvolution": "crowd",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 94.67,
+      "hp": 100,
+      "level": 20,
+      "kills": 1025,
+      "bossTtk": 4.65,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 149,
+        "evolved": 768,
+        "boss": 103
+      },
+      "stats": {
+        "pierceHits": 176,
+        "multiShots": 0,
+        "trapKills": 909,
+        "trapsLaid": 261,
+        "trapsTriggered": 259,
+        "skillUses": 19,
+        "dashes": 9,
+        "bossDamage": 1439.9999999999998
+      },
+      "actions": {
+        "skills": 19,
+        "dashes": 9
+      },
+      "eventCounts": {
+        "acorn-shot": 177,
+        "wood-impact": 341,
+        "wood-kill": 1024,
+        "xp": 927,
+        "whoosh": 9,
+        "level": 21,
+        "forge-evolve": 2,
+        "burst": 19,
+        "crowd-break": 57,
+        "horde": 4,
+        "boss-arrival": 1,
+        "boss-warning": 2,
+        "boss-charge": 1,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "active",
+      "seed": 2026,
+      "path": "trail",
+      "evolution": "focus",
+      "requestedEvolution": "focus",
+      "outcome": "victory",
+      "reason": "warden",
+      "time": 101.87,
+      "hp": 82,
+      "level": 22,
+      "kills": 1083,
+      "bossTtk": 11.85,
+      "phaseKills": {
+        "opening": 5,
+        "branch": 149,
+        "evolved": 817,
+        "boss": 112
+      },
+      "stats": {
+        "pierceHits": 190,
+        "multiShots": 0,
+        "trapKills": 959,
+        "trapsLaid": 251,
+        "trapsTriggered": 249,
+        "skillUses": 16,
+        "dashes": 8,
+        "bossDamage": 1440
+      },
+      "actions": {
+        "skills": 16,
+        "dashes": 8
+      },
+      "eventCounts": {
+        "acorn-shot": 192,
+        "wood-impact": 338,
+        "wood-kill": 1082,
+        "xp": 1050,
+        "whoosh": 8,
+        "level": 23,
+        "forge-evolve": 2,
+        "burst": 16,
+        "crowd-break": 62,
+        "horde": 4,
+        "boss-arrival": 1,
+        "boss-warning": 5,
+        "boss-charge": 3,
+        "hurt": 1,
+        "boss-defeated": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "afk",
+      "seed": 17,
+      "path": "pierce",
+      "evolution": null,
+      "requestedEvolution": null,
+      "outcome": "defeat",
+      "reason": "hp",
+      "time": 22.8,
+      "hp": 0,
+      "level": 4,
+      "kills": 57,
+      "bossTtk": null,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 51,
+        "evolved": 0,
+        "boss": 0
+      },
+      "stats": {
+        "pierceHits": 109,
+        "multiShots": 13,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 0,
+        "dashes": 0,
+        "bossDamage": 0
+      },
+      "actions": {
+        "skills": 0,
+        "dashes": 0
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 52,
+        "wood-kill": 57,
+        "xp": 54,
+        "hurt": 21,
+        "level": 4,
+        "forge-evolve": 1,
+        "scatter-shot": 29,
+        "crowd-break": 6
+      },
+      "issues": []
+    },
+    {
+      "mode": "afk",
+      "seed": 17,
+      "path": "trail",
+      "evolution": null,
+      "requestedEvolution": null,
+      "outcome": "defeat",
+      "reason": "hp",
+      "time": 25.7,
+      "hp": 0,
+      "level": 3,
+      "kills": 36,
+      "bossTtk": null,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 30,
+        "evolved": 0,
+        "boss": 0
+      },
+      "stats": {
+        "pierceHits": 43,
+        "multiShots": 0,
+        "trapKills": 17,
+        "trapsLaid": 4,
+        "trapsTriggered": 4,
+        "skillUses": 0,
+        "dashes": 0,
+        "bossDamage": 0
+      },
+      "actions": {
+        "skills": 0,
+        "dashes": 0
+      },
+      "eventCounts": {
+        "acorn-shot": 45,
+        "wood-impact": 28,
+        "wood-kill": 36,
+        "xp": 36,
+        "hurt": 21,
+        "level": 3,
+        "forge-evolve": 1,
+        "crowd-break": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "afk",
+      "seed": 71,
+      "path": "pierce",
+      "evolution": null,
+      "requestedEvolution": null,
+      "outcome": "defeat",
+      "reason": "hp",
+      "time": 39.65,
+      "hp": 0,
+      "level": 6,
+      "kills": 129,
+      "bossTtk": null,
+      "phaseKills": {
+        "opening": 7,
+        "branch": 122,
+        "evolved": 0,
+        "boss": 0
+      },
+      "stats": {
+        "pierceHits": 179,
+        "multiShots": 22,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 0,
+        "dashes": 0,
+        "bossDamage": 0
+      },
+      "actions": {
+        "skills": 0,
+        "dashes": 0
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 50,
+        "wood-kill": 129,
+        "xp": 118,
+        "hurt": 23,
+        "level": 6,
+        "forge-evolve": 1,
+        "scatter-shot": 61,
+        "crowd-break": 16,
+        "horde": 1
+      },
+      "issues": []
+    },
+    {
+      "mode": "afk",
+      "seed": 71,
+      "path": "trail",
+      "evolution": null,
+      "requestedEvolution": null,
+      "outcome": "defeat",
+      "reason": "hp",
+      "time": 26.6,
+      "hp": 0,
+      "level": 3,
+      "kills": 41,
+      "bossTtk": null,
+      "phaseKills": {
+        "opening": 7,
+        "branch": 34,
+        "evolved": 0,
+        "boss": 0
+      },
+      "stats": {
+        "pierceHits": 47,
+        "multiShots": 0,
+        "trapKills": 19,
+        "trapsLaid": 4,
+        "trapsTriggered": 4,
+        "skillUses": 0,
+        "dashes": 0,
+        "bossDamage": 0
+      },
+      "actions": {
+        "skills": 0,
+        "dashes": 0
+      },
+      "eventCounts": {
+        "acorn-shot": 47,
+        "wood-impact": 29,
+        "wood-kill": 41,
+        "xp": 41,
+        "hurt": 22,
+        "level": 3,
+        "forge-evolve": 1,
+        "crowd-break": 2
+      },
+      "issues": []
+    },
+    {
+      "mode": "afk",
+      "seed": 2026,
+      "path": "pierce",
+      "evolution": null,
+      "requestedEvolution": null,
+      "outcome": "defeat",
+      "reason": "hp",
+      "time": 23.93,
+      "hp": 0,
+      "level": 4,
+      "kills": 61,
+      "bossTtk": null,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 55,
+        "evolved": 0,
+        "boss": 0
+      },
+      "stats": {
+        "pierceHits": 111,
+        "multiShots": 11,
+        "trapKills": 0,
+        "trapsLaid": 0,
+        "trapsTriggered": 0,
+        "skillUses": 0,
+        "dashes": 0,
+        "bossDamage": 0
+      },
+      "actions": {
+        "skills": 0,
+        "dashes": 0
+      },
+      "eventCounts": {
+        "acorn-shot": 15,
+        "wood-impact": 50,
+        "wood-kill": 61,
+        "xp": 57,
+        "hurt": 22,
+        "level": 4,
+        "forge-evolve": 1,
+        "scatter-shot": 31,
+        "crowd-break": 7
+      },
+      "issues": []
+    },
+    {
+      "mode": "afk",
+      "seed": 2026,
+      "path": "trail",
+      "evolution": null,
+      "requestedEvolution": null,
+      "outcome": "defeat",
+      "reason": "hp",
+      "time": 25.33,
+      "hp": 0,
+      "level": 3,
+      "kills": 36,
+      "bossTtk": null,
+      "phaseKills": {
+        "opening": 6,
+        "branch": 30,
+        "evolved": 0,
+        "boss": 0
+      },
+      "stats": {
+        "pierceHits": 43,
+        "multiShots": 0,
+        "trapKills": 19,
+        "trapsLaid": 4,
+        "trapsTriggered": 4,
+        "skillUses": 0,
+        "dashes": 0,
+        "bossDamage": 0
+      },
+      "actions": {
+        "skills": 0,
+        "dashes": 0
+      },
+      "eventCounts": {
+        "acorn-shot": 45,
+        "wood-impact": 30,
+        "wood-kill": 36,
+        "xp": 36,
+        "hurt": 22,
+        "level": 3,
+        "forge-evolve": 1,
+        "crowd-break": 2
+      },
+      "issues": []
+    }
+  ]
+}
