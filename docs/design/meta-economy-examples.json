@@ -1,0 +1,729 @@
+{
+  "version": "design-v0.1",
+  "notice": "Proposed arithmetic fixtures, not gameplay simulation or implementation.",
+  "trainingBudget": 2540,
+  "researchBudget": 720,
+  "expandedResearchBudget": 4320,
+  "fullTrainingAndResearchBudget": 6860,
+  "directDamageMultiplier": 1.1595744680851066,
+  "creditRatesWith30SecondLobby": {
+    "normalClear": 104.61538461538461,
+    "fastClear": 122.22222222222223,
+    "fastRetreat": 87.5,
+    "stressRetreat": 193.33333333333334
+  },
+  "samples": [
+    {
+      "id": "opening-failure",
+      "seconds": 45,
+      "kills": 60,
+      "elites": 0,
+      "rescues": 0,
+      "outposts": 0,
+      "armorBreaks": 0,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 12,
+          "elites": 0,
+          "rescues": 0,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 12,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 12,
+        "score": 600,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 12,
+          "elites": 0,
+          "rescues": 0,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 12,
+        "oneTime": {
+          "report": 100,
+          "clear": 0
+        },
+        "totalCredits": 112,
+        "score": 600,
+        "grade": "미완료"
+      }
+    },
+    {
+      "id": "first-report-failure",
+      "seconds": 120,
+      "kills": 200,
+      "elites": 0,
+      "rescues": 2,
+      "outposts": 0,
+      "armorBreaks": 0,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 40,
+          "elites": 0,
+          "rescues": 40,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 80,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 80,
+        "score": 2600,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 40,
+          "elites": 0,
+          "rescues": 40,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 80,
+        "oneTime": {
+          "report": 100,
+          "clear": 0
+        },
+        "totalCredits": 180,
+        "score": 2600,
+        "grade": "미완료"
+      }
+    },
+    {
+      "id": "midrun-failure",
+      "seconds": 210,
+      "kills": 450,
+      "elites": 1,
+      "rescues": 2,
+      "outposts": 1,
+      "armorBreaks": 0,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 90,
+          "elites": 25,
+          "rescues": 40,
+          "outposts": 50,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 205,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 205,
+        "score": 6150,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 90,
+          "elites": 25,
+          "rescues": 40,
+          "outposts": 50,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 205,
+        "oneTime": {
+          "report": 100,
+          "clear": 0
+        },
+        "totalCredits": 305,
+        "score": 6150,
+        "grade": "미완료"
+      }
+    },
+    {
+      "id": "boss-failure",
+      "seconds": 360,
+      "kills": 950,
+      "elites": 2,
+      "rescues": 3,
+      "outposts": 1,
+      "armorBreaks": 2,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 60,
+          "outposts": 50,
+          "armorBreaks": 60,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 380,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 380,
+        "score": 13200,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 60,
+          "outposts": 50,
+          "armorBreaks": 60,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 380,
+        "oneTime": {
+          "report": 100,
+          "clear": 0
+        },
+        "totalCredits": 480,
+        "score": 13200,
+        "grade": "미완료"
+      }
+    },
+    {
+      "id": "fast-clear",
+      "seconds": 240,
+      "kills": 600,
+      "elites": 2,
+      "rescues": 1,
+      "outposts": 0,
+      "armorBreaks": 2,
+      "won": true,
+      "repeat": {
+        "components": {
+          "kills": 120,
+          "elites": 50,
+          "rescues": 20,
+          "outposts": 0,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1,
+        "repeatCredits": 550,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 550,
+        "score": 27000,
+        "grade": "A"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 120,
+          "elites": 50,
+          "rescues": 20,
+          "outposts": 0,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1,
+        "repeatCredits": 550,
+        "oneTime": {
+          "report": 100,
+          "clear": 200
+        },
+        "totalCredits": 850,
+        "score": 27000,
+        "grade": "A"
+      }
+    },
+    {
+      "id": "normal-clear",
+      "seconds": 360,
+      "kills": 1000,
+      "elites": 2,
+      "rescues": 3,
+      "outposts": 1,
+      "armorBreaks": 2,
+      "won": true,
+      "repeat": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 60,
+          "outposts": 50,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1,
+        "repeatCredits": 680,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 680,
+        "score": 28000,
+        "grade": "A"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 60,
+          "outposts": 50,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1,
+        "repeatCredits": 680,
+        "oneTime": {
+          "report": 100,
+          "clear": 200
+        },
+        "totalCredits": 980,
+        "score": 28000,
+        "grade": "A"
+      }
+    },
+    {
+      "id": "rescue-clear",
+      "seconds": 420,
+      "kills": 1200,
+      "elites": 2,
+      "rescues": 5,
+      "outposts": 2,
+      "armorBreaks": 2,
+      "won": true,
+      "repeat": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 100,
+          "outposts": 100,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1,
+        "repeatCredits": 770,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 770,
+        "score": 28200,
+        "grade": "A"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 100,
+          "outposts": 100,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1,
+        "repeatCredits": 770,
+        "oneTime": {
+          "report": 100,
+          "clear": 200
+        },
+        "totalCredits": 1070,
+        "score": 28200,
+        "grade": "A"
+      }
+    },
+    {
+      "id": "dense-clear",
+      "seconds": 420,
+      "kills": 1200,
+      "elites": 2,
+      "rescues": 5,
+      "outposts": 2,
+      "armorBreaks": 2,
+      "won": true,
+      "difficulty": "dense",
+      "repeat": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 100,
+          "outposts": 100,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1.15,
+        "repeatCredits": 885,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 885,
+        "score": 28200,
+        "grade": "A"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 160,
+          "elites": 50,
+          "rescues": 100,
+          "outposts": 100,
+          "armorBreaks": 60,
+          "clear": 300
+        },
+        "multiplier": 1.15,
+        "repeatCredits": 885,
+        "oneTime": {
+          "report": 100,
+          "clear": 200
+        },
+        "totalCredits": 1185,
+        "score": 28200,
+        "grade": "A"
+      }
+    },
+    {
+      "id": "fast-resource-retreat",
+      "seconds": 90,
+      "kills": 300,
+      "elites": 1,
+      "rescues": 2,
+      "outposts": 1,
+      "armorBreaks": 0,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 60,
+          "elites": 25,
+          "rescues": 40,
+          "outposts": 50,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 175,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 175,
+        "score": 4650,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 60,
+          "elites": 25,
+          "rescues": 40,
+          "outposts": 50,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 175,
+        "oneTime": {
+          "report": 100,
+          "clear": 0
+        },
+        "totalCredits": 275,
+        "score": 4650,
+        "grade": "미완료"
+      }
+    },
+    {
+      "id": "stress-resource-retreat",
+      "seconds": 60,
+      "kills": 400,
+      "elites": 2,
+      "rescues": 3,
+      "outposts": 2,
+      "armorBreaks": 0,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 80,
+          "elites": 50,
+          "rescues": 60,
+          "outposts": 100,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 290,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 290,
+        "score": 7000,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 80,
+          "elites": 50,
+          "rescues": 60,
+          "outposts": 100,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 290,
+        "oneTime": {
+          "report": 100,
+          "clear": 0
+        },
+        "totalCredits": 390,
+        "score": 7000,
+        "grade": "미완료"
+      }
+    },
+    {
+      "id": "one-minute-retreat",
+      "seconds": 60,
+      "kills": 160,
+      "elites": 0,
+      "rescues": 1,
+      "outposts": 0,
+      "armorBreaks": 0,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 32,
+          "elites": 0,
+          "rescues": 20,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 52,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 52,
+        "score": 1900,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 32,
+          "elites": 0,
+          "rescues": 20,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 52,
+        "oneTime": {
+          "report": 100,
+          "clear": 0
+        },
+        "totalCredits": 152,
+        "score": 1900,
+        "grade": "미완료"
+      }
+    },
+    {
+      "id": "afk",
+      "seconds": 360,
+      "kills": 0,
+      "elites": 0,
+      "rescues": 0,
+      "outposts": 0,
+      "armorBreaks": 0,
+      "won": false,
+      "repeat": {
+        "components": {
+          "kills": 0,
+          "elites": 0,
+          "rescues": 0,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 0,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 0,
+        "score": 0,
+        "grade": "미완료"
+      },
+      "newProfile": {
+        "components": {
+          "kills": 0,
+          "elites": 0,
+          "rescues": 0,
+          "outposts": 0,
+          "armorBreaks": 0,
+          "clear": 0
+        },
+        "multiplier": 1,
+        "repeatCredits": 0,
+        "oneTime": {
+          "report": 0,
+          "clear": 0
+        },
+        "totalCredits": 0,
+        "score": 0,
+        "grade": "미완료"
+      }
+    }
+  ],
+  "progressionExamples": {
+    "learning": {
+      "rows": [
+        {
+          "run": "first-report-failure",
+          "reward": 180,
+          "totalEarned": 180
+        },
+        {
+          "run": "midrun-failure",
+          "reward": 205,
+          "totalEarned": 385
+        },
+        {
+          "run": "boss-failure",
+          "reward": 380,
+          "totalEarned": 765
+        },
+        {
+          "run": "normal-clear",
+          "reward": 880,
+          "totalEarned": 1645
+        },
+        {
+          "run": "normal-clear",
+          "reward": 680,
+          "totalEarned": 2325
+        },
+        {
+          "run": "rescue-clear",
+          "reward": 770,
+          "totalEarned": 3095
+        },
+        {
+          "run": "normal-clear",
+          "reward": 680,
+          "totalEarned": 3775
+        },
+        {
+          "run": "rescue-clear",
+          "reward": 770,
+          "totalEarned": 4545
+        }
+      ],
+      "trainingBudgetCovered": true,
+      "trainingAndResearchCovered": true
+    },
+    "skilled": {
+      "rows": [
+        {
+          "run": "fast-clear",
+          "reward": 850,
+          "totalEarned": 850
+        },
+        {
+          "run": "normal-clear",
+          "reward": 680,
+          "totalEarned": 1530
+        },
+        {
+          "run": "rescue-clear",
+          "reward": 770,
+          "totalEarned": 2300
+        },
+        {
+          "run": "normal-clear",
+          "reward": 680,
+          "totalEarned": 2980
+        },
+        {
+          "run": "rescue-clear",
+          "reward": 770,
+          "totalEarned": 3750
+        }
+      ],
+      "trainingBudgetCovered": true,
+      "trainingAndResearchCovered": true
+    },
+    "repeatedFailure": {
+      "rows": [
+        {
+          "run": "first-report-failure",
+          "reward": 180,
+          "totalEarned": 180
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 260
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 340
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 420
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 500
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 580
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 660
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 740
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 820
+        },
+        {
+          "run": "first-report-failure",
+          "reward": 80,
+          "totalEarned": 900
+        }
+      ],
+      "trainingBudgetCovered": false,
+      "trainingAndResearchCovered": false
+    }
+  }
+}
