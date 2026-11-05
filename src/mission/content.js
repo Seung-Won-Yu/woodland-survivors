@@ -1,4 +1,4 @@
-export const RULESET='operation-0.12.0';
+export const RULESET='operation-0.13.0';
 export const HEROES={
  marco:{name:'마르코',english:'MARCO ROSSI',role:'정면을 여는 집중 사격',weapon:'p',color:'#edb36b',detail:'같은 표적을 연속 적중하면 집중 3단계. 관통과 보스 약점 피해가 강해집니다.',skill:'집중 사격'},
  fio:{name:'피오',english:'FIO GERMI',role:'보급으로 이어가는 압도적 연사',weapon:'h',color:'#a7c6a0',detail:'기관총으로 출발. 처치·탄약으로 충전하고 두 총의 강화 탄창을 함께 가동합니다.',skill:'전탄 보급'}
@@ -21,6 +21,27 @@ export const RESEARCH={
  'h-ricochet':{name:'H 도탄',weapon:'h',cost:240,requirement:'H로 누적 일반 적 200처치',desc:'H 탄이 근처의 다른 적에게 한 번 더 튕깁니다.'},
  'r-incendiary':{name:'R 점화 탄두',weapon:'r',cost:280,requirement:'R로 누적 일반 적 100처치',desc:'폭발 지점에 화염 지대를 남겨 적을 계속 태웁니다.'}
 };
+RESEARCH['p-execution']={name:'P 약점 파열',weapon:'p',cost:360,requirement:'마르코로 중간 보스 격파',desc:'P로 처치한 적이 작은 관통 파열을 남깁니다. 연쇄 재발동은 없습니다.'};
+RESEARCH['h-capacitor']={name:'H 축전 탄창',weapon:'h',cost:360,requirement:'피오로 최종 합체 달성',desc:'H 또는 H+R 적중 18회마다 보급 충전 +12, 근처 적에게 전기 충격.'};
+export const FRONTS=[
+ {name:'해안 침투',label:'01 / BEACHHEAD',boss:'장갑 수송차',brief:'보급을 확보하고 호위대장의 장갑을 깨뜨리세요.',color:'#b5b08a'},
+ {name:'철도 보급선',label:'02 / SUPPLY LINE',boss:'철도 포격대',brief:'포로와 탄약을 회수하고 포격 진지를 돌파하세요.',color:'#b39b75'},
+ {name:'항구 총공세',label:'03 / FINAL ASSAULT',boss:'지휘전차',brief:'완성한 무기로 추격대를 쓸고 지휘전차를 파괴하세요.',color:'#9baeb1'}
+];
+export const TACTICS={
+ assault:{title:'관통 탄두 보급',desc:'주무기 숙련 +1 · 사격 관통 +2 · 진화 핵심 +1',label:'즉시 진화에 투자'},
+ fusion:{title:'합체 조립선',desc:'보유 H/R 숙련 각각 +1 · 합체 미사일 폭발 +25% · 핵심 +1',label:'두 무기를 완성'},
+ armor:{title:'기갑 지원 요청',desc:'다음 전선 차고 즉시 확보 · Slug 내구 160 · 주포 재사용 2.5초 · 핵심 +1',label:'노획 병기로 돌파'},
+ barrage:{title:'섬멸 지원 포격',desc:'35처치마다 전방에 포격 3발 · 진화 핵심 +1',label:'대군 처치가 다음 포격으로'},
+ repair:{title:'야전 정비반',desc:'최대 체력 +20 · 전부 회복 · 진화 핵심 +1',label:'안전하게 완주'},
+ requisition:{title:'시험 개조 수령',desc:'연구한 보유 총 개조 하나를 즉시 장착. 없으면 주무기 숙련 +1 (최대면 피해 +12%) · 핵심 +1',label:'연구한 빌드 시험'}
+};
+export const ORDERS=[
+ {id:'frontline-clear',title:'세 전선 돌파',desc:'중간 보스 2기와 지휘전차 격파',reward:120},
+ {id:'evolution-sweep',title:'완성 화력 실증',desc:'진화·합체 상태로 900처치하고 완주',reward:160},
+ {id:'fusion-clear',title:'융합 병기 실증',desc:'H+R 최종 합체로 세 전선 완주',reward:160}
+];
+export function orderReady(id,result){return result.won&&(id==='frontline-clear'?(result.stats.midbosses||0)>=2:id==='evolution-sweep'?(result.stats.evolvedKills||0)>=900:id==='fusion-clear'?result.stats.union&&(result.stats.midbosses||0)>=2:false);}
 export const DOCTRINES={marco:[{id:'focus',name:'집중',desc:'좁은 관통 난사 · 약점 집중'},{id:'fan',name:'산개',desc:'넓은 일제 사격 · 낮은 집중 피해',locked:'P 진화로 작전 완주'}],fio:[{id:'reserve',name:'비축',desc:'강화 탄창 7초 유지'},{id:'quick',name:'신속',desc:'강화 4초 · 충전이 더 빠름',locked:'강화 탄창 중 누적 300처치'}]};
 export const FIELD={left:-2200,right:2200,top:-3750,bottom:780};
 export const BOSS_POSITION={x:0,y:-3400};
@@ -33,15 +54,30 @@ export const SITES=[
  {id:'garage',name:'Slug 차고',kind:'garage',x:1750,y:-2350,rescues:0,guards:14,tip:'선택 병기 · 제한 내구'},
  {id:'boss',name:'지휘전차',kind:'boss',x:0,y:-3400,rescues:0,guards:0,tip:'주목표 · 언제든 도전'}
 ];
+export function frontSites(front){
+ const sites=SITES.map(n=>({...n}));
+ if(front>0)sites.splice(sites.length-1,0,{id:'battery',name:front===1?'철로 포격 진지':'항구 관제소',kind:'battery',x:front===1?-1750:1750,y:-3100,rescues:0,guards:16,tip:'포격을 교란하거나 시험 탄약 회수'});
+ const layouts=[null,{first:[-1050,260],camp:[1700,-650],convoy:[-1650,-1000],prison:[950,-2200],garage:[-1650,-2480]},{first:[850,160],camp:[-1700,-750],convoy:[1650,-1350],prison:[-950,-2350],garage:[1600,-2620]}];
+ for(const n of sites){
+  if(layouts[front]?.[n.id])[n.x,n.y]=layouts[front][n.id];
+  n.rescues=front===0?(n.id==='first'?1:n.id==='camp'?1:0):front===1?(n.id==='first'||n.id==='prison'?1:0):(n.id==='prison'?1:0);
+  n.guards=n.kind==='boss'?0:n.guards+front*5;n.waves=n.kind==='supply'?1:n.kind==='garage'?1:2;
+  if(n.id==='first')n.name=['전방 포로','철로 정비반','돌파 탄약고'][front];
+  if(n.id==='camp')n.name=['해안 통신소','철도 통신소','항구 방어선'][front];
+  if(n.id==='prison'){n.name=['의무 보급소','후방 포로','정비반 구출'][front];if(front===0)n.tip='정비 보급·진화 핵심';}
+  if(n.id==='boss'){n.name=FRONTS[front].boss;n.tip=front===2?'주목표 · 지휘전차 격파':'전선 돌파 · 전술 보급 선택';}
+ }
+ return sites;
+}
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const count=(n,max)=>clamp(Number.isFinite(n)?Math.floor(n):0,0,max);
 export function calculateSettlement(input,{firstReport=false,firstClear=false}={}){
- const k=count(input.kills,Number.MAX_SAFE_INTEGER),e=count(input.elites,2),p=count(input.rescues,5),o=count(input.outposts,2),b=count(input.armorBreaks,2),won=!!input.won;
- const components={kills:Math.floor(Math.min(k,800)/5),elites:e*25,rescues:p*20,outposts:o*50,armorBreaks:b*30,clear:won?300:0};
+ const extended=input.rules===RULESET,k=count(input.kills,Number.MAX_SAFE_INTEGER),e=count(input.elites,extended?6:2),p=count(input.rescues,5),o=count(input.outposts,extended?6:2),b=count(input.armorBreaks,extended?6:2),won=!!input.won;
+ const components={kills:Math.floor(Math.min(k,800)/5)+(extended?Math.floor(Math.max(0,Math.min(k,4000)-800)/20)+Math.floor(Math.max(0,Math.min(k,8000)-4000)/50):0),...(extended?{midbosses:count(input.midbosses,2)*75}:{}),elites:e*25,rescues:p*20,outposts:o*50,armorBreaks:b*30,clear:won?300:0};
  const multiplier=input.difficulty==='dense'?1.15:1,repeatCredits=Math.floor(Object.values(components).reduce((a,b)=>a+b,0)*multiplier);
  const eligible=k>=50||p>0||o>0||b>0||won,oneTime={report:firstReport&&eligible?100:0,clear:firstClear&&won?200:0};
  const timeBonus=won?Math.max(0,600-count(input.seconds,Number.MAX_SAFE_INTEGER))*20:0;
- const score=Math.min(k,800)*10+e*250+p*300+o*800+b*1500+(won?10000:0)+timeBonus;
- return {components,multiplier,repeatCredits,oneTime,totalCredits:repeatCredits+oneTime.report+oneTime.clear,score,grade:won?(score>=30000?'S':score>=24000?'A':score>=18000?'B':'C'):'미완료'};
+ const score=Math.min(k,extended?8000:800)*10+(extended?count(input.midbosses,2)*5000:0)+e*250+p*300+o*800+b*1500+(won?10000:0)+timeBonus;
+ return {components,multiplier,repeatCredits,oneTime,totalCredits:repeatCredits+oneTime.report+oneTime.clear,score,grade:won?(score>=(extended?64000:30000)?'S':score>=(extended?50000:24000)?'A':score>=(extended?36000:18000)?'B':'C'):'미완료'};
 }
-export function researchReady(profile,id){const r=RESEARCH[id];if(!r)return false;return id==='p-split'?profile.progress.pMastery:(profile.progress.weaponKills[r.weapon]||0)>=(r.weapon==='h'?200:100);}
+export function researchReady(profile,id){const r=RESEARCH[id];if(!r)return false;if(id==='p-execution')return profile.progress.midbossMarco>0;if(id==='h-capacitor')return profile.progress.unions>0;return id==='p-split'?profile.progress.pMastery:(profile.progress.weaponKills[r.weapon]||0)>=(r.weapon==='h'?200:100);}

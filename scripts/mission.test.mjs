@@ -21,8 +21,8 @@ test('first failure pays once, survives reload, and older run sequences cannot b
  const second=begun('marco',71,loaded);endMission(second.run,'retreat');const final=settleRun(second.profile,second.run);assert.equal(final.profile.wallet,180);assert.ok(settleRun(final.profile,b.run).alreadySettled);assert.equal(final.profile.wallet,180);
 });
 test('first-clear bonus belongs to the operation, and dense only multiplies repeat credits',()=>{
- const b=begun();b.run.stats={...b.run.stats,kills:1000,elites:2,rescues:3,outposts:1,armorBreaks:2};b.run.t=360;endMission(b.run,'victory');const one=settleRun(b.profile,b.run);assert.equal(one.profile.wallet,980);
- const second=beginRun(one.profile,{hero:'fio',difficulty:'dense',seed:71});assert.ok(second.ok);const run=createMission(second.descriptor);run.stats={...run.stats,kills:1000,elites:2,rescues:3,outposts:1,armorBreaks:2};run.t=360;endMission(run,'victory');const two=settleRun(second.profile,run);assert.equal(two.receipt.award.oneTime.clear,0);assert.equal(two.receipt.award.oneTime.report,0);assert.equal(two.receipt.award.repeatCredits,Math.floor(680*1.15));
+ const b=begun();b.run.stats={...b.run.stats,kills:1000,elites:2,rescues:3,outposts:1,armorBreaks:2};b.run.t=360;endMission(b.run,'victory');const one=settleRun(b.profile,b.run);assert.equal(one.profile.wallet,990);
+ const second=beginRun(one.profile,{hero:'fio',difficulty:'dense',seed:71});assert.ok(second.ok);const run=createMission(second.descriptor);run.stats={...run.stats,kills:1000,elites:2,rescues:3,outposts:1,armorBreaks:2};run.t=360;endMission(run,'victory');const two=settleRun(second.profile,run);assert.equal(two.receipt.award.oneTime.clear,0);assert.equal(two.receipt.award.oneTime.report,0);assert.equal(two.receipt.award.repeatCredits,Math.floor(690*1.15));
 });
 test('training purchase, limits, snapshot, and refunds use actually paid amounts',()=>{
  const b=fixtureResult(),paid=settleRun(b.profile,b.run).profile;const result=buyTraining(paid,'reroll');assert.ok(result.ok);assert.equal(result.profile.wallet,20);assert.equal(result.profile.training.reroll.rank,1);
@@ -77,7 +77,7 @@ test('P split cannot recursively split; arrays remain bounded during dense colli
  assert.ok(s.shots.length<=280);assert.ok(s.shots.filter(o=>o.fragment).every(o=>!o.split));assert.ok(s.effects.length<=160);
 });
 test('boss victory snapshots all same-tick kills and is terminal',()=>{
- const s=begun().run;quiet(s);s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode='recover';s.boss.timer=9;s.player.x=s.boss.x+110;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;
+ const s=begun().run;quiet(s);s.front=2;s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode='recover';s.boss.timer=9;s.player.x=s.boss.x+110;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;
  const template=begun().run.enemies[0];s.enemies=[{...template,id:999,x:s.boss.x+30,y:s.boss.y,hp:1,speed:0,timer:999}];step(s,.5);assert.equal(s.result.won,true);assert.deepEqual(s.result.stats,s.stats);const raw=packMission(s);step(s,5);assert.deepEqual(packMission(s),raw);
 });
 test('time passing beyond six minutes never causes an automatic loss or XP cutoff',()=>{
@@ -104,4 +104,61 @@ test('invalid saved choice cards and active result snapshots recover instead of 
  const s=begun().run;s.phase='choice';s.choiceType='level';s.choices=availableUpgrades(s);assert.doesNotThrow(()=>restoreMission(packMission(s)));
  for(const cards of [[{id:'x',kind:'rank'}],[{id:'x',kind:'unknown'}],[{id:'x',kind:'utility',key:'unknown'}]]){const raw=packMission(s);raw.choices=cards;assert.throws(()=>restoreMission(raw));}
  const bad=packMission(s);bad.choiceType='unknown';assert.throws(()=>restoreMission(bad));endMission(s,'retreat');assert.throws(()=>restoreMission(packMission(s)));
+});
+function beatFront(s){quiet(s);s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode='recover';s.boss.timer=9;s.player.x=s.boss.x+150;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;step(s,1);}
+test('two midboss rewards carry the build across fronts, only the third boss ends the mission',()=>{
+ const s=begun().run;s.xp=7;beatFront(s);assert.equal(s.result,null);assert.equal(s.phase,'choice');assert.equal(s.choiceType,'tactic');assert.equal(s.stats.midbosses,1);const time=s.t,rank=s.weapons[0].rank;assert.doesNotThrow(()=>restoreMission(packMission(s)));assert.ok(chooseMission(s,'tactic:assault'));assert.equal(s.front,1);assert.equal(s.t,time);assert.equal(s.weapons[0].rank,rank);assert.equal(s.xp,7);assert.ok(s.tactics.includes('assault'));assert.ok(s.sites.some(n=>n.id==='battery'));
+ beatFront(s);assert.equal(s.stats.midbosses,2);assert.ok(chooseMission(s,'tactic:barrage'));assert.equal(s.front,2);beatFront(s);assert.ok(s.result.won);assert.deepEqual(s.stats.fronts,[0,1]);assert.equal(s.frontHistory.length,2);
+});
+test('armor tactical supply prepares a real Slug and keeps its durability across the next front',()=>{
+ const s=begun('fio').run;beatFront(s);chooseMission(s,'tactic:armor');const g=s.sites.find(n=>n.id==='garage');assert.equal(g.state,'ready');s.player.x=g.x;s.player.y=g.y;assert.ok(missionAction(s,'interact'));assert.equal(s.player.slugHp,160);s.player.skillCd=0;missionAction(s,'skill');assert.equal(s.player.skillCd,2.5);beatFront(s);chooseMission(s,'tactic:repair');assert.ok(s.player.slug);assert.equal(s.player.slugHp,160);
+});
+test('fusion tactical supply invests in both weapons and final union can receive researched H modifications',()=>{
+ const s=begun('fio').run;s.weapons[1]={id:'r',rank:1,evolved:false,mods:[],cd:1};beatFront(s);chooseMission(s,'tactic:fusion');assert.equal(s.weapons[1].rank,2);s.weapons[1].rank=3;s.phase='choice';s.choices=availableUpgrades(s);assert.ok(chooseMission(s,'union'));s.snapshot.researched=['h-capacitor'];s.snapshot.freshMods=['h-capacitor'];const choices=availableUpgrades(s);assert.equal(choices[0].id,'mod:h-capacitor');
+});
+test('fortified supplies spawn their second escort wave and never complete after only wave one',()=>{
+ const s=begun().run,node=s.sites.find(n=>n.id==='camp');s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);assert.equal(node.wave,1);for(const e of s.enemies)if(e.siteId===node.id)e.dead=true;stepMission(s,dt);assert.equal(node.wave,2);assert.equal(node.state,'active');assert.ok(s.enemies.some(e=>e.siteId===node.id&&!e.dead));
+});
+test('guard waves reserve capacity even when the ambient horde is at its cap',()=>{
+ const s=begun().run,template=s.enemies[0],node=s.sites.find(n=>n.id==='camp');s.enemies=Array.from({length:200},(_,i)=>({...template,id:1000+i,x:node.x+500+i,y:node.y}));s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);assert.equal(s.enemies.filter(e=>e.siteId===node.id).length,node.guards);assert.ok(s.enemies.length<=200);
+});
+test('artillery supply makes a real boss pattern choice instead of awarding a cosmetic label',()=>{
+ const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');s.phase='choice';s.choiceType='supply';s.choices=[{id:'sabotage:silence',kind:'sabotage',key:'silence'}];assert.ok(chooseMission(s,'sabotage:silence'));quiet(s);s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;stepMission(s,dt);assert.equal(s.hazards.length,1);
+});
+test('midboss and union research unlock from settled performance, and new profile fields survive reload',()=>{
+ const b=begun();b.run.stats.midbosses=1;b.run.stats.union=true;b.run.stats.kills=500;endMission(b.run,'retreat');const paid=settleRun(b.profile,b.run).profile;assert.ok(researchReady(paid,'p-execution'));assert.ok(researchReady(paid,'h-capacitor'));assert.equal(parseProfile(JSON.stringify(paid)).progress.midbossMarco,1);assert.equal(parseProfile(JSON.stringify(paid)).progress.unions,1);
+});
+test('field orders pay their first completion once and are separate from repeat kill farming',()=>{
+ const b=begun('fio');b.run.stats={...b.run.stats,kills:2000,midbosses:2,evolvedKills:1000,union:true};endMission(b.run,'victory');const one=settleRun(b.profile,b.run);assert.equal(one.receipt.award.orderCredits,440);assert.equal(one.profile.orders.length,3);const second=begun('fio',71,parseProfile(JSON.stringify(one.profile)));second.run.stats={...b.run.stats};endMission(second.run,'victory');const two=settleRun(second.profile,second.run);assert.equal(two.receipt.award.orderCredits,0);assert.equal(two.profile.orders.length,3);
+});
+test('completed guns cannot accumulate attack-speed utility beyond the level cap from supply choices',()=>{
+ const s=begun('fio').run;quiet(s);s.weapons=[{id:'u',rank:3,evolved:true,mods:[],cd:0},null];s.boosts.tempo=3;s.boosts.vitality=3;s.boosts.power=3;s.boosts.magnet=3;s.boosts.projectile=1;const cards=availableUpgrades(s);assert.equal(cards[0].kind,'resupply');assert.ok(cards.every(c=>c.key!=='tempo'&&c.key!=='vitality'));
+});
+test('evolution and union clear the same dense formation faster than the starting gun',()=>{
+ function count(kind){const s=begun('fio').run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.player.invuln=99;s.weapons=[{id:kind==='union'?'u':'h',rank:kind==='base'?0:3,evolved:kind!=='base',mods:[],cd:0,shots:0},null];s.enemies=Array.from({length:60},(_,i)=>({...template,id:500+i,x:80+(i%10)*18,y:(Math.floor(i/10)-2.5)*22,hp:30,maxHp:30,speed:0,timer:999,siteId:null}));step(s,1.5);return s.stats.kills;}
+ const base=count('base'),evolved=count('evolved'),union=count('union');assert.ok(evolved>base*1.5,`${base} -> ${evolved}`);assert.ok(union>base*1.5,`${base} -> ${union}`);
+});
+test('three-front repeat rewards and score keep growing after 800 kills, with a finite farming ceiling',()=>{
+ const base={rules:RULESET,kills:800,midbosses:1,elites:2,outposts:2,armorBreaks:2};const a=calculateSettlement(base),b=calculateSettlement({...base,kills:3000,midbosses:2,elites:6,outposts:6,armorBreaks:6});assert.ok(b.repeatCredits>a.repeatCredits);assert.ok(b.score>a.score);assert.equal(b.components.midbosses,150);assert.equal(b.components.armorBreaks,180);assert.equal(calculateSettlement({...base,kills:9000}).repeatCredits,calculateSettlement({...base,kills:8000}).repeatCredits);
+});
+test('barrage triggers only on a new normal-kill threshold, never again for officers at the same count',()=>{
+ function scene(kills,threshold,type){const s=begun('fio').run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.player.invuln=99;s.tactics=['barrage'];s.barrageAt=threshold;s.stats.kills=kills;s.weapons[0]={id:'h',rank:3,evolved:true,mods:[],cd:0,shots:0};s.enemies=[{...template,id:900,x:80,y:0,hp:1,maxHp:1,type,speed:0,timer:999}];step(s,.3);return s;}
+ const elite=scene(35,1,'officer');assert.equal(elite.stats.kills,35);assert.equal(elite.effects.filter(f=>f.type==='explosion').length,0);const normal=scene(34,0,'rifle');assert.equal(normal.barrageAt,1);assert.equal(normal.effects.filter(f=>f.type==='explosion').length,3);
+});
+test('trial requisition equips union-compatible research and gives a real fallback to a maxed gun',()=>{
+ const s=begun('fio').run;beatFront(s);chooseMission(s,'tactic:fusion');s.weapons=[{id:'u',rank:3,evolved:true,mods:[],cd:0,shots:0},null];s.snapshot.researched=['h-capacitor'];beatFront(s);assert.ok(chooseMission(s,'tactic:requisition'));assert.ok(s.weapons[0].mods.includes('h-capacitor'));
+ const p=begun().run;beatFront(p);chooseMission(p,'tactic:assault');beatFront(p);const power=p.boosts.power;chooseMission(p,'tactic:requisition');assert.equal(p.boosts.power,power+1);
+});
+test('armor supply repairs an existing Slug and its free garage voucher is consumed once',()=>{
+ const s=begun().run;s.player.slug=true;s.player.slugHp=20;beatFront(s);chooseMission(s,'tactic:armor');assert.equal(s.player.slugHp,160);assert.equal(s.sites.find(n=>n.id==='garage').state,'ready');beatFront(s);chooseMission(s,'tactic:barrage');assert.equal(s.sites.find(n=>n.id==='garage').state,'waiting');
+});
+test('P execution research kills an off-axis target without recursively multiplying the blast',()=>{
+ function scene(mod){const s=begun().run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.weapons[0].cd=0;s.weapons[0].mods=mod?['p-execution']:[];s.enemies=[{...template,id:801,x:80,y:0,hp:1,speed:0,timer:999},{...template,id:802,x:80,y:50,hp:30,speed:0,timer:999},{...template,id:803,x:80,y:105,hp:30,speed:0,timer:999}];step(s,.14);return s;}
+ assert.equal(scene(false).stats.kills,1);const researched=scene(true);assert.equal(researched.stats.kills,2);assert.ok(!researched.enemies.find(e=>e.id===803).dead);
+});
+test('H capacitor research turns its hit threshold into real charge and splash damage',()=>{
+ const s=begun('fio').run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.player.charge=0;s.capacitor=17;s.weapons[0].mods=['h-capacitor'];s.weapons[0].cd=0;s.enemies=[{...template,id:811,x:80,y:0,hp:1000,speed:0,timer:999},{...template,id:812,x:120,y:65,hp:30,speed:0,timer:999}];step(s,.14);assert.ok(s.player.charge>=12);assert.equal(s.capacitor,0);assert.ok(s.enemies.find(e=>e.id===812).dead);
+});
+test('union missiles turn toward a moving target with bounded steering rather than remaining straight rockets',()=>{
+ const s=begun('fio').run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.player.invuln=99;s.weapons=[{id:'u',rank:3,evolved:true,mods:[],cd:0,shots:0,proc:5},null];s.enemies=[{...template,id:901,x:170,y:0,hp:10000,speed:0,timer:999}];step(s,.2);const missile=s.shots.find(o=>o.homing);assert.ok(missile);const before=missile.angle;s.enemies[0].y=170;stepMission(s,dt);assert.ok(missile.angle>before);assert.ok(missile.angle-before<=dt*6+.0001);
 });

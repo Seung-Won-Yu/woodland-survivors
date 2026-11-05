@@ -1,0 +1,488 @@
+{
+  "rules": {
+    "dt": 0.016666666666666666,
+    "maxSeconds": 600,
+    "seeds": [
+      17,
+      71
+    ],
+    "route": "rush first/convoy/boss"
+  },
+  "policy": "public API only; state-aware threat steering, objective navigation, ordinary dash/skill/interact inputs",
+  "aggregates": [
+    {
+      "hero": "marco",
+      "useSlug": false,
+      "wins": 2,
+      "runs": 2,
+      "medianTime": 150.5,
+      "medianBossTtk": 13.9,
+      "medianKills": 1310,
+      "medianHp": 130,
+      "issues": []
+    },
+    {
+      "hero": "fio",
+      "useSlug": false,
+      "wins": 2,
+      "runs": 2,
+      "medianTime": 121.2,
+      "medianBossTtk": 8.9,
+      "medianKills": 1161,
+      "medianHp": 125,
+      "issues": []
+    }
+  ],
+  "runs": [
+    {
+      "hero": "marco",
+      "seed": 17,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 152.6,
+      "hp": 130,
+      "level": 15,
+      "kills": 1259,
+      "elites": 0,
+      "rescues": 2,
+      "outposts": 3,
+      "bossTtk": 14.5,
+      "slugAtBoss": false,
+      "bossHp": -2.5,
+      "parts": {
+        "battery": -38.7,
+        "armor": -10.5
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 9.9
+        },
+        {
+          "front": 1,
+          "seconds": 11.1
+        },
+        {
+          "front": 2,
+          "seconds": 14.5
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 70.16666666666397,
+          "seconds": 70.16666666666397,
+          "kills": 404
+        },
+        {
+          "front": 1,
+          "at": 110.29999999999502,
+          "seconds": 40.13333333333105,
+          "kills": 768
+        }
+      ],
+      "bossStarts": {
+        "0": 60.26666666666453,
+        "1": 99.18333333332899,
+        "2": 138.11666666666872
+      },
+      "tactics": [
+        "assault",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 20.3,
+        "0:convoy": 42.3,
+        "1:first": 76.7,
+        "1:convoy": 86.8,
+        "2:first": 115.3,
+        "2:convoy": 126.3
+      },
+      "unionAt": null,
+      "weapons": [
+        {
+          "id": "p",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 4,
+      "stats": {
+        "kills": 1259,
+        "elites": 0,
+        "rescues": 2,
+        "outposts": 3,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 1240,
+          "h": 19,
+          "r": 19
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [
+          "p"
+        ],
+        "union": false,
+        "bestCombo": 743,
+        "midbosses": 2,
+        "evolvedKills": 1099,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "assault",
+          "barrage"
+        ]
+      },
+      "actions": {
+        "skills": 22,
+        "interactions": 3,
+        "dashes": 23
+      },
+      "issues": [],
+      "choiceCount": 22
+    },
+    {
+      "hero": "fio",
+      "seed": 17,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 125.2,
+      "hp": 120,
+      "level": 15,
+      "kills": 1218,
+      "elites": 0,
+      "rescues": 2,
+      "outposts": 3,
+      "bossTtk": 8.7,
+      "slugAtBoss": false,
+      "bossHp": -9.6,
+      "parts": {
+        "battery": -18.1,
+        "armor": -11
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 14.9
+        },
+        {
+          "front": 1,
+          "seconds": 7.2
+        },
+        {
+          "front": 2,
+          "seconds": 8.7
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 59.033333333331264,
+          "seconds": 59.033333333331264,
+          "kills": 296
+        },
+        {
+          "front": 1,
+          "at": 91.94999999999607,
+          "seconds": 32.9166666666648,
+          "kills": 718
+        }
+      ],
+      "bossStarts": {
+        "0": 44.09999999999878,
+        "1": 84.71666666666314,
+        "2": 116.51666666666134
+      },
+      "tactics": [
+        "fusion",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 14.4,
+        "0:convoy": 29.1,
+        "1:first": 64.9,
+        "1:convoy": 72.3,
+        "2:first": 96.3,
+        "2:convoy": 105.1
+      },
+      "unionAt": 64.8,
+      "weapons": [
+        {
+          "id": "u",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 3,
+      "stats": {
+        "kills": 1218,
+        "elites": 0,
+        "rescues": 2,
+        "outposts": 3,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 0,
+          "h": 1166,
+          "r": 875
+        },
+        "pMastery": false,
+        "overdriveKills": 1218,
+        "evolved": [
+          "h"
+        ],
+        "union": true,
+        "bestCombo": 709,
+        "midbosses": 2,
+        "evolvedKills": 1107,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "fusion",
+          "barrage"
+        ]
+      },
+      "actions": {
+        "skills": 25,
+        "interactions": 3,
+        "dashes": 16
+      },
+      "issues": [],
+      "choiceCount": 22
+    },
+    {
+      "hero": "marco",
+      "seed": 71,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 148.4,
+      "hp": 130,
+      "level": 16,
+      "kills": 1361,
+      "elites": 0,
+      "rescues": 2,
+      "outposts": 3,
+      "bossTtk": 13.3,
+      "slugAtBoss": false,
+      "bossHp": -58.7,
+      "parts": {
+        "battery": -71.4,
+        "armor": -33.1
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 8.8
+        },
+        {
+          "front": 1,
+          "seconds": 10.6
+        },
+        {
+          "front": 2,
+          "seconds": 13.3
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 64.98333333333093,
+          "seconds": 64.98333333333093,
+          "kills": 382
+        },
+        {
+          "front": 1,
+          "at": 105.09999999999532,
+          "seconds": 40.116666666664386,
+          "kills": 762
+        }
+      ],
+      "bossStarts": {
+        "0": 56.149999999998094,
+        "1": 94.48333333332926,
+        "2": 135.133333333333
+      },
+      "tactics": [
+        "assault",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 18.7,
+        "0:convoy": 36.7,
+        "1:first": 71.5,
+        "1:convoy": 81.7,
+        "2:first": 110.2,
+        "2:convoy": 123.2
+      },
+      "unionAt": null,
+      "weapons": [
+        {
+          "id": "p",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 4,
+      "stats": {
+        "kills": 1361,
+        "elites": 0,
+        "rescues": 2,
+        "outposts": 3,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 1324,
+          "h": 37,
+          "r": 37
+        },
+        "pMastery": true,
+        "overdriveKills": 0,
+        "evolved": [
+          "p"
+        ],
+        "union": false,
+        "bestCombo": 1328,
+        "midbosses": 2,
+        "evolvedKills": 1224,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "assault",
+          "barrage"
+        ]
+      },
+      "actions": {
+        "skills": 22,
+        "interactions": 3,
+        "dashes": 23
+      },
+      "issues": [],
+      "choiceCount": 23
+    },
+    {
+      "hero": "fio",
+      "seed": 71,
+      "useSlug": false,
+      "outcome": "victory",
+      "reason": "victory",
+      "time": 117.1,
+      "hp": 130,
+      "level": 15,
+      "kills": 1104,
+      "elites": 0,
+      "rescues": 2,
+      "outposts": 3,
+      "bossTtk": 9.2,
+      "slugAtBoss": false,
+      "bossHp": -8.2,
+      "parts": {
+        "battery": -4.4,
+        "armor": -12.8
+      },
+      "frontBattles": [
+        {
+          "front": 0,
+          "seconds": 7.5
+        },
+        {
+          "front": 1,
+          "seconds": 8.5
+        },
+        {
+          "front": 2,
+          "seconds": 9.2
+        }
+      ],
+      "frontHistory": [
+        {
+          "front": 0,
+          "at": 49.08333333333183,
+          "seconds": 49.08333333333183,
+          "kills": 216
+        },
+        {
+          "front": 1,
+          "at": 82.71666666666326,
+          "seconds": 33.63333333333143,
+          "kills": 553
+        }
+      ],
+      "bossStarts": {
+        "0": 41.56666666666559,
+        "1": 74.19999999999708,
+        "2": 107.8833333333285
+      },
+      "tactics": [
+        "fusion",
+        "barrage"
+      ],
+      "nodeTimes": {
+        "0:first": 11.9,
+        "0:convoy": 25.9,
+        "1:first": 54.4,
+        "1:convoy": 61.8,
+        "2:first": 87,
+        "2:convoy": 96.4
+      },
+      "unionAt": 40.8,
+      "weapons": [
+        {
+          "id": "u",
+          "rank": 3,
+          "evolved": true,
+          "mods": []
+        },
+        null
+      ],
+      "cores": 4,
+      "stats": {
+        "kills": 1104,
+        "elites": 0,
+        "rescues": 2,
+        "outposts": 3,
+        "armorBreaks": 6,
+        "weaponKills": {
+          "p": 0,
+          "h": 1066,
+          "r": 977
+        },
+        "pMastery": false,
+        "overdriveKills": 1065,
+        "evolved": [],
+        "union": true,
+        "bestCombo": 560,
+        "midbosses": 2,
+        "evolvedKills": 954,
+        "fronts": [
+          0,
+          1
+        ],
+        "supplyPicks": [
+          "fusion",
+          "barrage"
+        ]
+      },
+      "actions": {
+        "skills": 23,
+        "interactions": 3,
+        "dashes": 9
+      },
+      "issues": [],
+      "choiceCount": 22
+    }
+  ]
+}

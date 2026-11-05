@@ -1,5 +1,5 @@
 import {actor,prop} from './art.js';
-import {HEROES,WEAPONS,SITES,FIELD,BOSS_POSITION} from './content.js';
+import {HEROES,WEAPONS,FRONTS,FIELD,BOSS_POSITION} from './content.js';
 const TAU=Math.PI*2,hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 const circle=(c,x,y,r,fill,stroke,width=1)=>{c.beginPath();c.arc(x,y,Math.max(.1,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}};
 export function createMissionRenderer(canvas,map,art){
@@ -15,7 +15,10 @@ export function createMissionRenderer(canvas,map,art){
   c.save();c.translate(cx+(shake?Math.sin(s.t*91)*shake:0),cy+(shake?Math.cos(s.t*117)*shake*.5:0));c.scale(zoom,zoom);c.translate(-p.x,-p.y);
   const left=p.x-cx/zoom-100,right=p.x+(w-cx)/zoom+100,top=p.y-cy/zoom-150,bottom=p.y+(h-cy)/zoom+200;
   c.fillStyle=pattern;c.fillRect(left,top,right-left,bottom-top);
+  if(s.front===1){c.fillStyle='#6e4e3026';c.fillRect(left,top,right-left,bottom-top);}if(s.front===2){c.fillStyle='#374d642a';c.fillRect(left,top,right-left,bottom-top);}
   c.fillStyle='#383e37';c.fillRect(-170,FIELD.top,340,FIELD.bottom-FIELD.top);c.fillStyle='#555a4b';c.fillRect(-155,FIELD.top,310,FIELD.bottom-FIELD.top);
+  if(s.front===1){for(const x of [-105,105]){c.fillStyle='#272e2d';c.fillRect(x,top,8,bottom-top);}c.fillStyle='#858575';for(let y=Math.floor(top/45)*45;y<bottom;y+=45)c.fillRect(-125,y,260,9);}
+  if(s.front===2){c.fillStyle='#304e58';c.fillRect(FIELD.right-120,top,400,bottom-top);for(let y=Math.floor(top/120)*120;y<bottom;y+=120){c.fillStyle='#9e977d';c.fillRect(FIELD.right-190,y,280,25);}}
   c.fillStyle='#c3bd863f';for(let y=Math.floor(top/100)*100;y<bottom;y+=100)c.fillRect(-4,y,8,42);
   c.fillStyle='#384c4d';c.fillRect(FIELD.left-600,top,470,bottom-top);c.strokeStyle='#8e9a8a55';c.lineWidth=2;for(let y=Math.floor(top/30)*30;y<bottom;y+=30){c.beginPath();c.moveTo(FIELD.left-150,y);c.lineTo(FIELD.left-120,y+10);c.stroke();}
   c.strokeStyle='#b3ab7a66';c.lineWidth=3;c.strokeRect(FIELD.left-30,FIELD.top-40,FIELD.right-FIELD.left+60,FIELD.bottom-FIELD.top+80);
@@ -23,17 +26,19 @@ export function createMissionRenderer(canvas,map,art){
   if(s.stage==='boss'){c.fillStyle='#c1a47522';c.fillRect(-720,BOSS_POSITION.y-320,1440,780);c.setLineDash([15,13]);c.strokeStyle='#d9b166';c.lineWidth=3;c.strokeRect(-720,BOSS_POSITION.y-320,1440,780);c.setLineDash([]);}
   for(const site of s.sites){if(site.kind==='boss')continue;
    const done=site.state==='done',ready=site.state==='ready';
-   if(site.kind==='garage')prop(c,art,0,done?3:0,site.x,site.y,125);
+   if(site.kind==='battery')prop(c,art,3,0,site.x,site.y,145,done?.4:1);
+   else if(site.kind==='garage')prop(c,art,0,done?3:0,site.x,site.y,125);
    else if(site.kind==='convoy')prop(c,art,2,3,site.x,site.y,146,done?.5:1);
-   else prop(c,art,2,done?2:1,site.x,site.y,site.kind==='supply'?72:92,done?.7:1);
-   if(!done){circle(c,site.x,site.y,site.kind==='garage'?95:75,null,ready?'#e8d494':'#acb5a366',ready?3:1);c.textAlign='center';c.font='bold 14px Galmuri';c.lineWidth=4;c.strokeStyle='#26332d';c.strokeText(site.name,site.x,site.y+28);c.fillStyle=ready?'#ffdf8e':'#f0e7ce';c.fillText(site.name,site.x,site.y+28);if(site.state==='active'){c.font='11px Galmuri';c.fillStyle='#e8c28c';c.fillText(`경비 ${s.enemies.filter(e=>!e.dead&&e.siteId===site.id).length}명`,site.x,site.y+46);}if(ready){c.font='12px Galmuri';c.fillText(site.kind==='garage'?'F · 탑승':'가까이 이동 · 보급',site.x,site.y+47);}}
+   else prop(c,art,2,site.rescues>0?(done?2:1):0,site.x,site.y,site.kind==='supply'?72:92,done?.7:1);
+   if(!done){circle(c,site.x,site.y,site.kind==='garage'?95:75,null,ready?'#e8d494':'#acb5a366',ready?3:1);c.textAlign='center';c.font='bold 14px Galmuri';c.lineWidth=4;c.strokeStyle='#26332d';c.strokeText(site.name,site.x,site.y+28);c.fillStyle=ready?'#ffdf8e':'#f0e7ce';c.fillText(site.name,site.x,site.y+28);if(site.state==='active'){c.font='11px Galmuri';c.fillStyle='#e8c28c';c.fillText(`${site.wave}/${site.waves} · 경비 ${s.enemies.filter(e=>!e.dead&&e.siteId===site.id).length}명`,site.x,site.y+46);}if(ready){c.font='12px Galmuri';c.fillText(site.kind==='garage'?'F · 탑승':'가까이 이동 · 보급',site.x,site.y+47);}}
   }
   const b=s.boss;const broken=b.parts.filter(part=>part.hp<=0).length;
-  prop(c,art,1,b.hp<=0?3:broken,b.x,b.y+45,260);
+  c.save();if(s.front===0)c.filter='sepia(.4)';if(s.front===1)c.filter='saturate(.5)';prop(c,art,1,b.hp<=0?3:broken,b.x,b.y+45,s.front===2?260:210);c.restore();
+  if(s.front===1){prop(c,art,3,0,b.x-105,b.y+35,95);prop(c,art,3,0,b.x+105,b.y+35,95);}
   if(b.active){for(const part of b.parts)if(part.hp>0){const x=b.x+part.ox,y=b.y+part.oy;circle(c,x,y,part.r,null,'#e5bd73aa',2);c.fillStyle='#262e2b';c.fillRect(x-26,y-50,52,5);c.fillStyle='#efbd76';c.fillRect(x-26,y-50,52*Math.max(0,part.hp/part.maxHp),5);}
    if(b.mode==='windup'){c.save();c.translate(b.x,b.y);c.rotate(b.angle);c.fillStyle='#d35d3d44';c.fillRect(0,-67,300,134);c.strokeStyle='#f9bd80';c.lineWidth=3;c.strokeRect(0,-67,300,134);c.restore();}
    if(b.mode==='recover')circle(c,b.x,b.y,100,null,'#ead59299',2);
-  }else{c.font='bold 19px Galmuri';c.textAlign='center';c.fillStyle='#f0c17e';c.fillText('지휘전차',b.x,b.y-200);}
+  }else{c.font='bold 19px Galmuri';c.textAlign='center';c.fillStyle='#f0c17e';c.fillText(FRONTS[s.front].boss,b.x,b.y-170);}
   for(const z of s.zones){const pulse=Math.sin(s.t*20+z.x);circle(c,z.x,z.y,z.r,'#d77a2740');for(let i=0;i<6;i++){const a=i*TAU/6;c.fillStyle=i%2?'#ef9b3b':'#efd781';c.fillRect(z.x+Math.cos(a)*z.r*.6,z.y+Math.sin(a)*z.r*.6,6,12+pulse*4);}}
   for(const h of s.hazards){circle(c,h.x,h.y,h.r,'#c45f3044','#f4bb7e',2);circle(c,h.x,h.y,h.r*Math.max(0,h.timer/1.05),null,'#f6d8a7',1);c.strokeStyle='#ffc18a';c.beginPath();c.moveTo(h.x-7,h.y);c.lineTo(h.x+7,h.y);c.moveTo(h.x,h.y-7);c.lineTo(h.x,h.y+7);c.stroke();}
   for(const g of s.gems){c.save();c.translate(g.x,g.y-6);if(g.ammo){c.fillStyle='#c5d1a2';c.fillRect(-7,-5,14,10);c.fillStyle='#535f40';c.fillRect(-3,-3,2,6);c.fillRect(2,-3,2,6);}else{c.rotate(Math.PI/4);c.fillStyle='#b5d9cc';c.fillRect(-3,-3,6,6);c.fillStyle='#fff0bf';c.fillRect(-2,-2,2,2);}c.restore();}

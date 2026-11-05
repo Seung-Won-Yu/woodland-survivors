@@ -2,7 +2,7 @@ import {createProfile,beginRun} from '../src/mission/profile.js';
 import {createMission,stepMission,chooseMission,missionAction,takeMissionEvents} from '../src/mission/model.js';
 import {BOSS_GATE} from '../src/mission/content.js';
 
-const DT=1/60,MAX_SECONDS=600,SEEDS=[17,71];
+const DT=1/60,MAX_SECONDS=600,SEEDS=[17,71],RUSH=process.argv.includes('--rush');
 const round=(n,d=1)=>Number.isFinite(n)?Number(n.toFixed(d)):null;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const median=values=>{const a=values.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;};
@@ -52,6 +52,8 @@ function danger(s){
 function weaponState(s,id){return s.weapons.find(w=>w?.id===id);}
 
 function scoreChoice(s,build,choice){
+  if(choice.kind==='sabotage')return choice.key==='plunder'?19000:1000;
+  if(choice.kind==='tactic')return choice.key===(s.front===0?(build.hero==='fio'?'fusion':'assault'):'barrage')?30000:10000;
   if(choice.kind==='union')return build.hero==='fio'?20000:100;
   if(choice.kind==='evolve'){
     const weapon=s.weapons[choice.slot]?.id;
@@ -87,7 +89,7 @@ function nextTarget(s,build,state){
     const b=s.boss,p=s.player,a=Math.atan2(p.y-b.y,p.x-b.x)+(build.hero==='marco'?.38:.72),radius=p.slug?245:build.hero==='marco'?300:250;
     return {x:b.x+Math.cos(a)*radius,y:b.y+Math.sin(a)*radius,id:'boss-combat'};
   }
-  const route=['first','camp','convoy','prison',...(build.useSlug?['garage']:[])];
+  const route=RUSH?['first','convoy']:['first','camp','convoy','prison',...(build.useSlug?['garage']:[]),...(s.front>0?['battery']:[])];
   for(const id of route){const site=s.sites.find(x=>x.id===id);if(site&&site.state!=='done')return {...site,id};}
   return {...BOSS_GATE,id:'boss-gate'};
 }
@@ -109,7 +111,7 @@ function maybeAct(s,build,state,target){
       if(missionAction(s,'interact')){
         state.actions.interactions++;
         if(s.stage==='boss'){
-          state.bossAt=s.t;
+          state.bossAt=s.t;state.bossStarts[s.front]=s.t;
           state.slugAtBoss=rodeSlug;
         }else if(rodeSlug){
           state.issues.push(`t=${round(s.t)} boss gate interaction dismounted Slug instead of starting boss`);
@@ -124,7 +126,7 @@ function runMission({hero,seed,useSlug}){
   const started=beginRun(createProfile(`pilot-${hero}-${seed}-${useSlug?'slug':'foot'}`),{hero,difficulty:'normal',seed});
   if(!started.ok)throw new Error(started.reason);
   const s=createMission(started.descriptor),build={hero,useSlug};
-  const state={bossAt:null,slugAtBoss:false,choices:[],nodeTimes:{},issues:[],actions:{skills:0,interactions:0,dashes:0},events:{}};
+  const state={bossAt:null,bossStarts:{},slugAtBoss:false,choices:[],nodeTimes:{},issues:[],actions:{skills:0,interactions:0,dashes:0},events:{}};
   let frames=0,previousDash=0;
   while(s.phase!=='result'&&s.t<MAX_SECONDS&&frames<MAX_SECONDS*60+5000){
     frames++;
@@ -136,8 +138,8 @@ function runMission({hero,seed,useSlug}){
     const target=nextTarget(s,build,state);maybeAct(s,build,state,target);
     const input=directionTo(s,target);stepMission(s,DT,input);
     if(s.player.dashCd>previousDash+.5)state.actions.dashes++;previousDash=s.player.dashCd;
-    if(s.boss.active&&state.bossAt===null)state.bossAt=s.t;
-    for(const site of s.sites)if(site.state==='done'&&state.nodeTimes[site.id]===undefined)state.nodeTimes[site.id]=round(s.t);
+    if(s.boss.active&&state.bossStarts[s.front]===undefined){state.bossAt=s.t;state.bossStarts[s.front]=s.t;}
+    for(const site of s.sites)if(site.state==='done'&&state.nodeTimes[`${s.front}:${site.id}`]===undefined)state.nodeTimes[`${s.front}:${site.id}`]=round(s.t);
     for(const event of takeMissionEvents(s))state.events[event]=(state.events[event]||0)+1;
     if(!Number.isFinite(s.player.hp)||!Number.isFinite(s.player.x)||!Number.isFinite(s.player.y)){state.issues.push(`t=${round(s.t)} non-finite player state`);break;}
   }
@@ -148,20 +150,20 @@ function runMission({hero,seed,useSlug}){
     hero,seed,useSlug,outcome:result?.won?'victory':result?'defeat':'incomplete',reason:result?.reason??s.phase,
     time:round(result?.seconds??s.t),hp:round(s.player.hp),level:s.level,kills:s.stats.kills,elites:s.stats.elites,rescues:s.stats.rescues,outposts:s.stats.outposts,
     bossTtk:result?.won&&state.bossAt!==null?round(result.seconds-state.bossAt):null,slugAtBoss:state.slugAtBoss,bossHp:round(s.boss.hp),parts:Object.fromEntries(s.boss.parts.map(p=>[p.id,round(p.hp)])),
-    nodeTimes:state.nodeTimes,unionAt:state.choices.find(c=>c.id==='union')?.time??null,choices:state.choices,weapons:s.weapons.map(w=>w&&({id:w.id,rank:w.rank,evolved:w.evolved,mods:w.mods})),cores:s.cores,
+    frontBattles:[...s.frontHistory.map(f=>({front:f.front,seconds:round(f.at-state.bossStarts[f.front])})),...(result?.won?[{front:2,seconds:round(result.seconds-state.bossStarts[2])}]:[])],frontHistory:s.frontHistory,bossStarts:state.bossStarts,tactics:s.tactics,nodeTimes:state.nodeTimes,unionAt:state.choices.find(c=>c.id==='union')?.time??null,choices:state.choices,weapons:s.weapons.map(w=>w&&({id:w.id,rank:w.rank,evolved:w.evolved,mods:w.mods})),cores:s.cores,
     stats:{...s.stats},actions:state.actions,events:state.events,issues:state.issues
   };
 }
 
 const runs=[];
-for(const seed of SEEDS)for(const hero of ['marco','fio'])for(const useSlug of [false,true])runs.push(runMission({hero,seed,useSlug}));
+for(const seed of SEEDS)for(const hero of ['marco','fio'])for(const useSlug of (RUSH?[false]:[false,true]))runs.push(runMission({hero,seed,useSlug}));
 
 const aggregates=[];
-for(const hero of ['marco','fio'])for(const useSlug of [false,true]){
+for(const hero of ['marco','fio'])for(const useSlug of (RUSH?[false]:[false,true])){
   const set=runs.filter(r=>r.hero===hero&&r.useSlug===useSlug);
   aggregates.push({hero,useSlug,wins:set.filter(r=>r.outcome==='victory').length,runs:set.length,medianTime:round(median(set.map(r=>r.time))),medianBossTtk:round(median(set.map(r=>r.bossTtk))),medianKills:round(median(set.map(r=>r.kills))),medianHp:round(median(set.map(r=>r.hp))),issues:set.flatMap(r=>r.issues)});
 }
 
-const report={rules:{dt:DT,maxSeconds:MAX_SECONDS,seeds:SEEDS},policy:'public API only; state-aware threat steering, objective navigation, ordinary dash/skill/interact inputs',aggregates,runs};
+const report={rules:{dt:DT,maxSeconds:MAX_SECONDS,seeds:SEEDS,route:RUSH?'rush first/convoy/boss':'all field supplies and artillery positions'},policy:'public API only; state-aware threat steering, objective navigation, ordinary dash/skill/interact inputs',aggregates,runs};
 const output=process.argv.includes('--summary')?{rules:report.rules,policy:report.policy,aggregates,runs:runs.map(({choices,events,...run})=>({...run,choiceCount:choices.length}))}:report;
 process.stdout.write(`${JSON.stringify(output,null,2)}\n`);

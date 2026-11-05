@@ -1,10 +1,10 @@
-import {RULESET,HEROES,TRAINING,RESEARCH,DOCTRINES,calculateSettlement,researchReady} from './content.js';
+import {RULESET,HEROES,TRAINING,RESEARCH,DOCTRINES,ORDERS,orderReady,calculateSettlement,researchReady} from './content.js';
 export const PROFILE_KEY='operation-breakwater-profile-v1';
 const copy=x=>JSON.parse(JSON.stringify(x));
 export function createProfile(id='local'){
  return {version:1,id,wallet:0,selectedHero:'marco',difficulty:'normal',doctrines:{marco:'focus',fio:'reserve'},settings:{sound:true,reduced:false},
  training:Object.fromEntries(Object.keys(TRAINING).map(k=>[k,{rank:0,paid:[]}])),researched:[],freshMods:[],
- progress:{weaponKills:{p:0,h:0,r:0},pMastery:false,overdriveKills:0},achievements:[],firstReport:false,firstClear:{},records:{},
+ progress:{weaponKills:{p:0,h:0,r:0},pMastery:false,overdriveKills:0,midbossMarco:0,unions:0,bestEvolvedKills:0},orders:[],achievements:[],firstReport:false,firstClear:{},records:{},
  nextSequence:1,lastSettledSequence:0,lastReceipt:null,activeRun:null};
 }
 const nonnegative=(v,fallback=0)=>Number.isFinite(v)&&v>=0?Math.floor(v):fallback;
@@ -17,7 +17,8 @@ export function parseProfile(raw){
  p.selectedHero=HEROES[source.selectedHero]?source.selectedHero:'marco';p.difficulty=source.difficulty==='dense'?'dense':'normal';
  p.settings={sound:source.settings?.sound!==false,reduced:source.settings?.reduced===true};
  p.doctrines={marco:source.doctrines?.marco==='fan'?'fan':'focus',fio:source.doctrines?.fio==='quick'?'quick':'reserve'};
- p.progress={weaponKills:Object.fromEntries(['p','h','r'].map(id=>[id,nonnegative(source.progress?.weaponKills?.[id])])),pMastery:source.progress?.pMastery===true,overdriveKills:nonnegative(source.progress?.overdriveKills)};
+ p.progress={weaponKills:Object.fromEntries(['p','h','r'].map(id=>[id,nonnegative(source.progress?.weaponKills?.[id])])),pMastery:source.progress?.pMastery===true,overdriveKills:nonnegative(source.progress?.overdriveKills),midbossMarco:nonnegative(source.progress?.midbossMarco),unions:nonnegative(source.progress?.unions),bestEvolvedKills:nonnegative(source.progress?.bestEvolvedKills)};
+ p.orders=Array.isArray(source.orders)?[...new Set(source.orders.filter(id=>ORDERS.some(o=>o.id===id)))]:[];
  p.achievements=Array.isArray(source.achievements)?source.achievements.filter(id=>['first-clear','rescue-all','marco-fan','fio-quick','s-rank'].includes(id)):[];
  p.firstReport=source.firstReport===true;p.firstClear={breakwater:source.firstClear?.breakwater===true};
  p.records=Object.fromEntries(Object.entries(source.records||{}).filter(([key,r])=>key.startsWith('operation-')&&r&&Number.isFinite(r.kills)&&Number.isFinite(r.score)).map(([key,r])=>[key,{kills:nonnegative(r.kills),score:nonnegative(r.score),bestTime:Number.isFinite(r.bestTime)&&r.bestTime>=0?r.bestTime:null}]));
@@ -32,6 +33,7 @@ export function parseProfile(raw){
 export function recoverActiveRun(p,reason='recovery'){
  const a=p.activeRun;if(!a)return{ok:false,reason:'복구할 작전이 없습니다.'};const c=a.checkpoint||{},old=c.stats||{};
  const stats={kills:nonnegative(old.kills),elites:nonnegative(old.elites),rescues:nonnegative(old.rescues),outposts:nonnegative(old.outposts),armorBreaks:nonnegative(old.armorBreaks),weaponKills:Object.fromEntries(['p','h','r'].map(id=>[id,nonnegative(old.weaponKills?.[id])])),pMastery:old.pMastery===true,overdriveKills:nonnegative(old.overdriveKills),evolved:Array.isArray(old.evolved)?old.evolved.filter(id=>['p','h','r'].includes(id)):[],union:old.union===true,bestCombo:nonnegative(old.bestCombo)};
+ stats.midbosses=nonnegative(old.midbosses);stats.evolvedKills=nonnegative(old.evolvedKills);stats.fronts=Array.isArray(old.fronts)?old.fronts.filter(n=>[0,1].includes(n)):[];stats.supplyPicks=Array.isArray(old.supplyPicks)?old.supplyPicks.filter(id=>typeof id==='string'):[];
  return settleRun(p,{...a,researchPresented:Array.isArray(c.researchPresented)?c.researchPresented.filter(id=>RESEARCH[id]):[],result:{won:false,reason,seconds:nonnegative(c.t),hero:a.hero,stats,weapons:[],training:a.snapshot.training||{},doctrine:a.snapshot.doctrine}});
 }
 export function snapshotProfile(p){return {training:Object.fromEntries(Object.entries(p.training).map(([id,e])=>[id,e.rank])),researched:[...p.researched],freshMods:[...p.freshMods],doctrine:p.doctrines[p.selectedHero]};}
@@ -44,11 +46,13 @@ export function checkpointRun(p,run){if(p.activeRun?.id!==run.id)return {ok:fals
 export function settleRun(p,run){
  if(run.sequence<=p.lastSettledSequence)return {ok:true,alreadySettled:true,profile:p,receipt:p.lastReceipt?.runId===run.id?p.lastReceipt:null};
  if(!run.result||p.activeRun?.id!==run.id||p.activeRun.sequence!==run.sequence)return {ok:false,reason:'정산할 작전이 일치하지 않습니다.'};
- const next=copy(p),r=run.result,input={...r.stats,kills:r.stats.kills,seconds:r.seconds,won:r.won,difficulty:run.difficulty};
+ const next=copy(p),r=run.result,input={...r.stats,kills:r.stats.kills,seconds:r.seconds,won:r.won,difficulty:run.difficulty,rules:run.rules};
  const award=calculateSettlement(input,{firstReport:!p.firstReport,firstClear:!p.firstClear[run.operation]});
+ const completedOrders=ORDERS.filter(o=>!next.orders.includes(o.id)&&orderReady(o.id,r));award.orders=completedOrders.map(o=>({id:o.id,title:o.title,credits:o.reward}));award.orderCredits=completedOrders.reduce((n,o)=>n+o.reward,0);award.totalCredits+=award.orderCredits;next.orders.push(...completedOrders.map(o=>o.id));
  next.wallet+=award.totalCredits;if(award.oneTime.report)next.firstReport=true;if(r.won)next.firstClear[run.operation]=true;
  for(const id of ['p','h','r'])next.progress.weaponKills[id]=(next.progress.weaponKills[id]||0)+(r.stats.weaponKills[id]||0);
  next.progress.pMastery ||= !!r.stats.pMastery;next.progress.overdriveKills+=r.stats.overdriveKills||0;
+ next.progress.midbossMarco=(next.progress.midbossMarco||0)+(run.hero==='marco'?(r.stats.midbosses||0):0);next.progress.unions=(next.progress.unions||0)+(r.stats.union?1:0);next.progress.bestEvolvedKills=Math.max(next.progress.bestEvolvedKills||0,r.stats.evolvedKills||0);
  next.freshMods=next.freshMods.filter(id=>!run.researchPresented.includes(id));
  const newly=[];const grant=(id,condition)=>{if(condition&&!next.achievements.includes(id)){next.achievements.push(id);newly.push(id);}};
  grant('first-clear',r.won);grant('rescue-all',r.won&&r.stats.rescues===5);grant('marco-fan',r.won&&run.hero==='marco'&&r.stats.evolved.includes('p'));grant('fio-quick',next.progress.overdriveKills>=300);grant('s-rank',r.won&&award.grade==='S');

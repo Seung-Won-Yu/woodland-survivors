@@ -2,13 +2,13 @@
 <p align="center"><strong>OPERATION BREAKWATER · 교두보 탈환</strong><br>마르코의 집중 사격, 피오의 강화 탄창.<br>전장에서 무기를 완성하고, 확보한 성과로 다음 출격을 준비하는 팬 시제품.</p>
 <p align="center">
 <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
-<img alt="0.12 작전 시제품" src="https://img.shields.io/badge/version-0.12-d5b77b?style=flat-square">
+<img alt="0.13 세 전선 작전" src="https://img.shields.io/badge/version-0.13-d5b77b?style=flat-square">
 <img alt="Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
-<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 작전실에서 출격</strong></a> · <a href="docs/METAL-SLUG-SURVIVORS-CONCEPT.md">게임 기획</a> · <a href="docs/META-PROGRESSION-ECONOMY.md">기지와 경제</a> · <a href="docs/VALIDATION-V012.md">구현·검증 기록</a></p>
+<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 작전실에서 출격</strong></a> · <a href="docs/METAL-SLUG-SURVIVORS-CONCEPT.md">게임 기획</a> · <a href="docs/META-PROGRESSION-ECONOMY.md">기지와 경제</a> · <a href="docs/VALIDATION-V013.md">구현·검증 기록</a></p>
 
-![기지에서 대원과 작전을 준비하는 화면](docs/images/v012-lobby.png)
+![중간 보스 격파 뒤 다음 전선의 빌드를 결정하는 전술 보급](docs/images/v013-midboss-supply.png)
 
 ### 준비 → 전투 → 정산 → 연구 → 재출격
 
@@ -21,7 +21,19 @@
 | 성과로 새 개조 해금 | H + R 최종 합체 / 선택 Slug 노획 | 연구 개조를 새 판에서 선택 |
 | 다음 목표·최고 기록 확인 | 준비되면 직접 지휘전차에 도전 | 다른 대원·교범·과밀 도전 |
 
+해안의 장갑 수송차와 철도의 포격대를 격파하면 전술 보급을 고르고 다음 전선으로 넘어갑니다. 무장·XP·전술 지원은 끝까지 유지합니다. 시간이나 처치 수로 관문을 잠그지 않으며 각 전선 보스에게 바로 도전할 수도 있습니다.
+
 시간이 지나면 자동 실패하는 규칙은 없습니다. 진화 핵심은 수용소·수송대·후방 포로에서 얻습니다. 빈 지원 슬롯의 보급은 두 종류 총을 함께 제시하므로 합체 재료를 직접 선택할 수 있습니다.
+
+### 세 전선의 한 판
+
+| 전선 | 전투와 판단 | 다음 전투의 변화 |
+| :-- | :-- | :-- |
+| 해안 침투 | 구출·두 차례 호위대 → 장갑 수송차 | 관통 탄두 / 합체 조립선 / 기갑 지원 선택 |
+| 철도 보급선 | 선택한 빌드로 보급선·포격대 돌파 | 35처치 연계 포격 / 정비 / 연구 개조 수령 |
+| 항구 총공세 | 완성 무기로 고밀도 추격대 섬멸 | 관제소에서 보스 포격 교란 또는 시험 탄약 선택 → 지휘전차 |
+
+포격 진지는 철도와 항구 모두 선택 목표입니다. 더 강한 화력과 안전한 보스 공략 중 하나를 고를 수 있습니다. Slug 지원은 다음 차고 한 번을 확보하고, 내구 160·짧은 주포 재사용을 제공합니다.
 
 ### 두 대원, 다른 성장
 
@@ -33,7 +45,9 @@
 | 주력 완성 예 | P 3단계 → 장갑 관통 권총 | H·R 3단계 + 핵심 → 미사일 호위 기관포 |
 | 재도전 해금 | P 진화로 완주 → 산개 교범 | 강화 중 누적 300처치 → 신속 교범 |
 
-P·H·R 모두 진화할 수 있습니다. 연구는 P 관통 분열·H 도탄·R 점화 탄두 후보를 영구 해금합니다. 새로 연구한 개조는 해당 총을 1단계 이상 강화하면 첫 적합한 성장 후보에 등장합니다. 매판 총기와 XP는 다시 성장시키며, 완성 무기를 기지에서 구매하지 않습니다.
+P·H·R 모두 진화할 수 있습니다. 연구는 P 관통 분열·H 도탄·R 점화 탄두·P 약점 파열·H 축전 탄창 후보를 영구 해금합니다. 새로 연구한 개조는 해당 총을 1단계 이상 강화하면 첫 적합한 성장 후보에 등장합니다. 매판 총기와 XP는 다시 성장시키며, 완성 무기를 기지에서 구매하지 않습니다.
+
+중간 보스 격파·합체 실적으로 새로운 연구를 열고, 세 전선 돌파·완성 화력 900처치·합체 완주의 지령으로 최초 보상을 받습니다. 800처치 이후에도 구간별 수당과 점수가 증가합니다. 기지에서 최근 보고서와 병영의 남은 지령을 볼 수 있습니다.
 
 전장은 보병·방패병·박격포병·증원 장교로 구성했습니다. 지휘전차는 포격·확산 사격·돌진 뒤 회복 빈틈을 드러내고, 부위 파괴에 따라 약해집니다. 진화·합체에는 주변 폭발, 관통·다탄두·유도탄, 적 경직과 짧은 타격 정지를 적용했습니다.
 
@@ -53,7 +67,9 @@ P·H·R 모두 진화할 수 있습니다. 연구는 P 관통 분열·H 도탄·
 
 ### 현재 범위와 확인할 것
 
-0.12는 **두 대원과 첫 작전의 전체 순환을 구현한 개발 버전**입니다. 다음 지역·에리·타마는 아직 구현하지 않았습니다. 이상적인 입력 주행은 약 75~124초에 완주해 기획의 4~6분 분량에는 미달합니다. 기록과 과밀 도전은 동작하지만 장기 반복의 다양성과 실제 플레이 재미는 계속 검증해야 합니다. 390px·320px 화면과 단일 포인터 스틱을 확인했고, 실기기 두 손 동시 조작은 추가 확인 대상입니다.
+0.13은 **두 대원과 하나의 작전 안에 세 전선을 구현한 개발 버전**입니다. 다음 별도 작전·에리·타마는 아직 구현하지 않았습니다. 초기 계정으로 구출·보급을 챙기는 이상적인 자동 주행 8회는 전투 시간 약 **3분 46초~5분 5초**에 완주했습니다. 선택 고민과 이동 오차가 있는 실제 플레이의 목표는 4~6분이며, 모든 플레이어에게 이 길이를 보장하지 않습니다. 우회 목표를 생략한 4회는 약 2분~2분 33초에 완주했습니다.
+
+이는 처리량·규칙의 검증이며 사람의 재미를 증명하지 않습니다. 390px·320px 화면, 실제 중간 보스 격파와 전선 전환·합체·연구 후 재출격은 확인했습니다. 실기기 두 손 동시 조작과 저사양 장시간 성능은 추가 확인 대상입니다. 기존 기지 재화·연구는 유지하며 0.12 진행 중 판은 확보 성과를 정산한 뒤 새 규칙으로 출격합니다.
 
 ### 로컬 실행
 
@@ -69,9 +85,10 @@ npm run dev
 
 | 명령 | 용도 |
 | :-- | :-- |
-| `npm test` | 기존 게임 + 작전 규칙 190개 검사 |
-| `npm run test:mission` | 작전·경제·저장·진화 검사 24개 |
-| `node scripts/mission-pilot.mjs --summary` | 초기 계정 8회 입력 주행 |
+| `npm test` | 기존 게임 + 작전 규칙 207개 검사 |
+| `npm run test:mission` | 작전·경제·저장·진화 검사 41개 |
+| `node scripts/mission-pilot.mjs --summary` | 초기 계정 8회 전체 보급 경로 주행 |
+| `node scripts/mission-pilot.mjs --rush --summary` | 우회 목표를 생략하는 4회 주행 |
 | `npm run build` | 정적 배포 파일 생성 |
 | `npm run test:pages` | 저장소 하위 경로·자산·모듈 버전 검사 |
 | `npm run preview` | `http://127.0.0.1:5201/woodland-survivors/` |
