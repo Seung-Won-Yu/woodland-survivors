@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b02",
+  "balanceRevision": "b03",
   "prototypeWeapons": ["h", "r", "f"],
   "expansionWeapons": ["p", "s"],
   "inventory": {"weaponSlots": 3, "moduleSlots": 4, "weaponMax": 6, "branchAt": 4, "moduleMax": 3},
@@ -17,7 +17,7 @@
   },
   "player": {"hp": 100, "speed": 190, "radius": 16, "invulnerability": 0.65, "dashDuration": 0.18, "dashInvulnerability": 0.30, "dashCooldown": 2.0, "targetHoldSeconds": 0.15},
   "defaultBurn": {"damagePerSecond": 6, "duration": 1.5, "tickSeconds": 0.5},
-  "combatFeel": {"pilotHitPush": 22, "bulletPush": 3, "blastPush": 9, "hurtMoveMultiplier": 0.45, "shieldPushMultiplier": 0.35},
+  "combatFeel": {"pilotHitPush": 22, "bulletPush": 3, "blastPush": 9, "hurtMoveMultiplier": 0.45, "shieldPushMultiplier": 0.35, "crowdSeparationSpeed": 140},
   "fio": {"initialCharge": 60, "chargeMax": 100, "killCharge": 1.0, "xpCharge": 0.15, "xpChargePerSecondCap": 3, "passiveChargePerSecond": 0.5, "bossPassiveChargePerSecond": 2, "chargeEfficiencyPerLevel": 0.01, "chargeEfficiencyCap": 0.20, "reserve": {"cost": 60, "duration": 6, "cooldown": 8, "intervalMultiplier": 0.65}, "quick": {"cost": 50, "duration": 4, "cooldown": 6, "intervalMultiplier": 0.65}},
   "weapons": {
     "p": {

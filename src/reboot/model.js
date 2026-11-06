@@ -1,4 +1,4 @@
-import {RULES,VERSION,FIELD,GUNS,MODULES,makeWeapon,tags,moduleRank,compatible,weaponStats,distance,clamp,layout} from './content.js';
+import {RULES,VERSION,FIELD,GUNS,MODULES,makeWeapon,tags,moduleRank,compatible,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
 const pick=(s,key,items)=>items[Math.floor(rng(s,key)*items.length)];
@@ -98,15 +98,15 @@ export function choose(s,id,{branch,slot,doctrine}={}){
  else return false;
  if(s.choice.type==='level'&&s.level>=6&&!s.player.branchChosen){if(!['reserve','quick'].includes(doctrine))return false;s.player.doctrine=doctrine;s.player.branchChosen=true;}
  s.stats.choices.push({t:Math.round(s.t*10)/10,id,branch:branch||null});if(s.choice.type==='supply')s.supplyCount++;s.phase='playing';s.choice=null;s.choices=[];
- if(s.weapons.filter(w=>w.level>=4).length>=2&&s.modules.some(m=>m.rank===3))buildCompleted(s,'synergy');
+ if(heatSynergyReady(s))buildCompleted(s,'synergy');
  emit(s,'choose');nextChoice(s);return true;
 }
-export function reroll(s){if(s.phase!=='choice'||!['level','supply'].includes(s.choice.type)||s.rerolls<=0)return false;s.rerolls--;s.choices=s.choice.type==='level'?levelCards(s):supplyCards(s);return true;}
-export function banishOptions(s){if(s.phase!=='choice'||!['level','supply'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&!moduleRank(s,id)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
+export function reroll(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.rerolls<=0)return false;s.rerolls--;s.choices=s.choice.type==='level'?levelCards(s):s.choice.type==='supply'?supplyCards(s):armoryCards(s,s.choice.quality);return true;}
+export function banishOptions(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&!moduleRank(s,id)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
 export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)return false;const target=c.kind==='gun'?c.weapon:c.module,index=s.choices.indexOf(c);s.excluded.push(target);s.banishes--;
  const used=new Set(s.choices.filter(card=>card!==c).map(card=>card.id));let replacement;
  if(c.kind==='gun'){const pool=['h','r','f'].filter(g=>!s.excluded.includes(g)&&!s.weapons.some(w=>w.id===g&&!w.fusion)&&!used.has(`gun:${g}`));if(pool.length){const g=pick(s,'supply',pool);replacement={id:`gun:${g}`,kind:'gun',weapon:g,title:`${GUNS[g].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label:'새 무기'};}}
- if(!replacement){const pool=modulePool(s).filter(m=>!used.has(`module:${m}`));if(pool.length)replacement=moduleCard(pick(s,'supply',pool));}
+ if(!replacement){const pool=modulePool(s).filter(m=>!used.has(`module:${m}`));if(pool.length)replacement=moduleCard(pick(s,'supply',pool),c.kind==='module'?c.rank:1);}
  if(!replacement)replacement=['health','charge','power'].map(utility).find(card=>!used.has(card.id));s.choices[index]=replacement;return true;
 }
 export function skip(s){if(s.phase!=='choice'||s.choice.type==='assembly'||s.choice.type==='clear')return false;if(s.player.hp<s.player.maxHp)s.player.hp=Math.min(s.player.maxHp,s.player.hp+s.player.maxHp*.05);else s.player.charge=Math.min(100,s.player.charge+5);if(s.choice.type==='supply')s.supplyCount++;s.phase='playing';s.choice=null;s.choices=[];nextChoice(s);return true;}
@@ -117,7 +117,18 @@ function targets(s){const list=alive(s);if(s.raid?.state==='active'&&s.raid.targ
 const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
 function move(s,e,dx,dy,r){const x=clamp(e.x+dx,FIELD.left+r,FIELD.right-r),y=clamp(e.y+dy,FIELD.top+r,FIELD.bottom-r);if(!blocked(s,x,e.y,r))e.x=x;if(!blocked(s,e.x,y,r))e.y=y;}
 function lineBlocked(s,a,b){const n=Math.ceil(distance(a,b)/20);for(let i=1;i<=n;i++)if(blocked(s,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return true;return false;}
-function targetFor(s,range){return targets(s).filter(e=>distance(e,s.player)<range+e.r&&!lineBlocked(s,s.player,e)).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];}
+function attackTargets(s,range){return targets(s).filter(e=>e.hp>0&&distance(e,s.player)<range+e.r&&!lineBlocked(s,s.player,e)).sort((a,b)=>distance(a,s.player)-distance(b,s.player));}
+function targetFor(s,w,d,candidates){
+ const locked=candidates.find(e=>e.id===w.targetId);if(locked&&s.t<(w.targetUntil||0))return locked;
+ let selected=candidates[0];
+ if(w.id==='f'){
+  let best=-1;for(const candidate of candidates.slice(0,24)){const a=Math.atan2(candidate.y-s.player.y,candidate.x-s.player.x);let score=0;
+   for(const e of candidates){const b=Math.atan2(e.y-s.player.y,e.x-s.player.x);if(Math.abs(Math.atan2(Math.sin(b-a),Math.cos(b-a)))<d.cone*Math.PI/360)score+=1+Math.min(e.hp,d.damage)/d.damage*.1;}
+   if(score>best){best=score;selected=candidate;}
+  }
+ }
+ w.targetId=selected?.id||null;w.targetUntil=s.t+RULES.player.targetHoldSeconds;return selected;
+}
 function spawnEnemy(s,type,x,y,siteId=null,extra={}){
  if(alive(s).length>=160)return null;const d=RULES.enemies[type],hp=d.hp*Math.pow(1.05,Math.min(s.pressure,12)),e={id:`e-${++s.id}`,type,x:clamp(x,60,1540),y:clamp(y,60,1140),r:type==='officer'?24:type==='shield'?21:17,hp,maxHp:hp,speed:d.speed*Math.min(1.3,1+s.pressure*.03),timer:1+rng(s,'combat')*2,aim:Math.atan2(s.player.y-clamp(y,60,1140),s.player.x-clamp(x,60,1540)),hurt:0,walk:0,spawnAge:0,siteId,dead:false,death:0,burn:0,...extra};s.enemies.push(e);return e;
 }
@@ -154,7 +165,11 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
 }
 function feed(s,owner,weight,target){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}
- const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){w.payload+=weight;if(w.payload>=10&&w.payloadCd<=0){w.payload-=10;w.payloadCd=.6;const target2=targets(s).find(e=>e.hp>0&&distance(e,target)<300)||target;fire(s,w,target2,Math.atan2(target2.y-s.player.y,target2.x-s.player.x),80,{rocket:true,radius:130,source:'payload',homing:w.fusion.branch==='homing',incendiary:w.fusion.branch==='incendiary'});}}
+ const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){w.payload+=weight;if(w.payload>=10&&w.payloadCd<=0){w.payload-=10;w.payloadCd=.6;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<300&&!lineBlocked(s,target,e)).sort((a,b)=>distance(a,target)-distance(b,target)),next=near[0];s.stats.payloadBursts=(s.stats.payloadBursts||0)+1;
+  emit(s,'payload',target.x,target.y,{life:.25});
+  if(next)fire(s,w,next,Math.atan2(next.y-target.y,next.x-target.x),80,{rocket:true,radius:130,source:'payload',homing:w.fusion.branch==='homing',incendiary:w.fusion.branch==='incendiary',origin:target});
+  else blast(s,target.x,target.y,130,80,'payload',w.uid,w.fusion.branch==='incendiary');
+ }}
 }
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false){
  emit(s,'explosion',x,y,{r,life:.4});let budget=2;
@@ -163,17 +178,18 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false){
  if(ignite&&s.zones.length<12)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
 }
 function fire(s,w,target,a,amount,opts={}){
- if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r';s.shots.push({x:s.player.x+Math.cos(a)*22,y:s.player.y-18+Math.sin(a)*22,vx:Math.cos(a)*(rocket?300:700),vy:Math.sin(a)*(rocket?300:700),life:d.range/(rocket?300:700),damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source:opts.source||'native',owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:[]});return true;
+ if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin;s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*(rocket?300:700),vy:Math.sin(a)*(rocket?300:700),life:d.range/(rocket?300:700),damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source:opts.source||'native',owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:[]});return true;
 }
 function shoot(s,w){
- const d=weaponStats(w),p=s.player,target=targetFor(s,d.range);if(!target){const b=s.blocks.find(b=>b.hp>0&&distance({x:b.x+b.w/2,y:b.y+b.h/2},p)<150);if(b){b.hp=Math.max(0,b.hp-d.damage);p.attack=.1;emit(s,'impact',b.x+b.w/2,b.y+b.h/2);return true;}return false;}if(w.id!=='f'&&s.shots.length+d.count+(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7?1:0)>320)return false;
+ const d=weaponStats(w),p=s.player,candidates=attackTargets(s,d.range),target=targetFor(s,w,d,candidates);if(!target){const b=s.blocks.find(b=>b.hp>0&&distance({x:b.x+b.w/2,y:b.y+b.h/2},p)<150);if(b){b.hp=Math.max(0,b.hp-d.damage);p.attack=.1;emit(s,'impact',b.x+b.w/2,b.y+b.h/2);return true;}return false;}if(w.id!=='f'&&s.shots.length+d.count+(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7?1:0)>320)return false;
  const a=Math.atan2(target.y-p.y,target.x-p.x);p.aim=a;p.attack=.12;
  if(w.id==='f'){
   for(const e of targets(s)){const angle=Math.atan2(e.y-p.y,e.x-p.x),delta=Math.atan2(Math.sin(angle-a),Math.cos(angle-a));if(distance(p,e)<d.range+e.r&&Math.abs(delta)<d.cone*Math.PI/360&&!lineBlocked(s,p,e)){burn(e);damage(s,e,d.damage,'fire','native',w.uid,0);}}
   emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14});
   if(w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<3)s.zones.push({x:p.x,y:p.y,r:50,dps:12,life:2,tick:.25,source:'dot',owner:w.uid});
  }else{
-  for(let i=0;i<d.count;i++){let t=target;if(w.id==='r'&&i>0)t=targets(s).filter(e=>e.hp>0&&distance(e,p)<d.range)[i]||target;const angle=w.id==='r'?Math.atan2(t.y-p.y,t.x-p.x):a+(i-(d.count-1)/2)*.035;fire(s,w,t,angle,d.damage);}
+  const ordered=[target,...candidates.filter(e=>e.id!==target.id)];
+  for(let i=0;i<d.count;i++){const t=ordered[i%ordered.length],angle=Math.atan2(t.y-p.y,t.x-p.x)+(ordered.length===1?(i-(d.count-1)/2)*.035:0);fire(s,w,t,angle,d.damage);}
   if(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7)fire(s,w,target,a,60,{rocket:true,radius:100,homing:false,incendiary:false});emit(s,'shot',p.x+Math.cos(a)*28,p.y-18+Math.sin(a)*28,{angle:a,life:.08});
  }
  w.shots++;return true;
@@ -194,7 +210,13 @@ function updateShots(s,dt){
  s.shots=s.shots.filter(q=>q.life>0);
 }
 function hurt(s,amount,x,y){const p=s.player;if(p.invuln>0||p.dash>0||p.hp<=0)return;const actual=amount*(moduleRank(s,'overcharger')?1.15:1);p.hp=Math.max(0,p.hp-actual);s.stats.damageTaken+=actual;p.hurt=.2;p.invuln=.65;const dx=p.x-x,dy=p.y-y,d=Math.hypot(dx,dy)||1;move(s,p,dx/d*RULES.combatFeel.pilotHitPush,dy/d*RULES.combatFeel.pilotHitPush,16);emit(s,'hurt',p.x,p.y);}
-function enemyShot(s,e,a){if(s.enemyShots.length<100)s.enemyShots.push({x:e.x,y:e.y-20,vx:Math.cos(a)*180,vy:Math.sin(a)*180,life:3,r:5});}
+function enemyShot(s,e,a){if(s.enemyShots.length<100)s.enemyShots.push({x:e.x,y:e.y,vx:Math.cos(a)*180,vy:Math.sin(a)*180,life:3,r:5});}
+function separateEnemies(s,dt){
+ const crowd=alive(s),cells=new Map(),forces=crowd.map(()=>({x:0,y:0})),cell=56,limit=RULES.combatFeel.crowdSeparationSpeed*dt;
+ crowd.forEach((e,i)=>{const key=`${Math.floor(e.x/cell)},${Math.floor(e.y/cell)}`;if(!cells.has(key))cells.set(key,[]);cells.get(key).push(i);});
+ crowd.forEach((a,i)=>{const cx=Math.floor(a.x/cell),cy=Math.floor(a.y/cell);for(let x=cx-1;x<=cx+1;x++)for(let y=cy-1;y<=cy+1;y++)for(const j of cells.get(`${x},${y}`)||[]){if(j<=i)continue;const b=crowd[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),gap=(a.r+b.r)*.9;if(d>=gap)continue;const angle=((i+1)*2.399963+(j+1)*.7),nx=d>.001?dx/d:Math.cos(angle),ny=d>.001?dy/d:Math.sin(angle),push=Math.min(limit,(gap-d)*.5);forces[i].x-=nx*push;forces[i].y-=ny*push;forces[j].x+=nx*push;forces[j].y+=ny*push;}});
+ crowd.forEach((e,i)=>{const f=forces[i],length=Math.hypot(f.x,f.y);if(length)move(s,e,f.x*Math.min(1,limit/length),f.y*Math.min(1,limit/length),e.r);});
+}
 function updateEnemies(s,dt){
  const p=s.player;let incoming=null;
  for(const e of s.enemies){if(e.dead){e.death-=dt;continue;}e.spawnAge+=dt;e.hurt=Math.max(0,e.hurt-dt);e.timer-=dt;e.walk+=dt*e.speed*.12;
@@ -204,8 +226,9 @@ function updateEnemies(s,dt){
   if(e.type==='mortar'&&d<400){if(e.timer<=0){e.timer=2.8;s.hazards.push({x:p.x,y:p.y,r:48,timer:.9,age:0});emit(s,'warning',p.x,p.y,{r:48,life:.9});}}
   else{const before={x:e.x,y:e.y},speed=e.speed*(e.hurt>0&&e.type!=='officer'?RULES.combatFeel.hurtMoveMultiplier:1);move(s,e,dx/d*speed*dt,dy/d*speed*dt,e.r);if(e.x===before.x&&e.y===before.y)move(s,e,-dy/d*speed*dt,dx/d*speed*dt,e.r);}
   if(e.type==='officer'&&d<420&&e.timer<=0){e.timer=2.4;for(let i=-2;i<=2;i++)enemyShot(s,e,e.aim+i*.18);emit(s,'enemy-fire',e.x,e.y,{life:.2});}
-  if(e.spawnAge>.5&&d<e.r+16){const amount=RULES.enemies[e.type].contactDamage||12;if(!incoming||amount>incoming.amount)incoming={amount,x:e.x,y:e.y};}
  }
+ separateEnemies(s,dt);
+ for(const e of alive(s))if(e.spawnAge>.5&&distance(e,p)<e.r+16){const amount=RULES.enemies[e.type].contactDamage||12;if(!incoming||amount>incoming.amount)incoming={amount,x:e.x,y:e.y};}
  for(const q of s.enemyShots){q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;if(blocked(s,q.x,q.y,q.r))q.life=0;if(distance(q,p)<21){q.life=0;if(!incoming||incoming.amount<10)incoming={amount:10,x:q.x,y:q.y};}}
  for(const h of s.hazards){h.timer-=dt;if(h.timer<=0&&!h.hit){h.hit=true;emit(s,'explosion',h.x,h.y,{r:h.r,life:.3});if(distance(h,p)<h.r+16&&(!incoming||incoming.amount<14))incoming={amount:14,x:h.x,y:h.y};}}
  s.enemyShots=s.enemyShots.filter(q=>q.life>0);s.hazards=s.hazards.filter(h=>h.timer>-.3);s.enemies=s.enemies.filter(e=>!e.dead||e.death>0);

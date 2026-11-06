@@ -15,8 +15,16 @@ export const MODULES={
  overcharger:{name:'불안정 과급기',color:'#d7b5ff',desc:'전탄 보급 종료 때 강한 방출. 받는 피해 +15%.',detail:()=> '종료 방출 140 · 받는 피해 ×1.15'}
 };
 export const QUALITY={common:'일반',rare:'희귀',prototype:'원형품'};
+export const GUN_BRIEFS={h:'빠른 실탄 연사 · L4: 산개 도탄 / 유탄 급탄',r:'넓은 폭발로 무리 정리 · L4: 추적 다탄두 / 점화 탄두',f:'가까운 무리를 태우는 부채 화염 · L4: 연료 살포 / 압축 분사'};
+export const MODULE_LINKS={ricochet:'H L6 + 도탄2 → 사중 기관포',coil:'H·R 각 L4 + 코일2 → 전도 합체',catalyst:'화염으로 점화 → 유탄·로켓으로 열압 폭발',magnet:'위험한 XP 회수 동선을 짧게',overcharger:'전탄 보급 종료 방출 · 받는 피해 +15%'};
+export function buildPaths(s){
+ const paths=s.weapons.filter(w=>!w.fusion).map(w=>{const requirements=w.branch?RULES.weapons[w.id].evolution.moduleByBranch[w.branch]:[...new Set(Object.values(RULES.weapons[w.id].evolution.moduleByBranch).flat())],rank=Math.max(...requirements.map(id=>moduleRank(s,id))),ready=w.level===6&&rank>=2&&!w.evolved;return{title:`단일 진화 · ${GUNS[w.id].evolution}`,detail:`${GUNS[w.id].short} L${w.level}/6 · ${requirements.map(id=>MODULES[id].name).join(' 또는 ')} ${rank}/2`,ready:ready&&s.tuning>0,complete:w.evolved};});
+ const h=s.weapons.find(w=>w.id==='h'&&!w.fusion),r=s.weapons.find(w=>w.id==='r'&&!w.fusion),fused=s.weapons.some(w=>w.fusion);paths.push({title:'전도 합체 · H+R',detail:`H ${h?`L${h.level}/4`:'미보유'} · R ${r?`L${r.level}/4`:'미보유'} · 코일 ${moduleRank(s,'coil')}/2`,ready:!!(h&&r&&!h.evolved&&!r.evolved&&h.level>=4&&r.level>=4&&moduleRank(s,'coil')>=2&&s.tuning>0),complete:fused});
+ const fire=s.weapons.some(w=>w.level>=4&&tags(w).includes('burn')),blast=s.weapons.some(w=>w.level>=4&&tags(w).includes('blast')),rank=moduleRank(s,'catalyst');paths.push({title:'열압 연계 · 화염+폭발',detail:`서로 다른 두 총 L4 · 연소 ${fire?'확보':'필요'} · 폭발 ${blast?'확보':'필요'} · 촉매 ${rank}/3`,ready:rank===2&&heatSynergyReady(s,2)&&s.tuning>0,complete:heatSynergyReady(s)});return paths;
+}
 export const makeWeapon=id=>({id,level:1,branch:null,evolved:false,fusion:null,cd:.12,shots:0,payload:0,payloadCd:0});
-export function tags(w){const d=RULES.weapons[w.id],b=[d.branchA,d.branchB].find(b=>b.id===w.branch);return [...new Set([...d.tags,...(b?.tags||[]),...(w.fusion?['bullet','blast','conductive']:[])])];}
+export function tags(w){const d=RULES.weapons[w.id],b=[d.branchA,d.branchB].find(b=>b.id===w.branch),secondary=w.fusion?RULES.weapons[w.fusion.secondary]:null,branch=secondary?[secondary.branchA,secondary.branchB].find(b=>b.id===w.fusion.branch):null;return [...new Set([...d.tags,...(b?.tags||[]),...(w.fusion?['bullet','blast','conductive',...(branch?.tags||[])]:[])])];}
+export function heatSynergyReady(s,rank=3){return moduleRank(s,'catalyst')>=rank&&s.weapons.some(a=>a.level>=4&&tags(a).includes('burn')&&s.weapons.some(b=>b!==a&&b.level>=4&&tags(b).includes('blast')));}
 export const moduleRank=(s,id)=>s.modules.find(m=>m.id===id)?.rank||0;
 export const compatible=(s,id)=>RULES.modules[id].universal||s.weapons.some(w=>tags(w).some(t=>RULES.modules[id].compatibleAny?.includes(t)));
 export function weaponStats(w){

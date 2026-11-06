@@ -1,0 +1,556 @@
+[
+  {
+    "seed": 17,
+    "policy": "single",
+    "won": true,
+    "seconds": 56.9,
+    "level": 8,
+    "hp": 36,
+    "kills": 161,
+    "completed": {
+      "kind": "single",
+      "t": 27.18333333333307
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": null
+      },
+      {
+        "id": "r",
+        "level": 1,
+        "branch": null,
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "ricochet",
+        "rank": 3
+      }
+    ],
+    "score": 7310,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 0,
+      "banishesUsed": 0
+    },
+    "decisions": 12,
+    "stalled": null
+  },
+  {
+    "seed": 17,
+    "policy": "fusion",
+    "won": true,
+    "seconds": 95.7,
+    "level": 9,
+    "hp": 46,
+    "kills": 215,
+    "completed": {
+      "kind": "fusion",
+      "t": 71.33333333333057
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": {
+          "secondary": "r",
+          "branch": "homing",
+          "overflow": 2
+        }
+      },
+      {
+        "id": "f",
+        "level": 1,
+        "branch": null,
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "coil",
+        "rank": 2
+      }
+    ],
+    "score": 7850,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 2,
+      "banishesUsed": 0
+    },
+    "decisions": 13,
+    "stalled": null
+  },
+  {
+    "seed": 17,
+    "policy": "fire",
+    "won": true,
+    "seconds": 67,
+    "level": 8,
+    "hp": 24,
+    "kills": 128,
+    "completed": {
+      "kind": "synergy",
+      "t": 33.66666666666604
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 4,
+        "branch": "grenade",
+        "evolved": false,
+        "fusion": null
+      },
+      {
+        "id": "f",
+        "level": 4,
+        "branch": "trail",
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "catalyst",
+        "rank": 3
+      }
+    ],
+    "score": 6980,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 2,
+      "banishesUsed": 0
+    },
+    "decisions": 12,
+    "stalled": null
+  },
+  {
+    "seed": 71,
+    "policy": "single",
+    "won": true,
+    "seconds": 51.8,
+    "level": 7,
+    "hp": 66,
+    "kills": 127,
+    "completed": {
+      "kind": "single",
+      "t": 27.549999999999716
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": null
+      },
+      {
+        "id": "r",
+        "level": 2,
+        "branch": null,
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "ricochet",
+        "rank": 3
+      }
+    ],
+    "score": 6970,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 0,
+      "banishesUsed": 0
+    },
+    "decisions": 11,
+    "stalled": null
+  },
+  {
+    "seed": 71,
+    "policy": "fusion",
+    "won": true,
+    "seconds": 55.5,
+    "level": 6,
+    "hp": 60,
+    "kills": 118,
+    "completed": {
+      "kind": "fusion",
+      "t": 31.883333333332804
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": {
+          "secondary": "r",
+          "branch": "homing",
+          "overflow": 0
+        }
+      }
+    ],
+    "modules": [
+      {
+        "id": "coil",
+        "rank": 3
+      }
+    ],
+    "score": 6880,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 0,
+      "banishesUsed": 0
+    },
+    "decisions": 10,
+    "stalled": null
+  },
+  {
+    "seed": 71,
+    "policy": "fire",
+    "won": true,
+    "seconds": 54.1,
+    "level": 6,
+    "hp": 50,
+    "kills": 114,
+    "completed": {
+      "kind": "synergy",
+      "t": 29.933333333332914
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 5,
+        "branch": "grenade",
+        "evolved": false,
+        "fusion": null
+      },
+      {
+        "id": "f",
+        "level": 4,
+        "branch": "trail",
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "catalyst",
+        "rank": 3
+      }
+    ],
+    "score": 6840,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 2,
+      "banishesUsed": 1
+    },
+    "decisions": 10,
+    "stalled": null
+  },
+  {
+    "seed": 109,
+    "policy": "single",
+    "won": true,
+    "seconds": 53.9,
+    "level": 7,
+    "hp": 46,
+    "kills": 144,
+    "completed": {
+      "kind": "single",
+      "t": 26.266666666666456
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": null
+      },
+      {
+        "id": "r",
+        "level": 2,
+        "branch": null,
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "ricochet",
+        "rank": 3
+      }
+    ],
+    "score": 7140,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 0,
+      "banishesUsed": 0
+    },
+    "decisions": 11,
+    "stalled": null
+  },
+  {
+    "seed": 109,
+    "policy": "fusion",
+    "won": true,
+    "seconds": 57.6,
+    "level": 7,
+    "hp": 56,
+    "kills": 125,
+    "completed": {
+      "kind": "fusion",
+      "t": 33.683333333332705
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": {
+          "secondary": "r",
+          "branch": "homing",
+          "overflow": 0
+        }
+      }
+    ],
+    "modules": [
+      {
+        "id": "coil",
+        "rank": 3
+      }
+    ],
+    "score": 6950,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 2,
+      "banishesUsed": 0
+    },
+    "decisions": 11,
+    "stalled": null
+  },
+  {
+    "seed": 109,
+    "policy": "fire",
+    "won": true,
+    "seconds": 72.1,
+    "level": 8,
+    "hp": 42,
+    "kills": 155,
+    "completed": {
+      "kind": "synergy",
+      "t": 48.91666666666517
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "grenade",
+        "evolved": false,
+        "fusion": null
+      },
+      {
+        "id": "f",
+        "level": 4,
+        "branch": "trail",
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "catalyst",
+        "rank": 3
+      }
+    ],
+    "score": 7250,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 2,
+      "banishesUsed": 1
+    },
+    "decisions": 12,
+    "stalled": null
+  },
+  {
+    "seed": 214,
+    "policy": "single",
+    "won": true,
+    "seconds": 53.9,
+    "level": 7,
+    "hp": 46,
+    "kills": 177,
+    "completed": {
+      "kind": "single",
+      "t": 27.76666666666637
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": null
+      },
+      {
+        "id": "r",
+        "level": 1,
+        "branch": null,
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "ricochet",
+        "rank": 3
+      }
+    ],
+    "score": 7470,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 0,
+      "banishesUsed": 0
+    },
+    "decisions": 11,
+    "stalled": null
+  },
+  {
+    "seed": 214,
+    "policy": "fusion",
+    "won": true,
+    "seconds": 68.8,
+    "level": 8,
+    "hp": 58,
+    "kills": 155,
+    "completed": {
+      "kind": "fusion",
+      "t": 49.31666666666515
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 6,
+        "branch": "ricochet",
+        "evolved": true,
+        "fusion": {
+          "secondary": "r",
+          "branch": "homing",
+          "overflow": 1
+        }
+      },
+      {
+        "id": "f",
+        "level": 2,
+        "branch": null,
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "coil",
+        "rank": 2
+      }
+    ],
+    "score": 7250,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 2,
+      "banishesUsed": 0
+    },
+    "decisions": 12,
+    "stalled": null
+  },
+  {
+    "seed": 214,
+    "policy": "fire",
+    "won": true,
+    "seconds": 65.8,
+    "level": 7,
+    "hp": 58,
+    "kills": 134,
+    "completed": {
+      "kind": "synergy",
+      "t": 37.98333333333246
+    },
+    "weapons": [
+      {
+        "id": "h",
+        "level": 4,
+        "branch": "grenade",
+        "evolved": false,
+        "fusion": null
+      },
+      {
+        "id": "f",
+        "level": 4,
+        "branch": "trail",
+        "evolved": false,
+        "fusion": null
+      }
+    ],
+    "modules": [
+      {
+        "id": "catalyst",
+        "rank": 3
+      }
+    ],
+    "score": 7040,
+    "raids": [
+      0,
+      0
+    ],
+    "controls": {
+      "rerollsUsed": 2,
+      "banishesUsed": 0
+    },
+    "decisions": 11,
+    "stalled": null
+  }
+]

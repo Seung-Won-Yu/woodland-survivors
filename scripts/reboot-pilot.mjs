@@ -1,7 +1,7 @@
 // Normal-input model pilot. It never edits HP, gear, XP, world time or RNG.
 import {pathToFileURL} from 'node:url';
-import {createRun,step,choose,action,assemblyOptions,interaction,reroll} from '../src/reboot/model.js';
-import {moduleRank,distance} from '../src/reboot/content.js';
+import {createRun,step,choose,action,assemblyOptions,interaction,reroll,banish,banishOptions} from '../src/reboot/model.js';
+import {moduleRank,distance,compatible} from '../src/reboot/content.js';
 function free(s,x,y){return x>=60&&x<=1540&&y>=60&&y<=1140&&!s.blocks.some(b=>b.hp!==0&&x+22>b.x&&x-22<b.x+b.w&&y+22>b.y&&y-22<b.y+b.h);}
 function path(s,goal){
  const start=[Math.round((s.player.x-60)/40),Math.round((s.player.y-60)/40)],end=[Math.round((goal.x-60)/40),Math.round((goal.y-60)/40)],key=([x,y])=>`${x},${y}`;
@@ -32,8 +32,12 @@ export function pilot(seed=17,policy='single',{maxSeconds=360}={}){
  const s=createRun(seed),ctx={};let decisions=0,stalled=null;
  for(let tick=0;tick<maxSeconds*80&&s.t<maxSeconds&&s.phase!=='result';tick++){
   if(s.phase==='choice'){
+   const wanted=policy==='fusion'?'coil':policy==='fire'?'catalyst':null;
+   if(wanted&&['armory','raid-reward'].includes(s.choice.type)&&compatible(s,wanted)&&!s.choices.some(c=>c.module===wanted)){
+    const unwanted=banishOptions(s).find(c=>c.kind==='module'&&c.module!==wanted);if(unwanted){banish(s,unwanted.id);continue;}
+   }
    const c=[...s.choices].sort((a,b)=>priority(s,b,policy)-priority(s,a,policy))[0];
-   if(s.choice.type==='level'&&policy!=='single'&&priority(s,c,policy)<70&&s.rerolls>0){reroll(s);continue;}
+   if(['level','armory','raid-reward'].includes(s.choice.type)&&policy!=='single'&&priority(s,c,policy)<70&&s.rerolls>0){reroll(s);continue;}
    if(s.choice.type==='armory'&&s.choice.quality==='common'&&s.player.hp>75&&s.stats.completedBuild&&!s.raidUsed){action(s,'raid:light');continue;}
    const branch=c.weapon==='h'?(policy==='fire'?'grenade':'ricochet'):c.weapon==='r'?'homing':'trail';
    const args={branch,doctrine:'reserve'};if(c.kind==='gun'&&s.weapons.length>=3)args.slot=s.weapons.findIndex(w=>!w.evolved&&!w.fusion);if(c.kind==='module'&&s.modules.length>=4&&!moduleRank(s,c.module))args.slot=0;
@@ -58,6 +62,6 @@ export function pilot(seed=17,policy='single',{maxSeconds=360}={}){
   const nearby=s.gems.filter(g=>distance(g,s.player)<130).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];if(nearby)goal=nearby;
   if(s.enemies.some(e=>!e.dead&&distance(e,s.player)<50))action(s,'dash');step(s,1/60,movement(s,goal,ctx));
  }
- return{seed,policy,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],decisions,stalled};
+ return{seed,policy,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],controls:{rerollsUsed:2-s.rerolls,banishesUsed:1-s.banishes},decisions,stalled};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){const seeds=process.argv.includes('--all')?[17,71,109,214]:[17],reports=[];for(const seed of seeds)for(const policy of ['single','fusion','fire'])reports.push(pilot(seed,policy));process.stdout.write(JSON.stringify(reports,null,2)+'\n');}

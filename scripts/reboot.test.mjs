@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {RULES,makeWeapon,weaponStats} from '../src/reboot/content.js';
+import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents} from '../src/reboot/model.js';
 import {STORAGE_KEY,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
@@ -19,6 +19,27 @@ test('opening enemies respect distance and cover even near the southern boundary
 });
 test('shield facing has a readable turn limit so movement can expose its side',()=>{
  const s=quiet(),e=enemy('shield',800,700,'shield',90);s.enemies=[e];s.player.x=700;s.player.y=700;step(s,dt);assert.ok(Math.abs(e.aim)<=RULES.enemies.shield.turnRadiansPerSecond*dt+.00001);assert.ok(Math.abs(e.aim-Math.PI)>1);
+});
+test('crowd separation opens readable gaps without teleporting into nearby cover',()=>{
+ const s=quiet();s.enemies=Array.from({length:6},(_,i)=>enemy(`packed-${i}`,1100,800));const before=snapshot(s.enemies);step(s,dt);for(let i=0;i<6;i++)assert.ok(Math.hypot(s.enemies[i].x-before[i].x,s.enemies[i].y-before[i].y)<=RULES.combatFeel.crowdSeparationSpeed*dt+.001);tick(s,2);for(let i=0;i<6;i++)for(let j=i+1;j<6;j++)assert.ok(Math.hypot(s.enemies[i].x-s.enemies[j].x,s.enemies[i].y-s.enemies[j].y)>25);
+});
+test('auto aim holds a valid target briefly and immediately releases a dead target',()=>{
+ const s=quiet(),w=s.weapons[0];s.enemies=[enemy('held',1000,780,'rifle',1000),enemy('closer',1010,840,'rifle',1000)];w.cd=0;step(s,dt);assert.equal(w.targetId,'held');s.enemies[1].x=980;w.cd=0;step(s,dt);assert.equal(w.targetId,'held');tick(s,.17);w.cd=0;step(s,dt);assert.equal(w.targetId,'closer');s.enemies[1].hp=0;w.cd=0;step(s,dt);assert.equal(w.targetId,'held');
+});
+test('evolved H and R allocate their simultaneous projectiles to distinct living targets',()=>{
+ for(const id of ['h','r']){const s=quiet(),w={...makeWeapon(id),uid:'fan',level:6,evolved:true,branch:id==='h'?'ricochet':'homing',cd:0};s.weapons=[w];s.enemies=Array.from({length:6},(_,i)=>enemy(`spread-${i}`,1000+Math.cos(i)*40,800+Math.sin(i)*60,'rifle',1000));step(s,dt);assert.equal(new Set(s.shots.map(q=>q.target)).size,weaponStats(w).count);}
+});
+test('muzzle artwork height cannot turn a small sideways target movement into a miss',()=>{
+ const s=quiet(),w=s.weapons[0];w.cd=0;s.enemies=[enemy('moving',1000,800,'rifle',1000)];step(s,dt);w.cd=999;s.enemies[0].y+=12;tick(s,.4);assert.ok(s.enemies[0].hp<1000);
+});
+test('flame auto aim prioritizes a reachable crowd over a closer isolated soldier',()=>{
+ const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:0,level:6,evolved:true,branch:'trail'}];s.enemies=[enemy('isolated',900,800,'rifle',1000),...Array.from({length:10},(_,i)=>enemy(`crowd-${i}`,650,775+i*5,'rifle',1000))];step(s,dt);assert.equal(s.enemies[0].hp,1000);assert.ok(s.enemies.slice(1).every(e=>e.hp<1000));
+});
+test('fusion payload starts at its triggering impact and does not charge itself',()=>{
+ const s=quiet(),w=s.weapons[0];w.level=6;w.evolved=true;w.fusion={secondary:'r',branch:'homing',overflow:0};w.payload=9;s.enemies=[enemy('impact',1000,800,'rifle',1),enemy('next',1100,800,'rifle',1000)];s.shots=[bullet(s,s.enemies[0],2)];step(s,dt);const payload=s.shots.find(q=>q.source==='payload');assert.ok(payload);assert.ok(payload.x>=1000);assert.equal(payload.target,'next');assert.equal(s.stats.payloadBursts,1);tick(s,.5);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
+});
+test('assembly progress distinguishes a ready recipe from an already completed weapon',()=>{
+ const s=quiet();assert.ok(buildPaths(s).every(p=>!p.ready&&!p.complete));s.weapons[0].level=6;s.weapons[0].branch='ricochet';s.modules=[{id:'ricochet',rank:2}];assert.ok(buildPaths(s).some(p=>p.ready&&p.title.includes('사중')));action(s,'gear');choose(s,'evolve:h');assert.ok(buildPaths(s).some(p=>p.complete&&p.title.includes('사중')));assert.ok(buildPaths(s).every(p=>!p.ready));
 });
 test('same-seed ordinary inputs and checkpoint restoration produce identical continuation',()=>{
  const s=createRun(71);tick(s,1,{x:1,y:-1});takeEvents(s);const r=restore(snapshot(s));tick(s,.8,{x:-1,y:0});tick(r,.8,{x:-1,y:0});assert.deepEqual(snapshot(s),snapshot(r));
@@ -51,10 +72,17 @@ test('fusion retains H grammar, R specialization and overflow while freeing one 
 test('synergy completion uses a token to tune a module without forcing a fusion',()=>{
  const s=quiet();s.weapons[0].level=4;s.weapons[0].branch='grenade';s.weapons.push({...makeWeapon('f'),uid:'test-f',level:4,branch:'trail'});s.modules=[{id:'catalyst',rank:2}];action(s,'gear');assert.ok(choose(s,'tune:catalyst'));assert.equal(s.stats.completedBuild.kind,'synergy');assert.equal(s.weapons.length,2);assert.equal(s.tuning,0);
 });
+test('a utility module or a lone incendiary weapon cannot masquerade as heat synergy',()=>{
+ const s=quiet();s.weapons[0].level=4;s.weapons[0].branch='ricochet';s.weapons.push({...makeWeapon('r'),uid:'second',level:4,branch:'homing'});s.modules=[{id:'magnet',rank:2}];action(s,'gear');choose(s,'tune:magnet');assert.equal(s.stats.completedBuild,null);assert.equal(s.powerWave,null);
+ const a=quiet();a.weapons=[{...makeWeapon('r'),uid:'burn-and-blast',level:4,branch:'incendiary'}];a.modules=[{id:'catalyst',rank:3}];assert.ok(!buildPaths(a).find(p=>p.title.includes('열압')).complete);
+});
 test('refresh preserves finite controls and banish replaces only the selected slot',()=>{
  const s=quiet();supply(s);assert.ok(reroll(s));assert.equal(s.rerolls,1);const c=s.choices.find(c=>c.kind==='module');assert.ok(c);const other=s.choices.filter(x=>x!==c);assert.ok(banishOptions(s).some(x=>x.id===c.id));assert.ok(banish(s,c.id));assert.ok(s.excluded.includes(c.module));assert.equal(s.banishes,0);for(const a of other)assert.ok(s.choices.some(b=>JSON.stringify(a)===JSON.stringify(b)));assert.ok(s.choices.some(x=>x.kind==='module'));assert.ok(!s.choices.some(x=>x.id===c.id));
 });
 test('the first two new-gun opportunities cannot be eliminated by banish',()=>{const s=quiet();supply(s);const c=s.choices.find(c=>c.kind==='gun');assert.equal(banish(s,c.id),false);assert.equal(s.banishes,1);});
+test('module-crate refresh and banish preserve its quality and upgrade amount',()=>{
+ const s=quiet();s.weapons[0].level=4;s.weapons[0].branch='grenade';s.weapons.push({...makeWeapon('f'),uid:'fire',level:4,branch:'trail'});s.phase='choice';s.choice={type:'armory',quality:'rare'};s.choices=[{id:'module:magnet',kind:'module',module:'magnet',rank:2}];assert.ok(banish(s,'module:magnet'));assert.equal(s.choices[0].rank,2);assert.ok(reroll(s));assert.equal(s.choice.quality,'rare');assert.ok(s.choices.filter(c=>c.kind==='module').every(c=>c.rank===2));assert.equal(s.rerolls,1);assert.equal(s.banishes,0);
+});
 test('wager start persists an actual escrow and deterministic result through restoration',()=>{
  const s=quiet();supply(s,'arsenal');const old=snapshot(s.choices);assert.ok(action(s,'raid:armored'));assert.equal(s.raid.target.hp,4200);assert.deepEqual(s.raid.wagerCards,old);takeEvents(s);const r=restore(snapshot(s));tick(s,1,{x:.5,y:0});tick(r,1,{x:.5,y:0});assert.deepEqual(snapshot(s),snapshot(r));
 });

@@ -1,0 +1,126 @@
+{
+  "revision": "b03",
+  "method": "In-app browser ordinary UI inputs; no combat-state injection",
+  "runs": [
+    {
+      "method": "Visible SVG map observations and ordinary browser keyboard/card inputs; no HP/XP/equipment injection",
+      "controller": {
+        "policy": "single",
+        "completeAt": 0,
+        "steps": 39,
+        "log": [
+          {
+            "clear": {
+              "boss": false,
+              "cards": [
+                {
+                  "id": "stay",
+                  "text": "전술 결정1+화력을 더 쓴다남은 보급·대군·잔류 도전. 출구에서 언제든 귀환.선택 →"
+                },
+                {
+                  "id": "extract",
+                  "text": "전술 결정2→살아서 귀환이번 전투의 기록을 확정합니다.선택 →"
+                }
+              ],
+              "dash": true,
+              "gear": "조율권 0 · 진화·합체 조건 G",
+              "hp": "48 / 100",
+              "interact": "",
+              "level": "LV.7",
+              "modules": "도탄기 3",
+              "objective": "↓ 귀환 출구 · 24m",
+              "skill": false,
+              "time": "1:20",
+              "title": "전선 돌파",
+              "weapons": "H단일 진화—노획 무기—노획 무기"
+            }
+          }
+        ],
+        "stopOnClear": true
+      },
+      "resultText": "PROTOTYPE COMPLETE / SEED 2073330339\n화력으로 돌파했다.\n\n1:20 · LV.7 · 생존 귀환\n\n6,910\n이번 점수\n171\n일반 적 처치\n0\n잔류 도전\n사중 기관포 · L6\n도탄기 3\n첫 완성 0:57 · 단일 진화\n도탄 적중 266 · 전기 0회 · 열압 0회 · 합체 격발 0회\n습격 성공 0 / 실패 0\n최고 연속 처치 112\n새 패로 다시 출격 →\n같은 전장 · 다른 빌드\n작전실\n독립 시제품 기록입니다. 기존 작전의 크레딧·연구에는 영향을 주지 않습니다."
+    },
+    {
+      "method": "Visible SVG map and ordinary browser keyboard/card inputs, with manual boss movement; no combat-state injection",
+      "controller": {
+        "steps": 156,
+        "completeAt": 92,
+        "log": [
+          {
+            "choose": "rank:r",
+            "time": "0:53",
+            "hp": "48 / 100",
+            "kills": "124 K.O."
+          },
+          {
+            "choose": "module:coil",
+            "time": "1:00",
+            "hp": "48 / 100",
+            "kills": "150 K.O."
+          },
+          {
+            "choose": "module:coil",
+            "time": "1:08",
+            "hp": "48 / 100",
+            "kills": "169 K.O."
+          },
+          {
+            "choose": "module:coil",
+            "time": "1:13",
+            "hp": "48 / 100",
+            "kills": "179 K.O."
+          },
+          {
+            "choose": "rank:h",
+            "time": "1:31",
+            "hp": "34 / 100",
+            "kills": "229 K.O."
+          },
+          {
+            "assemblyReady": "1:32",
+            "hp": "34 / 100",
+            "kills": "229 K.O."
+          },
+          {
+            "choose": "fusion:h:r",
+            "time": "1:32",
+            "hp": "34 / 100",
+            "kills": "229 K.O."
+          },
+          {
+            "choose": "utility:health",
+            "time": "1:38",
+            "hp": "34 / 100",
+            "kills": "256 K.O."
+          },
+          {
+            "choose": "utility:health",
+            "time": "1:43",
+            "hp": "26 / 106",
+            "kills": "306 K.O."
+          },
+          {
+            "choose": "utility:health",
+            "time": "1:57",
+            "hp": "32 / 112",
+            "kills": "347 K.O."
+          }
+        ],
+        "approveAssembly": true
+      },
+      "resultText": "PROTOTYPE COMPLETE / SEED 2470425993\n화력으로 돌파했다.\n\n2:13 · LV.10 · 생존 귀환\n\n8,700\n이번 점수\n364\n일반 적 처치\n0\n잔류 도전\n전도 H+R · L6\n축전 코일 3\n첫 완성 1:32 · 태그 합체\n도탄 적중 0 · 전기 50회 · 열압 0회 · 합체 격발 37회\n습격 성공 0 / 실패 0\n최고 연속 처치 348\n새 패로 다시 출격 →\n같은 전장 · 다른 빌드\n작전실\n독립 시제품 기록입니다. 기존 작전의 크레딧·연구에는 영향을 주지 않습니다."
+    }
+  ],
+  "observedFusionWindow": {
+    "from": {
+      "time": "1:32",
+      "kills": 229
+    },
+    "to": {
+      "time": "1:41",
+      "kills": 287
+    },
+    "deltaKills": 58,
+    "includesAmbientAndPowerWave": true
+  }
+}

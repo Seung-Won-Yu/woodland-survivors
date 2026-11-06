@@ -2,7 +2,7 @@
 export const RULES = {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b02",
+  "balanceRevision": "b03",
   "prototypeWeapons": [
     "h",
     "r",
@@ -105,7 +105,8 @@ export const RULES = {
     "bulletPush": 3,
     "blastPush": 9,
     "hurtMoveMultiplier": 0.45,
-    "shieldPushMultiplier": 0.35
+    "shieldPushMultiplier": 0.35,
+    "crowdSeparationSpeed": 140
   },
   "fio": {
     "initialCharge": 60,
