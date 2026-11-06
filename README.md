@@ -2,11 +2,11 @@
 <p align="center"><strong>OPERATION BREAKWATER · 교두보 탈환</strong><br>마르코의 집중 사격, 피오의 강화 탄창.<br>전장에서 무기를 완성하고, 확보한 성과로 다음 출격을 준비하는 팬 시제품.</p>
 <p align="center">
 <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
-<img alt="0.14 병기 실증" src="https://img.shields.io/badge/version-0.14-d5b77b?style=flat-square">
+<img alt="0.15 진입과 잔류" src="https://img.shields.io/badge/version-0.15-d5b77b?style=flat-square">
 <img alt="Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
-<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 작전실에서 출격</strong></a> · <a href="docs/METAL-SLUG-SURVIVORS-CONCEPT.md">게임 기획</a> · <a href="docs/META-PROGRESSION-ECONOMY.md">기지와 경제</a> · <a href="docs/VALIDATION-V014.md">구현·검증 기록</a></p>
+<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 작전실에서 출격</strong></a> · <a href="docs/METAL-SLUG-SURVIVORS-CONCEPT.md">게임 기획</a> · <a href="docs/META-PROGRESSION-ECONOMY.md">기지와 경제</a> · <a href="docs/VALIDATION-V015.md">구현·검증 기록</a></p>
 
 ![야전 격납고에서 대원과 작전을 준비하는 새 로비](docs/images/v014-hangar-desktop.png)
 
@@ -21,7 +21,9 @@
 | 성과로 새 개조 해금 | H + R 최종 합체 / 선택 Slug 노획 | 연구 개조를 새 판에서 선택 |
 | 다음 목표·최고 기록 확인 | 준비되면 직접 지휘전차에 도전 | 다른 대원·교범·과밀 도전 |
 
-해안의 장갑 수송차와 철도의 포격대를 격파하면 전술 보급을 고르고 다음 전선으로 넘어갑니다. 무장·XP·전술 지원은 끝까지 유지합니다. 시간이나 처치 수로 관문을 잠그지 않으며 각 전선 보스에게 바로 도전할 수도 있습니다.
+**보스를 잡아도 자동으로 다음 맵에 가지 않습니다.** 전술 보급을 받고 **다음 미션 진입 / 현재 맵 잔류**를 직접 고릅니다. 잔류하면 XP와 추가 점수를 계속 얻고 20초마다 증원이 강해집니다. 출구에서 언제든 진입을 다시 결정할 수 있습니다. 최종 보스 뒤에도 잔류하거나 살아서 귀환해 완주 정산합니다. 무장·XP·전술 지원은 끝까지 유지합니다. 시간이나 처치 수로 관문을 잠그지 않으며 각 전선 보스에게 바로 도전할 수도 있습니다.
+
+탑승 중에는 **대원 HP와 Slug 차체 내구를 분리**합니다. 피격은 차체가 받고, 내구 0이면 HP 손실 없이 긴급 이탈합니다.
 
 시간이 지나면 자동 실패하는 규칙은 없습니다. 진화 핵심은 수용소·수송대·후방 포로에서 얻습니다. 빈 지원 슬롯의 보급은 두 종류 총을 함께 제시하므로 합체 재료를 직접 선택할 수 있습니다.
 
@@ -67,9 +69,9 @@ P·H·R·S·F 모두 진화할 수 있습니다. 기본 총 3단계 두 개와 �
 
 ### 현재 범위와 확인할 것
 
-0.14는 **두 대원과 하나의 작전 안에 세 전선을 구현한 개발 버전**입니다. 다음 별도 작전·에리·타마는 아직 구현하지 않았습니다. 초기 계정으로 구출·보급을 챙기는 이상적인 자동 주행 8회는 전투 시간 약 **3분 41초~5분 1초**에 완주했습니다. 선택 고민과 이동 오차가 있는 실제 플레이의 목표는 4~6분이며, 모든 플레이어에게 이 길이를 보장하지 않습니다. 세 합체를 목표로 한 12회도 모두 해당 병기를 조립해 완주했습니다. 실제 정산·연구 구매를 연결한 5판으로 연구 8종과 교차 효과를 확인했습니다.
+0.15는 **해안·철도·항구의 세 미션을 선택해 이어가는 개발 버전**입니다. 클리어 뒤 잔류에서 더 성장하고 점수를 벌거나, 무장과 내구를 유지하고 다음 맵으로 이동합니다. 최고 시간과 최고 점수를 각각 기록합니다. [진입·잔류 기획과 규칙](docs/MISSION-LOOP-V015.md)을 기준으로 구현했습니다.
 
-이는 처리량·규칙의 검증이며 사람의 재미를 증명하지 않습니다. 390px·320px 화면, 실제 중간 보스 격파와 전선 전환·합체·연구 후 재출격은 확인했습니다. 실기기 두 손 동시 조작과 저사양 장시간 성능은 추가 확인 대상입니다. 기존 기지 재화·연구는 유지하며 이전 규칙의 진행 중 판은 확보 성과를 정산한 뒤 새 규칙으로 출격합니다.
+초기 계정 자동 입력 8판, 합체 경로 12판, 맵별 90초 이상 잔류 8판을 검증했습니다. 이는 진행·성장·기록의 검증이며 사람의 재미를 증명하지 않습니다. 390·320px 문서 프레임에서 진입/잔류 UI와 출구 재선택을 확인했습니다. 실기기 두 손 조작·장기 체감 난도는 추가 플레이 테스트 대상입니다. 기지 재화·연구는 유지하며 0.14 진행 중 판은 확보 성과를 정산한 뒤 새 규칙으로 출격합니다.
 
 ### 로컬 실행
 
@@ -85,9 +87,10 @@ npm run dev
 
 | 명령 | 용도 |
 | :-- | :-- |
-| `npm test` | 기존 게임 + 작전 규칙 224개 검사 |
-| `npm run test:mission` | 작전·경제·저장·진화 검사 58개 |
+| `npm test` | 기존 게임 + 작전 규칙 240개 검사 |
+| `npm run test:mission` | 작전·경제·저장·진화 검사 74개 |
 | `node scripts/mission-pilot.mjs --summary` | 초기 계정 8회 전체 보급 경로 주행 |
+| `node scripts/mission-pilot.mjs --holdout --hold-seconds=90 --max-seconds=900 --summary` | 각 맵 장기 잔류 → 출구 복귀 → 귀환 8판 |
 | `node scripts/mission-pilot.mjs --builds --summary` | 3합체 × 2대원 × 2시드 12회 주행 |
 | `node scripts/mission-pilot.mjs --journey` | 실제 정산·구매를 연결하는 연구 여정 5판 |
 | `npm run build` | 정적 배포 파일 생성 |
@@ -103,4 +106,4 @@ npm run dev
 
 별도 주소에서 기존 원화·게임을 보존했습니다. 저장 키도 분리했습니다.
 
-메탈슬러그 캐릭터·설정에서 착안한 비공식 팬 시제품입니다. 게임에서 추출한 자산·코드는 사용하지 않았습니다. [새 격납고·환경 아트와 프롬프트](docs/MISSION-ART-V014.md) · [기존 아트 기록](docs/ART-PROVENANCE.md). 코드·아트 재사용 라이선스는 아직 정하지 않았습니다. Galmuri는 동봉된 [SIL OFL 1.1](public/fonts/woodland/LICENSE.txt)을 따릅니다.
+메탈슬러그 캐릭터·설정에서 착안한 비공식 팬 시제품입니다. 게임에서 추출한 자산·코드는 사용하지 않았습니다. [차체·포탑 분리 아트와 프롬프트](docs/MISSION-ART-V015.md) · [새 격납고·환경 아트와 프롬프트](docs/MISSION-ART-V014.md) · [기존 아트 기록](docs/ART-PROVENANCE.md). 코드·아트 재사용 라이선스는 아직 정하지 않았습니다. Galmuri는 동봉된 [SIL OFL 1.1](public/fonts/woodland/LICENSE.txt)을 따릅니다.

@@ -15,9 +15,9 @@
 <canvas id="mission-world" aria-label="교두보 탈환 전투 화면"></canvas>
 <div class="screen-shade" aria-hidden="true"></div>
 <header id="combat-hud" hidden>
- <div class="combat-vitals"><div><b id="combat-hero"></b><span id="combat-level"></span></div><div class="hp-bar"><i id="combat-hp-fill"></i><span id="combat-hp"></span></div><small id="combat-trait"></small></div>
+ <div class="combat-vitals"><div><b id="combat-hero"></b><span id="combat-level"></span></div><div class="hp-bar"><i id="combat-hp-fill"></i><span id="combat-hp"></span></div><div id="combat-slug" hidden><b>SLUG 차체 내구</b><div class="hp-bar armor-bar"><i id="combat-armor-fill"></i><span id="combat-armor"></span></div></div><small id="combat-trait"></small></div>
  <div class="combat-clock"><span id="combat-stage">교두보 탈환</span><b id="combat-time">0:00</b></div>
- <div class="combat-tally"><b id="combat-kills">0 처치</b><span id="combat-credits">확보 0C</span><button id="combat-pause" aria-label="전투 일시정지">Ⅱ</button></div>
+ <div class="combat-tally"><b id="combat-kills">0 처치</b><span id="combat-score"></span><span id="combat-credits">확보 0C</span><button id="combat-pause" aria-label="전투 일시정지">Ⅱ</button></div>
 </header>
 <aside id="boss-panel" hidden><div><b id="boss-name">모덴군 지휘전차</b><span id="boss-state"></span></div><div class="boss-bar"><i id="boss-hp-fill"></i></div><small id="boss-parts"></small></aside>
 <aside id="combat-map" hidden><canvas id="tactical-map" width="136" height="112" aria-label="전술 지도"></canvas><button id="target-map">목표 선택 <span>M</span></button></aside>

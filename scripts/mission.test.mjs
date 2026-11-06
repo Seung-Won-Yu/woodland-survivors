@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {RULESET,BOSS_GATE,calculateSettlement,TRAINING,researchReady} from '../src/mission/content.js';
 import {createProfile,parseProfile,recoverActiveRun,beginRun,settleRun,buyTraining,refundTraining,buyResearch,checkpointRun,createProfileStore} from '../src/mission/profile.js';
-import {createMission,restoreMission,packMission,stepMission,chooseMission,rerollMission,missionAction,endMission,pauseMission,resumeMission,availableUpgrades,interaction} from '../src/mission/model.js';
+import {createMission,restoreMission,packMission,stepMission,chooseMission,rerollMission,missionAction,endMission,pauseMission,resumeMission,availableUpgrades,interaction,holdoutDanger,missionScore,bossPartPosition} from '../src/mission/model.js';
+import {carrierTravel,turnToward} from '../src/mission/motion.js';
 const dt=1/60;
 function begun(hero='marco',seed=17,p=createProfile('test')){const start=beginRun(p,{hero,seed});assert.ok(start.ok);return{profile:start.profile,run:createMission(start.descriptor)};}
 function step(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.ceil(seconds/dt);i++)stepMission(s,dt,input);}
@@ -76,9 +77,9 @@ test('P split cannot recursively split; arrays remain bounded during dense colli
  const s=begun().run;quiet(s);s.player.x=0;s.player.y=0;s.player.invuln=100;s.weapons[0]={id:'p',rank:3,evolved:true,mods:['p-split'],cd:0};const template=begun().run.enemies[0];s.enemies=Array.from({length:45},(_,i)=>({...template,id:100+i,x:70+(i%10)*13,y:(Math.floor(i/10)-2)*15,hp:1000,speed:0,timer:999}));step(s,2);
  assert.ok(s.shots.length<=280);assert.ok(s.shots.filter(o=>o.fragment).every(o=>!o.split));assert.ok(s.effects.length<=160);
 });
-test('boss victory snapshots all same-tick kills and is terminal',()=>{
+test('final boss clear awaits extraction and snapshots all same-tick kills on return',()=>{
  const s=begun().run;quiet(s);s.front=2;s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode=s.front===2?'expose':'recover';s.boss.coreOpen=s.front===2?4:0;s.boss.timer=9;s.player.x=s.boss.x+110;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;
- const template=begun().run.enemies[0];s.enemies=[{...template,id:999,x:s.boss.x+30,y:s.boss.y,hp:1,speed:0,timer:999}];step(s,.5);assert.equal(s.result.won,true);assert.deepEqual(s.result.stats,s.stats);const raw=packMission(s);step(s,5);assert.deepEqual(packMission(s),raw);
+ const template=begun().run.enemies[0];s.enemies=[{...template,id:999,x:s.boss.x+30,y:s.boss.y,hp:1,speed:0,timer:999}];step(s,.5);assert.equal(s.result,null);assert.equal(s.choiceType,'route');assert.ok(chooseMission(s,'travel:extract'));assert.equal(s.result.won,true);assert.deepEqual(s.result.stats,s.stats);const raw=packMission(s);step(s,5);assert.deepEqual(packMission(s),raw);
 });
 test('time passing beyond six minutes never causes an automatic loss or XP cutoff',()=>{
  const s=begun().run;quiet(s);s.t=600;stepMission(s,dt,{x:0,y:0});assert.equal(s.phase,'playing');assert.ok(s.t>600);
@@ -105,16 +106,17 @@ test('invalid saved choice cards and active result snapshots recover instead of 
  for(const cards of [[{id:'x',kind:'rank'}],[{id:'x',kind:'unknown'}],[{id:'x',kind:'utility',key:'unknown'}]]){const raw=packMission(s);raw.choices=cards;assert.throws(()=>restoreMission(raw));}
  const bad=packMission(s);bad.choiceType='unknown';assert.throws(()=>restoreMission(bad));endMission(s,'retreat');assert.throws(()=>restoreMission(packMission(s)));
 });
+function advanceWithTactic(s,id){assert.ok(chooseMission(s,id));assert.equal(s.choiceType,'route');return chooseMission(s,'travel:advance');}
 function beatFront(s){quiet(s);s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode=s.front===2?'expose':'recover';s.boss.coreOpen=s.front===2?4:0;s.boss.timer=9;s.player.x=s.boss.x+150;s.player.y=s.boss.y;s.player.invuln=99;s.weapons[0].rank=3;s.weapons[0].evolved=true;s.weapons[0].cd=0;step(s,1);}
-test('two midboss rewards carry the build across fronts, only the third boss ends the mission',()=>{
- const s=begun().run;s.xp=7;beatFront(s);assert.equal(s.result,null);assert.equal(s.phase,'choice');assert.equal(s.choiceType,'tactic');assert.equal(s.stats.midbosses,1);const time=s.t,rank=s.weapons[0].rank;assert.doesNotThrow(()=>restoreMission(packMission(s)));assert.ok(chooseMission(s,'tactic:assault'));assert.equal(s.front,1);assert.equal(s.t,time);assert.equal(s.weapons[0].rank,rank);assert.equal(s.xp,7);assert.ok(s.tactics.includes('assault'));assert.ok(s.sites.some(n=>n.id==='battery'));
- beatFront(s);assert.equal(s.stats.midbosses,2);assert.ok(chooseMission(s,'tactic:barrage'));assert.equal(s.front,2);beatFront(s);assert.ok(s.result.won);assert.deepEqual(s.stats.fronts,[0,1]);assert.equal(s.frontHistory.length,2);
+test('midboss supplies and explicit travel carry the build; final extraction ends the mission',()=>{
+ const s=begun().run;s.xp=7;beatFront(s);assert.equal(s.result,null);assert.equal(s.phase,'choice');assert.equal(s.choiceType,'tactic');assert.equal(s.stats.midbosses,1);const time=s.t,rank=s.weapons[0].rank;assert.doesNotThrow(()=>restoreMission(packMission(s)));assert.ok(advanceWithTactic(s,'tactic:assault'));assert.equal(s.front,1);assert.equal(s.t,time);assert.equal(s.weapons[0].rank,rank);assert.equal(s.xp,7);assert.ok(s.tactics.includes('assault'));assert.ok(s.sites.some(n=>n.id==='battery'));
+ beatFront(s);assert.equal(s.stats.midbosses,2);assert.ok(advanceWithTactic(s,'tactic:barrage'));assert.equal(s.front,2);beatFront(s);assert.equal(s.result,null);assert.ok(chooseMission(s,'travel:extract'));assert.ok(s.result.won);assert.deepEqual(s.stats.fronts,[0,1]);assert.equal(s.frontHistory.length,3);
 });
 test('armor tactical supply prepares a real Slug and keeps its durability across the next front',()=>{
- const s=begun('fio').run;beatFront(s);chooseMission(s,'tactic:armor');const g=s.sites.find(n=>n.id==='garage');assert.equal(g.state,'ready');s.player.x=g.x;s.player.y=g.y;assert.ok(missionAction(s,'interact'));assert.equal(s.player.slugHp,160);s.player.skillCd=0;missionAction(s,'skill');assert.equal(s.player.skillCd,2.5);beatFront(s);chooseMission(s,'tactic:repair');assert.ok(s.player.slug);assert.equal(s.player.slugHp,160);
+ const s=begun('fio').run;beatFront(s);advanceWithTactic(s,'tactic:armor');const g=s.sites.find(n=>n.id==='garage');assert.equal(g.state,'ready');s.player.x=g.x;s.player.y=g.y;assert.ok(missionAction(s,'interact'));assert.equal(s.player.slugHp,160);s.player.skillCd=0;missionAction(s,'skill');assert.equal(s.player.skillCd,2.5);beatFront(s);advanceWithTactic(s,'tactic:repair');assert.ok(s.player.slug);assert.equal(s.player.slugHp,160);
 });
 test('fusion tactical supply invests in both weapons and final union can receive researched H modifications',()=>{
- const s=begun('fio').run;s.weapons[1]={id:'r',rank:1,evolved:false,mods:[],cd:1};beatFront(s);chooseMission(s,'tactic:fusion');assert.equal(s.weapons[1].rank,2);s.weapons[1].rank=3;s.phase='choice';s.choices=availableUpgrades(s);assert.ok(chooseMission(s,'union'));s.snapshot.researched=['h-capacitor'];s.snapshot.freshMods=['h-capacitor'];const choices=availableUpgrades(s);assert.equal(choices[0].id,'mod:h-capacitor');
+ const s=begun('fio').run;s.weapons[1]={id:'r',rank:1,evolved:false,mods:[],cd:1};beatFront(s);advanceWithTactic(s,'tactic:fusion');assert.equal(s.weapons[1].rank,2);s.weapons[1].rank=3;s.phase='choice';s.choices=availableUpgrades(s);assert.ok(chooseMission(s,'union'));s.snapshot.researched=['h-capacitor'];s.snapshot.freshMods=['h-capacitor'];const choices=availableUpgrades(s);assert.equal(choices[0].id,'mod:h-capacitor');
 });
 test('fortified supplies spawn their second escort wave and never complete after only wave one',()=>{
  const s=begun().run,node=s.sites.find(n=>n.id==='camp');s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);assert.equal(node.wave,1);for(const e of s.enemies)if(e.siteId===node.id)e.dead=true;stepMission(s,dt);assert.equal(node.wave,2);assert.equal(node.state,'active');assert.ok(s.enemies.some(e=>e.siteId===node.id&&!e.dead));
@@ -123,7 +125,7 @@ test('guard waves reserve capacity even when the ambient horde is at its cap',()
  const s=begun().run,template=s.enemies[0],node=s.sites.find(n=>n.id==='camp');s.enemies=Array.from({length:200},(_,i)=>({...template,id:1000+i,x:node.x+500+i,y:node.y}));s.player.x=node.x;s.player.y=node.y;stepMission(s,dt);assert.equal(s.enemies.filter(e=>e.siteId===node.id).length,node.guards);assert.ok(s.enemies.length<=200);
 });
 test('artillery supply makes a real boss pattern choice instead of awarding a cosmetic label',()=>{
- const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');s.phase='choice';s.choiceType='supply';s.choices=[{id:'sabotage:silence',kind:'sabotage',key:'silence'}];assert.ok(chooseMission(s,'sabotage:silence'));quiet(s);s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;stepMission(s,dt);assert.equal(s.hazards.length,1);assert.ok(s.hazards.every(h=>h.shape==='beam'));
+ const s=begun().run;beatFront(s);advanceWithTactic(s,'tactic:assault');s.phase='choice';s.choiceType='supply';s.choices=[{id:'sabotage:silence',kind:'sabotage',key:'silence'}];assert.ok(chooseMission(s,'sabotage:silence'));quiet(s);s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;stepMission(s,dt);assert.equal(s.hazards.length,1);assert.ok(s.hazards.every(h=>h.shape==='beam'));
 });
 test('midboss and union research unlock from settled performance, and new profile fields survive reload',()=>{
  const b=begun();b.run.stats.midbosses=1;b.run.stats.union=true;b.run.stats.kills=500;endMission(b.run,'retreat');const paid=settleRun(b.profile,b.run).profile;assert.ok(researchReady(paid,'p-execution'));assert.ok(researchReady(paid,'h-capacitor'));assert.equal(parseProfile(JSON.stringify(paid)).progress.midbossMarco,1);assert.equal(parseProfile(JSON.stringify(paid)).progress.unions,1);
@@ -146,11 +148,11 @@ test('barrage triggers only on a new normal-kill threshold, never again for offi
  const elite=scene(35,1,'officer');assert.equal(elite.stats.kills,35);assert.equal(elite.effects.filter(f=>f.type==='explosion').length,0);const normal=scene(34,0,'rifle');assert.equal(normal.barrageAt,1);assert.equal(normal.effects.filter(f=>f.type==='explosion').length,3);
 });
 test('trial requisition equips union-compatible research and gives a real fallback to a maxed gun',()=>{
- const s=begun('fio').run;beatFront(s);chooseMission(s,'tactic:fusion');s.weapons=[{id:'u',rank:3,evolved:true,mods:[],cd:0,shots:0},null];s.snapshot.researched=['h-capacitor'];beatFront(s);assert.ok(chooseMission(s,'tactic:requisition'));assert.ok(s.weapons[0].mods.includes('h-capacitor'));
- const p=begun().run;beatFront(p);chooseMission(p,'tactic:assault');beatFront(p);const power=p.boosts.power;chooseMission(p,'tactic:requisition');assert.equal(p.boosts.power,power+1);
+ const s=begun('fio').run;beatFront(s);advanceWithTactic(s,'tactic:fusion');s.weapons=[{id:'u',rank:3,evolved:true,mods:[],cd:0,shots:0},null];s.snapshot.researched=['h-capacitor'];beatFront(s);assert.ok(advanceWithTactic(s,'tactic:requisition'));assert.ok(s.weapons[0].mods.includes('h-capacitor'));
+ const p=begun().run;beatFront(p);advanceWithTactic(p,'tactic:assault');beatFront(p);const power=p.boosts.power;advanceWithTactic(p,'tactic:requisition');assert.equal(p.boosts.power,power+1);
 });
 test('armor supply repairs an existing Slug and its free garage voucher is consumed once',()=>{
- const s=begun().run;s.player.slug=true;s.player.slugHp=20;beatFront(s);chooseMission(s,'tactic:armor');assert.equal(s.player.slugHp,160);assert.equal(s.sites.find(n=>n.id==='garage').state,'ready');beatFront(s);chooseMission(s,'tactic:barrage');assert.equal(s.sites.find(n=>n.id==='garage').state,'waiting');
+ const s=begun().run;s.player.slug=true;s.player.slugHp=20;beatFront(s);advanceWithTactic(s,'tactic:armor');assert.equal(s.player.slugHp,160);assert.equal(s.sites.find(n=>n.id==='garage').state,'ready');beatFront(s);advanceWithTactic(s,'tactic:barrage');assert.equal(s.sites.find(n=>n.id==='garage').state,'waiting');
 });
 test('P execution research kills an off-axis target without recursively multiplying the blast',()=>{
  function scene(mod){const s=begun().run;quiet(s);const template=begun().run.enemies[0];s.player.x=0;s.player.y=0;s.weapons[0].cd=0;s.weapons[0].mods=mod?['p-execution']:[];s.enemies=[{...template,id:801,x:80,y:0,hp:1,speed:0,timer:999},{...template,id:802,x:80,y:50,hp:30,speed:0,timer:999},{...template,id:803,x:80,y:105,hp:30,speed:0,timer:999}];step(s,.14);return s;}
@@ -220,4 +222,66 @@ test('artillery core becomes progressively weaker after one and two cannon break
 });
 test('suppression also reduces final-boss mortar salvos, not only the railway lanes',()=>{
  function count(suppressed){const s=begun().run;quiet(s);s.front=2;s.stage='boss';s.boss.active=true;s.boss.mode='walk';s.boss.timer=0;s.boss.suppressed=suppressed;s.player.invuln=99;stepMission(s,dt);return s.hazards.length;}assert.equal(count(false),3);assert.equal(count(true),1);
+});
+
+test('clear is a real branching state: stay never advances, exit can be reopened, and carry is explicit',()=>{
+ const s=begun().run;beatFront(s);const weapons=structuredClone(s.weapons),xp=s.xp;chooseMission(s,'tactic:assault');assert.equal(s.front,0);assert.equal(s.stage,'holdout');assert.equal(s.choiceType,'route');assert.doesNotThrow(()=>restoreMission(packMission(s)));
+ chooseMission(s,'travel:stay');assert.equal(s.phase,'playing');assert.equal(s.front,0);assert.ok(!s.boss.active);s.player.x=BOSS_GATE.x;s.player.y=BOSS_GATE.y;assert.equal(interaction(s).id,'route');missionAction(s,'interact');assert.ok(chooseMission(s,'travel:advance'));assert.equal(s.front,1);assert.equal(s.stage,'field');assert.equal(s.cleared,false);assert.equal(s.holdoutTime,0);assert.equal(s.xp,xp);assert.equal(s.weapons[0].id,weapons[0].id);assert.ok(s.arrival>0);assert.ok(!s.sites.some(n=>n.id==='exit'));
+});
+test('holdout still grants XP, escalates real enemies and kill scores, and has no time cutoff',()=>{
+ const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');chooseMission(s,'travel:stay');quiet(s);s.player.invuln=999;s.pendingLevels=0;s.holdoutTime=19.99;s.spawnClock=0;s.gems=[{x:s.player.x,y:s.player.y,value:20,age:0}];const level=s.level;stepMission(s,.03);assert.equal(s.front,0);assert.equal(holdoutDanger(s),2);assert.ok(s.enemies.some(e=>e.type==='officer'&&e.maxHp>=750));assert.ok(s.stats.holdoutSeconds>0);assert.ok(s.level>level);
+ s.phase='playing';s.pendingLevels=0;s.holdoutTime=3600;s.player.invuln=999;stepMission(s,.03);assert.equal(s.phase,'playing');assert.ok(s.holdoutTime>3600);
+});
+test('holdout kills add danger-weighted score even beyond ordinary kill score and credit caps',()=>{
+ const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');chooseMission(s,'travel:stay');quiet(s);s.pendingLevels=0;s.player.x=0;s.player.y=0;s.player.invuln=99;s.holdoutTime=21;s.weapons[0].cd=99;const e=begun().run.enemies[0];s.enemies=[{...e,id:987,x:60,y:0,hp:1,speed:0,timer:99}];s.shots=[{id:1,x:30,y:0,vx:1000,vy:0,angle:0,weapon:'p',tags:['p'],damage:100,pierce:1,hits:[],life:1}];stepMission(s,.03);assert.equal(s.stats.holdoutKills,1);assert.equal(s.stats.holdoutScore,40);
+ const base={rules:RULESET,kills:9000,holdoutScore:0},extra={...base,holdoutScore:4000};assert.equal(calculateSettlement(extra).score-calculateSettlement(base).score,4000);assert.equal(calculateSettlement(extra).repeatCredits,calculateSettlement(base).repeatCredits);
+});
+test('late holdout levels can grow power and health without breaking attack-speed caps',()=>{
+ const s=begun().run;quiet(s);s.weapons=[{id:'u',rank:3,evolved:true,mods:[],cd:99},null];s.boosts={power:3,vitality:3,magnet:3,tempo:3,projectile:1};s.stage='holdout';s.cleared=true;const cards=availableUpgrades(s);assert.ok(cards.some(c=>c.key==='power'));assert.ok(cards.some(c=>c.key==='vitality'));assert.ok(cards.every(c=>c.key!=='tempo'));s.phase='choice';s.choices=cards;chooseMission(s,'utility:power');assert.equal(s.boosts.power,4);
+});
+test('final clear can hold for more score, then extraction settles only once',()=>{
+ const b=begun(),s=b.run;s.front=2;beatFront(s);assert.equal(s.result,null);chooseMission(s,'travel:stay');s.holdoutTime=70;s.stats.holdoutScore=1234;s.player.x=BOSS_GATE.x;s.player.y=BOSS_GATE.y;missionAction(s,'interact');chooseMission(s,'travel:extract');assert.ok(s.result.won);assert.equal(s.result.stats.holdoutScore,1234);const first=settleRun(b.profile,s);assert.ok(first.ok);assert.ok(first.receipt.award.score>=1234);assert.equal(settleRun(first.profile,s).profile.wallet,first.profile.wallet);
+});
+test('holdout defeat preserves score records and recovery preserves earned extra score',()=>{
+ const b=begun();b.run.stats.midbosses=1;b.run.stats.holdoutScore=2500;b.run.stats.holdoutKills=80;b.run.stats.bestDanger=3;endMission(b.run,'hp');const paid=settleRun(b.profile,b.run);const record=paid.profile.records[`${RULESET}:breakwater:normal:marco`];assert.equal(record.score,paid.receipt.award.score);assert.equal(record.bestTime,null);
+ const active=begun();active.run.stats.holdoutScore=900;const saved=checkpointRun(active.profile,active.run).profile;const recovered=recoverActiveRun(saved);assert.equal(recovered.receipt.result.stats.holdoutScore,900);
+});
+test('Slug absorbs bullets, contact and blast damage; destruction ejects without spillover to pilot HP',()=>{
+ for(const source of ['bullet','contact','blast']){const s=begun().run;quiet(s);s.player.x=0;s.player.y=0;s.player.slug=true;s.player.slugHp=12;s.player.hp=73;s.player.invuln=0;s.weapons[0].cd=99;
+  if(source==='bullet')s.enemyShots=[{x:-6,y:0,vx:120,vy:0,life:1}];
+  if(source==='contact')s.enemies=[{...begun().run.enemies[0],x:0,y:0,timer:99}];
+  if(source==='blast')s.hazards=[{x:0,y:0,r:80,timer:0,life:1,hit:false}];
+  stepMission(s,.02);assert.equal(s.player.hp,73);assert.ok(s.player.slugHp<12);assert.equal(s.player.damageKind,'armor');
+ }
+ const s=begun().run;quiet(s);s.player.x=0;s.player.y=0;s.player.slug=true;s.player.slugHp=1;s.player.hp=73;s.hazards=[{x:0,y:0,r:80,timer:0,life:1,hit:false}];stepMission(s,.02);assert.equal(s.player.slug,false);assert.equal(s.player.slugHp,0);assert.equal(s.player.hp,73);assert.ok(s.player.invuln>1);
+});
+test('Slug acceleration, braking, boundary velocity and paused/checkpoint motion remain bounded',()=>{
+ const s=begun().run;quiet(s);s.player.slug=true;s.player.slugHp=120;step(s,.05,{x:1,y:0});assert.ok(s.player.vx>0&&s.player.vx<175);step(s,.3,{x:1,y:0});assert.ok(Math.abs(s.player.vx-175)<.01);step(s,.2);assert.ok(Math.abs(s.player.vx)<.01);s.player.x=2200;step(s,.2,{x:1,y:0});assert.equal(s.player.x,2200);assert.equal(s.player.vx,0);pauseMission(s);const packed=packMission(s);stepMission(s,.05,{x:-1,y:0});assert.deepEqual(packMission(s),packed);assert.deepEqual(packMission(restoreMission(packed)),packed);assert.ok(Math.abs(turnToward(Math.PI-.01,-Math.PI+.1,.05)-(Math.PI+.04))<.0001);
+});
+test('carrier acceleration and braking preserve attack reach, and parts follow its visible hull',()=>{
+ assert.ok(Math.abs(carrierTravel(.96)-376)<.001);const s=begun().run;quiet(s);s.stage='boss';s.boss.active=true;s.boss.mode='charge';s.boss.timer=.96;s.boss.angle=0;s.boss.bodyAngle=0;s.boss.x=0;s.player.x=500;s.player.y=s.boss.y+300;s.player.invuln=99;s.weapons[0].cd=99;const positions=[];for(let i=0;i<58;i++){stepMission(s,dt);positions.push(s.boss.x);}assert.ok(positions[1]-positions[0]<positions[20]-positions[19]);assert.ok(Math.abs(s.boss.x-376)<.01);assert.equal(s.boss.mode,'recover');const part=bossPartPosition(s,s.boss.parts[0]);assert.ok(Math.abs(part.x-s.boss.x)<5);assert.ok(part.y>s.boss.y+60);
+});
+test('holdout checkpoint rejects corrupted danger, score and destination state',()=>{
+ const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');for(const key of ['holdoutTime','cleared']){const raw=packMission(s);delete raw[key];assert.throws(()=>restoreMission(raw));}const bad=packMission(s);bad.stats.holdoutScore=-1;assert.throws(()=>restoreMission(bad));const destination=packMission(s);destination.choices[0].key='extract';assert.throws(()=>restoreMission(destination));
+});
+
+test('simultaneous boss kill and lethal damage cannot revive through travel or award victory',()=>{
+ for(const front of [0,2]){const s=begun().run;quiet(s);s.front=front;s.stage='boss';s.boss.active=true;s.boss.hp=1;s.boss.parts.forEach(p=>p.hp=0);s.boss.mode=front===2?'expose':'recover';s.boss.timer=9;s.boss.coreOpen=9;s.player.x=s.boss.x;s.player.y=s.boss.y-150;s.player.hp=1;s.player.invuln=0;s.weapons[0].cd=99;s.shots=[{id:1,x:s.boss.x,y:s.boss.y-60,vx:0,vy:1000,angle:Math.PI/2,weapon:'p',tags:['p'],damage:1000,pierce:1,hits:[],life:1}];s.hazards=[{x:s.player.x,y:s.player.y,r:60,timer:0,life:1,hit:false}];stepMission(s,.02);assert.equal(s.phase,'result');assert.equal(s.result.won,false);assert.equal(s.result.reason,'hp');assert.equal(s.player.hp,0);assert.ok(!chooseMission(s,'travel:advance'));assert.ok(!chooseMission(s,'travel:extract'));}
+});
+test('reopening the route cannot refill invulnerability or reset danger',()=>{
+ const s=begun().run;beatFront(s);chooseMission(s,'tactic:assault');chooseMission(s,'travel:stay');s.player.x=BOSS_GATE.x;s.player.y=BOSS_GATE.y;s.player.invuln=0;s.holdoutTime=59;for(let i=0;i<5;i++){missionAction(s,'interact');chooseMission(s,'travel:stay');assert.equal(s.player.invuln,0);assert.equal(s.holdoutTime,59);}
+});
+test('final extraction has no non-restorable result checkpoint; route remains retryable before atomic settlement',()=>{
+ const b=begun(),s=b.run;s.front=2;beatFront(s);const route=checkpointRun(b.profile,s).profile;const restored=restoreMission(route.activeRun.checkpoint);assert.ok(chooseMission(restored,'travel:extract'));assert.equal(checkpointRun(route,restored).ok,false);const paid=settleRun(route,restored);assert.ok(paid.receipt.result.won);assert.ok(paid.receipt.record.newBest);const retry=restoreMission(route.activeRun.checkpoint);chooseMission(retry,'travel:extract');assert.equal(settleRun(paid.profile,retry).profile.wallet,paid.profile.wallet);
+});
+test('high danger adds different readable threats in each completed map',()=>{
+ for(let front=0;front<3;front++){const s=begun().run;quiet(s);s.front=front;s.stage='holdout';s.cleared=true;s.holdoutTime=39.99;s.player.invuln=999;stepMission(s,.03);assert.equal(holdoutDanger(s),3);if(front===0)assert.equal(s.hazards.filter(h=>!h.shape).length,3);if(front===1)assert.equal(s.hazards.filter(h=>h.shape==='beam').length,2);if(front===2){assert.equal(s.enemyShots.length,7);assert.equal(s.hazards.length,3);}}
+});
+
+test('late artillery salvage suppresses live holdout attacks instead of modifying a dead boss only',()=>{
+ const s=begun().run;quiet(s);s.front=1;s.stage='holdout';s.cleared=true;s.player.invuln=99;s.pendingLevels=0;s.sites.push({id:'battery',name:'남은 포격 진지',kind:'battery',state:'ready',x:s.player.x,y:s.player.y,rescues:0});stepMission(s,.01);assert.equal(s.phase,'choice');assert.ok(s.choices.find(c=>c.key==='silence').desc.includes('잔류'));chooseMission(s,'sabotage:silence');s.holdoutTime=39.99;s.hazards=[];stepMission(s,.03);assert.equal(s.hazards.filter(h=>h.shape==='beam').length,1);
+});
+
+test('a safe voluntary return after final clear is a completion, including a saved holdout',()=>{
+ const b=begun();b.run.front=2;beatFront(b.run);chooseMission(b.run,'travel:stay');const saved=checkpointRun(b.profile,b.run).profile;const recovered=recoverActiveRun(saved,'retreat');assert.ok(recovered.receipt.result.won);endMission(b.run,'retreat');assert.ok(b.run.result.won);assert.equal(b.run.result.reason,'victory');
 });

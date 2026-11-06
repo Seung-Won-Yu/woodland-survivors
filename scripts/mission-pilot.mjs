@@ -2,7 +2,7 @@ import {createProfile,beginRun,settleRun,buyResearch} from '../src/mission/profi
 import {createMission,stepMission,chooseMission,missionAction,takeMissionEvents,segmentDistance} from '../src/mission/model.js';
 import {BOSS_GATE,RESEARCH,buildSynergies} from '../src/mission/content.js';
 
-const DT=1/60,MAX_SECONDS=600,SEEDS=[17,71],RUSH=process.argv.includes('--rush'),BUILDS=process.argv.includes('--builds'),JOURNEY=process.argv.includes('--journey');
+const DT=1/60,MAX_SECONDS=Number(process.argv.find(a=>a.startsWith('--max-seconds='))?.split('=')[1]||600),SEEDS=[17,71],RUSH=process.argv.includes('--rush'),BUILDS=process.argv.includes('--builds'),JOURNEY=process.argv.includes('--journey'),HOLDOUT=process.argv.includes('--holdout'),HOLD_SECONDS=Number(process.argv.find(a=>a.startsWith('--hold-seconds='))?.split('=')[1]||32);
 const round=(n,d=1)=>Number.isFinite(n)?Number(n.toFixed(d)):null;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const median=values=>{const a=values.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;};
@@ -52,6 +52,7 @@ function danger(s){
 function weaponState(s,id){return s.weapons.find(w=>w?.id===id);}
 
 function scoreChoice(s,build,choice){
+  if(choice.kind==='travel')return choice.key===(HOLDOUT&&s.holdoutTime<HOLD_SECONDS?'stay':s.front===2?'extract':'advance')?40000:0;
   if(JOURNEY&&s.weapons.some(w=>w?.id==='n')&&['weapon','weapon-offer'].includes(choice.kind)&&choice.weapon==='s')return 26000;
   if(choice.kind==='sabotage')return choice.key==='plunder'?19000:1000;
   if(choice.kind==='tactic')return choice.key===(s.front===0?(build.hero==='fio'?'fusion':'assault'):'barrage')?30000:10000;
@@ -87,6 +88,7 @@ function handleChoice(s,build,state){
 }
 
 function nextTarget(s,build,state){
+  if(s.stage==='holdout'){if(s.holdoutTime>=HOLD_SECONDS)return{...BOSS_GATE,id:'exit'};const a=s.holdoutTime*.8;return{x:BOSS_GATE.x+Math.cos(a)*240,y:BOSS_GATE.y+Math.sin(a)*160,id:'holdout-orbit'};}
   if(s.stage==='boss'){
     const b=s.boss,p=s.player;if(s.front===0&&b.mode==='recover')return{x:b.x-Math.cos(b.angle)*230,y:b.y-Math.sin(b.angle)*230,id:'rear-engine'};if(s.front===1&&s.hazards.length)return{x:b.safeX,y:b.y+220,id:'safe-lane'};const a=Math.atan2(p.y-b.y,p.x-b.x)+(build.hero==='marco'?.38:.72),radius=p.slug?245:s.weapons.some(w=>w&&['s','f','v','n'].includes(w.id))?185:build.hero==='marco'?300:250;
     return {x:b.x+Math.cos(a)*radius,y:b.y+Math.sin(a)*radius,id:'boss-combat'};
@@ -104,6 +106,7 @@ function maybeAct(s,build,state,target){
   if(shouldSkill&&p.skillCd<=0){
     const before=p.skillCd;if(missionAction(s,'skill')&&before<=0)state.actions.skills++;
   }
+  if(s.stage==='holdout'&&target.id==='exit'&&distance(p,BOSS_GATE)<175){if(missionAction(s,'interact'))state.actions.interactions++;}
   if(s.stage==='field'){
     if(target.id==='garage'&&target.state==='ready'&&distance(p,target)<115){
       if(missionAction(s,'interact'))state.actions.interactions++;
@@ -151,8 +154,8 @@ function runMission({hero,seed,useSlug,recipe=null,profile=null}){
   return {
     ...(JOURNEY?{settledProfile:settleRun(started.profile,s).profile}:{}),synergies:buildSynergies(s.weapons),hero,seed,useSlug,recipe,outcome:result?.won?'victory':result?'defeat':'incomplete',reason:result?.reason??s.phase,
     time:round(result?.seconds??s.t),hp:round(s.player.hp),level:s.level,kills:s.stats.kills,elites:s.stats.elites,rescues:s.stats.rescues,outposts:s.stats.outposts,
-    bossTtk:result?.won&&state.bossAt!==null?round(result.seconds-state.bossAt):null,slugAtBoss:state.slugAtBoss,bossHp:round(s.boss.hp),parts:Object.fromEntries(s.boss.parts.map(p=>[p.id,round(p.hp)])),
-    frontBattles:[...s.frontHistory.map(f=>({front:f.front,seconds:round(f.at-state.bossStarts[f.front])})),...(result?.won?[{front:2,seconds:round(result.seconds-state.bossStarts[2])}]:[])],frontHistory:s.frontHistory,bossStarts:state.bossStarts,tactics:s.tactics,nodeTimes:state.nodeTimes,unionAt:state.choices.find(c=>c.id==='union'||c.id.startsWith('union:'))?.time??null,choices:state.choices,weapons:s.weapons.map(w=>w&&({id:w.id,rank:w.rank,evolved:w.evolved,mods:w.mods})),cores:s.cores,
+    bossTtk:result?.won&&state.bossAt!==null?round(s.frontHistory.find(f=>f.front===2).at-state.bossAt):null,slugAtBoss:state.slugAtBoss,bossHp:round(s.boss.hp),parts:Object.fromEntries(s.boss.parts.map(p=>[p.id,round(p.hp)])),
+    frontBattles:s.frontHistory.map(f=>({front:f.front,seconds:round(f.at-state.bossStarts[f.front])})),frontHistory:s.frontHistory,bossStarts:state.bossStarts,tactics:s.tactics,nodeTimes:state.nodeTimes,unionAt:state.choices.find(c=>c.id==='union'||c.id.startsWith('union:'))?.time??null,choices:state.choices,weapons:s.weapons.map(w=>w&&({id:w.id,rank:w.rank,evolved:w.evolved,mods:w.mods})),cores:s.cores,
     stats:{...s.stats},actions:state.actions,events:state.events,issues:state.issues
   };
 }
@@ -175,7 +178,7 @@ for(const hero of ['marco','fio'])for(const useSlug of (RUSH||BUILDS?[false]:[fa
   aggregates.push({hero,useSlug,recipe,wins:set.filter(r=>r.outcome==='victory').length,runs:set.length,medianTime:round(median(set.map(r=>r.time))),medianBossTtk:round(median(set.map(r=>r.bossTtk))),medianKills:round(median(set.map(r=>r.kills))),medianHp:round(median(set.map(r=>r.hp))),issues:set.flatMap(r=>r.issues)});
 }
 
-const report={rules:{dt:DT,maxSeconds:MAX_SECONDS,seeds:SEEDS,route:RUSH?'rush first/convoy/boss':'all field supplies and artillery positions'},policy:'public API only; state-aware threat steering, objective navigation, ordinary dash/skill/interact inputs',aggregates,runs};
+const report={rules:{dt:DT,maxSeconds:MAX_SECONDS,seeds:SEEDS,holdoutSeconds:HOLDOUT?HOLD_SECONDS:0,route:RUSH?'rush first/convoy/boss':'all field supplies and artillery positions'},policy:'public API only; state-aware threat steering, objective navigation, ordinary dash/skill/interact inputs',aggregates,runs};
 const output=process.argv.includes('--summary')?{rules:report.rules,policy:report.policy,aggregates,runs:runs.map(({choices,events,...run})=>({...run,choiceCount:choices.length}))}:report;
 process.stdout.write(`${JSON.stringify(output,null,2)}\n`);
 
