@@ -1,8 +1,8 @@
 // Normal-input model pilot. It never edits HP, gear, XP, world time or RNG.
 import {pathToFileURL} from 'node:url';
-import {createRun,step,choose,action,assemblyOptions,interaction,reroll,banish,banishOptions} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,assemblyOptions,interaction,reroll,banish,banishOptions} from '../src/reboot/model.js';
 import {moduleRank,distance,compatible} from '../src/reboot/content.js';
-function free(s,x,y){return x>=60&&x<=1540&&y>=60&&y<=1140&&!s.blocks.some(b=>b.hp!==0&&x+22>b.x&&x-22<b.x+b.w&&y+22>b.y&&y-22<b.y+b.h);}
+function free(s,x,y){return x>=60&&x<=1540&&y>=60&&y<=1140&&(!s.boss.active||Math.hypot(x-s.boss.x,y-s.boss.y)>s.boss.r+38)&&!s.blocks.some(b=>b.hp!==0&&x+22>b.x&&x-22<b.x+b.w&&y+22>b.y&&y-22<b.y+b.h);}
 function path(s,goal){
  const start=[Math.round((s.player.x-60)/40),Math.round((s.player.y-60)/40)],end=[Math.round((goal.x-60)/40),Math.round((goal.y-60)/40)],key=([x,y])=>`${x},${y}`;
  const queue=[start],previous=new Map([[key(start),null]]);let found=start,best=Infinity;
@@ -17,7 +17,7 @@ function movement(s,goal,ctx,avoid=true){
  return{x,y};
 }
 function priority(s,c,policy){
- if(c.kind==='extract')return 1000;if(c.kind==='stay')return -1;
+ if(c.kind==='advance')return 1100;if(c.kind==='control')return c.key==='jam'?100:90;if(c.kind==='extract')return 1000;if(c.kind==='stay')return -1;
  if(c.kind==='gun'){if(policy==='fusion'&&c.weapon==='r'&&!s.weapons.some(w=>w.id==='r'))return 140;if(policy==='fire'&&c.weapon==='f'&&!s.weapons.some(w=>w.id==='f'))return 140;return s.weapons.length<3?35:0;}
  if(c.kind==='module'){
   const r=moduleRank(s,c.module);if(policy==='single'&&c.module==='ricochet')return r<2?130:45;
@@ -28,8 +28,8 @@ function priority(s,c,policy){
  if(c.kind==='rank'){const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion);if(policy==='single')return c.weapon==='h'?110:30;if(policy==='fusion')return ['h','r'].includes(c.weapon)&&w.level<4?100-w.level:25;if(policy==='fire')return ['h','f'].includes(c.weapon)&&w.level<4?100-w.level:25;}
  if(c.kind==='utility')return c.key==='health'&&s.player.hp<50?70:c.key==='power'?14:10;return 0;
 }
-export function pilot(seed=17,policy='single',{maxSeconds=360}={}){
- const s=createRun(seed),ctx={};let decisions=0,stalled=null;
+export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,research=[]}={}){
+ const s=operation?createOperation(seed,research):createRun(seed),ctx={};let decisions=0,stalled=null;
  for(let tick=0;tick<maxSeconds*80&&s.t<maxSeconds&&s.phase!=='result';tick++){
   if(s.phase==='choice'){
    const wanted=policy==='fusion'?'coil':policy==='fire'?'catalyst':null;
@@ -43,13 +43,17 @@ export function pilot(seed=17,policy='single',{maxSeconds=360}={}){
    const args={branch,doctrine:'reserve'};if(c.kind==='gun'&&s.weapons.length>=3)args.slot=s.weapons.findIndex(w=>!w.evolved&&!w.fusion);if(c.kind==='module'&&s.modules.length>=4&&!moduleRank(s,c.module))args.slot=0;
    if(!choose(s,c.id,args)){stalled={choice:s.choice,card:c};break;}decisions++;continue;
   }
-  const options=assemblyOptions(s),wanted=policy==='single'?options.find(c=>c.kind==='evolve'&&c.weapon==='h'):policy==='fusion'?options.find(c=>c.kind==='fusion'):options.find(c=>c.kind==='tune'&&c.module==='catalyst'&&moduleRank(s,'catalyst')===2&&s.weapons.filter(w=>w.level>=4).length>=2);
+  const options=assemblyOptions(s),repair=s.operation&&s.player.hp<55?options.find(c=>c.kind==='repair'):null,wanted=repair||(policy==='single'?options.find(c=>c.kind==='evolve'&&c.weapon==='h'):policy==='fusion'?options.find(c=>c.kind==='fusion'):options.find(c=>c.kind==='tune'&&c.module==='catalyst'&&moduleRank(s,'catalyst')===2&&s.weapons.filter(w=>w.level>=4).length>=2));
   if(wanted){action(s,'gear');choose(s,wanted.id);continue;}
   action(s,'skill');
   if(s.stage==='boss'){
    const b=s.boss,p=s.player;let goal;
-   if(b.mode==='recover'){const angles=[Math.PI,Math.PI-.65,Math.PI+.65].map(a=>b.body+a);goal=angles.map(a=>({x:b.x+Math.cos(a)*185,y:b.y+Math.sin(a)*185})).filter(g=>free(s,g.x,g.y)).sort((a,b)=>distance(a,p)-distance(b,p))[0];}
+   if(b.mode==='recover'&&s.operation?.region>0){goal=[-1,1].map(side=>({x:b.x+side*190,y:b.y+100})).filter(g=>free(s,g.x,g.y)).sort((a,b)=>distance(a,p)-distance(b,p))[0];}
+   else if(b.mode==='recover'){const angles=[Math.PI,Math.PI-.65,Math.PI+.65].map(a=>b.body+a);goal=angles.map(a=>({x:b.x+Math.cos(a)*185,y:b.y+Math.sin(a)*185})).filter(g=>free(s,g.x,g.y)).sort((a,b)=>distance(a,p)-distance(b,p))[0];}
+   if(s.operation?.region===1&&s.hazards.some(h=>h.lane&&!h.hit)){const lanes=[300,500,650,800,950,1100,1300].filter(x=>!s.hazards.some(h=>h.lane&&!h.hit&&Math.abs(h.x-x)<h.w/2+25));goal=lanes.map(x=>({x,y:p.y})).sort((a,b)=>distance(a,p)-distance(b,p))[0];}
    if(!goal){const a=Math.atan2(p.y-b.y,p.x-b.x)+.7;goal={x:b.x+Math.cos(a)*220,y:b.y+Math.sin(a)*220};goal.x=Math.max(80,Math.min(1520,goal.x));goal.y=Math.max(80,Math.min(1120,goal.y));}
+   if(s.hazards.some(h=>!h.hit&&!h.lane&&distance(p,h)<h.r+35)){const candidates=Array.from({length:12},(_,i)=>({x:p.x+Math.cos(i*Math.PI/6)*120,y:p.y+Math.sin(i*Math.PI/6)*120})).filter(g=>free(s,g.x,g.y)&&!s.hazards.some(h=>!h.hit&&!h.lane&&distance(g,h)<h.r+30));if(candidates.length)goal=candidates.sort((a,b)=>distance(a,goal)-distance(b,goal))[0];}
+   if(distance(p,b)<b.r+48){const a=Math.atan2(p.y-b.y,p.x-b.x);goal={x:p.x+Math.cos(a)*160,y:p.y+Math.sin(a)*160};action(s,'dash');}
    if(b.mode==='windup'&&b.timer<.25)action(s,'dash');step(s,1/60,movement(s,goal,ctx,false));continue;
   }
   if(s.raid?.state==='active'){step(s,1/60,movement(s,s.raid.target,ctx));continue;}
@@ -62,6 +66,6 @@ export function pilot(seed=17,policy='single',{maxSeconds=360}={}){
   const nearby=s.gems.filter(g=>distance(g,s.player)<130).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];if(nearby)goal=nearby;
   if(s.enemies.some(e=>!e.dead&&distance(e,s.player)<50))action(s,'dash');step(s,1/60,movement(s,goal,ctx));
  }
- return{seed,policy,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],controls:{rerollsUsed:2-s.rerolls,banishesUsed:1-s.banishes},decisions,stalled};
+ return{seed,policy,regions:s.operation?.cleared||0,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],controls:{rerollsUsed:2-s.rerolls,banishesUsed:1-s.banishes},decisions,stalled};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){const seeds=process.argv.includes('--all')?[17,71,109,214]:[17],reports=[];for(const seed of seeds)for(const policy of ['single','fusion','fire'])reports.push(pilot(seed,policy));process.stdout.write(JSON.stringify(reports,null,2)+'\n');}

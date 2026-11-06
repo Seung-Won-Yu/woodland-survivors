@@ -8,6 +8,9 @@ export const GUNS={
  f:{name:'화염방사기 F',short:'F',color:'#ff7148',branches:{trail:['연료 살포','움직인 자리에 화염 지대를 남깁니다.'],focused:['압축 분사','더 멀리, 좁고 강하게 분사합니다.']},evolution:'인페르노'}
 };
 export const MODULES={
+ medic:{name:'응급 주사기',color:'#b9d697',desc:'정예를 처치해 생존을 회수합니다.',detail:()=> '정예 처치 체력+12 · 재사용12초'},
+ shrapnel:{name:'분열 수류탄',color:'#ffca88',desc:'직접 폭발이 작은 파쇄 폭발3개로 번집니다.',detail:()=> '파쇄 피해20×3 · 재사용0.65초 · 추가 발동 없음'},
+ thermal:{name:'흡열 코일',color:'#92e4e5',desc:'연소 중인 적에 전기가 적중하면 전탄을 회수합니다.',detail:()=> '전탄 충전+2 · 재사용0.25초 · 화염+축전 코일 필요'},
  ricochet:{name:'도탄기',color:'#e7c97a',desc:'탄환이 무리 사이를 튕깁니다.',detail:r=>`추가 도탄 ${r}회 · 다음 피해 70%`},
  coil:{name:'축전 코일',color:'#92e4e5',desc:'탄환·폭발 적중이 전기 연쇄를 만듭니다.',detail:r=>`가중 적중 ${RULES.modules.coil.threshold[r-1]} → 전기 ${RULES.modules.coil.targets[r-1]}명`},
  catalyst:{name:'촉매 연료',color:'#ff9f69',desc:'연소가 번지고 폭발이 열압으로 이어집니다.',detail:r=>`연소 전파 ${r}명 · 연소 표적 폭발 +${Math.round(RULES.modules.catalyst.blastBonusOnBurn[r-1]*100)}%`},
@@ -16,7 +19,7 @@ export const MODULES={
 };
 export const QUALITY={common:'일반',rare:'희귀',prototype:'원형품'};
 export const GUN_BRIEFS={h:'빠른 실탄 연사 · L4: 산개 도탄 / 유탄 급탄',r:'넓은 폭발로 무리 정리 · L4: 추적 다탄두 / 점화 탄두',f:'가까운 무리를 태우는 부채 화염 · L4: 연료 살포 / 압축 분사'};
-export const MODULE_LINKS={ricochet:'H L6 + 도탄2 → 사중 기관포',coil:'H·R 각 L4 + 코일2 → 전도 합체',catalyst:'화염으로 점화 → 유탄·로켓으로 열압 폭발',magnet:'위험한 XP 회수 동선을 짧게',overcharger:'전탄 보급 종료 방출 · 받는 피해 +15%'};
+export const MODULE_LINKS={medic:'안전성을 얻는 대신 모듈 한 칸 사용',shrapnel:'유탄·로켓의 군집 피해 확장',thermal:'연소+전기 → 전탄 보급 순환',ricochet:'H L6 + 도탄2 → 사중 기관포',coil:'H·R 각 L4 + 코일2 → 전도 합체',catalyst:'화염으로 점화 → 유탄·로켓으로 열압 폭발',magnet:'위험한 XP 회수 동선을 짧게',overcharger:'전탄 보급 종료 방출 · 받는 피해 +15%'};
 export function buildPaths(s){
  const paths=s.weapons.filter(w=>!w.fusion).map(w=>{const requirements=w.branch?RULES.weapons[w.id].evolution.moduleByBranch[w.branch]:[...new Set(Object.values(RULES.weapons[w.id].evolution.moduleByBranch).flat())],rank=Math.max(...requirements.map(id=>moduleRank(s,id))),ready=w.level===6&&rank>=2&&!w.evolved;return{title:`단일 진화 · ${GUNS[w.id].evolution}`,detail:`${GUNS[w.id].short} L${w.level}/6 · ${requirements.map(id=>MODULES[id].name).join(' 또는 ')} ${rank}/2`,ready:ready&&s.tuning>0,complete:w.evolved};});
  const h=s.weapons.find(w=>w.id==='h'&&!w.fusion),r=s.weapons.find(w=>w.id==='r'&&!w.fusion),fused=s.weapons.some(w=>w.fusion);paths.push({title:'전도 합체 · H+R',detail:`H ${h?`L${h.level}/4`:'미보유'} · R ${r?`L${r.level}/4`:'미보유'} · 코일 ${moduleRank(s,'coil')}/2`,ready:!!(h&&r&&!h.evolved&&!r.evolved&&h.level>=4&&r.level>=4&&moduleRank(s,'coil')>=2&&s.tuning>0),complete:fused});
@@ -26,7 +29,16 @@ export const makeWeapon=id=>({id,level:1,branch:null,evolved:false,fusion:null,c
 export function tags(w){const d=RULES.weapons[w.id],b=[d.branchA,d.branchB].find(b=>b.id===w.branch),secondary=w.fusion?RULES.weapons[w.fusion.secondary]:null,branch=secondary?[secondary.branchA,secondary.branchB].find(b=>b.id===w.fusion.branch):null;return [...new Set([...d.tags,...(b?.tags||[]),...(w.fusion?['bullet','blast','conductive',...(branch?.tags||[])]:[])])];}
 export function heatSynergyReady(s,rank=3){return moduleRank(s,'catalyst')>=rank&&s.weapons.some(a=>a.level>=4&&tags(a).includes('burn')&&s.weapons.some(b=>b!==a&&b.level>=4&&tags(b).includes('blast')));}
 export const moduleRank=(s,id)=>s.modules.find(m=>m.id===id)?.rank||0;
-export const compatible=(s,id)=>RULES.modules[id].universal||s.weapons.some(w=>tags(w).some(t=>RULES.modules[id].compatibleAny?.includes(t)));
+export const compatible=(s,id)=>(id!=='thermal'||moduleRank(s,'coil')>0)&&(RULES.modules[id].universal||s.weapons.some(w=>tags(w).some(t=>RULES.modules[id].compatibleAny?.includes(t))));
+export function moduleGain(s,id,amount){const current=moduleRank(s,id),next=Math.min(3,current+amount),overflow=Math.max(0,current+amount-3);return{current,next,overflow,charge:overflow*RULES.crateRewards.overflowChargePerRank};}
+export const refitWeapons=s=>s.weapons.filter(w=>w.level>=4&&!w.evolved&&!w.fusion&&GUNS[w.id].branches[w.branch]);
+export function completionModules(s){
+ const needs=new Map(),add=(id,rank)=>{if(moduleRank(s,id)<rank&&!s.excluded.includes(id)&&compatible(s,id))needs.set(id,Math.max(rank,needs.get(id)||0));};
+ for(const w of s.weapons)if(!w.evolved&&!w.fusion){const d=RULES.weapons[w.id].evolution.moduleByBranch;for(const id of w.branch?d[w.branch]:new Set(Object.values(d).flat()))add(id,2);}
+ if(s.weapons.some(a=>!a.evolved&&!a.fusion&&tags(a).includes('bullet')&&s.weapons.some(b=>b!==a&&!b.evolved&&!b.fusion&&tags(b).includes('blast'))))add('coil',2);
+ if(s.weapons.some(a=>tags(a).includes('burn')&&s.weapons.some(b=>b!==a&&tags(b).includes('blast'))))add('catalyst',3);
+ return [...needs.keys()];
+}
 export function weaponStats(w){
  const d=RULES.weapons[w.id],i=(w.fusion?6:w.level)-1,e=w.evolved&&!w.fusion?d.evolution:null;
  let damage=e?.damage??d.damage[i],interval=e?.interval??d.interval[i],count=e?.count??d.count[i],range=Array.isArray(d.range)?d.range[i]:d.range,cone=d.coneDegrees||0;

@@ -1,8 +1,7 @@
-// Generated from docs/design/reboot-rules.json; verified by reboot tests.
 export const RULES = {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b03",
+  "balanceRevision": "b05-campaign",
   "prototypeWeapons": [
     "h",
     "r",
@@ -578,6 +577,22 @@ export const RULES = {
       "endOfSkillPulseDamage": 140,
       "pulseRadius": 180,
       "canProcModules": false
+    },
+    "medic": {
+      "unique": true,
+      "universal": true
+    },
+    "shrapnel": {
+      "unique": true,
+      "compatibleAny": [
+        "blast"
+      ]
+    },
+    "thermal": {
+      "unique": true,
+      "compatibleAny": [
+        "burn"
+      ]
     }
   },
   "procWeights": {
@@ -671,6 +686,29 @@ export const RULES = {
         "mortar": 2
       }
     }
+  },
+  "crateRewards": {
+    "overflowChargePerRank": 20,
+    "medicalHeal": [
+      12,
+      24,
+      36
+    ],
+    "ammoCharge": [
+      25,
+      50,
+      75
+    ],
+    "mixedHeal": [
+      8,
+      16,
+      24
+    ],
+    "mixedCharge": [
+      12,
+      24,
+      36
+    ]
   },
   "boss": {
     "hp": 6000,

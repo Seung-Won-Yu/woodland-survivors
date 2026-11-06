@@ -1,16 +1,13 @@
 import {mkdir,cp,rm,readdir,writeFile,readFile} from 'node:fs/promises';
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
-for(const name of ['index.html','woodland.html','prototype.html','reboot.html','favicon.svg','mission-icon.svg','src'])await cp(name,`dist/${name}`,{recursive:true});
+for(const name of ['index.html','reboot.html','favicon.svg','mission-icon.svg','src'])await cp(name,`dist/${name}`,{recursive:true});
 for(const folder of ['v2','mission']){
  await mkdir(`dist/art/${folder}`,{recursive:true});
  for(const name of await readdir(`public/art/${folder}`))if(name.endsWith('.png'))await cp(`public/art/${folder}/${name}`,`dist/art/${folder}/${name}`);
 }
 await cp('public/fonts','dist/fonts',{recursive:true});
 await mkdir('dist/docs',{recursive:true});
-await cp('docs/motion-lab.html','dist/docs/motion-lab.html');
-await cp('docs/combat-lab.html','dist/docs/combat-lab.html');
-await cp('docs/progression-lab.html','dist/docs/progression-lab.html');
 // Version every module edge as well as the entrypoint: Pages can cache children
 // independently, which otherwise mixes old combat rules with a new interface.
 const release=JSON.parse(await readFile('package.json','utf8')).version;
