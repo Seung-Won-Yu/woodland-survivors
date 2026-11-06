@@ -1,0 +1,65 @@
+{
+  "status": "unimplemented design assumptions, not DPS or observed play data",
+  "model": "ordinal reward utility; failure loses only the offered crate; ignores damage, time, compatibility and score",
+  "value": {
+    "common": 1,
+    "rare": 2,
+    "prototype": 4
+  },
+  "distributions": {
+    "normal": {
+      "common": 0.75,
+      "rare": 0.22,
+      "prototype": 0.03
+    },
+    "raidSuccess": {
+      "common": 0.4,
+      "rare": 0.45,
+      "prototype": 0.15
+    }
+  },
+  "normalUnseenCrateExpected": 1.31,
+  "successfulRaidConditionalExpected": 1.9,
+  "successNeededToBeatUnseenCrate": 0.6895,
+  "revealedPrizeBreakEven": {
+    "common": {
+      "successNeeded": 0.5263,
+      "canBeatPrizeInThisToyModel": true
+    },
+    "rare": {
+      "successNeeded": 1.0526,
+      "canBeatPrizeInThisToyModel": false
+    },
+    "prototype": {
+      "successNeeded": 2.1053,
+      "canBeatPrizeInThisToyModel": false
+    }
+  },
+  "assumedSuccessCases": [
+    {
+      "assumedSuccess": 0.4,
+      "expectedRewardAfterFailureRisk": 0.76,
+      "deltaVsRevealedCommon": -0.24,
+      "deltaVsRevealedRare": -1.24
+    },
+    {
+      "assumedSuccess": 0.6,
+      "expectedRewardAfterFailureRisk": 1.14,
+      "deltaVsRevealedCommon": 0.14,
+      "deltaVsRevealedRare": -0.86
+    },
+    {
+      "assumedSuccess": 0.7,
+      "expectedRewardAfterFailureRisk": 1.33,
+      "deltaVsRevealedCommon": 0.33,
+      "deltaVsRevealedRare": -0.67
+    },
+    {
+      "assumedSuccess": 0.8,
+      "expectedRewardAfterFailureRisk": 1.52,
+      "deltaVsRevealedCommon": 0.52,
+      "deltaVsRevealedRare": -0.48
+    }
+  ],
+  "decision": "In this toy model, gambling can beat a revealed common prize at high success confidence, while a revealed rare prize favors keeping it. Actual utility must be tested with builds and health."
+}
