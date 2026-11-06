@@ -1,12 +1,13 @@
 <h1 align="center">★ 서바이버 작전실</h1>
+<p align="center">GitHub · <a href="https://github.com/Seung-Won-Yu">유승원 (Seung-Won-Yu)</a></p>
 <p align="center"><strong>RIFT · 빌드 서바이버 실험</strong><br>노획한 패로 화력을 완성하고, 거대 병기를 돌파하라.<br>피오 독립 전투 시제품과 기존 BREAKWATER 공개본을 함께 보관합니다.</p>
 <p align="center">
-<a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
+<a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
 <img alt="0.15 진입과 잔류" src="https://img.shields.io/badge/version-0.15.1-d5b77b?style=flat-square">
 <img alt="Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
-<p align="center"><a href="docs/REBOOT-DESIGN.md"><strong>새 게임 설계</strong></a> · <a href="docs/REBOOT-PROTOTYPE.md">실제 구현·검증 범위</a> · <a href="https://yu-reka.github.io/woodland-survivors/">▶ 기존 공개본 0.15.1</a></p>
+<p align="center"><a href="docs/REBOOT-DESIGN.md"><strong>새 게임 설계</strong></a> · <a href="https://seung-won-yu.github.io/woodland-survivors/reboot.html"><strong>▶ 새 피오 시제품 플레이</strong></a> · <a href="docs/REBOOT-PROTOTYPE.md">실제 구현·검증 범위</a> · <a href="https://seung-won-yu.github.io/woodland-survivors/">▶ 기존 공개본 0.15.1</a></p>
 
 ![새 독립 피오 전투 시제품의 로비](docs/images/reboot-lobby-desktop.png)
 
@@ -14,7 +15,7 @@
 
 **메가봉크·Pokémon Survivor Burst의 빌드 성장과 선택을 참고하고, 메탈슬러그의 대원·적진 침투·거대 병기 파괴를 표현으로 삼습니다.** 피오·H/R/F·공격 3칸·모듈 4칸을 독립 전투 모델로 구현했습니다. 새 패 획득 → 투자 → 안전 보급/위험 습격 → 진화·합체·발동 연계 → 보스 → 귀환/잔류를 실험합니다.
 
-`npm run dev` 후 **http://127.0.0.1:5200/reboot.html**에서 실행합니다. [방향 재점검·실제 구현·검증 한계](docs/REBOOT-PROTOTYPE.md) · [전체 게임 설계](docs/REBOOT-DESIGN.md) · [공식 자료 조사](docs/REBOOT-REFERENCE-ANALYSIS.md)
+[**온라인 플레이**](https://seung-won-yu.github.io/woodland-survivors/reboot.html) · 로컬은 `npm run dev` 후 **http://127.0.0.1:5200/reboot.html**에서 실행합니다. [방향 재점검·실제 구현·검증 한계](docs/REBOOT-PROTOTYPE.md) · [전체 게임 설계](docs/REBOOT-DESIGN.md) · [공식 자료 조사](docs/REBOOT-REFERENCE-ANALYSIS.md)
 
 기존 두 총·3단 강화·고정 합체 모델을 가져오지 않았습니다. 첫 두 보급의 새 총, L4 분화, 조율권의 기회비용과 도박 보급으로 다른 투자 경로를 만듭니다. 시제품은 독립 기록을 쓰며 기존 크레딧·연구·저장을 바꾸지 않습니다. **마르코·세 구역·새 연구 경제는 확장 범위이며 아직 새 게임에 구현하지 않았습니다.**
 
@@ -90,7 +91,7 @@ P·H·R·S·F 모두 진화할 수 있습니다. 기본 총 3단계 두 개와 �
 Node.js 20 이상. 외부 런타임 패키지 없이 실행합니다.
 
 ```sh
-git clone https://github.com/yu-reka/woodland-survivors.git
+git clone https://github.com/Seung-Won-Yu/woodland-survivors.git
 cd woodland-survivors
 npm run dev
 ```
@@ -115,8 +116,8 @@ npm run dev
 
 ### 이전 실험
 
-- [다람쥐 2분 전투](https://yu-reka.github.io/woodland-survivors/prototype.html) · [0.11 기록](docs/VALIDATION-V011.md)
-- [기존 숲 원정](https://yu-reka.github.io/woodland-survivors/woodland.html) · [원정 기획](docs/GAME-DESIGN.md)
+- [다람쥐 2분 전투](https://seung-won-yu.github.io/woodland-survivors/prototype.html) · [0.11 기록](docs/VALIDATION-V011.md)
+- [기존 숲 원정](https://seung-won-yu.github.io/woodland-survivors/woodland.html) · [원정 기획](docs/GAME-DESIGN.md)
 
 별도 주소에서 기존 원화·게임을 보존했습니다. 저장 키도 분리했습니다.
 
