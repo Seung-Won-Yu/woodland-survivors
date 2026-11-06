@@ -5,6 +5,7 @@ import {RULESET,BOSS_GATE,calculateSettlement,TRAINING,researchReady} from '../s
 import {createProfile,parseProfile,recoverActiveRun,beginRun,settleRun,buyTraining,refundTraining,buyResearch,checkpointRun,createProfileStore} from '../src/mission/profile.js';
 import {createMission,restoreMission,packMission,stepMission,chooseMission,rerollMission,missionAction,endMission,pauseMission,resumeMission,availableUpgrades,interaction,holdoutDanger,missionScore,bossPartPosition} from '../src/mission/model.js';
 import {carrierTravel,turnToward} from '../src/mission/motion.js';
+import {missionCamera} from '../src/mission/camera.js';
 const dt=1/60;
 function begun(hero='marco',seed=17,p=createProfile('test')){const start=beginRun(p,{hero,seed});assert.ok(start.ok);return{profile:start.profile,run:createMission(start.descriptor)};}
 function step(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.ceil(seconds/dt);i++)stepMission(s,dt,input);}
@@ -284,4 +285,15 @@ test('late artillery salvage suppresses live holdout attacks instead of modifyin
 
 test('a safe voluntary return after final clear is a completion, including a saved holdout',()=>{
  const b=begun();b.run.front=2;beatFront(b.run);chooseMission(b.run,'travel:stay');const saved=checkpointRun(b.profile,b.run).profile;const recovered=recoverActiveRun(saved,'retreat');assert.ok(recovered.receipt.result.won);endMission(b.run,'retreat');assert.ok(b.run.result.won);assert.equal(b.run.result.reason,'victory');
+});
+
+test('boss framing keeps both actor silhouettes inside the visible space below the HUD',()=>{
+ for(const [w,h,compact]of [[1280,720,false],[390,844,true],[320,780,true],[768,1024,true],[1024,768,true]])for(const front of [0,1,2])for(const [px,py,bx,by]of [[0,-3100,0,-3610],[700,-3000,-500,-3500],[-500,-3600,450,-3200]]){
+  const s=begun().run;s.front=front;s.player.slug=true;s.player.x=px;s.player.y=py;s.boss.x=bx;s.boss.y=by;s.boss.active=true;
+  const v=missionCamera(s,w,h,{compact}),point=(x,y)=>({x:v.cx+(x-v.focusX)*v.zoom,y:v.cy+(y-v.focusY)*v.zoom}),radius=front===1?220:front===2?150:130;
+  for(const [x,y]of [[px-80,py-85],[px+80,py+65],[bx-radius,by-145],[bx+radius,by+100]]){const q=point(x,y);assert.ok(q.x>=31.9&&q.x<=w-31.9);assert.ok(q.y>=Math.min(h*.32,compact?258:185)-.01);assert.ok(q.y<=h-Math.min(h*.25,compact?205:85)+.01);}
+ }
+});
+test('field and hangar framing preserve the existing player-centered view',()=>{
+ const s=begun().run;for(const [w,h]of [[1280,720],[390,844]]){const v=missionCamera(s,w,h);assert.equal(v.focusX,s.player.x);assert.equal(v.focusY,s.player.y);assert.equal(v.zoom,Math.min(w/850,h/650));assert.equal(v.cy,h*.53);const lobby=missionCamera(s,w,h,{lobby:true});assert.equal(lobby.cx,w*.72);assert.equal(lobby.cy,h*.7);}
 });

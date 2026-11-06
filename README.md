@@ -2,7 +2,7 @@
 <p align="center"><strong>OPERATION BREAKWATER · 교두보 탈환</strong><br>마르코의 집중 사격, 피오의 강화 탄창.<br>전장에서 무기를 완성하고, 확보한 성과로 다음 출격을 준비하는 팬 시제품.</p>
 <p align="center">
 <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
-<img alt="0.15 진입과 잔류" src="https://img.shields.io/badge/version-0.15-d5b77b?style=flat-square">
+<img alt="0.15 진입과 잔류" src="https://img.shields.io/badge/version-0.15.1-d5b77b?style=flat-square">
 <img alt="Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -87,8 +87,8 @@ npm run dev
 
 | 명령 | 용도 |
 | :-- | :-- |
-| `npm test` | 기존 게임 + 작전 규칙 240개 검사 |
-| `npm run test:mission` | 작전·경제·저장·진화 검사 74개 |
+| `npm test` | 기존 게임 + 작전 규칙 242개 검사 |
+| `npm run test:mission` | 작전·경제·저장·진화 검사 76개 |
 | `node scripts/mission-pilot.mjs --summary` | 초기 계정 8회 전체 보급 경로 주행 |
 | `node scripts/mission-pilot.mjs --holdout --hold-seconds=90 --max-seconds=900 --summary` | 각 맵 장기 잔류 → 출구 복귀 → 귀환 8판 |
 | `node scripts/mission-pilot.mjs --builds --summary` | 3합체 × 2대원 × 2시드 12회 주행 |
