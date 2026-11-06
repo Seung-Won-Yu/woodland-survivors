@@ -13,7 +13,7 @@ const fmt=n=>`${Math.floor(Math.max(0,n)/60)}:${String(Math.floor(Math.max(0,n)%
 let store,art,renderer,run,preview,mode='loading',tab='operation',lastPhase='',lastFrame=0,saveClock=0,noticeTimer=0,touch={x:0,y:0},controls,pendingSave=null,mapOpen=false;
 const profile=()=>store.get();
 function announce(text){$('ui-notice').textContent=text;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('ui-notice').textContent='',4200);}
-function settings(){const p=profile();return `<div class="settings-row"><label><input type="checkbox" data-setting="sound" ${p.settings.sound?'checked':''}>효과음</label><label><input type="checkbox" data-setting="reduced" ${p.settings.reduced?'checked':''}>흔들림·플래시 줄이기</label><a href="./woodland.html">이전 숲 원정</a><span>팬 시제품 0.15</span></div>`;}
+function settings(){const p=profile();return `<div class="settings-row"><label><input type="checkbox" data-setting="sound" ${p.settings.sound?'checked':''}>효과음</label><label><input type="checkbox" data-setting="reduced" ${p.settings.reduced?'checked':''}>흔들림·플래시 줄이기</label><a href="./woodland.html">이전 숲 원정</a><span>팬 시제품 0.15.1</span></div>`;}
 function setPanel(html,modal=false){ui.classList.toggle('modal',modal);ui.innerHTML=html;ui.scrollTop=0;if(modal){controls?.reset();requestAnimationFrame(()=>ui.querySelector('button:not(:disabled)')?.focus({preventScroll:true}));}}
 function commit(next,after=()=>{}){
  const result=store.commit(next);if(result.ok){after();return true;}
@@ -88,7 +88,7 @@ function pause(){if(mode!=='battle')return;if(run.phase==='paused'){mapOpen=fals
 function updateCombat(){
  document.body.classList.toggle('lobby-mode',mode==='lobby');
  const battle=mode==='battle';for(const id of ['combat-hud','combat-map','combat-objective','combat-loadout','mission-actions'])$(id).hidden=!battle;
- const active=battle&&run.phase==='playing';$('mission-stick').hidden=!active||!isTouch();$('combat-combo').hidden=!active||run.combo<8;const isBoss=battle&&run.boss.active;$('boss-panel').hidden=!isBoss;document.body.classList.toggle('boss-active',isBoss);if(!battle){$('mission-interact').hidden=true;return;}
+ const active=battle&&run.phase==='playing';$('mission-stick').hidden=!active||!isTouch();$('combat-combo').hidden=!active||run.combo<8;const isBoss=battle&&run.boss.active;$('boss-panel').hidden=!isBoss;document.body.classList.toggle('boss-active',isBoss);document.body.classList.toggle('slug-active',battle&&run.player.slug);if(!battle){$('mission-interact').hidden=true;return;}
  const p=run.player,h=HEROES[run.hero];$('combat-hero').textContent=h.name;$('combat-level').textContent=`LV.${run.level}`;$('combat-hp-fill').style.width=`${Math.max(0,p.hp/p.maxHp*100)}%`;$('combat-hp').textContent=`대원 ${Math.ceil(p.hp)} / ${Math.round(p.maxHp)}`;$('combat-slug').hidden=!p.slug;$('combat-armor-fill').style.width=`${Math.max(0,p.slugHp/(run.tactics.includes('armor')?160:120)*100)}%`;$('combat-armor').textContent=`${Math.ceil(p.slugHp)} / ${run.tactics.includes('armor')?160:120}`;
  $('combat-trait').textContent=run.hero==='marco'?`집중 ${Math.floor(p.focus)}/3 · 약점 관통`:p.overdrive>0?`강화 탄창 ${p.overdrive.toFixed(1)}초`:`보급 충전 ${Math.floor(p.charge)}%`;
  $('combat-stage').textContent=run.cleared?`MISSION 0${run.front+1} CLEAR`:isBoss?FRONTS[run.front].boss:`${run.front+1}/3 ${FRONTS[run.front].name}`;$('combat-time').textContent=fmt(run.t);$('combat-kills').textContent=`${run.stats.kills} 처치`;

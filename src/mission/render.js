@@ -1,16 +1,16 @@
 import {actor,prop,environmentProp,vehicle} from './art.js';
 import {HEROES,WEAPONS,BOSS_GUIDES,FRONTS,FIELD,BOSS_POSITION} from './content.js';
 import {bossPartPosition} from './model.js';
+import {missionCamera} from './camera.js';
 const TAU=Math.PI*2,hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 const circle=(c,x,y,r,fill,stroke,width=1)=>{c.beginPath();c.arc(x,y,Math.max(.1,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}};
 export function createMissionRenderer(canvas,map,art){
- const c=canvas.getContext('2d'),m=map.getContext('2d');let w=1,h=1,dpr=1;
+ const c=canvas.getContext('2d'),m=map.getContext('2d'),coarse=matchMedia('(pointer:coarse)');let w=1,h=1,dpr=1;
  const patterns=['#b39b70','#545054','#3b505c'].map((base,front)=>{const tile=document.createElement('canvas');tile.width=512;tile.height=512;const t=tile.getContext('2d');t.fillStyle=base;t.fillRect(0,0,512,512);for(let i=0;i<1600;i++){const x=Math.floor(hash(i,8)*512),y=Math.floor(hash(i,13)*512);t.fillStyle=i%3?'#e9dbad26':'#202e3329';t.fillRect(x,y,2+Math.floor(hash(i,6)*5),2);}t.strokeStyle=front===0?'#d1ba8a50':'#293b4244';t.lineWidth=2;for(let i=0;i<18;i++){const x=hash(i,4)*512,y=hash(i,5)*512;t.beginPath();t.moveTo(x,y);t.lineTo(x+22,y+9);t.lineTo(x+10,y+18);t.stroke();}return c.createPattern(tile,'repeat');});
  function resize(){w=canvas.clientWidth;h=canvas.clientHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}
  function draw(s,{reduced=false,lobby=false,target='first'}={}){
   c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);c.imageSmoothingEnabled=false;
-  const p=s.player,zoom=Math.min(w/850,h/650),shake=reduced?0:s.shake,cx=lobby?w*.72:w/2,cy=lobby?h*.7:h*.53;
-  const focusX=s.boss.active?p.x*.65+s.boss.x*.35:p.x,focusY=s.boss.active?p.y*.65+s.boss.y*.35:p.y;
+  const p=s.player,shake=reduced?0:s.shake,{zoom,cx,cy,focusX,focusY}=missionCamera(s,w,h,{lobby,compact:w<=700||coarse.matches});
   c.save();c.translate(cx+(shake?Math.sin(s.t*91)*shake:0),cy+(shake?Math.cos(s.t*117)*shake*.5:0));c.scale(zoom,zoom);c.translate(-focusX,-focusY);
   const left=focusX-cx/zoom-100,right=focusX+(w-cx)/zoom+100,top=focusY-cy/zoom-150,bottom=focusY+(h-cy)/zoom+200;
   c.fillStyle=patterns[s.front];c.fillRect(left,top,right-left,bottom-top);
