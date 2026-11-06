@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.17.0" src="https://img.shields.io/badge/RIFT-0.17.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.18.0" src="https://img.shields.io/badge/RIFT-0.18.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -27,7 +27,9 @@
 
 ### 격납고에서 준비하고, 전장에서 결정한다
 
-작전 지도에서 세 전선의 지형과 보스를 살펴보고 출격합니다. **병기**에서 H/R/F의 분화·진화·합체 조건을, **연구**에서 다음 판의 새 모듈을, **기록**에서 최근 작전의 빌드를 확인합니다. 모바일 성장 카드는 효과와 슬롯 비용을 함께 보여 줍니다. 저장한 작전은 이어 할 수 있으며, 종료·정산은 별도로 확인합니다.
+작전 지도에서 세 전선의 지형과 보스를 살펴보고 출격합니다. **병기**에서 H/R/F의 분화·진화·합체 조건을, **연구**에서 다음 판의 새 모듈을, **기록**에서 최근 작전의 빌드를 확인합니다. 성장 화면은 실제 병기 원화와 전투 효과·슬롯 비용을 보여 줍니다. 초반 단순 강화는 짧은 정비 목록으로, 새 무기 노획은 상세 선택으로 구분합니다. 로비의 현지 지형·실제 전장·작전도는 같은 지형과 출격 계획을 사용합니다. 저장한 작전은 이어 할 수 있으며, 종료·정산은 별도로 확인합니다.
+
+![실제 전투의 현장 개조 — 병기 그림과 강화 결과](docs/images/rift-upgrade-v018.png)
 
 ### 같은 패도 다르게 완성한다
 
@@ -73,7 +75,7 @@ npm run test:pages
 
 ### 검증 범위
 
-규칙·UI 계약316개·Pages4개를 통과했습니다. 정상 입력 모델 파일럿은 3경로×4시드의 12판 모두 세 전선을 완주했습니다. [원본 결과](docs/design/rift-campaign-pilots.json). 이는 규칙·저장·진행 경로 검증이며, 사람의 자유 플레이 재미나 4–6분 체감 리듬을 증명하지 않습니다. [실제 공개판 완주·연구·재출격 및 UI 검증](docs/VALIDATION-RIFT-V017.md)을 기록했습니다.
+규칙·UI 계약326개·Pages4개를 통과했습니다. 정상 입력 모델 파일럿은 3경로×4시드의 12판 모두 세 전선을 완주했습니다. [원본 결과](docs/design/rift-campaign-pilots.json). 이는 규칙·저장·진행 경로 검증이며, 사람의 자유 플레이 재미나 4–6분 체감 리듬을 증명하지 않습니다. [실제 공개판 완주·연구·재출격](docs/VALIDATION-RIFT-V017.md)과 [전장·정비 흐름 검증](docs/VALIDATION-RIFT-V018.md)을 기록했습니다.
 
 RIFT 저장은 브라우저의 `operation-rift-profile-v2`를 사용합니다. 구형 저장·크레딧을 삭제하거나 합산하지 않습니다. 활성 판의 ID·정산 중복·동시 탭 충돌을 검사합니다.
 

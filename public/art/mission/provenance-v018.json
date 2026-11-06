@@ -1,0 +1,20 @@
+{
+  "tool": "built-in imagegen",
+  "intent": "new production field equipment atlas",
+  "asset": "field-kit-v018.png",
+  "source": "exec-5e85fa2d-c133-4fbd-97fb-403eedae720f.png",
+  "layout": {
+    "columns": 3,
+    "rows": 2,
+    "cell": 512,
+    "items": [
+      "h",
+      "r",
+      "f",
+      "medic",
+      "ammo",
+      "coil"
+    ]
+  },
+  "prompt": "Use case: stylized-concept. Asset type: one production game UI sprite atlas, exactly 3 columns by 2 rows in equal rectangular cells. Six separate fully visible centered items, generous transparent gutters, no item crossing its cell. Overall transparent background. Style: richly hand-crafted 1990s military arcade pixel art, chunky crisp clusters, 2D side/three-quarter view, dark warm outlines, rusty olive steel, worn brass highlights, orange accent, coherent with a gritty military harbor action game. Strong readable silhouettes even at 96px. Top row left: heavy belt-fed compact machine gun with box magazine and brass ammunition belt, barrel pointing right. Top row center: thick olive rocket launcher with orange warhead and handles, barrel pointing right. Top row right: military flamethrower with twin fuel tanks, hose and chunky nozzle pointing right. Bottom row left: rugged olive canvas field medic bag with white medical patch and bandages, no red cross trademark. Bottom row center: open dark olive ammunition case with shiny large brass bullets and two magazines. Bottom row right: compact electromagnetic coil generator with copper windings and cyan energized core, mechanical components. No letters, numbers, typography, logos, people, frames, interface panels, shadows outside the item silhouette, scenery or painted backdrops. This is a polished illustrated sprite atlas, not flat vector symbols. Keep cell centers evenly spaced at 1/6, 1/2, 5/6 width and 1/4, 3/4 height."
+}

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#14212a"><title>작전 RIFT · 항구 돌파</title><link rel="icon" href="./mission-icon.svg"><link rel="stylesheet" href="./src/reboot/style.css"></head>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#14212a"><title>작전 RIFT · 항구 돌파</title><link rel="icon" href="./mission-icon.svg"><link rel="preload" as="image" href="./art/mission/field-kit-v018.png"><link rel="stylesheet" href="./src/reboot/style.css"></head>
 <body data-scene="lobby"><canvas id="world" aria-label="피오의 빌드 서바이버 전투"></canvas>
 <div id="hud" hidden><div id="operation-track"></div>
  <section class="vitals"><div><strong>FIO</strong><b id="level">LV.1</b></div><div class="hp-track"><i id="hp-fill"></i><span id="hp">100 / 100</span></div><small id="charge">전탄 보급 60%</small></section>
@@ -13,4 +13,4 @@
 </div>
 <div id="controls" hidden><div id="stick" role="group" aria-label="이동 스틱"><i></i></div><div class="action-buttons"><button id="interact" hidden>상호작용 F</button><button id="dash">회피<small>SPACE</small></button><button id="skill">전탄 보급<small>E</small></button></div></div>
 <main id="ui"><section class="sheet"><span class="eyebrow">OPERATION RIFT</span><h1>전장 준비 중</h1><p>병기와 전장을 불러오고 있습니다.</p></section></main>
-<div id="notice" role="status"></div><div id="save-status" aria-hidden="true">기록 중…</div><script type="module" src="./src/reboot/main.js"></script></body></html>
+<div id="field-feedback" hidden role="status"></div><div id="notice" role="status"></div><div id="save-status" aria-hidden="true">기록 중…</div><script type="module" src="./src/reboot/main.js"></script></body></html>
