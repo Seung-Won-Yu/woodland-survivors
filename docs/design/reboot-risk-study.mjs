@@ -1,9 +1,8 @@
 // Planning calculation only. No runtime imports, play simulation, or measured success rates.
-const value = { common: 1, rare: 2, prototype: 4 };
-const distributions = {
-  normal: { common: 0.75, rare: 0.22, prototype: 0.03 },
-  raidSuccess: { common: 0.40, rare: 0.45, prototype: 0.15 }
-};
+import {readFileSync} from 'node:fs';
+const {quality} = JSON.parse(readFileSync(new URL('./reboot-rules.json', import.meta.url), 'utf8'));
+const value = quality.toyUtility;
+const distributions = {normal:quality.normal, raidSuccess:quality.raidSuccess, lightRaidSuccess:quality.lightRaidSuccess};
 const round = n => Math.round(n * 10000) / 10000;
 for (const [name, probabilities] of Object.entries(distributions)) {
   const sum = Object.values(probabilities).reduce((a, b) => a + b, 0);
@@ -17,7 +16,9 @@ const output = {
   model: 'ordinal reward utility; failure loses only the offered crate; ignores damage, time, compatibility and score',
   value, distributions,
   normalUnseenCrateExpected: round(normal),
+  raidSuccessContract: 'armored',
   successfulRaidConditionalExpected: round(raid),
+  lightRaidConditionalExpected: round(expected(distributions.lightRaidSuccess)),
   successNeededToBeatUnseenCrate: round(normal / raid),
   revealedPrizeBreakEven: Object.fromEntries(Object.entries(value).map(([tier, utility]) => [tier, {
     successNeeded: round(utility / raid),

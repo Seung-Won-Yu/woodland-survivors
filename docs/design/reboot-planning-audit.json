@@ -1,0 +1,117 @@
+{
+  "ruleset": "reboot-plan-1.1",
+  "balanceRevision": "b01",
+  "status": "planning arithmetic only; no gameplay, RNG distribution, performance or human-fun validation",
+  "verified": [
+    "three probability distributions",
+    "five weapon arrays and branch-specific evolution compatibility",
+    "tuning and boss-heal budgets",
+    "three normal-reward investment witnesses",
+    "180 repeated-swap transitions",
+    "credit cap and example sums",
+    "first-clear purchasing power"
+  ],
+  "witnesses": [
+    {
+      "id": "h-single",
+      "assumption": "two specified normal supplies and a legal XP choice sequence, not an RNG guarantee",
+      "xpInvestments": 6,
+      "minimumPlayerLevel": 7,
+      "cumulativeXp": 91,
+      "weapons": {
+        "h": 6,
+        "r": 1
+      },
+      "modules": {
+        "ricochet": 2
+      },
+      "tuningRemaining": 0
+    },
+    {
+      "id": "h-r-conductive",
+      "assumption": "two specified normal supplies and a legal XP choice sequence, not an RNG guarantee",
+      "xpInvestments": 7,
+      "minimumPlayerLevel": 8,
+      "cumulativeXp": 119,
+      "weapons": {
+        "h": 4,
+        "r": 4
+      },
+      "modules": {
+        "coil": 2
+      },
+      "tuningRemaining": 0
+    },
+    {
+      "id": "h-f-catalyst",
+      "assumption": "two specified normal supplies and a legal XP choice sequence, not an RNG guarantee",
+      "xpInvestments": 7,
+      "minimumPlayerLevel": 8,
+      "cumulativeXp": 119,
+      "weapons": {
+        "h": 4,
+        "f": 4
+      },
+      "modules": {
+        "catalyst": 3
+      },
+      "tuningRemaining": 0
+    }
+  ],
+  "swapTransitions": 180,
+  "xpMilestones": {
+    "7": 91,
+    "8": 119,
+    "9": 151,
+    "14": 387,
+    "18": 680
+  },
+  "credits": {
+    "maxRepeat": 1080,
+    "maxFirstClear": 1280,
+    "exampleFirstClear": 886,
+    "exampleFailure": 150
+  },
+  "directDamage": {
+    "h": {
+      "base": 60,
+      "level6": 225,
+      "singleEvolution": 350,
+      "excludes": "branches, modules, hero skill, armor, misses and multiple targets"
+    },
+    "r": {
+      "base": 67.3684,
+      "level6": 160,
+      "singleEvolution": 308.5714,
+      "excludes": "branches, modules, hero skill, armor, misses and multiple targets"
+    },
+    "f": {
+      "base": 50,
+      "level6": 120,
+      "singleEvolution": 200,
+      "excludes": "branches, modules, hero skill, armor, misses and multiple targets"
+    }
+  },
+  "raidTimeBounds": {
+    "light": {
+      "escapeSeconds": 16.6667,
+      "rawHStarterDamageTime": 15,
+      "rawHEvolutionDamageTime": 2.5714,
+      "excludes": "travel, armor, skill, escort pressure and misses; not a success-rate prediction"
+    },
+    "armored": {
+      "escapeSeconds": 21,
+      "rawHStarterDamageTime": 70,
+      "rawHEvolutionDamageTime": 12,
+      "excludes": "travel, armor, skill, escort pressure and misses; not a success-rate prediction"
+    }
+  },
+  "notVerified": [
+    "candidate generation implementation",
+    "20-seed ordinary input play",
+    "combat balance",
+    "save atomicity",
+    "browser UI",
+    "human choice and replay desire"
+  ]
+}

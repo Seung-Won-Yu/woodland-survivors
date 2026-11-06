@@ -16,10 +16,17 @@
       "common": 0.4,
       "rare": 0.45,
       "prototype": 0.15
+    },
+    "lightRaidSuccess": {
+      "common": 0.7,
+      "rare": 0.27,
+      "prototype": 0.03
     }
   },
   "normalUnseenCrateExpected": 1.31,
+  "raidSuccessContract": "armored",
   "successfulRaidConditionalExpected": 1.9,
+  "lightRaidConditionalExpected": 1.36,
   "successNeededToBeatUnseenCrate": 0.6895,
   "revealedPrizeBreakEven": {
     "common": {
