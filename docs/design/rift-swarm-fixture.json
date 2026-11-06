@@ -1,0 +1,281 @@
+[
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 17,
+    "region": 0,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 100,
+    "minHp": 100,
+    "level": 18,
+    "generatedXp": 120,
+    "recoveredXp": 28,
+    "directorSpawns": {
+      "rifle": 125,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "maxAmbient": {
+      "rifle": 13,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "aliveAmbient": {
+      "rifle": 5,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "aliveTotal": 5
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 17,
+    "region": 1,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 90,
+    "minHp": 90,
+    "level": 18,
+    "generatedXp": 237,
+    "recoveredXp": 62,
+    "directorSpawns": {
+      "rifle": 175,
+      "shield": 13,
+      "mortar": 12,
+      "officer": 3
+    },
+    "maxAmbient": {
+      "rifle": 20,
+      "shield": 3,
+      "mortar": 3,
+      "officer": 1
+    },
+    "aliveAmbient": {
+      "rifle": 17,
+      "shield": 2,
+      "mortar": 1,
+      "officer": 1
+    },
+    "aliveTotal": 21
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 17,
+    "region": 2,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 66,
+    "minHp": 66,
+    "level": 19,
+    "generatedXp": 554,
+    "recoveredXp": 122,
+    "directorSpawns": {
+      "rifle": 250,
+      "shield": 13,
+      "mortar": 12,
+      "officer": 4
+    },
+    "maxAmbient": {
+      "rifle": 35,
+      "shield": 3,
+      "mortar": 3,
+      "officer": 2
+    },
+    "aliveAmbient": {
+      "rifle": 26,
+      "shield": 1,
+      "mortar": 1,
+      "officer": 0
+    },
+    "aliveTotal": 28
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 71,
+    "region": 0,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 100,
+    "minHp": 100,
+    "level": 18,
+    "generatedXp": 119,
+    "recoveredXp": 29,
+    "directorSpawns": {
+      "rifle": 125,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "maxAmbient": {
+      "rifle": 11,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "aliveAmbient": {
+      "rifle": 6,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "aliveTotal": 6
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 71,
+    "region": 1,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 90,
+    "minHp": 90,
+    "level": 18,
+    "generatedXp": 237,
+    "recoveredXp": 84,
+    "directorSpawns": {
+      "rifle": 175,
+      "shield": 13,
+      "mortar": 12,
+      "officer": 3
+    },
+    "maxAmbient": {
+      "rifle": 16,
+      "shield": 3,
+      "mortar": 3,
+      "officer": 1
+    },
+    "aliveAmbient": {
+      "rifle": 12,
+      "shield": 3,
+      "mortar": 2,
+      "officer": 1
+    },
+    "aliveTotal": 18
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 71,
+    "region": 2,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 88,
+    "minHp": 88,
+    "level": 19,
+    "generatedXp": 546,
+    "recoveredXp": 96,
+    "directorSpawns": {
+      "rifle": 250,
+      "shield": 13,
+      "mortar": 12,
+      "officer": 4
+    },
+    "maxAmbient": {
+      "rifle": 34,
+      "shield": 3,
+      "mortar": 2,
+      "officer": 2
+    },
+    "aliveAmbient": {
+      "rifle": 22,
+      "shield": 3,
+      "mortar": 0,
+      "officer": 1
+    },
+    "aliveTotal": 26
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 109,
+    "region": 0,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 100,
+    "minHp": 100,
+    "level": 18,
+    "generatedXp": 120,
+    "recoveredXp": 31,
+    "directorSpawns": {
+      "rifle": 125,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "maxAmbient": {
+      "rifle": 13,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "aliveAmbient": {
+      "rifle": 5,
+      "shield": 0,
+      "mortar": 0,
+      "officer": 0
+    },
+    "aliveTotal": 5
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 109,
+    "region": 1,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 100,
+    "minHp": 100,
+    "level": 18,
+    "generatedXp": 253,
+    "recoveredXp": 49,
+    "directorSpawns": {
+      "rifle": 175,
+      "shield": 13,
+      "mortar": 12,
+      "officer": 3
+    },
+    "maxAmbient": {
+      "rifle": 20,
+      "shield": 3,
+      "mortar": 3,
+      "officer": 1
+    },
+    "aliveAmbient": {
+      "rifle": 15,
+      "shield": 2,
+      "mortar": 0,
+      "officer": 0
+    },
+    "aliveTotal": 17
+  },
+  {
+    "fixture": "isolated model; no browser-state injection",
+    "seed": 109,
+    "region": 2,
+    "seconds": 60,
+    "terminal": "playing",
+    "hp": 78,
+    "minHp": 78,
+    "level": 19,
+    "generatedXp": 546,
+    "recoveredXp": 102,
+    "directorSpawns": {
+      "rifle": 250,
+      "shield": 13,
+      "mortar": 12,
+      "officer": 4
+    },
+    "maxAmbient": {
+      "rifle": 35,
+      "shield": 3,
+      "mortar": 2,
+      "officer": 2
+    },
+    "aliveAmbient": {
+      "rifle": 23,
+      "shield": 1,
+      "mortar": 2,
+      "officer": 1
+    },
+    "aliveTotal": 27
+  }
+]

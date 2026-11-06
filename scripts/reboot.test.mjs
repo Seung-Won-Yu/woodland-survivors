@@ -216,3 +216,29 @@ test('harbor armor parts change actual body vulnerability and rare unique banish
  const hit=broken=>{const s=quietOperation();s.operation.region=2;s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.mode='aim';s.boss.timer=999;s.boss.spawnClock=999;if(broken)s.boss.parts.forEach(p=>p.hp=0);const hp=s.boss.hp;s.shots=[bullet(s,s.boss,100)];step(s,dt);return hp-s.boss.hp;};assert.ok(hit(true)>hit(false)*1.5);
  const s=quietOperation();s.research=['medic'];s.phase='choice';s.choice={type:'armory',quality:'rare'};s.choices=[{id:'module:medic',kind:'module',module:'medic',rank:1}];assert.ok(banish(s,'module:medic'));assert.equal(s.choices[0].rank,2);
 });
+
+test('research trial selection checkpoints atomically and two holdout completions add exactly forty credits',async()=>{
+ const {operationCredits}=await import('../src/reboot/campaign.js');const s=createOperation(17,['medic'],'medic'),base=emptyProfile();base.research=['medic'];base.trials=['medic'];const p=beginProfile(base,s);s.sites.forEach(n=>n.state='done');s.enemies=[];s.spawnClock=999;supply(s);choose(s,'module:medic');const next=checkpointProfile(p,s);assert.deepEqual(next.trials,[]);assert.deepEqual(p.trials,['medic']);
+ const r={operation:{cleared:1},stats:{kills:0,elites:0,sitesCleared:0,raidSuccess:0,challenge:2,challengeWins:2},won:false};assert.equal(operationCredits(r),130);r.stats.challengeWins=0;r.stats.challenge=0;assert.equal(operationCredits(r),90);
+});
+function directorFixture(index){const s=quietOperation();for(let i=0;i<index;i++){clearRegion(s);choose(s,'advance');}s.enemies=[];s.sites.forEach(n=>n.state='done');s.blocks=[];s.player.x=800;s.player.y=800;s.player.invuln=1000;s.weapons[0].cd=999;s.spawnClock=0;s.pendingLevels=0;return s;}
+test('campaign swarm packets are mostly infantry with separately capped ambient specialists',()=>{
+ const s=directorFixture(2);tick(s,30);const c=t=>s.enemies.filter(e=>!e.dead&&e.cohort==='ambient'&&e.type===t).length;assert.ok(c('rifle')>s.enemies.length*.7);for(const id of ['officer','mortar','shield'])assert.ok(c(id)<=RULES.campaignDirector.ambientCaps[id]);assert.ok(s.enemies.length<=160);assert.ok(s.stats.directorSpawns.rifle>70);
+});
+test('pressure adds infantry density while specialist cadence and restoration stay deterministic',()=>{
+ const a=directorFixture(1),b=directorFixture(1);b.pressure=2;b.operation.regionTime=120;tick(a,8);tick(b,8);assert.ok(b.stats.directorSpawns.rifle>a.stats.directorSpawns.rifle);assert.equal(b.stats.directorSpawns.mortar,a.stats.directorSpawns.mortar);assert.equal(b.stats.directorSpawns.shield,a.stats.directorSpawns.shield);takeEvents(a);const r=restore(snapshot(a));tick(a,5);tick(r,5);assert.deepEqual(snapshot(a),snapshot(r));
+});
+test('ambient population caps do not remove protected encounter targets',()=>{
+ const s=directorFixture(2);s.enemies=Array.from({length:158},(_,i)=>enemy(`protected-${i}`,1400,100,'rifle',999));s.enemies.forEach(e=>{e.siteId='guarded';e.cohort='guard';});step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.ok(s.enemies.length<=160);s.sites=[{id:'new-site',kind:'supply',name:'supply',state:'waiting',x:800,y:800}];step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.equal(s.sites[0].state,'waiting');
+});
+test('jam reduces the actual mortar pressure and final infantry has a fixed XP value',()=>{
+ const probe=jam=>{const s=directorFixture(2);s.operation.jammed=jam;s.stage='boss';s.boss.active=true;s.boss.timer=999;s.boss.spawnClock=0;tick(s,6.1);return s.enemies.filter(e=>e.cohort==='boss');};const jam=probe(true),normal=probe(false);assert.equal(jam.length,normal.length/2);assert.equal(jam.filter(e=>e.type==='mortar').length,1);assert.equal(normal.filter(e=>e.type==='mortar').length,2);
+ const s=directorFixture(2);s.spawnClock=999;s.enemies=[enemy('rifle',950,800,'rifle',1)];s.shots=[bullet(s,s.enemies[0])];step(s,dt);assert.equal(s.stats.xpGenerated,2);assert.equal(s.gems[0].value,2);
+});
+test('previous active revisions settle secured rewards once without entering the new director or records',async()=>{
+ const s=quietOperation();let p=beginProfile(emptyProfile(),s);s.stats.kills=30;clearRegion(s);p=checkpointProfile(p,s);p.recordScope='b05-campaign';delete p.active.run.balanceRevision;delete p.active.run.director;p.active.run.enemies.forEach(e=>delete e.cohort);const raw=JSON.stringify(p);assert.throws(()=>restore(p.active.run));const migrated=parseProfile(raw);assert.equal(migrated.active,null);assert.equal(migrated.credits,92);assert.equal(migrated.recordScope,RULES.balanceRevision);assert.equal(migrated.records.score,0);assert.equal(migrated.recent[0].reason,'rules-updated');assert.equal(migrated.recent[0].won,false);assert.ok(migrated.migrationNotice);assert.equal(parseProfile(JSON.stringify(migrated)).credits,92);
+ const mem=memory();mem.values.set(STORAGE_KEY,raw);const store=createStore(mem);await store.commit(store.get());assert.equal(createStore(mem).get().credits,92);
+});
+test('record revision changes preserve credits, research and lifetime wins without repeating first-win cash',()=>{
+ const old=emptyProfile();old.recordScope='previous';old.records={score:1234,time:100,challenge:2,wins:1};old.sequence=1;old.settled=1;old.credits=500;old.milestones.medic=true;old.research=['medic'];const p=parseProfile(JSON.stringify(old));assert.equal(p.records.score,0);assert.equal(p.records.wins,1);assert.equal(p.recordArchive[0].records.score,1234);assert.equal(p.credits,500);assert.deepEqual(p.research,['medic']);const s=quietOperation();let next=beginProfile(p,s);for(let i=0;i<3;i++){clearRegion(s);if(i<2)choose(s,'advance');}choose(s,'extract');next=settleProfile(next,s);assert.equal(next.credits,1010);assert.equal(next.records.wins,2);
+});

@@ -1,7 +1,7 @@
 export const RULES = {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b05-campaign",
+  "balanceRevision": "b06-swarms",
   "prototypeWeapons": [
     "h",
     "r",
@@ -826,5 +826,29 @@ export const RULES = {
     "secondaryEventsPerTick": 64,
     "recentRuns": 10,
     "saveIntervalSeconds": 5
+  },
+  "campaignDirector": {
+    "packInterval": 2.4,
+    "basePack": [
+      5,
+      8,
+      11
+    ],
+    "packCap": 16,
+    "officerInterval": [
+      20,
+      16,
+      12
+    ],
+    "ambientCaps": {
+      "officer": 2,
+      "mortar": 3,
+      "shield": 6
+    },
+    "rifleXp": [
+      1,
+      1,
+      2
+    ]
   }
 };

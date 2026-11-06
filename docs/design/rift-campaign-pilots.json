@@ -4,10 +4,10 @@
     "policy": "single",
     "regions": 3,
     "won": true,
-    "seconds": 89.9,
+    "seconds": 84.3,
     "level": 8,
-    "hp": 85,
-    "kills": 225,
+    "hp": 89,
+    "kills": 240,
     "completed": {
       "kind": "single",
       "t": 25.34999999999984
@@ -34,7 +34,7 @@
         "rank": 3
       }
     ],
-    "score": 10450,
+    "score": 10600,
     "raids": [
       0,
       0
@@ -51,13 +51,13 @@
     "policy": "fusion",
     "regions": 3,
     "won": true,
-    "seconds": 132,
-    "level": 9,
-    "hp": 72,
-    "kills": 240,
+    "seconds": 130.9,
+    "level": 10,
+    "hp": 86,
+    "kills": 261,
     "completed": {
       "kind": "fusion",
-      "t": 70.23333333333063
+      "t": 73.38333333333046
     },
     "weapons": [
       {
@@ -82,10 +82,10 @@
     "modules": [
       {
         "id": "coil",
-        "rank": 2
+        "rank": 3
       }
     ],
-    "score": 10500,
+    "score": 10710,
     "raids": [
       0,
       0
@@ -94,7 +94,7 @@
       "rerollsUsed": 2,
       "banishesUsed": 0
     },
-    "decisions": 15,
+    "decisions": 16,
     "stalled": null
   },
   {
@@ -102,10 +102,10 @@
     "policy": "fire",
     "regions": 3,
     "won": true,
-    "seconds": 116.5,
+    "seconds": 117.9,
     "level": 9,
-    "hp": 61,
-    "kills": 178,
+    "hp": 67,
+    "kills": 182,
     "completed": {
       "kind": "synergy",
       "t": 35.899999999999245
@@ -132,7 +132,7 @@
         "rank": 3
       }
     ],
-    "score": 9980,
+    "score": 10020,
     "raids": [
       0,
       0
@@ -149,10 +149,10 @@
     "policy": "single",
     "regions": 3,
     "won": true,
-    "seconds": 94.7,
+    "seconds": 94,
     "level": 8,
-    "hp": 76,
-    "kills": 226,
+    "hp": 72,
+    "kills": 233,
     "completed": {
       "kind": "single",
       "t": 30.73333333333287
@@ -179,7 +179,7 @@
         "rank": 3
       }
     ],
-    "score": 10360,
+    "score": 10430,
     "raids": [
       0,
       0
@@ -196,10 +196,10 @@
     "policy": "fusion",
     "regions": 3,
     "won": true,
-    "seconds": 106,
+    "seconds": 106.1,
     "level": 8,
-    "hp": 86,
-    "kills": 208,
+    "hp": 72,
+    "kills": 218,
     "completed": {
       "kind": "fusion",
       "t": 40.499999999998984
@@ -223,7 +223,7 @@
         "rank": 3
       }
     ],
-    "score": 10280,
+    "score": 10380,
     "raids": [
       0,
       0
@@ -240,10 +240,10 @@
     "policy": "fire",
     "regions": 3,
     "won": true,
-    "seconds": 92,
+    "seconds": 92.7,
     "level": 8,
-    "hp": 55,
-    "kills": 179,
+    "hp": 62,
+    "kills": 190,
     "completed": {
       "kind": "synergy",
       "t": 36.449999999999214
@@ -277,7 +277,7 @@
         "rank": 3
       }
     ],
-    "score": 9990,
+    "score": 10100,
     "raids": [
       0,
       0
@@ -294,10 +294,10 @@
     "policy": "single",
     "regions": 3,
     "won": true,
-    "seconds": 103.3,
+    "seconds": 99.5,
     "level": 8,
     "hp": 76,
-    "kills": 268,
+    "kills": 283,
     "completed": {
       "kind": "single",
       "t": 25.616666666666493
@@ -324,7 +324,7 @@
         "rank": 3
       }
     ],
-    "score": 10880,
+    "score": 11030,
     "raids": [
       0,
       0
@@ -341,10 +341,10 @@
     "policy": "fusion",
     "regions": 3,
     "won": true,
-    "seconds": 107.2,
+    "seconds": 107.9,
     "level": 8,
     "hp": 86,
-    "kills": 223,
+    "kills": 243,
     "completed": {
       "kind": "fusion",
       "t": 41.33333333333227
@@ -368,7 +368,7 @@
         "rank": 3
       }
     ],
-    "score": 10430,
+    "score": 10630,
     "raids": [
       0,
       0
@@ -385,10 +385,10 @@
     "policy": "fire",
     "regions": 3,
     "won": true,
-    "seconds": 117.3,
+    "seconds": 120.5,
     "level": 9,
-    "hp": 60,
-    "kills": 189,
+    "hp": 85,
+    "kills": 211,
     "completed": {
       "kind": "synergy",
       "t": 37.999999999999126
@@ -415,7 +415,7 @@
         "rank": 3
       }
     ],
-    "score": 10190,
+    "score": 10310,
     "raids": [
       0,
       0
@@ -432,10 +432,10 @@
     "policy": "single",
     "regions": 3,
     "won": true,
-    "seconds": 91.6,
+    "seconds": 91,
     "level": 8,
-    "hp": 100,
-    "kills": 242,
+    "hp": 72,
+    "kills": 247,
     "completed": {
       "kind": "single",
       "t": 29.24999999999962
@@ -462,7 +462,7 @@
         "rank": 3
       }
     ],
-    "score": 10620,
+    "score": 10670,
     "raids": [
       0,
       0
@@ -479,10 +479,10 @@
     "policy": "fusion",
     "regions": 3,
     "won": true,
-    "seconds": 94,
+    "seconds": 92.1,
     "level": 8,
     "hp": 100,
-    "kills": 207,
+    "kills": 223,
     "completed": {
       "kind": "fusion",
       "t": 35.23333333333262
@@ -506,7 +506,7 @@
         "rank": 3
       }
     ],
-    "score": 10270,
+    "score": 10430,
     "raids": [
       0,
       0
@@ -523,10 +523,10 @@
     "policy": "fire",
     "regions": 3,
     "won": true,
-    "seconds": 117.6,
+    "seconds": 116.2,
     "level": 9,
-    "hp": 88,
-    "kills": 197,
+    "hp": 81,
+    "kills": 209,
     "completed": {
       "kind": "synergy",
       "t": 57.18333333333137
@@ -560,7 +560,7 @@
         "rank": 3
       }
     ],
-    "score": 9770,
+    "score": 9790,
     "raids": [
       0,
       0

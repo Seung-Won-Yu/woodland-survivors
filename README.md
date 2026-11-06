@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.16.0" src="https://img.shields.io/badge/RIFT-0.16.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.16.1" src="https://img.shields.io/badge/RIFT-0.16.1-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -41,6 +41,8 @@
 
 확보 성과는 전사·중도귀환에도 크레딧으로 남습니다. 연구는 영구 공격력을 반복 구매하는 대신 **응급 주사기 / 분열 수류탄 / 흡열 코일**을 보급 후보에 추가합니다. 연구 모듈도 한 칸을 차지하고 판 안에서 직접 선택해야 합니다. 기본 진화·합체·열압은 연구 전부터 가능합니다.
 
+후반 공세는 일반병의 물량을 늘리고 장교·포격병의 수와 빈도를 제한합니다. 강화한 무기로 대군을 쓸고, 특수 적의 예고를 읽는 리듬을 분리했습니다.
+
 잔류 도전은 D1→D2→…로 이어지며 기록 점수와 위험이 함께 오릅니다. 크레딧 반복 보상에는 상한이 있습니다. 점수·최단 완주·최고 D·최근 빌드를 기록합니다.
 
 ### 조작과 실행
@@ -65,7 +67,7 @@ npm run test:pages
 
 ### 검증 범위
 
-규칙302개·Pages4개를 통과했습니다. 정상 입력 모델 파일럿은 3경로×4시드의 12판 모두 세 전선을 완주했습니다. [원본 결과](docs/design/rift-campaign-pilots.json). 이는 규칙·저장·진행 경로 검증이며, 사람의 자유 플레이 재미나 4–6분 체감 리듬을 증명하지 않습니다. 실제 브라우저의 전체 작전 검증 기록은 별도로 갱신합니다.
+규칙309개·Pages4개를 통과했습니다. 정상 입력 모델 파일럿은 3경로×4시드의 12판 모두 세 전선을 완주했습니다. [원본 결과](docs/design/rift-campaign-pilots.json). 이는 규칙·저장·진행 경로 검증이며, 사람의 자유 플레이 재미나 4–6분 체감 리듬을 증명하지 않습니다. 실제 브라우저의 전체 작전 검증 기록은 별도로 갱신합니다.
 
 RIFT 저장은 브라우저의 `operation-rift-profile-v2`를 사용합니다. 구형 저장·크레딧을 삭제하거나 합산하지 않습니다. 활성 판의 ID·정산 중복·동시 탭 충돌을 검사합니다.
 
