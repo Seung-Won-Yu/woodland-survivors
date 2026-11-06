@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#14212a"><title>작전 RIFT · 빌드 서바이버</title><link rel="icon" href="./mission-icon.svg"><link rel="stylesheet" href="./src/reboot/style.css"></head>
+<body><canvas id="world" aria-label="피오의 빌드 서바이버 전투"></canvas>
+<div id="hud" hidden>
+ <section class="vitals"><div><strong>FIO</strong><b id="level">LV.1</b></div><div class="hp-track"><i id="hp-fill"></i><span id="hp">100 / 100</span></div><small id="charge">전탄 보급 60%</small></section>
+ <section class="score"><b id="kills">0 K.O.</b><span id="score">0점</span><span id="time">0:00</span><button id="pause" aria-label="일시정지">Ⅱ</button></section>
+ <section class="objective"><span id="stage">BEACHHEAD / 해안 침투</span><b id="objective">노획한 총으로 수송대를 차단하라</b><small id="threat">경계 0</small></section>
+ <section id="raid-hud" hidden><span>수송대 탈출 진행</span><progress id="raid-progress" max="1" value="0"></progress><b id="raid-hp"></b></section>
+ <section id="boss-hud" hidden><span id="boss-state"></span><progress id="boss-hp" max="6000" value="6000"></progress><small id="boss-parts"></small></section>
+ <section class="arsenal"><div id="weapons"></div><div id="modules"></div><button id="gear">조율권 1 · 장비 G</button></section>
+ <div class="xp"><i id="xp-fill"></i></div><div id="combo"></div><div id="banner" aria-live="polite"></div>
+</div>
+<div id="controls" hidden><div id="stick" role="group" aria-label="이동 스틱"><i></i></div><div class="action-buttons"><button id="interact" hidden>상호작용 F</button><button id="dash">회피<small>SPACE</small></button><button id="skill">전탄 보급<small>E</small></button></div></div>
+<main id="ui"><section class="sheet"><span class="eyebrow">OPERATION RIFT</span><h1>전장 준비 중</h1><p>병기와 전장을 불러오고 있습니다.</p></section></main>
+<div id="notice" role="status"></div><script type="module" src="./src/reboot/main.js"></script></body></html>

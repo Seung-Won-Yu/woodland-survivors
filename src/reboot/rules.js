@@ -1,0 +1,791 @@
+// Generated from docs/design/reboot-rules.json; verified by reboot tests.
+export const RULES = {
+  "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
+  "ruleset": "reboot-plan-1.1",
+  "balanceRevision": "b02",
+  "prototypeWeapons": [
+    "h",
+    "r",
+    "f"
+  ],
+  "expansionWeapons": [
+    "p",
+    "s"
+  ],
+  "inventory": {
+    "weaponSlots": 3,
+    "moduleSlots": 4,
+    "weaponMax": 6,
+    "branchAt": 4,
+    "moduleMax": 3
+  },
+  "control": {
+    "rerolls": 2,
+    "banishes": 1,
+    "openingRefits": 1
+  },
+  "tuning": {
+    "initial": 1,
+    "prototypeBossReward": 0,
+    "operationBossRewards": [
+      1,
+      1,
+      0
+    ],
+    "operationBossHeal": [
+      15,
+      15,
+      0
+    ],
+    "completionCost": 1,
+    "prototypeBossHeal": 0
+  },
+  "xpCosts": [
+    8,
+    10,
+    13,
+    16,
+    20,
+    24,
+    28,
+    32,
+    37,
+    42,
+    47,
+    52,
+    58,
+    64,
+    70,
+    76,
+    83
+  ],
+  "xpCostAfter18": {
+    "base": 90,
+    "increasePerLevel": 7
+  },
+  "quality": {
+    "normal": {
+      "common": 0.75,
+      "rare": 0.22,
+      "prototype": 0.03
+    },
+    "raidSuccess": {
+      "common": 0.4,
+      "rare": 0.45,
+      "prototype": 0.15
+    },
+    "lightRaidSuccess": {
+      "common": 0.7,
+      "rare": 0.27,
+      "prototype": 0.03
+    },
+    "toyUtility": {
+      "common": 1,
+      "rare": 2,
+      "prototype": 4
+    }
+  },
+  "player": {
+    "hp": 100,
+    "speed": 190,
+    "radius": 16,
+    "invulnerability": 0.65,
+    "dashDuration": 0.18,
+    "dashInvulnerability": 0.3,
+    "dashCooldown": 2.0,
+    "targetHoldSeconds": 0.15
+  },
+  "defaultBurn": {
+    "damagePerSecond": 6,
+    "duration": 1.5,
+    "tickSeconds": 0.5
+  },
+  "combatFeel": {
+    "pilotHitPush": 22,
+    "bulletPush": 3,
+    "blastPush": 9,
+    "hurtMoveMultiplier": 0.45,
+    "shieldPushMultiplier": 0.35
+  },
+  "fio": {
+    "initialCharge": 60,
+    "chargeMax": 100,
+    "killCharge": 1.0,
+    "xpCharge": 0.15,
+    "xpChargePerSecondCap": 3,
+    "passiveChargePerSecond": 0.5,
+    "bossPassiveChargePerSecond": 2,
+    "chargeEfficiencyPerLevel": 0.01,
+    "chargeEfficiencyCap": 0.2,
+    "reserve": {
+      "cost": 60,
+      "duration": 6,
+      "cooldown": 8,
+      "intervalMultiplier": 0.65
+    },
+    "quick": {
+      "cost": 50,
+      "duration": 4,
+      "cooldown": 6,
+      "intervalMultiplier": 0.65
+    }
+  },
+  "weapons": {
+    "p": {
+      "tags": [
+        "bullet",
+        "precision"
+      ],
+      "damage": [
+        28,
+        32,
+        22,
+        22,
+        26,
+        32
+      ],
+      "interval": [
+        0.48,
+        0.48,
+        0.48,
+        0.48,
+        0.36,
+        0.36
+      ],
+      "count": [
+        1,
+        1,
+        2,
+        2,
+        2,
+        2
+      ],
+      "range": 540,
+      "projectileSpeed": 1000,
+      "branchA": {
+        "id": "pierce",
+        "tags": [
+          "pierce"
+        ],
+        "targetsPerProjectile": 3
+      },
+      "branchB": {
+        "id": "incendiary",
+        "tags": [
+          "burn"
+        ],
+        "hitsPerIgnite": 2
+      },
+      "evolution": {
+        "moduleByBranch": {
+          "pierce": [
+            "armor"
+          ],
+          "incendiary": [
+            "catalyst"
+          ]
+        },
+        "damage": 36,
+        "interval": 0.32,
+        "count": 3
+      }
+    },
+    "s": {
+      "tags": [
+        "bullet",
+        "close"
+      ],
+      "damage": [
+        9,
+        9,
+        9,
+        9,
+        12,
+        12
+      ],
+      "interval": [
+        0.75,
+        0.75,
+        0.65,
+        0.65,
+        0.65,
+        0.65
+      ],
+      "count": [
+        5,
+        7,
+        7,
+        7,
+        7,
+        9
+      ],
+      "range": 220,
+      "projectileSpeed": 650,
+      "spreadDegrees": 45,
+      "branchA": {
+        "id": "flechette",
+        "tags": [
+          "pierce"
+        ],
+        "range": 300,
+        "targetsPerProjectile": 2
+      },
+      "branchB": {
+        "id": "dragonsBreath",
+        "tags": [
+          "burn"
+        ],
+        "ignitePerTrigger": 1
+      },
+      "evolution": {
+        "moduleByBranch": {
+          "flechette": [
+            "armor"
+          ],
+          "dragonsBreath": [
+            "catalyst"
+          ]
+        },
+        "damage": 14,
+        "interval": 0.6,
+        "count": 11,
+        "closeRange": 130,
+        "closeMultiplier": 1.4
+      }
+    },
+    "h": {
+      "tags": [
+        "bullet",
+        "rapid"
+      ],
+      "damage": [
+        12,
+        14,
+        14,
+        14,
+        14,
+        18
+      ],
+      "interval": [
+        0.2,
+        0.2,
+        0.16,
+        0.16,
+        0.16,
+        0.16
+      ],
+      "count": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        2
+      ],
+      "range": 420,
+      "projectileSpeed": 700,
+      "branchA": {
+        "id": "ricochet",
+        "tags": [
+          "ricochet"
+        ],
+        "bounces": 1
+      },
+      "branchB": {
+        "id": "grenade",
+        "tags": [
+          "blast"
+        ],
+        "shotsPerGrenade": 8,
+        "damage": 60,
+        "radius": 100
+      },
+      "evolution": {
+        "moduleByBranch": {
+          "ricochet": [
+            "ricochet"
+          ],
+          "grenade": [
+            "ricochet"
+          ]
+        },
+        "damage": 14,
+        "interval": 0.16,
+        "count": 4
+      }
+    },
+    "r": {
+      "tags": [
+        "blast",
+        "heavy"
+      ],
+      "damage": [
+        64,
+        64,
+        44,
+        44,
+        52,
+        64
+      ],
+      "interval": [
+        0.95,
+        0.95,
+        0.95,
+        0.95,
+        0.8,
+        0.8
+      ],
+      "count": [
+        1,
+        1,
+        2,
+        2,
+        2,
+        2
+      ],
+      "radius": [
+        90,
+        110,
+        110,
+        110,
+        125,
+        140
+      ],
+      "range": 480,
+      "projectileSpeed": 300,
+      "branchA": {
+        "id": "homing",
+        "tags": [
+          "homing"
+        ],
+        "turnRadiansPerSecond": 2.8
+      },
+      "branchB": {
+        "id": "incendiary",
+        "tags": [
+          "burn"
+        ],
+        "zoneDuration": 2,
+        "zoneDamagePerSecond": 12
+      },
+      "evolution": {
+        "moduleByBranch": {
+          "homing": [
+            "coil"
+          ],
+          "incendiary": [
+            "coil",
+            "catalyst"
+          ]
+        },
+        "damage": 72,
+        "interval": 0.7,
+        "count": 3,
+        "radius": 155
+      }
+    },
+    "f": {
+      "tags": [
+        "burn",
+        "close"
+      ],
+      "damage": [
+        6,
+        6,
+        8,
+        8,
+        10,
+        12
+      ],
+      "interval": [
+        0.12,
+        0.12,
+        0.12,
+        0.12,
+        0.1,
+        0.1
+      ],
+      "count": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "range": [
+        145,
+        175,
+        175,
+        175,
+        210,
+        210
+      ],
+      "coneDegrees": 50,
+      "branchA": {
+        "id": "trail",
+        "tags": [
+          "persistent"
+        ],
+        "zoneInterval": 0.6,
+        "zoneDuration": 2,
+        "zoneRadius": 50,
+        "zoneDamagePerSecond": 12,
+        "maxZones": 3
+      },
+      "branchB": {
+        "id": "focused",
+        "tags": [
+          "jet"
+        ],
+        "rangeAdded": 70,
+        "coneMultiplier": 0.6,
+        "damageMultiplier": 1.15
+      },
+      "evolution": {
+        "moduleByBranch": {
+          "trail": [
+            "catalyst"
+          ],
+          "focused": [
+            "catalyst"
+          ]
+        },
+        "damage": 18,
+        "interval": 0.09,
+        "rangeAdded": 50,
+        "coneAdded": 25
+      }
+    }
+  },
+  "modules": {
+    "ricochet": {
+      "compatibleAny": [
+        "bullet"
+      ],
+      "bounces": [
+        1,
+        2,
+        3
+      ],
+      "damageRetention": 0.7,
+      "searchRadius": 180,
+      "totalBounceCap": 4
+    },
+    "coil": {
+      "compatibleAny": [
+        "bullet",
+        "blast"
+      ],
+      "threshold": [
+        18,
+        14,
+        10
+      ],
+      "damage": [
+        28,
+        38,
+        50
+      ],
+      "targets": [
+        2,
+        3,
+        4
+      ],
+      "radius": 150,
+      "cooldown": 0.45,
+      "fioCharge": 0
+    },
+    "catalyst": {
+      "compatibleAny": [
+        "burn"
+      ],
+      "spreadTargets": [
+        1,
+        2,
+        3
+      ],
+      "spreadRadius": 100,
+      "burnDamagePerSecond": [
+        8,
+        12,
+        16
+      ],
+      "burnDuration": 2,
+      "blastBonusOnBurn": [
+        0.1,
+        0.25,
+        0.4
+      ],
+      "heatBurstDamage": [
+        12,
+        20,
+        30
+      ],
+      "heatBurstRadius": 80,
+      "heatBurstCooldown": 0.5
+    },
+    "magnet": {
+      "universal": true,
+      "pickupRadiusAdded": [
+        30,
+        60,
+        90
+      ],
+      "movingPickupSpeedBonus": [
+        0.03,
+        0.06,
+        0.09
+      ]
+    },
+    "armor": {
+      "expansionOnly": true,
+      "compatibleAny": [
+        "pierce"
+      ],
+      "armorReduction": [
+        0.1,
+        0.15,
+        0.2
+      ],
+      "duration": 2,
+      "weakpointBonus": [
+        0.1,
+        0.15,
+        0.2
+      ]
+    },
+    "ammoBelt": {
+      "expansionOnly": true,
+      "universal": true,
+      "ammoNeeded": [
+        6,
+        5,
+        4
+      ],
+      "nextSkillDurationAdded": [
+        0.5,
+        0.8,
+        1.0
+      ]
+    },
+    "overcharger": {
+      "prototypeOnly": true,
+      "universal": true,
+      "unique": true,
+      "incomingDamageMultiplier": 1.15,
+      "endOfSkillPulseDamage": 140,
+      "pulseRadius": 180,
+      "canProcModules": false
+    }
+  },
+  "procWeights": {
+    "hFirstHit": 1,
+    "pFirstHit": 1,
+    "shotgunPerPellet": 0.12,
+    "shotgunCapPerTrigger": 1.2,
+    "pierceOrBounce": 0.35,
+    "rocketPerTarget": 0.5,
+    "rocketCapPerProjectile": 2,
+    "flamePerTargetTick": 0,
+    "flameCapPerTick": 0,
+    "secondaryEffect": 0
+  },
+  "fusion": {
+    "weaponLevel": 4,
+    "moduleRank": 2,
+    "family": "conductive",
+    "module": "coil",
+    "requiredTags": [
+      "bullet",
+      "blast"
+    ],
+    "primaryBaseLevel": 6,
+    "hitsPerPayload": 10,
+    "payloadDamage": 80,
+    "payloadRadius": 130,
+    "payloadCooldown": 0.6,
+    "overflowIntervalReductionPerLevel": 0.03,
+    "overflowIntervalReductionCap": 0.12
+  },
+  "enemies": {
+    "rifle": {
+      "hp": 28,
+      "speed": 68,
+      "contactDamage": 8,
+      "xp": 1
+    },
+    "shield": {
+      "hp": 90,
+      "speed": 45,
+      "contactDamage": 12,
+      "xp": 3,
+      "frontalDamageMultiplier": 0.45,
+      "turnRadiansPerSecond": 1.8
+    },
+    "mortar": {
+      "hp": 45,
+      "speed": 40,
+      "damage": 14,
+      "xp": 2,
+      "telegraph": 0.9,
+      "blastRadius": 48
+    },
+    "officer": {
+      "hp": 300,
+      "speed": 55,
+      "damage": 12,
+      "xp": 12,
+      "shotCount": 5,
+      "telegraph": 0.7
+    },
+    "courier": {
+      "hp": 900,
+      "speed": 48,
+      "xp": 12,
+      "routeLength": 800
+    }
+  },
+  "raidContracts": {
+    "light": {
+      "hp": 900,
+      "speed": 48,
+      "routeLength": 800,
+      "bulletFrontMultiplier": 1,
+      "qualityKey": "lightRaidSuccess",
+      "escort": {
+        "rifle": 4,
+        "mortar": 1
+      }
+    },
+    "armored": {
+      "hp": 4200,
+      "speed": 50,
+      "routeLength": 1050,
+      "bulletFrontMultiplier": 0.5,
+      "qualityKey": "raidSuccess",
+      "escort": {
+        "shield": 2,
+        "officer": 1,
+        "mortar": 2
+      }
+    }
+  },
+  "boss": {
+    "hp": 6000,
+    "partHp": 450,
+    "frontMultiplier": 0.65,
+    "rearRecoveryMultiplier": 1.5,
+    "warning": 0.9,
+    "chargeDuration": 0.8,
+    "chargeDistance": 300,
+    "recovery": 2.4,
+    "contactDamage": 16,
+    "shotDamage": 10,
+    "summonInterval": 5,
+    "summonCount": 6
+  },
+  "expansionBosses": {
+    "rail": {
+      "hp": 9000,
+      "partHp": 800,
+      "warning": 1.0,
+      "laneWidth": 80,
+      "recovery": 1.8,
+      "bodyMultiplierWithParts": 0.5
+    },
+    "port": {
+      "hp": 12000,
+      "partHp": 1000,
+      "warning": 1.0,
+      "sweepSeconds": 1.6,
+      "sweepRadiansPerSecond": 1.1,
+      "bodyMultiplierWithParts": 0.35,
+      "bodyMultiplierAfterParts": 1.35,
+      "reloadSeconds": 3,
+      "exposedSeconds": 2,
+      "exposedMultiplier": 1.6
+    }
+  },
+  "spawn": {
+    "initialCount": 10,
+    "openingGap": 52,
+    "packInterval": 2.4,
+    "basePack": 5,
+    "packAddedPerPressure": 1,
+    "packCap": 12,
+    "aliveCap": 160,
+    "minSpawnDistance": 300,
+    "fieldPressureSeconds": 60,
+    "holdoutPressureSeconds": 30,
+    "warningSeconds": 5,
+    "pursuitStartsAtPressure": 4,
+    "pursuitHpMultiplierPerPressure": 1.12,
+    "pursuitIntervalMinimum": 4,
+    "pursuitIntervalBase": 18
+  },
+  "powerWave": {
+    "oncePerRun": true,
+    "warningSeconds": 4,
+    "count": 60,
+    "releaseSeconds": 6,
+    "additionalEventScore": 0
+  },
+  "score": {
+    "bosses": [
+      1000,
+      2000,
+      3000
+    ],
+    "uniqueEvent": 400,
+    "normalKill": 10,
+    "normalKillCapPerRegion": 300,
+    "elite": 100,
+    "eliteCapPerRegion": 8,
+    "extraction": 3000,
+    "raidSuccess": 300,
+    "challengePerTier": 500
+  },
+  "credits": {
+    "killsPerCredit": 15,
+    "killCap": 900,
+    "elite": 10,
+    "eliteCap": 9,
+    "uniqueEvent": 40,
+    "eventCap": 6,
+    "bosses": [
+      90,
+      120,
+      180
+    ],
+    "extraction": 120,
+    "raid": 40,
+    "raidCap": 3,
+    "challenge": 20,
+    "challengeCap": 3,
+    "firstClear": 200
+  },
+  "researchPrices": {
+    "fieldMedic": 300,
+    "fragmentation": 350,
+    "heatSink": 350
+  },
+  "legacyResearchCompensation": {
+    "p-split": 200,
+    "h-ricochet": 240,
+    "r-incendiary": 280,
+    "p-execution": 360,
+    "h-capacitor": 360,
+    "s-flechette": 220,
+    "f-catalyst": 260,
+    "r-conductor": 300
+  },
+  "limits": {
+    "shots": 320,
+    "enemyShots": 100,
+    "zones": 12,
+    "secondaryEventsPerTick": 64,
+    "recentRuns": 10,
+    "saveIntervalSeconds": 5
+  }
+};

@@ -1,18 +1,26 @@
 <h1 align="center">★ 서바이버 작전실</h1>
-<p align="center"><strong>OPERATION BREAKWATER · 교두보 탈환</strong><br>마르코의 집중 사격, 피오의 강화 탄창.<br>전장에서 무기를 완성하고, 확보한 성과로 다음 출격을 준비하는 팬 시제품.</p>
+<p align="center"><strong>RIFT · 빌드 서바이버 실험</strong><br>노획한 패로 화력을 완성하고, 거대 병기를 돌파하라.<br>피오 독립 전투 시제품과 기존 BREAKWATER 공개본을 함께 보관합니다.</p>
 <p align="center">
 <a href="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml"><img alt="검사와 Pages 배포" src="https://github.com/yu-reka/woodland-survivors/actions/workflows/pages.yml/badge.svg?branch=main"></a>
 <img alt="0.15 진입과 잔류" src="https://img.shields.io/badge/version-0.15.1-d5b77b?style=flat-square">
 <img alt="Canvas와 JavaScript" src="https://img.shields.io/badge/HTML_Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
-<p align="center"><a href="https://yu-reka.github.io/woodland-survivors/"><strong>▶ 작전실에서 출격</strong></a> · <a href="docs/METAL-SLUG-SURVIVORS-CONCEPT.md">게임 기획</a> · <a href="docs/META-PROGRESSION-ECONOMY.md">기지와 경제</a> · <a href="docs/VALIDATION-V015.md">구현·검증 기록</a></p>
+<p align="center"><a href="docs/REBOOT-DESIGN.md"><strong>새 게임 설계</strong></a> · <a href="docs/REBOOT-PROTOTYPE.md">실제 구현·검증 범위</a> · <a href="https://yu-reka.github.io/woodland-survivors/">▶ 기존 공개본 0.15.1</a></p>
 
-![야전 격납고에서 대원과 작전을 준비하는 새 로비](docs/images/v014-hangar-desktop.png)
+![새 독립 피오 전투 시제품의 로비](docs/images/reboot-lobby-desktop.png)
 
-**재기획 기준:** [빌드 중심 새 설계](docs/REBOOT-DESIGN.md) · [Megabonk/Burst 원문 조사](docs/REBOOT-REFERENCE-ANALYSIS.md). 기존 두 무기·3단 강화·고정 합체를 유지 조건에서 제외하고, 판마다 다른 획득·투자·위험 선택을 다시 설계했습니다. **아래는 현재 배포본 0.15.1의 설명이며 새 설계는 아직 구현하지 않았습니다.**
+### 새 구현 · RIFT 빌드 서바이버 시제품
 
-개발 전 상세 계약: [성장·후보·습격·정산·저장](docs/REBOOT-RULES.md) · [전투·맵·보스 수치](docs/REBOOT-COMBAT.md) · [화면 흐름·19개 경계 검수](docs/REBOOT-UX-QA.md) · [설계 산술 검증](docs/design/reboot-planning-audit.json). 수치는 미검증 기준값이며 실제 재미/플레이 통과 결과가 아닙니다.
+**메가봉크·Pokémon Survivor Burst의 빌드 성장과 선택을 참고하고, 메탈슬러그의 대원·적진 침투·거대 병기 파괴를 표현으로 삼습니다.** 피오·H/R/F·공격 3칸·모듈 4칸을 독립 전투 모델로 구현했습니다. 새 패 획득 → 투자 → 안전 보급/위험 습격 → 진화·합체·발동 연계 → 보스 → 귀환/잔류를 실험합니다.
+
+`npm run dev` 후 **http://127.0.0.1:5200/reboot.html**에서 실행합니다. [방향 재점검·실제 구현·검증 한계](docs/REBOOT-PROTOTYPE.md) · [전체 게임 설계](docs/REBOOT-DESIGN.md) · [공식 자료 조사](docs/REBOOT-REFERENCE-ANALYSIS.md)
+
+기존 두 총·3단 강화·고정 합체 모델을 가져오지 않았습니다. 첫 두 보급의 새 총, L4 분화, 조율권의 기회비용과 도박 보급으로 다른 투자 경로를 만듭니다. 시제품은 독립 기록을 쓰며 기존 크레딧·연구·저장을 바꾸지 않습니다. **마르코·세 구역·새 연구 경제는 확장 범위이며 아직 새 게임에 구현하지 않았습니다.**
+
+규칙 검사 272개, 세 경로×4시드의 모델 완주12회, 인앱390px 스틱·조립·저장 복귀를 확인했습니다. 자동 완주를 재미의 증명으로 세지 않습니다. 실제 UI의 초반 사망에서 드러난 생성·방패 회전·입력 문제를 고쳤고, 사람의 빌드 선택·재출격을 확인해야 합니다.
+
+세부 계약: [성장·후보·습격·정산·저장](docs/REBOOT-RULES.md) · [전투·맵·보스 수치](docs/REBOOT-COMBAT.md) · [화면 흐름·수용 기준](docs/REBOOT-UX-QA.md). **아래는 현재 공개 배포본 0.15.1의 설명입니다.** 기본 GitHub Pages 주소는 새 시제품으로 교체하지 않았습니다.
 
 ### 준비 → 전투 → 정산 → 연구 → 재출격
 
@@ -91,7 +99,9 @@ npm run dev
 
 | 명령 | 용도 |
 | :-- | :-- |
-| `npm test` | 기존 게임 + 작전 규칙 242개 검사 |
+| `npm test` | 기존 게임·작전 + 새 독립 시제품 272개 검사 |
+| `npm run test:reboot` | 새 전투·후보·조립·도박·저장 30개 검사 |
+| `node scripts/reboot-pilot.mjs --all` | 새 전투의 세 투자 경로 × 4시드 정상 입력 파일럿 |
 | `npm run test:mission` | 작전·경제·저장·진화 검사 76개 |
 | `node scripts/mission-pilot.mjs --summary` | 초기 계정 8회 전체 보급 경로 주행 |
 | `node scripts/mission-pilot.mjs --holdout --hold-seconds=90 --max-seconds=900 --summary` | 각 맵 장기 잔류 → 출구 복귀 → 귀환 8판 |
@@ -101,7 +111,7 @@ npm run dev
 | `npm run test:pages` | 저장소 하위 경로·자산·모듈 버전 검사 |
 | `npm run preview` | `http://127.0.0.1:5201/woodland-survivors/` |
 
-`src/mission/`가 모델·화면·렌더·저장을 소유합니다. 새 격납고 배경과 환경 소품, 금속 상자 UI는 기존 캐릭터 원화와 연결했습니다. 기존 원정의 전투 모델을 가져오지 않고 오디오·터치 입력만 재사용합니다. `main` 푸시 시 [GitHub Actions](.github/workflows/pages.yml)가 검사 → 빌드 → Pages 검사 → 배포를 실행합니다. `dist/`는 커밋하지 않습니다. 포크 배포는 **Settings → Pages → Source → GitHub Actions**입니다.
+`src/reboot/`는 새 시제품의 모델·화면·렌더·저장을 소유하고, `src/mission/`는 기존 공개 작전을 소유합니다. 빌드는 `reboot.html`도 포함하며 Pages 하위 경로에서 모듈·폰트 의존성을 검사합니다. 새 격납고 배경과 환경 소품, 금속 상자 UI는 기존 캐릭터 원화와 연결했습니다. 기존 원정의 전투 모델을 가져오지 않고 오디오·터치 입력만 재사용합니다. `main` 푸시 시 [GitHub Actions](.github/workflows/pages.yml)가 검사 → 빌드 → Pages 검사 → 배포를 실행합니다. `dist/`는 커밋하지 않습니다. 포크 배포는 **Settings → Pages → Source → GitHub Actions**입니다.
 
 ### 이전 실험
 

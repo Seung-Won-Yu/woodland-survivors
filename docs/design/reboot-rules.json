@@ -1,7 +1,7 @@
 {
-  "status": "unimplemented planning baseline; combat values are tuning hypotheses",
+  "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b01",
+  "balanceRevision": "b02",
   "prototypeWeapons": ["h", "r", "f"],
   "expansionWeapons": ["p", "s"],
   "inventory": {"weaponSlots": 3, "moduleSlots": 4, "weaponMax": 6, "branchAt": 4, "moduleMax": 3},
@@ -17,6 +17,7 @@
   },
   "player": {"hp": 100, "speed": 190, "radius": 16, "invulnerability": 0.65, "dashDuration": 0.18, "dashInvulnerability": 0.30, "dashCooldown": 2.0, "targetHoldSeconds": 0.15},
   "defaultBurn": {"damagePerSecond": 6, "duration": 1.5, "tickSeconds": 0.5},
+  "combatFeel": {"pilotHitPush": 22, "bulletPush": 3, "blastPush": 9, "hurtMoveMultiplier": 0.45, "shieldPushMultiplier": 0.35},
   "fio": {"initialCharge": 60, "chargeMax": 100, "killCharge": 1.0, "xpCharge": 0.15, "xpChargePerSecondCap": 3, "passiveChargePerSecond": 0.5, "bossPassiveChargePerSecond": 2, "chargeEfficiencyPerLevel": 0.01, "chargeEfficiencyCap": 0.20, "reserve": {"cost": 60, "duration": 6, "cooldown": 8, "intervalMultiplier": 0.65}, "quick": {"cost": 50, "duration": 4, "cooldown": 6, "intervalMultiplier": 0.65}},
   "weapons": {
     "p": {
@@ -87,7 +88,7 @@
   "fusion": {"weaponLevel": 4, "moduleRank": 2, "family": "conductive", "module": "coil", "requiredTags": ["bullet", "blast"], "primaryBaseLevel": 6, "hitsPerPayload": 10, "payloadDamage": 80, "payloadRadius": 130, "payloadCooldown": 0.6, "overflowIntervalReductionPerLevel": 0.03, "overflowIntervalReductionCap": 0.12},
   "enemies": {
     "rifle": {"hp": 28, "speed": 68, "contactDamage": 8, "xp": 1},
-    "shield": {"hp": 90, "speed": 45, "contactDamage": 12, "xp": 3, "frontalDamageMultiplier": 0.45},
+    "shield": {"hp": 90, "speed": 45, "contactDamage": 12, "xp": 3, "frontalDamageMultiplier": 0.45, "turnRadiansPerSecond": 1.8},
     "mortar": {"hp": 45, "speed": 40, "damage": 14, "xp": 2, "telegraph": 0.9, "blastRadius": 48},
     "officer": {"hp": 300, "speed": 55, "damage": 12, "xp": 12, "shotCount": 5, "telegraph": 0.7},
     "courier": {"hp": 900, "speed": 48, "xp": 12, "routeLength": 800}
@@ -95,7 +96,7 @@
   "raidContracts": {"light": {"hp": 900, "speed": 48, "routeLength": 800, "bulletFrontMultiplier": 1, "qualityKey": "lightRaidSuccess", "escort": {"rifle": 4, "mortar": 1}}, "armored": {"hp": 4200, "speed": 50, "routeLength": 1050, "bulletFrontMultiplier": 0.5, "qualityKey": "raidSuccess", "escort": {"shield": 2, "officer": 1, "mortar": 2}}},
   "boss": {"hp": 6000, "partHp": 450, "frontMultiplier": 0.65, "rearRecoveryMultiplier": 1.5, "warning": 0.9, "chargeDuration": 0.8, "chargeDistance": 300, "recovery": 2.4, "contactDamage": 16, "shotDamage": 10, "summonInterval": 5, "summonCount": 6},
   "expansionBosses": {"rail": {"hp": 9000, "partHp": 800, "warning": 1.0, "laneWidth": 80, "recovery": 1.8, "bodyMultiplierWithParts": 0.5}, "port": {"hp": 12000, "partHp": 1000, "warning": 1.0, "sweepSeconds": 1.6, "sweepRadiansPerSecond": 1.1, "bodyMultiplierWithParts": 0.35, "bodyMultiplierAfterParts": 1.35, "reloadSeconds": 3, "exposedSeconds": 2, "exposedMultiplier": 1.6}},
-  "spawn": {"initialCount": 10, "packInterval": 2.4, "basePack": 5, "packAddedPerPressure": 1, "packCap": 12, "aliveCap": 160, "minSpawnDistance": 300, "fieldPressureSeconds": 60, "holdoutPressureSeconds": 30, "warningSeconds": 5, "pursuitStartsAtPressure": 4, "pursuitHpMultiplierPerPressure": 1.12, "pursuitIntervalMinimum": 4, "pursuitIntervalBase": 18},
+  "spawn": {"initialCount": 10, "openingGap": 52, "packInterval": 2.4, "basePack": 5, "packAddedPerPressure": 1, "packCap": 12, "aliveCap": 160, "minSpawnDistance": 300, "fieldPressureSeconds": 60, "holdoutPressureSeconds": 30, "warningSeconds": 5, "pursuitStartsAtPressure": 4, "pursuitHpMultiplierPerPressure": 1.12, "pursuitIntervalMinimum": 4, "pursuitIntervalBase": 18},
   "powerWave": {"oncePerRun": true, "warningSeconds": 4, "count": 60, "releaseSeconds": 6, "additionalEventScore": 0},
   "score": {"bosses": [1000, 2000, 3000], "uniqueEvent": 400, "normalKill": 10, "normalKillCapPerRegion": 300, "elite": 100, "eliteCapPerRegion": 8, "extraction": 3000, "raidSuccess": 300, "challengePerTier": 500},
   "credits": {"killsPerCredit": 15, "killCap": 900, "elite": 10, "eliteCap": 9, "uniqueEvent": 40, "eventCap": 6, "bosses": [90, 120, 180], "extraction": 120, "raid": 40, "raidCap": 3, "challenge": 20, "challengeCap": 3, "firstClear": 200},
