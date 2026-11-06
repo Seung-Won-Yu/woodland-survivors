@@ -13,7 +13,7 @@ export function createRun(seed=17){
  return s;
 }
 export function createOperation(seed=17,research=[],trial=null){
- const s=createRun(seed);s.operation={region:0,cleared:0,regionTime:0,history:[],jammed:false};s.research=[...research];s.trial=trial;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[0]};for(const e of s.enemies)e.cohort='ambient';s.stats.sitesCleared=0;s.stats.fusionBosses=0;s.stats.flameBosses=0;Object.assign(s,regionLayout(seed,0));s.boss=regionBoss(0);return s;
+ const s=createRun(seed);s.operation={region:0,cleared:0,regionTime:0,history:[],jammed:false};s.research=[...research];s.trials=(Array.isArray(trial)?[...trial]:[trial]).filter(Boolean);s.trial=s.trials[0]||null;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[0]};for(const e of s.enemies)e.cohort='ambient';s.stats.sitesCleared=0;s.stats.fusionBosses=0;s.stats.flameBosses=0;Object.assign(s,regionLayout(seed,0));s.boss=regionBoss(0);return s;
 }
 function advanceRegion(s){
  if(!s.operation||s.stage!=='holdout'||!s.boss.dead||s.operation.region>=2)return false;
@@ -36,7 +36,8 @@ export function restore(raw,{allowPrevious=false}={}){
  if(!['field','boss','holdout'].includes(s.stage)||!Array.isArray(s.boss?.parts)||!Array.isArray(s.queue)||!Array.isArray(s.choices)||!['map','supply','combat','loot'].every(k=>Number.isInteger(s.rng[k])))fail();
  for(const key of ['enemies','shots','enemyShots','gems','zones','hazards','effects','excluded','seenGuns','offeredWeapons'])if(!Array.isArray(s[key]))fail();
  if(new Set(s.modules.map(m=>m.id)).size!==s.modules.length||s.modules.some(m=>RULES.modules[m.id].unique&&m.rank!==1)||new Set(s.weapons.map(w=>w.uid)).size!==s.weapons.length||s.weapons.some(w=>typeof w.uid!=='string'))fail();
- if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
+ if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
+ if(s.operation)s.trials??=s.trial?[s.trial]:[];
  const kinds=new Set(['advance','control','rank','module','gun','evolve','fusion','tune','repair','utility','refit','resupply','back','stay','extract']);
  const cardsOk=cards=>Array.isArray(cards)&&cards.length>0&&cards.every(c=>(c.kind!=='resupply'||Number.isFinite(c.heal)&&Number.isFinite(c.charge)&&c.heal>=0&&c.charge>=0)&&typeof c.id==='string'&&kinds.has(c.kind)&&(!c.weapon||GUNS[c.weapon])&&(!c.module||MODULES[c.module])&&(!['rank','gun','evolve'].includes(c.kind)||!!GUNS[c.weapon])&&(!['module','tune'].includes(c.kind)||!!MODULES[c.module])&&(c.kind!=='module'||Number.isInteger(c.rank)&&c.rank>=1&&c.rank<=3));
  if((s.phase==='choice'||s.resumePhase==='choice')&&(!s.choice||!['level','supply','armory','raid-reward','assembly','clear','control'].includes(s.choice.type)||!cardsOk(s.choices)))fail();
@@ -56,13 +57,14 @@ const utility=(key)=>({id:`utility:${key}`,kind:'utility',key,title:({health:'�
 const upgradeable=s=>s.weapons.filter(w=>!w.evolved&&!w.fusion&&w.level<6);
 function modulePool(s){return ['ricochet','coil','catalyst','magnet',...(s.research||[])].filter(id=>!s.excluded.includes(id)&&compatible(s,id)&&moduleRank(s,id)<(RULES.modules[id].unique?1:3));}
 function currentInvestments(s){return[...upgradeable(s).map(gunCard),...s.modules.filter(m=>!RULES.modules[m.id].unique&&m.rank<3).map(m=>moduleCard(m.id,1))];}
+const trialModule=(s,pool)=>(s.trials||[s.trial]).find(id=>pool.includes(id));
 function supplyCards(s){
  const guns=upgradeable(s),cards=[guns.length?gunCard(pick(s,'supply',guns)):currentInvestments(s)[0]||utility('health')];
  const unseen=['h','r','f'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id)&&!(s.supplyCount<2&&s.seenGuns.includes(id)));
  if(unseen.length){const id=pick(s,'supply',unseen);cards.push({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label:'새 무기'});if(!s.seenGuns.includes(id))s.seenGuns.push(id);}
  const pool=modulePool(s);let favored=pool;
  if(s.supplyCount<2){const focus=s.weapons.find(w=>w.id===s.firstNew)||s.weapons[0],requirements=Object.values(RULES.weapons[focus.id].evolution.moduleByBranch).flat();const useful=pool.filter(id=>requirements.includes(id));if(useful.length)favored=useful;}
- if(pool.length){const id=pool.includes(s.trial)?s.trial:pick(s,'supply',favored);cards.push({...moduleCard(id),...(id===s.trial?{label:'새 연구 · 첫 실전'}:{})});}
+ if(pool.length){const trial=trialModule(s,pool),id=trial||pick(s,'supply',favored);cards.push({...moduleCard(id),...(id===trial?{label:'새 연구 · 첫 실전'}:{})});}
  return fillCards(s,cards);
 }
 function fillCards(s,cards){const unique=[...new Map(cards.filter(Boolean).map(c=>[c.id,c])).values()];for(const key of ['health','charge','power'])if(unique.length<3&&!unique.some(c=>c.id===`utility:${key}`))unique.push(utility(key));return unique.slice(0,3);}
@@ -77,7 +79,7 @@ function rollQuality(s,key){const p=RULES.quality[key],r=rng(s,'loot');return r<
 function armoryCards(s,quality){
  const cards=[],pool=modulePool(s),amount=quality==='common'?1:quality==='rare'?2:3;
  if(quality==='prototype'&&!moduleRank(s,'overcharger'))cards.push(moduleCard('overcharger',1));
- if(pool.includes(s.trial)){cards.push({...moduleCard(s.trial,amount),label:'새 연구 · 첫 실전'});pool.splice(pool.indexOf(s.trial),1);}
+ const trial=trialModule(s,pool);if(trial){cards.push({...moduleCard(trial,amount),label:'새 연구 · 첫 실전'});pool.splice(pool.indexOf(trial),1);}
  while(cards.length<3&&pool.length){const full=pool.filter(id=>moduleRank(s,id)+amount<=3),id=pick(s,'loot',full.length?full:pool);pool.splice(pool.indexOf(id),1);cards.push(moduleCard(id,amount));}
  return fillCrate(cards,quality);
 }
@@ -106,7 +108,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
   if(!MODULES[c.module]||!compatible(s,c.module))return false;let m=s.modules.find(m=>m.id===c.module);
   const gain=moduleGain(s,c.module,c.rank);
   if(m){if(m.rank>=3||RULES.modules[m.id].unique)return false;m.rank=gain.next;}else{m={id:c.module,rank:gain.next};if(s.modules.length>=4){if(!Number.isInteger(slot)||!s.modules[slot])return false;s.modules[slot]=m;}else s.modules.push(m);}
-  if(c.module===s.trial){s.stats.researchTrialPicked=c.module;s.trial=null;}
+  if((s.trials||[s.trial]).includes(c.module)){s.stats.researchTrialPicked=c.module;(s.stats.researchTrialsPicked??=[]).push(c.module);s.trials=(s.trials||[s.trial]).filter(id=>id!==c.module);s.trial=s.trials[0]||null;}
   if(gain.charge){const before=s.player.charge;s.player.charge=Math.min(100,before+gain.charge);s.stats.overflowCharge=(s.stats.overflowCharge||0)+s.player.charge-before;}
  }
  else if(c.kind==='gun'){
@@ -282,7 +284,7 @@ function updateOperationBoss(s,dt){
   if(b.mode==='aim'){
    b.cycle++;b.mode='salvo';b.timer=index===1?1.45:1.15;
    if(index===1){const safe=b.cycle%3;for(let lane=0;lane<3;lane++){if(lane===safe||lane===0&&b.parts[0].hp<=0||lane===2&&b.parts[1].hp<=0)continue;s.hazards.push({x:500+lane*300,y:600,w:220,h:900,lane:true,r:0,timer:1.25});}emit(s,'boss-warning',b.x,b.y,{text:'포격 차선 예고 · 표시 밖으로 이동',life:1});}
-   else{for(let i=0;i<(b.parts[0].hp>0?5:3);i++){const a=i*TAU/5;s.hazards.push({x:clamp(p.x+Math.cos(a)*95,90,1510),y:clamp(p.y+Math.sin(a)*95,90,1110),r:58,timer:.95});}emit(s,'boss-warning',p.x,p.y,{text:'집중 포격 · 포탑 사격',life:1});}
+   else{for(let i=0;i<(b.parts[0].hp>0?5:3);i++){const a=i*TAU/5;s.hazards.push({x:clamp(p.x+Math.cos(a)*95,90,1510),y:clamp(p.y+Math.sin(a)*95,90,1110),r:58,timer:.95,duration:.95});}emit(s,'boss-warning',p.x,p.y,{text:'집중 포격 · 포탑 사격',life:1});}
   }else if(b.mode==='salvo'){
    b.mode='recover';b.timer=index===1?2.2:2.6;
    if(index===2&&b.parts[0].hp>0){for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);b.kick=1;b.flash=.12;}

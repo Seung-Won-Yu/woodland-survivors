@@ -2,6 +2,7 @@ import {RESEARCH,operationCredits} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {restore,snapshot,finish} from './model.js';
 export const STORAGE_KEY='operation-rift-profile-v2';
+const pickedTrials=stats=>stats.researchTrialsPicked||[stats.researchTrialPicked].filter(Boolean);
 const copy=x=>JSON.parse(JSON.stringify(x));
 export function emptyProfile(){return{version:1,revision:0,sequence:0,active:null,records:{score:0,time:null,challenge:0,wins:0},recent:[],recordScope:RULES.balanceRevision,recordArchive:[],credits:0,research:[],trials:[],milestones:{},settled:0,settings:{sound:true,reduced:false}};}
 export function parseProfile(raw){
@@ -18,12 +19,12 @@ export function parseProfile(raw){
  return p;
 }
 export function beginProfile(p,run){if(p.active)throw Error('저장한 전투를 먼저 이어가세요.');const n=copy(p);n.sequence++;n.migrationNotice=null;run.runId=`${n.sequence}:${run.seed}`;n.active={version:VERSION,sequence:n.sequence,runId:run.runId,run:snapshot(run)};return n;}
-export function checkpointProfile(p,run){if(!p.active)throw Error('활성 전투가 없습니다.');if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');const n=copy(p);n.active.run=snapshot(run);if(run.stats.researchTrialPicked)n.trials=n.trials.filter(id=>id!==run.stats.researchTrialPicked);return n;}
+export function checkpointProfile(p,run){if(!p.active)throw Error('활성 전투가 없습니다.');if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');const n=copy(p);n.active.run=snapshot(run);n.trials=n.trials.filter(id=>!pickedTrials(run.stats).includes(id));return n;}
 export function settleProfile(p,run){
  if(!run.result)throw Error('아직 끝나지 않은 전투입니다.');if(!p.active){if(p.settled===p.sequence)return copy(p);throw Error('정산할 전투를 찾지 못했습니다.');}
  if(run.runId!==p.active.runId||run.result.runId!==p.active.runId)throw Error('다른 작전의 정산 결과입니다.');
  const n=copy(p),r=copy(run.result);r.credits=operationCredits(r,!n.milestones.medic);const sameScope=r.balanceRevision===n.recordScope;r.newScore=sameScope&&r.score>n.records.score;r.newTime=sameScope&&r.won&&(n.records.time===null||r.seconds<n.records.time);if(n.active.sequence<=n.settled)return n;if(sameScope){n.records.score=Math.max(n.records.score,r.score);n.records.challenge=Math.max(n.records.challenge,r.stats.challenge);}
- if(r.won&&sameScope)n.records.time=n.records.time===null?r.seconds:Math.min(n.records.time,r.seconds);if(r.won){n.records.wins++;n.milestones.medic=true;}if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;if(r.stats.flameBosses>0)n.milestones.thermal=true;n.credits+=r.credits;if(r.stats.researchTrialPicked)n.trials=n.trials.filter(id=>id!==r.stats.researchTrialPicked);n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
+ if(r.won&&sameScope)n.records.time=n.records.time===null?r.seconds:Math.min(n.records.time,r.seconds);if(r.won){n.records.wins++;n.milestones.medic=true;}if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;if(r.stats.flameBosses>0)n.milestones.thermal=true;n.credits+=r.credits;n.trials=n.trials.filter(id=>!pickedTrials(r.stats).includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
 }
 export function buyResearch(p,id){const d=RESEARCH[id];if(!d||p.active||p.research.includes(id)||!p.milestones[id]||p.credits<d.cost)return null;const n=copy(p);n.credits-=d.cost;n.research.push(id);n.trials.push(id);return n;}
 export function createStore(storage,lock=null){
