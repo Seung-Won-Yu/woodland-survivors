@@ -53,7 +53,7 @@ test('entrypoints and transitive modules share one deployment version',async()=>
  const html=await readFile('dist/index.html','utf8'),version=html.match(/src\/reboot\/main\.js\?v=([a-zA-Z0-9._-]+)/)?.[1];assert.ok(version);
  assert.ok(html.includes(`src/reboot/style.css?v=${version}`));
  const reboot=await readFile('dist/reboot.html','utf8');assert.ok(reboot.includes(`src/reboot/main.js?v=${version}`));assert.ok(reboot.includes(`src/reboot/style.css?v=${version}`));
- for(const path of ['main','model','render','profile','content','campaign']){const source=await readFile(`dist/src/reboot/${path}.js`,'utf8');for(const [,ref]of source.matchAll(/\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/g))assert.ok(ref.endsWith(`.js?v=${version}`),`${path}: ${ref}`);}
+ for(const path of ['main','model','render','profile','content','campaign','interface']){const source=await readFile(`dist/src/reboot/${path}.js`,'utf8');for(const [,ref]of source.matchAll(/\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/g))assert.ok(ref.endsWith(`.js?v=${version}`),`${path}: ${ref}`);}
  for(const path of ['src/main.js','src/mission/main.js','src/mission/model.js','src/mission/profile.js','src/mission/render.js','src/mission/motion.js','src/mission/route.js','src/sprint/main.js','src/sprint/render.js','src/core/game.js','src/game/render.js']){
   const source=await readFile('dist/'+path,'utf8');const imports=[...source.matchAll(/\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/g)];assert.ok(imports.length>0,path);
   for(const [,ref]of imports)assert.ok(ref.endsWith(`.js?v=${version}`),`${path}: ${ref}`);

@@ -6,12 +6,12 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.16.1" src="https://img.shields.io/badge/RIFT-0.16.1-d5b77b?style=flat-square">
+<img alt="RIFT 0.17.0" src="https://img.shields.io/badge/RIFT-0.17.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
 
-![피오·세 전선·출격 목표가 연결된 RIFT 작전실](docs/images/rift-lobby-desktop.png)
+![격납고·작전 지도·피오·출격 준비가 연결된 RIFT 작전실](docs/images/rift-lobby-desktop.png)
 
 피오로 적진의 시험 병기 수송을 차단하는 자동 공격 서바이버입니다. 전장에서 주운 H/R/F와 모듈에 투자해 화력을 완성하고, 세 전선의 보스를 격파한 뒤 귀환합니다. 확보 크레딧으로 연구하면 다음 판에 새로운 모듈 후보가 생깁니다.
 
@@ -24,6 +24,10 @@
 | **항구 결전** | 컨테이너 길목 돌파·관제소 교란/시험 탄약 선택 | 집중 포격·포탑 사격 회피·부위 파괴 후 코어 공격 |
 
 보스는 시간·처치 수로 잠그지 않습니다. 격파 뒤 **다음 맵 진입 / 남아서 성장 / 확보 보상으로 중도귀환**을 선택합니다. 무기·모듈·체력·XP는 다음 맵에도 이어집니다. 남은 상자와 바닥 XP는 두고 가므로 잔류할 이유가 있습니다. 최종 보스 뒤 살아서 귀환을 선택해야 완주입니다.
+
+### 격납고에서 준비하고, 전장에서 결정한다
+
+작전 지도에서 세 전선의 지형과 보스를 살펴보고 출격합니다. **병기**에서 H/R/F의 분화·진화·합체 조건을, **연구**에서 다음 판의 새 모듈을, **기록**에서 최근 작전의 빌드를 확인합니다. 모바일 성장 카드는 효과와 슬롯 비용을 함께 보여 줍니다. 저장한 작전은 이어 할 수 있으며, 종료·정산은 별도로 확인합니다.
 
 ### 같은 패도 다르게 완성한다
 
@@ -67,7 +71,7 @@ npm run test:pages
 
 ### 검증 범위
 
-규칙311개·Pages4개를 통과했습니다. 정상 입력 모델 파일럿은 3경로×4시드의 12판 모두 세 전선을 완주했습니다. [원본 결과](docs/design/rift-campaign-pilots.json). 이는 규칙·저장·진행 경로 검증이며, 사람의 자유 플레이 재미나 4–6분 체감 리듬을 증명하지 않습니다. 실제 브라우저의 전체 작전 검증 기록은 별도로 갱신합니다.
+규칙·UI 계약316개·Pages4개를 통과했습니다. 정상 입력 모델 파일럿은 3경로×4시드의 12판 모두 세 전선을 완주했습니다. [원본 결과](docs/design/rift-campaign-pilots.json). 이는 규칙·저장·진행 경로 검증이며, 사람의 자유 플레이 재미나 4–6분 체감 리듬을 증명하지 않습니다. [실제 공개판 완주·연구·재출격 및 UI 검증](docs/VALIDATION-RIFT-V017.md)을 기록했습니다.
 
 RIFT 저장은 브라우저의 `operation-rift-profile-v2`를 사용합니다. 구형 저장·크레딧을 삭제하거나 합산하지 않습니다. 활성 판의 ID·정산 중복·동시 탭 충돌을 검사합니다.
 
