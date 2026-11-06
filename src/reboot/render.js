@@ -31,6 +31,7 @@ export function createRenderer(canvas,art){
   for(const g of s.gems){c.save();c.translate(g.x,g.y);c.rotate(Math.PI/4);c.fillStyle=g.value>=8?'#ffdc8c':'#b5e0d1';c.fillRect(-3,-3,6,6);c.restore();}
   for(const n of s.sites){
    if(n.state==='done')continue;const ready=n.state==='ready',active=n.state==='active',color=ready?'#e8dda7':n.kind==='armory'?'#c8a9ee':'#c6b78a';
+   if(n.kind==='relay'&&active){circle(c,n.x,n.y,125,'#70cbb51c','#b3e9d9',1);c.strokeStyle='#f3dfa2';c.lineWidth=4;c.beginPath();c.arc(n.x,n.y,125,-Math.PI/2,-Math.PI/2+(n.progress/5)*TAU);c.stroke();}
    c.save();c.setLineDash(ready?[]:[6,7]);circle(c,n.x,n.y,ready?53:64,ready?'#edcf7040':'#283b3020',active?'#d9935a':color,ready?3:1.5);c.restore();
    if(ready){c.fillStyle='#ffdc8240';c.fillRect(n.x-22,n.y-58,44,58);for(let i=0;i<3;i++){const rise=(s.t*17+i*18)%55;c.fillStyle='#ffe5a5b0';c.fillRect(n.x-18+i*17,n.y-rise,2,4);}}
    if(art)prop(c,art,2,n.kind==='armory'?0:1,n.x,n.y,76);else{c.fillStyle=color;c.fillRect(n.x-20,n.y-28,40,28);}
