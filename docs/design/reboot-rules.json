@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b07-open-gates",
+  "balanceRevision": "b08-pursuit-supply",
   "prototypeWeapons": [
     "h",
     "r",

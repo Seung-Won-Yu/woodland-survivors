@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.19.0" src="https://img.shields.io/badge/RIFT-0.19.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.20.0" src="https://img.shields.io/badge/RIFT-0.20.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -51,7 +51,7 @@
 
 후반 공세는 일반병의 물량을 늘리고 장교·포격병의 수와 빈도를 제한합니다. 강화한 무기로 대군을 쓸고, 특수 적의 예고를 읽는 리듬을 분리했습니다.
 
-잔류 지휘관 두 기를 처음 잡으면 병기 개조에서 **돌파 격발**과 **거치 사격** 중 하나를 무료로 장착합니다. D1→D2→…로 기록 점수와 위험도 함께 오릅니다. 크레딧 반복 보상에는 상한이 있습니다. 점수·최단 완주·최고 D·최근 빌드를 기록합니다.
+전선마다 첫 잔류 지휘관 두 기를 잡으면 조율권·완성 부품·응급 보급 중 하나를 확보합니다. 작전 중 처음 지휘관 도전을 완료하면 병기 개조에서 **돌파 격발**과 **거치 사격** 중 하나를 무료로 장착합니다. D1→D2→…로 기록 점수와 위험도 함께 오릅니다. 크레딧 반복 보상에는 상한이 있습니다. 점수·최단 완주·최고 D·최근 빌드를 기록합니다.
 
 ### 조작과 실행
 
@@ -61,8 +61,9 @@
 | 회피 | SPACE / 회피 버튼 |
 | 전탄 보급 | E / 전술기 버튼 |
 | 보스·출구 | F / 상황 버튼 |
+| 잔류 지휘관 호출 | Q / 현장 목표의 호출 버튼 |
 | 진화·합체·정비 | G / 조율권 버튼 |
-| 성장 선택·일시정지 | 1·2·3 / 카드 터치, ESC / Ⅱ |
+| 성장 선택·일시정지 | 표시된 숫자키 / 카드 터치, ESC / Ⅱ |
 
 ```sh
 npm run dev

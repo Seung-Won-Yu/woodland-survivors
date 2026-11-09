@@ -19,6 +19,8 @@ function movement(s,goal,ctx,avoid=true){
 }
 function priority(s,c,policy){
  if(c.kind==='advance')return 1100;if(c.kind==='control')return c.key==='jam'?100:90;if(c.kind==='extract')return 1000;if(c.kind==='stay')return -1;
+ if(c.kind==='permit')return s.tuning===0?100:65;
+ if(c.id==='resupply:pursuit-mixed')return s.player.hp<60?150:35;
  if(c.kind==='gun'){if(policy==='fusion'&&c.weapon==='r'&&!s.weapons.some(w=>w.id==='r'))return 140;if(policy==='fire'&&c.weapon==='f'&&!s.weapons.some(w=>w.id==='f'))return 140;return s.weapons.length<3?35:0;}
  if(c.kind==='module'){
   const r=moduleRank(s,c.module);if(policy==='single'&&c.module==='ricochet')return r<2?130:45;
@@ -29,7 +31,7 @@ function priority(s,c,policy){
  if(c.kind==='rank'){const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion);if(policy==='single')return c.weapon==='h'?110:30;if(policy==='fusion')return ['h','r'].includes(c.weapon)&&w.level<4?100-w.level:25;if(policy==='fire')return ['h','f'].includes(c.weapon)&&w.level<4?100-w.level:25;}
  if(c.kind==='utility')return c.key==='health'&&s.player.hp<50?70:c.key==='power'?14:10;return 0;
 }
-export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,research=[]}={}){
+export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,research=[],pursuit=false}={}){
  const s=operation?createOperation(seed,research):createRun(seed),ctx={};let decisions=0,stalled=null;
  for(let tick=0;tick<maxSeconds*80&&s.t<maxSeconds&&s.phase!=='result';tick++){
   if(s.phase==='choice'){
@@ -58,7 +60,18 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
    if(b.mode==='windup'&&b.timer<.25)action(s,'dash');step(s,1/60,movement(s,goal,ctx,false));continue;
   }
   if(s.raid?.state==='active'){step(s,1/60,movement(s,s.raid.target,ctx));continue;}
-  if(s.stage==='holdout'){if(interaction(s)?.id==='extract'){action(s,'interact');continue;}step(s,1/60,movement(s,exitGate(s),ctx));continue;}
+  if(s.stage==='holdout'){
+   if(pursuit&&s.operation?.region===0&&!s.challenge)action(s,'challenge');
+   if(s.challenge?.state==='active'){
+    const target=s.enemies.filter(e=>!e.dead&&s.challenge.targets.includes(e.id)).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];
+    const angle=target?Math.atan2(s.player.y-target.y,s.player.x-target.x)+.6:0;
+    const goal=target?{x:Math.max(70,Math.min(1530,target.x+Math.cos(angle)*170)),y:Math.max(70,Math.min(1130,target.y+Math.sin(angle)*170))}:exitGate(s);
+    if(s.enemies.some(e=>!e.dead&&distance(e,s.player)<50))action(s,'dash');
+    step(s,1/60,movement(s,goal,ctx));continue;
+   }
+   if(interaction(s)?.id==='extract'){action(s,'interact');continue;}
+   step(s,1/60,movement(s,exitGate(s),ctx));continue;
+  }
   const sites=s.sites.filter(n=>n.state!=='done'),target=sites[0];
   if(!target&&!s.stats.completedBuild&&s.t<130){const gem=[...s.gems].sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0],goal=gem||{x:800+Math.cos(s.t*.6)*170,y:650+Math.sin(s.t*.6)*140};step(s,1/60,movement(s,goal,ctx));continue;}
   if(!target||s.stats.completedBuild&&s.level>=8){if(interaction(s)?.id==='boss'){action(s,'interact');continue;}step(s,1/60,movement(s,{x:800,y:350},ctx));continue;}
@@ -67,6 +80,6 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
   const nearby=s.gems.filter(g=>distance(g,s.player)<130).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];if(nearby)goal=nearby;
   if(s.enemies.some(e=>!e.dead&&distance(e,s.player)<50))action(s,'dash');step(s,1/60,movement(s,goal,ctx));
  }
- return{seed,policy,regions:s.operation?.cleared||0,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],controls:{rerollsUsed:2-s.rerolls,banishesUsed:1-s.banishes},decisions,stalled};
+ return{seed,policy,regions:s.operation?.cleared||0,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],...(pursuit?{pursuitRewards:s.stats.choices.filter(c=>c.source==='pursuit-reward').map(c=>c.id)}:{}),controls:{rerollsUsed:2-s.rerolls,banishesUsed:1-s.banishes},decisions,stalled};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){const seeds=process.argv.includes('--all')?[17,71,109,214]:[17],reports=[];for(const seed of seeds)for(const policy of ['single','fusion','fire'])reports.push(pilot(seed,policy));process.stdout.write(JSON.stringify(reports,null,2)+'\n');}

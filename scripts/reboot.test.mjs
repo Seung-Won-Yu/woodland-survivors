@@ -209,7 +209,25 @@ test('checkpoints and settlements reject a different run instance including same
  const a=quietOperation(),p=beginProfile(emptyProfile(),a),other=quietOperation();const q=beginProfile({...emptyProfile(),sequence:1},other);assert.notEqual(a.runId,other.runId);for(let i=0;i<3;i++){clearRegion(other);if(i<2)choose(other,'advance');}choose(other,'extract');const before=snapshot(p);assert.throws(()=>checkpointProfile(p,other));assert.throws(()=>settleProfile(p,other));assert.deepEqual(p,before);assert.equal(q.active.runId,other.runId);
 });
 test('campaign holdout opens D2 after D1 with rising score and finite credit basis',()=>{
- const s=quietOperation();clearRegion(s);choose(s,'stay');assert.ok(action(s,'challenge'));assert.equal(s.challenge.tier,1);s.challenge.targets.forEach(id=>{s.enemies.find(e=>e.id===id).dead=true;});step(s,dt);assert.equal(s.challenge.state,'complete');assert.equal(s.stats.challenge,1);const score=s.stats.score;assert.ok(action(s,'challenge'));assert.equal(s.challenge.tier,2);s.challenge.targets.forEach(id=>{s.enemies.find(e=>e.id===id).dead=true;});step(s,dt);assert.equal(s.stats.challenge,2);assert.equal(s.stats.score-score,1000);assert.equal(s.stats.challengeWins,2);
+ const s=quietOperation();clearRegion(s);choose(s,'stay');assert.ok(action(s,'challenge'));assert.equal(s.challenge.tier,1);s.challenge.targets.forEach(id=>{s.enemies.find(e=>e.id===id).dead=true;});step(s,dt);assert.equal(s.challenge.state,'complete');assert.equal(s.stats.challenge,1);const score=s.stats.score;assert.ok(choose(s,'pursuit:permit'));assert.ok(action(s,'challenge'));assert.equal(s.challenge.tier,2);s.challenge.targets.forEach(id=>{s.enemies.find(e=>e.id===id).dead=true;});step(s,dt);assert.equal(s.stats.challenge,2);assert.equal(s.stats.score-score,1000);assert.equal(s.stats.challengeWins,2);
+});
+test('the first pursuit pays one supply choice per front and survives a checkpoint',()=>{
+ const s=quietOperation(),profile=beginProfile(emptyProfile(),s);
+ clearRegion(s);choose(s,'stay');assert.ok(action(s,'challenge'));
+ const resumed=restore(checkpointProfile(profile,s).active.run);
+ for(const target of resumed.enemies)if(resumed.challenge.targets.includes(target.id))target.dead=true;
+ step(resumed,dt);
+ assert.equal(resumed.choice.type,'pursuit-reward');assert.equal(resumed.choices.length,3);
+ assert.ok(resumed.choices.some(c=>c.module==='ricochet'&&c.rank===2));
+ const offered=restore(checkpointProfile(profile,resumed).active.run),tokens=offered.tuning;
+ assert.ok(choose(offered,'pursuit:permit'));assert.equal(offered.tuning,tokens+1);
+ assert.equal(choose(offered,'pursuit:permit'),false);
+ step(offered,dt);assert.equal(offered.phase,'playing');
+ assert.ok(action(offered,'interact'));assert.ok(choose(offered,'advance'));assert.equal(offered.tuning,tokens+1);
+ clearRegion(offered);choose(offered,'stay');assert.ok(action(offered,'challenge'));
+ assert.equal(offered.challenge.tier,1);
+ assert.ok(offered.enemies.filter(e=>offered.challenge.targets.includes(e.id)).every(e=>e.maxHp>450));
+ assert.ok(action(offered,'interact'));assert.ok(choose(offered,'advance'));assert.equal(offered.tuning,tokens+2);
 });
 test('all region supplies and boss entrances stay reachable around permanent geometry',async()=>{
  const {regionLayout}=await import('../src/reboot/campaign.js');for(const seed of [17,18])for(let index=0;index<3;index++){const m=regionLayout(seed,index),free=(x,y)=>x>55&&x<1545&&y>55&&y<1145&&!m.blocks.some(b=>b.hp!==0&&x+16>b.x&&x-16<b.x+b.w&&y+16>b.y&&y-16<b.y+b.h),key=(x,y)=>`${x},${y}`,queue=[[800,1040]],seen=new Set(['800,1040']);for(let i=0;i<queue.length;i++){const [x,y]=queue[i];for(const [dx,dy]of [[20,0],[-20,0],[0,20],[0,-20]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||!free(nx,ny))continue;seen.add(k);queue.push([nx,ny]);}}for(const goal of [...m.sites,{x:800,y:350}])assert.ok(queue.some(([x,y])=>Math.hypot(x-goal.x,y-goal.y)<55),`${index}/${seed} ${goal.id||'boss'}`);}
@@ -322,7 +340,7 @@ test('a cleared pursuit unlocks one free maneuver with distinct stationary and m
  const s=quietOperation();downBoss(s);s.tuning=0;
  assert.equal(assemblyOptions(s).length,0);assert.ok(action(s,'challenge'));
  s.enemies.filter(e=>e.cohort==='challenge').forEach(e=>e.dead=true);step(s,dt);
- assert.equal(s.stats.challengeWins,1);assert.ok(action(s,'gear'));
+ assert.equal(s.stats.challengeWins,1);assert.ok(choose(s,'resupply:pursuit-mixed'));assert.ok(action(s,'gear'));
  const assault=restore(snapshot(s));assert.ok(choose(s,'maneuver:brace'));assert.ok(choose(assault,'maneuver:assault'));
  assert.equal(s.tuning,0);assert.equal(assemblyOptions(s).length,0);assert.equal(activeManeuver(s.player),null);
  s.enemies=[enemy('range',1100,800)];tick(s,.5);assert.equal(activeManeuver(s.player),'brace');
