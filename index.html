@@ -4,11 +4,11 @@
 <div id="hud" hidden><div id="operation-track"></div>
  <section class="vitals"><div><strong>FIO</strong><b id="level">LV.1</b></div><div class="hp-track"><i id="hp-fill"></i><span id="hp">100 / 100</span></div><small id="charge">전탄 보급 60%</small></section>
  <section class="score"><b id="kills">0 K.O.</b><span id="score">0점</span><span id="time">0:00</span><button id="pause" aria-label="일시정지">Ⅱ</button></section>
- <section class="objective"><span id="stage">BEACHHEAD / 해안 침투</span><b id="objective">노획한 총으로 수송대를 차단하라</b><small id="threat">경계 0</small></section>
+ <section class="objective"><span id="stage">BEACHHEAD / 해안 침투</span><b id="objective">노획한 총으로 수송대를 차단하라</b><small id="threat">경계 0</small><small id="holdout-intel" hidden></small><button id="pursuit" hidden></button></section>
  <section id="raid-hud" hidden><span>수송대 탈출 진행</span><progress aria-label="수송대 탈출 진행" id="raid-progress" max="1" value="0"></progress><b id="raid-hp"></b></section>
  <section id="boss-hud" hidden><span id="boss-state"></span><progress aria-label="보스 남은 내구" id="boss-hp" max="6000" value="6000"></progress><small id="boss-parts"></small></section>
  <aside id="map-panel"><span>전장 · 보급 / 보스</span><svg id="tactical-map" viewBox="0 0 1600 1200" role="img" aria-label="전장 지도: 흰색 대원, 금색 보급, 보라색 무기고, 주황색 적"></svg></aside>
- <section class="arsenal"><div id="weapons"></div><div id="modules"></div><small id="synergy"></small><button id="gear">조율권 1 · 장비 G</button></section>
+ <section class="arsenal"><div id="weapons"></div><div id="modules"></div><small id="synergy"></small><small id="maneuver-status" hidden></small><button id="gear">조율권 1 · 장비 G</button></section>
  <div class="xp"><i id="xp-fill"></i></div><div id="combo"></div><div id="banner" aria-live="polite"></div>
 </div>
 <div id="controls" hidden><div id="stick" role="group" aria-label="이동 스틱"><i></i></div><div class="action-buttons"><button id="interact" hidden>상호작용 F</button><button id="dash">회피<small>SPACE</small></button><button id="skill">전탄 보급<small>E</small></button></div></div>
