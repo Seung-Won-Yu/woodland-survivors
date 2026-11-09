@@ -13,10 +13,11 @@ export const HOLDOUT_CONTRACTS=[
  {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'차량이 북쪽 검문선을 넘으면 실패합니다.'}
 ];
 export const FRONT_SUPPORTS={
- breach:{name:'철갑 급탄',role:'보스 부위 파괴',art:'ammo',impact:'보스 부위 피해 +55%',detail:'방패병 정면에 총탄 피해 65%를 줍니다. 포대와 장갑을 먼저 부수는 빌드에 맞습니다.'},
- overrun:{name:'돌격 신관',role:'회피로 군집 돌파',art:'coil',impact:'회피 끝에 피해 85 충격파',detail:'반경 100의 일반·정예 적을 폭파합니다. 촉매가 있으면 점화한 적에게 더 큰 피해를 줍니다.'},
- recovery:{name:'회수 의무 장비',role:'XP 회수와 생존',art:'medic',impact:'XP 회수 반경 +55 · 회복',detail:'XP를 주워 체력을 초당 최대 약 3 회복합니다. 보급 사이를 돌며 성장하는 빌드에 맞습니다.'}
+ breach:{name:'철갑 급탄',role:'부위 조준',art:'ammo',impact:'보스 부위 우선 조준 · 피해 +55%',detail:'측면에서 부위가 사거리에 들어오면 차체보다 먼저 조준합니다.',tactics:['양쪽 포대를 부숴 측면 포격 차선을 지우세요.','포탑을 먼저 파괴하면 재장전 직전 부채꼴 사격이 멈춥니다.']},
+ overrun:{name:'돌격 신관',role:'재장전 돌입',art:'coil',impact:'회피 충격파 · 빈틈에 기본 피해 260',detail:'회피가 끝날 때 일반 적을 폭파하고, 재장전 중인 보스에도 근접 충격을 줍니다.',tactics:['포격이 끝나면 차선 밖에서 열차 쪽으로 회피하세요.','집중 포격을 벗어난 뒤 노출 코어 쪽으로 회피하세요.']},
+ recovery:{name:'회수 의무 장비',role:'측면 순환',art:'medic',impact:'XP 회수 반경 +55 · 측면 구조 화물',detail:'보스의 첫 세 번 재장전 때 측면에 XP 18이 떨어집니다. XP를 회수해 체력을 회복합니다.',tactics:['재장전 때 좌우 선로 밖으로 돌아 구조 화물을 회수하세요.','포격 직후 컨테이너 앞 측면의 구조 화물을 주우세요.']}
 };
+export const supportTactic=(id,index)=>FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
 export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'?s.challenge.target:null;
 export const DEFENSE_ZONE={x:800,y:560,r:108,seconds:8};
@@ -43,8 +44,19 @@ export function holdoutTier(time){
  return time<HOLDOUT.grace?0:Math.min(HOLDOUT.maxTier,1+Math.floor((time-HOLDOUT.grace)/HOLDOUT.tierSeconds));
 }
 export const groundXp=s=>s.gems.reduce((sum,g)=>sum+g.value,0);
+const BEACH_ROUTES=[
+ {name:'서쪽 난파선',gun:'r',module:'coil',points:[[590,920],[385,650],[1165,530],[1295,220]]},
+ {name:'동쪽 포대',gun:'f',module:'catalyst',points:[[1010,920],[1240,650],[355,510],[360,270]]},
+ {name:'방파제 횡단',gun:'r',module:'magnet',points:[[600,890],[1240,720],[1245,490],[335,365]]},
+ {name:'벙커 횡단',gun:'f',module:'catalyst',points:[[1000,890],[385,730],[355,450],[1215,300]]}
+];
+export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
 export function regionLayout(seed,index=0){
- const map=layout(seed);if(index===0)return map;
+ const map=layout(seed);
+ if(index===0){
+  const route=beachRoute(seed);
+  return {...map,sites:map.sites.map((site,i)=>({...site,x:route.points[i][0],y:route.points[i][1],...(i===0?{gun:route.gun}:i===1?{module:route.module}:{})}))};
+ }
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});
  if(index===1)return {...map,sites:[

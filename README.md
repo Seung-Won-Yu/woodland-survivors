@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.21.0" src="https://img.shields.io/badge/RIFT-0.21.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.22.0" src="https://img.shields.io/badge/RIFT-0.22.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -51,7 +51,9 @@
 
 후반 공세는 일반병의 물량을 늘리고 장교·포격병의 수와 빈도를 제한합니다. 강화한 무기로 대군을 쓸고, 특수 적의 예고를 읽는 리듬을 분리했습니다.
 
-해안은 지휘부 소탕, 철도는 중계기 방어, 항구는 탈출 차량 저지입니다. 해안·철도 첫 도전 보상은 다음 전선에서만 적용되는 철갑 급탄, 돌격 신관, 회수 의무 장비 중 하나입니다. 항구는 정산 화물 또는 후송 보급을 선택합니다. D2부터는 더 어려운 목표로 기록에 도전합니다.
+해안은 출격할 때마다 네 가지 배치 중 직전과 다른 동선을 엽니다. 작전실 지도에서 포로 구출의 R/F와 이동 보급차의 우선 모듈을 확인할 수 있습니다.
+
+해안은 지휘부 소탕, 철도는 중계기 방어, 항구는 탈출 차량 저지입니다. 해안·철도 첫 도전 보상은 다음 전선에서만 적용되는 철갑 급탄, 돌격 신관, 회수 의무 장비 중 하나입니다. 철갑은 측면 부위를 먼저 조준하고, 돌격은 재장전 때 회피로 접근해 충격을 주며, 회수 장비는 포격 뒤 양쪽 측면에 구조 화물을 떨어뜨립니다. 철도 중계기를 확보하면 차선 예고가 0.4초 길어지고, 항구 관제소를 교란하면 보스 증원이 6명에서 3명으로 줄어듭니다. 항구 잔류 보상은 정산 화물 또는 후송 보급입니다. D2부터는 더 어려운 목표로 기록에 도전합니다.
 
 ### 조작과 실행
 
@@ -76,7 +78,7 @@ npm run test:pages
 
 ### 검증 범위
 
-규칙·UI 계약326개·Pages4개를 통과했습니다. 정상 입력 모델 파일럿은 3경로×4시드의 12판 모두 세 전선을 완주했습니다. [원본 결과](docs/design/rift-campaign-pilots.json). 이는 규칙·저장·진행 경로 검증이며, 사람의 자유 플레이 재미나 4–6분 체감 리듬을 증명하지 않습니다. [실제 공개판 완주·연구·재출격](docs/VALIDATION-RIFT-V017.md)과 [전장·정비 흐름 검증](docs/VALIDATION-RIFT-V018.md)을 기록했습니다.
+규칙·UI와 저장소 하위 경로 배포를 자동 검사합니다. 0.22의 로컬 브라우저에서 해안과 철도 잔류 보상, 항구 통신 교란, 최종 귀환 및 응급 주사기 연구 후 LV.1 재출격을 확인했습니다. [실제 공개판 완주·연구·재출격](docs/VALIDATION-RIFT-V017.md)과 [전장·정비 흐름 검증](docs/VALIDATION-RIFT-V018.md)을 기록했습니다.
 
 매판 해안의 기관총 H LV.1로 시작합니다. 이전 판이 남아 있으면 새 출격과 함께 확보한 성과를 정산합니다. 기록·크레딧·연구·설정은 브라우저의 `operation-rift-profile-v2`에 저장합니다. 구형 저장·크레딧을 삭제하거나 합산하지 않습니다. 활성 판의 ID·정산 중복·동시 탭 충돌을 검사합니다.
 

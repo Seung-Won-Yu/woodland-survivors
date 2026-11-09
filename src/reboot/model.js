@@ -30,7 +30,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -79,13 +79,13 @@ const upgradeable=s=>s.weapons.filter(w=>!w.evolved&&!w.fusion&&w.level<6);
 function modulePool(s){return ['ricochet','coil','catalyst','magnet',...(s.research||[])].filter(id=>!s.excluded.includes(id)&&compatible(s,id)&&moduleRank(s,id)<(RULES.modules[id].unique?1:3));}
 function currentInvestments(s){return[...upgradeable(s).map(gunCard),...s.modules.filter(m=>!RULES.modules[m.id].unique&&m.rank<3).map(m=>moduleCard(m.id,1))];}
 const trialModule=(s,pool)=>(s.trials||[s.trial]).find(id=>pool.includes(id));
-function supplyCards(s){
+function supplyCards(s,site){
  const guns=upgradeable(s),cards=[guns.length?gunCard(pick(s,'supply',guns)):currentInvestments(s)[0]||utility('health')];
  const unseen=['h','r','f'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id)&&!(s.supplyCount<2&&s.seenGuns.includes(id)));
- if(unseen.length){const id=pick(s,'supply',unseen);cards.push({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label:'새 무기'});if(!s.seenGuns.includes(id))s.seenGuns.push(id);}
+ if(unseen.length){const id=unseen.includes(site?.gun)?site.gun:pick(s,'supply',unseen);cards.push({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label:id===site?.gun?'이 동선의 주력 무장':'새 무기'});if(!s.seenGuns.includes(id))s.seenGuns.push(id);}
  const pool=modulePool(s);let favored=pool;
  if(s.supplyCount<2){const focus=s.weapons.find(w=>w.id===s.firstNew)||s.weapons[0],requirements=Object.values(RULES.weapons[focus.id].evolution.moduleByBranch).flat();const useful=pool.filter(id=>requirements.includes(id));if(useful.length)favored=useful;}
- if(pool.length){const trial=trialModule(s,pool),id=trial||pick(s,'supply',favored);cards.push({...moduleCard(id),...(id===trial?{label:'새 연구 · 첫 실전'}:{})});}
+ if(pool.length){const trial=trialModule(s,pool),id=trial||(pool.includes(site?.module)?site.module:pick(s,'supply',favored));cards.push({...moduleCard(id),...(id===trial?{label:'새 연구 · 첫 실전'}:id===site?.module?{label:'이 동선의 특화 모듈'}:{})});}
  return fillCards(s,cards);
 }
 function fillCards(s,cards){const unique=[...new Map(cards.filter(Boolean).map(c=>[c.id,c])).values()];for(const key of ['health','charge','power'])if(unique.length<3&&!unique.some(c=>c.id===`utility:${key}`))unique.push(utility(key));return unique.slice(0,3);}
@@ -182,7 +182,7 @@ export function skip(s){if(s.phase!=='choice'||['assembly','clear','pursuit-rewa
 
 function buildCompleted(s,kind){if(!s.stats.completedBuild)s.stats.completedBuild={kind,t:s.t};if(!s.powerDone){s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='fusion'?'전도 격발망 가동':kind==='single'?'무기 진화 완료':'발동 연계 완성'});}}
 export function partPosition(s,part){const b=s.boss;if(s.operation?.region===1)return{x:b.x+part.ox,y:b.y};return{x:b.x+Math.cos(b.body-Math.PI/2)*part.ox,y:b.y+Math.sin(b.body-Math.PI/2)*part.ox};}
-function targets(s){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}}return list;}
+function targets(s){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){const breach=s.operation?.support==='breach';if(!breach)list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}if(breach)list.push(s.boss);}return list;}
 const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
 function move(s,e,dx,dy,r){const x=clamp(e.x+dx,FIELD.left+r,FIELD.right-r),y=clamp(e.y+dy,FIELD.top+r,FIELD.bottom-r);if(!blocked(s,x,e.y,r))e.x=x;if(!blocked(s,e.x,y,r))e.y=y;}
 function lineBlocked(s,a,b){const n=Math.ceil(distance(a,b)/20);for(let i=1;i<=n;i++)if(blocked(s,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return true;return false;}
@@ -190,12 +190,15 @@ function attackTargets(s,range){return targets(s).filter(e=>e.hp>0&&distance(e,s
 function targetFor(s,w,d,candidates){
  const locked=candidates.find(e=>e.id===w.targetId);if(locked&&s.t<(w.targetUntil||0))return locked;
  let selected=candidates[0];
+ const part=s.operation?.support==='breach'&&candidates.find(e=>e.type==='part');
+ if(part&&selected?.type==='boss')selected=part;
  if(w.id==='f'){
   let best=-1;for(const candidate of candidates.slice(0,24)){const a=Math.atan2(candidate.y-s.player.y,candidate.x-s.player.x);let score=0;
    for(const e of candidates){const b=Math.atan2(e.y-s.player.y,e.x-s.player.x);if(Math.abs(Math.atan2(Math.sin(b-a),Math.cos(b-a)))<d.cone*Math.PI/360)score+=(1+Math.min(e.hp,d.damage)/d.damage*.1)*(['boss','part','courier'].includes(e.type)?6:moduleRank(s,'catalyst')&&e.burn>0?.3:1);}
    if(score>best){best=score;selected=candidate;}
   }
  }else if(w.id==='r')selected=markedBlastTarget(s,candidates,selected,d.radius);
+ if(part&&selected?.type==='boss')selected=part;
  w.targetId=selected?.id||null;w.targetUntil=s.t+RULES.player.targetHoldSeconds;return selected;
 }
 function markedBlastTarget(s,candidates,fallback,radius=100){
@@ -331,12 +334,16 @@ function updateOperationBoss(s,dt){
  if(b.timer<=0){
   if(b.mode==='aim'){
    b.cycle++;b.mode='salvo';b.timer=index===1?1.45:1.15;
-   if(index===1){const safe=b.cycle%3;for(let lane=0;lane<3;lane++){if(lane===safe||lane===0&&b.parts[0].hp<=0||lane===2&&b.parts[1].hp<=0)continue;s.hazards.push({x:500+lane*300,y:600,w:220,h:900,lane:true,r:0,timer:1.25});}emit(s,'boss-warning',b.x,b.y,{text:'포격 차선 예고 · 표시 밖으로 이동',life:1});}
+   if(index===1){const safe=b.cycle%3,early=s.sites.some(site=>site.kind==='relay'&&site.state==='done')?.4:0;b.timer+=early;for(let lane=0;lane<3;lane++){if(lane===safe||lane===0&&b.parts[0].hp<=0||lane===2&&b.parts[1].hp<=0)continue;s.hazards.push({x:500+lane*300,y:600,w:220,h:900,lane:true,r:0,timer:1.25+early});}emit(s,'boss-warning',b.x,b.y,{text:'포격 차선 예고 · 표시 밖으로 이동',life:1});}
    else{for(let i=0;i<(b.parts[0].hp>0?5:3);i++){const a=i*TAU/5;s.hazards.push({x:clamp(p.x+Math.cos(a)*95,90,1510),y:clamp(p.y+Math.sin(a)*95,90,1110),r:58,timer:.95,duration:.95});}emit(s,'boss-warning',p.x,p.y,{text:'집중 포격 · 포탑 사격',life:1});}
   }else if(b.mode==='salvo'){
    b.mode='recover';b.timer=index===1?2.2:2.6;
    if(index===2&&b.parts[0].hp>0){for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);b.kick=1;b.flash=.12;}
    emit(s,'weakpoint',b.x,b.y,{text:index===1?'포격 재장전 · 포대를 노려라':'노출 코어 · 집중 공격',life:1.4});
+   if(s.operation.support==='recovery'&&b.cycle<=3){
+    const side=b.cycle%2?-1:1,x=800+side*(index===1?175:200),y=index===1?470:335;
+    dropXp(s,x,y,18,true);emit(s,'supply-ready',x,y,{life:1.1});
+   }
   }else{b.mode='aim';b.timer=index===1?1.4:1.7;}
  }
  if(b.spawnClock<=0){b.spawnClock=6;const count=s.operation.jammed?3:6;b.reinforcements=(b.reinforcements||0)+1;for(let i=0;i<count;i++)spawnAround(s,s.operation.jammed?(i===0?(b.reinforcements%2===0?'mortar':'shield'):'rifle'):i===0?'mortar':i===1?'shield':'rifle',{cohort:'boss'});}
@@ -364,7 +371,7 @@ function updateSites(s,dt){
   if(site.state==='ready'&&distance(site,s.player)<74){site.state='done';
    if(site.kind==='control'){openChoice(s,'control',[{id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'이번 항구 보스전의 증원을 절반으로, 포격병 투입을 절반 빈도로 줄입니다.',label:'최종전 안전'},{id:'control:loot',kind:'control',key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈·재보급 3후보 중 하나를 받습니다.',label:'추가 화력'}],site.name);}
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality});}
-   else openChoice(s,'supply',supplyCards(s),site.name);
+   else openChoice(s,'supply',supplyCards(s,site),site.name);
    return;
   }
  }
@@ -525,7 +532,14 @@ export function step(s,dt,input={x:0,y:0},view=null){
  p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
  const ix=Number.isFinite(input.x)?input.x:0,iy=Number.isFinite(input.y)?input.y:0,len=Math.max(1,Math.hypot(ix,iy)),moving=Math.hypot(ix,iy)>.07;p.moving=moving;
  if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;}
- if(wasDashing&&p.dash<=0&&s.operation?.support==='overrun')blast(s,p.x,p.y,100,85,'support');
+ if(wasDashing&&p.dash<=0&&s.operation?.support==='overrun'){
+  blast(s,p.x,p.y,100,85,'support');
+  const b=s.boss;
+  if(b.active&&!b.dead&&b.mode==='recover'&&distance(p,b)<=100+b.r&&!lineBlocked(s,p,b)){
+   const target=b.parts.filter(part=>part.hp>0).map(part=>Object.assign(part,partPosition(s,part))).sort((a,b)=>distance(p,a)-distance(p,b))[0]||b;
+   damage(s,target,260,'blast','support');emit(s,'break',target.x,target.y,{text:target===b?'돌격 신관 · 코어 직격':'돌격 신관 · 부위 직격'});
+  }
+ }
  if(p.maneuver==='brace')p.stillTime=moving?0:Math.min(.45,(p.stillTime||0)+dt);
  if(p.assaultTime>0)p.assaultTime=Math.max(0,p.assaultTime-dt);
  updateRaid(s,dt);

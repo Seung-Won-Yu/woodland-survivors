@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {exitGate,holdoutTier,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,operationCredits} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,operationCredits} from '../src/reboot/campaign.js';
 import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
@@ -236,6 +236,25 @@ test('front support changes the actual damage path for armor and crowd builds',(
  crowd.enemies=[enemy('near',850,800,'rifle',100),enemy('far',1000,800,'rifle',100)];
  step(crowd,dt);assert.deepEqual(crowd.enemies.map(e=>e.hp),[15,100]);
 });
+test('front support rewards side shots, a timed approach and recovery routes in both later boss arenas',()=>{
+ const arena=(index,support,mode)=>{const s=quietOperation();s.operation.region=index;s.operation.support=support;s.stage='boss';Object.assign(s.boss,{active:true,x:800,y:250,mode,timer:999,spawnClock:999});return s;};
+ for(const index of [1,2]){
+  const normal=arena(index,null,'aim'),armor=arena(index,'breach','aim');
+  for(const s of [normal,armor]){s.shots=[bullet(s,{x:755,y:250})];step(s,dt);}
+  assert.ok(normal.boss.hp<normal.boss.maxHp);assert.equal(armor.boss.hp,armor.boss.maxHp);assert.equal(armor.boss.parts[0].hp,295);
+  const attack=arena(index,'overrun','aim'),opening=arena(index,'overrun','recover');
+  for(const s of [attack,opening]){Object.assign(s.player,{x:800,y:400,dash:.01});step(s,dt);}
+  assert.equal(attack.boss.parts[0].hp,450);assert.equal(opening.boss.parts[0].hp,190);
+  const recovery=arena(index,'recovery','salvo');
+  recovery.boss.cycle=1;recovery.boss.timer=0;step(recovery,dt);
+  assert.deepEqual(recovery.gems.map(g=>[g.x,g.y,g.value,g.salvage]),[index===1?[625,470,18,true]:[600,335,18,true]]);
+  Object.assign(recovery.boss,{mode:'salvo',cycle:4,timer:0});step(recovery,dt);assert.equal(recovery.gems.length,1);
+ }
+});
+test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
+ const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};
+ assert.ok(Math.abs(warning('done')-warning('waiting')-.4)<1e-9);
+});
 test('rail defense pauses outside the zone and harbor interception can fail and retry',()=>{
  const rail=quietOperation();rail.operation.region=1;downBoss(rail);
  rail.spawnClock=999;rail.player.invuln=999;assert.ok(action(rail,'challenge'));
@@ -263,8 +282,26 @@ test('starting a fresh sortie settles a previous run once and survives a failed 
  mem.setFail(true);await assert.rejects(store.commit(next));assert.deepEqual(store.get(),previous);
  mem.setFail(false);await store.commit(next);assert.equal(store.get().active.runId,run.runId);assert.equal(store.get().recent.length,1);
 });
-test('all region supplies and boss entrances stay reachable around permanent geometry',async()=>{
- const {regionLayout}=await import('../src/reboot/campaign.js');for(const seed of [17,18])for(let index=0;index<3;index++){const m=regionLayout(seed,index),free=(x,y)=>x>55&&x<1545&&y>55&&y<1145&&!m.blocks.some(b=>b.hp!==0&&x+16>b.x&&x-16<b.x+b.w&&y+16>b.y&&y-16<b.y+b.h),key=(x,y)=>`${x},${y}`,queue=[[800,1040]],seen=new Set(['800,1040']);for(let i=0;i<queue.length;i++){const [x,y]=queue[i];for(const [dx,dy]of [[20,0],[-20,0],[0,20],[0,-20]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||!free(nx,ny))continue;seen.add(k);queue.push([nx,ny]);}}for(const goal of [...m.sites,{x:800,y:350}])assert.ok(queue.some(([x,y])=>Math.hypot(x-goal.x,y-goal.y)<55),`${index}/${seed} ${goal.id||'boss'}`);}
+test('all region supplies and boss entrances stay reachable around permanent geometry',()=>{
+ for(const seed of [16,17,18,19])for(let index=0;index<3;index++){const m=regionLayout(seed,index),free=(x,y)=>x>55&&x<1545&&y>55&&y<1145&&!m.blocks.some(b=>b.hp!==0&&x+16>b.x&&x-16<b.x+b.w&&y+16>b.y&&y-16<b.y+b.h),key=(x,y)=>`${x},${y}`,queue=[[800,1040]],seen=new Set(['800,1040']);for(let i=0;i<queue.length;i++){const [x,y]=queue[i];for(const [dx,dy]of [[20,0],[-20,0],[0,20],[0,-20]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||!free(nx,ny))continue;seen.add(k);queue.push([nx,ny]);}}for(const goal of [...m.sites,{x:800,y:350}])assert.ok(queue.some(([x,y])=>Math.hypot(x-goal.x,y-goal.y)<55),`${index}/${seed} ${goal.id||'boss'}`);}
+});
+test('four beach plans keep the first rescue accessible and put the previewed kit into real supply choices',()=>{
+ for(const seed of [16,17,18,19]){
+  const s=createOperation(seed),route=beachRoute(seed);
+  assert.deepEqual(s.sites.map(site=>[site.x,site.y]),route.points);
+  const [first,truck]=s.sites;
+  assert.ok(Math.abs(Math.hypot(first.x-800,first.y-1040)-245)<10);
+  for(const site of s.sites){
+   const drift=site===truck?55:0;
+   for(let i=0;i<(site.kind==='armory'?5:4);i++){
+    const angle=i*Math.PI/3,x=site.x+Math.cos(angle)*85,y=site.y+Math.sin(angle)*65;
+    assert.ok(!s.blocks.some(b=>x+19+drift>b.x&&x-19-drift<b.x+b.w&&y+19>b.y&&y-19<b.y+b.h),site.id);
+   }
+  }
+  s.sites.forEach(site=>site.state='done');s.enemies=[];s.spawnClock=999;
+  assert.ok(supply(s).some(c=>c.id===`gun:${route.gun}`));assert.ok(choose(s,`gun:${route.gun}`));
+  assert.ok(supply(s,'supply-b').some(c=>c.id===`module:${route.module}`));
+ }
 });
 test('harbor armor parts change actual body vulnerability and rare unique banish keeps crate quality',()=>{
  const hit=broken=>{const s=quietOperation();s.operation.region=2;s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.mode='aim';s.boss.timer=999;s.boss.spawnClock=999;if(broken)s.boss.parts.forEach(p=>p.hp=0);const hp=s.boss.hp;s.shots=[bullet(s,s.boss,100)];step(s,dt);return hp-s.boss.hp;};assert.ok(hit(true)>hit(false)*1.5);

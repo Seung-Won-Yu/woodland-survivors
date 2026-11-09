@@ -2,7 +2,7 @@ import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,isQuickMod} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol} from './field-scene.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,moduleRank,refitWeapons} from './content.js';
 import {createOperation,restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,activeManeuver,interaction,xpNeeded,takeEvents} from './model.js';
 import {createStore,buyResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -11,9 +11,8 @@ import {loadMissionArt,operatorPortrait} from '../mission/art.js';
 import {bindTouchControls} from '../game/touch-controls.js';
 import {createAudio,selectAudioEvents} from '../game/audio.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio(),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const operationPlan=createOperationPlan(()=>crypto.getRandomValues(new Uint32Array(1))[0]);
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
-let store,run,art=null,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,equippedUntil=0,equippedWeapon=null;
+let store,run,operationPlan,art=null,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,equippedUntil=0,equippedWeapon=null;
 const profile=()=>store.get();
 function notice(text){$('notice').textContent=text;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',4500);}
 function setBusy(on){busy=on;document.body.classList.toggle('is-saving',on);ui.setAttribute('aria-busy',String(on));for(const b of ui.querySelectorAll('button')){if(on&&!b.disabled){b.dataset.saving='true';b.disabled=true;}else if(!on&&b.dataset.saving){b.disabled=false;delete b.dataset.saving;}}}
@@ -143,6 +142,10 @@ function updateHud(){
  $('operation-track').textContent=run.operation?REGIONS.map((d,i)=>`${i<run.operation.region?'✓':i===run.operation.region?'▶':'○'} ${d.name}`).join('  /  '):'';
  $('stage').textContent=run.operation?`${run.operation.region+1}/3 ${region(run).name}${run.stage==='holdout'?' · 돌파 완료':run.stage==='boss'?' · 보스 교전':''}`:run.powerWave&&run.stage==='field'?'POWER TEST / 완성 화력 전개':run.stage==='holdout'?'MISSION CLEAR / 잔류 가능':run.stage==='boss'?'ARMORED CARRIER':'BEACHHEAD / 해안 침투';
  $('objective').textContent=`${direction} ${next.kind?sitePresentation(next).name:next.name} · ${Math.round(distance(p,next)/10)}m`;const siteHint=next.state==='active'?next.kind==='relay'?` · 범위 안에서 해킹 ${Math.round(next.progress/5*100)}%`:` · 경비 ${run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length}명, 이동하며 제압`:next.state==='ready'?' · 제압 완료, 접근해 회수':'';$('threat').textContent=`경계 ${run.pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${run.powerWave?run.powerWave.delay>0?' · 증원 접근 '+Math.ceil(run.powerWave.delay)+'초':' · 증원 '+(60-run.powerWave.remaining)+'/60 투입':''}`;
+ const front=run.operation?.region;
+ const fieldIntel=$('field-intel');
+ const intel=front===0&&run.sites[0]?.state!=='done'&&run.sites[0]?.gun?`${beachRoute(run.seed).name} · ${GUNS[run.sites[0].gun].name} 보급`:front===1&&run.sites.some(site=>site.kind==='relay'&&site.state==='done')?'중계기 연결 · 차선 예고 +0.4초':front===2&&run.operation.jammed?'통신 교란 중 · 증원 6 → 3':'';
+ fieldIntel.hidden=!intel||holdout;fieldIntel.textContent=intel;
  document.body.classList.toggle('holdout-active',holdout);
  $('holdout-intel').hidden=!holdout;
  const pursuit=$('pursuit');
@@ -181,7 +184,7 @@ function updateHud(){
  if(p.maneuver)maneuver.textContent=`${MANEUVERS[p.maneuver].name} · ${active?'가동':p.maneuver==='assault'?'회피하며 이동':'정지해 조준'}`;
  const support=FRONT_SUPPORTS[run.operation?.support];
  $('support-status').hidden=!support;
- if(support)$('support-status').textContent=`${support.name} · ${support.impact}`;
+ if(support)$('support-status').textContent=`${support.name} · ${support.role}`;
  $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
  const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion]),run.modules,run.tuning]);if(key!==inventoryStamp){inventoryStamp=key;$('weapons').innerHTML=run.weapons.map(w=>`<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}">${itemArt(w.id)}<b>${w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:GUNS[w.id].short}</b><small>${w.fusion?'전도 격발망':w.evolved?'단일 진화':`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`}</small></div>`).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');$('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');}
  $('synergy').textContent=moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
@@ -190,7 +193,7 @@ function updateHud(){
  $('interact').hidden=!interact||!!interact.blocked;$('interact-label').textContent=interact?.label||'';
  const skill=RULES.fio[p.doctrine];$('skill').disabled=p.charge<skill.cost||p.skillCd>0||p.overdrive>0;$('skill').innerHTML=`전탄 보급<small>${p.overdrive>0?`${p.overdrive.toFixed(1)}초 가동`:p.skillCd>0?`${p.skillCd.toFixed(1)}초`:`${Math.floor(p.charge)}/${skill.cost}`}</small>`;$('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비 · SPACE'}</small>`;
  const raid=run.raid?.state==='active';$('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',raid);if(raid){$('raid-progress').value=run.raid.progress/run.raid.maxProgress;$('raid-hp').textContent=`${run.raid.contract==='armored'?'장갑 수송대':'보급차'} ${Math.ceil(run.raid.target.hp)} / ${run.raid.target.maxHp}`;}
- $('boss-hud').hidden=!run.boss.active;document.body.classList.toggle('boss-active',run.boss.active);if(run.boss.active){$('boss-hp').max=run.boss.maxHp;$('boss-hp').value=run.boss.hp;$('boss-state').textContent=run.operation?.region===1?(run.boss.mode==='recover'?'재장전 · 포대를 노려라':'포격 열차 · 예고 차선 밖으로 이동'):run.operation?.region===2?(run.boss.mode==='recover'?'노출 코어 ×1.6 · 집중 공격':'지휘 병기 · 포격 예고를 피해 이동'):run.boss.mode==='recover'?'후면 엔진 노출 · 뒤를 노려라':run.boss.mode==='windup'?'돌진 예고 · 옆으로 회피':'장갑 수송차 · 측후면을 노려라';$('boss-parts').textContent=`포탑 ${run.boss.parts[0].hp>0?'가동':'파괴'} / 궤도 ${run.boss.parts[1].hp>0?'가동':'파괴'}`;}
+ $('boss-hud').hidden=!run.boss.active;document.body.classList.toggle('boss-active',run.boss.active);if(run.boss.active){$('boss-hp').max=run.boss.maxHp;$('boss-hp').value=run.boss.hp;$('boss-state').textContent=front===1?(run.boss.mode==='recover'?'재장전 · 반격 기회':'포격 열차 · 예고 차선 밖으로 이동'):front===2?(run.boss.mode==='recover'?'코어 노출 · 집중 공격':'지휘 병기 · 포격 예고를 피해 이동'):run.boss.mode==='recover'?'후면 엔진 노출 · 뒤를 노려라':run.boss.mode==='windup'?'돌진 예고 · 옆으로 회피':'장갑 수송차 · 측후면을 노려라';const names=front===1?['좌측 포대','우측 포대']:front===2?['포탑','측면 장갑']:['포탑','궤도'];$('boss-parts').textContent=names.map((name,i)=>`${name} ${run.boss.parts[i].hp>0?'가동':'파괴'}`).join(' / ');const tactic=supportTactic(run.operation?.support,front);$('boss-tactic').hidden=!tactic;$('boss-tactic').textContent=tactic;}
 }
 const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve',heal:'heal',break:'crowd-break'};
 const bannerPriority=['region-entry','gate-open'];
@@ -213,7 +216,8 @@ function processEvents(){
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
  bannerUntil=run.t+(priority?2.1:1.5);
  if(fx.type==='region-entry'){
-  banner.innerHTML=`<span>전선 ${String(run.operation.region+1).padStart(2,'0')} / 03</span><strong>${esc(region(run).name)}</strong><small>${esc(region(run).mission)}</small>`;
+  const kit=FRONT_SUPPORTS[run.operation.support];
+  banner.innerHTML=`<span>전선 ${String(run.operation.region+1).padStart(2,'0')} / 03</span><strong>${esc(region(run).name)}</strong><small>${esc(kit?`${kit.name} 장착 · ${kit.role}`:region(run).mission)}</small>`;
  }else if(fx.type==='gate-open'){
   banner.innerHTML=`<span>${esc(region(run).boss)} 격파</span><strong>${esc(exitGate(run).name)} 개방</strong><small>현장 XP 회수 · ${HOLDOUT.grace}초 후 증원</small>`;
  }else{
@@ -230,6 +234,7 @@ const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
 async function boot(){
  try{const lock=navigator.locks?fn=>navigator.locks.request(`${STORAGE_KEY}:write`,fn):null;store=createStore(localStorage,lock);controls=bindTouchControls({stick:$('stick'),actions:{dash:$('dash'),skill:$('skill'),interact:$('interact')},canPlay:()=>mode==='battle'&&run?.phase==='playing'&&!busy&&!pending,onMove:v=>{touch=v;},onAction:a=>mutate(d=>action(d,a)),onUnlock:()=>{if(profile().settings.sound)audio.unlock();}});
   try{art=await loadMissionArt();}catch{notice('전장 원화를 불러오지 못해 기본 표시로 실행합니다.');}
+  const p=profile();operationPlan=createOperationPlan(()=>crypto.getRandomValues(new Uint32Array(1))[0],p.active?.run.seed??p.recent[0]?.seed);
   run=createOperation(17);renderer=createRenderer($('world'),art);showHome();requestAnimationFrame(frame);
  }catch(error){panel(`<section class="sheet compact"><span class="eyebrow">LOAD INTERRUPTED</span><h2>작전 기록을 불러오지 못했습니다.</h2><p>${esc(error.message)}</p><button data-action="reload-latest">기록 다시 불러오기</button></section>`);}
 }

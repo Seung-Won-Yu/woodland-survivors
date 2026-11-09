@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
-import {REGIONS,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,holdoutContract,groundXp,holdoutTier} from './campaign.js';
+import {REGIONS,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
@@ -31,14 +31,15 @@ export function choiceDetails(s,c){
   out.impact=`조율권 ${s.tuning} → ${s.tuning+1}`;out.detail='진화·합체·모듈 강화 또는 응급 정비에 사용합니다.';out.link='병기 개조에서 사용';out.cost='다음 전선까지 보관';
  }else if(c.kind==='front-support'){
   const kit=FRONT_SUPPORTS[c.key];
-  out.art=kit.art;out.impact=kit.impact;out.detail=kit.detail;out.link=`${REGIONS[s.operation.region+1].name} 진입 때 장착`;out.cost='다음 전선 한 곳에서 작동';
+  const index=s.operation.region+1;
+  out.art=kit.art;out.impact=kit.impact;out.detail=kit.detail;out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
  }else if(c.kind==='cargo'){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
  }else if(c.kind==='advance'){
   const support=FRONT_SUPPORTS[s.operation?.nextSupport];
   out.impact=support?`${support.name} 장착 후 전진`:'무장과 레벨을 이어 전진';
   out.detail=`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
-  out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':support?.impact||'새 전선에 도착';
+  out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
   out.cost='현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){out.impact='바닥 XP와 증원군을 노린다';out.detail='공세 단계가 오를수록 물량과 내구가 증가합니다.';out.link=`${holdoutContract(s).name} · ${s.operation?.challengeTier?'기록 점수':'노획 보급'}`;out.cost='열린 게이트에서 다시 선택';}

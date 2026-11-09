@@ -102,3 +102,11 @@ test('lobby briefing uses the new operation plan even with a prior active checkp
  assert.match(html,/투입 지점/);assert.doesNotMatch(html,/현재 위치|<small>L5<\/small>/);
  for(const site of createOperation(18).sites)assert.ok(html.includes(`translate(${site.x} ${site.y})`));
 });
+test('fresh launch avoids the previous beach route, including after reload and same-seed replay',()=>{
+ const plan=createOperationPlan(()=>21,17);
+ assert.notEqual(plan.seed%4,17%4);
+ const replay=createOperation(17),previous=emptyProfile(),next=beginProfile(previous,replay);
+ plan.committed(previous,next,replay);
+ assert.notEqual(plan.seed%4,replay.seed%4);
+ assert.ok(plan.seed>=0&&plan.seed<=0xffffffff);
+});
