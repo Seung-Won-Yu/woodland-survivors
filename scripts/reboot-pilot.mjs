@@ -1,7 +1,7 @@
 // Normal-input model pilot. It never edits HP, gear, XP, world time or RNG.
 import {pathToFileURL} from 'node:url';
 import {createRun,createOperation,step,choose,action,assemblyOptions,interaction,reroll,banish,banishOptions} from '../src/reboot/model.js';
-import {exitGate} from '../src/reboot/campaign.js';
+import {exitGate,DEFENSE_ZONE,signalCourier} from '../src/reboot/campaign.js';
 import {moduleRank,distance,compatible} from '../src/reboot/content.js';
 function free(s,x,y){return x>=60&&x<=1540&&y>=60&&y<=1140&&(!s.boss.active||Math.hypot(x-s.boss.x,y-s.boss.y)>s.boss.r+38)&&!s.blocks.some(b=>b.hp!==0&&x+22>b.x&&x-22<b.x+b.w&&y+22>b.y&&y-22<b.y+b.h);}
 function path(s,goal){
@@ -20,6 +20,8 @@ function movement(s,goal,ctx,avoid=true){
 function priority(s,c,policy){
  if(c.kind==='advance')return 1100;if(c.kind==='control')return c.key==='jam'?100:90;if(c.kind==='extract')return 1000;if(c.kind==='stay')return -1;
  if(c.kind==='permit')return s.tuning===0?100:65;
+ if(c.kind==='cargo')return 100;
+ if(c.kind==='front-support')return c.key===({single:'breach',fusion:'recovery',fire:'overrun'})[policy]?100:40;
  if(c.id==='resupply:pursuit-mixed')return s.player.hp<60?150:35;
  if(c.kind==='gun'){if(policy==='fusion'&&c.weapon==='r'&&!s.weapons.some(w=>w.id==='r'))return 140;if(policy==='fire'&&c.weapon==='f'&&!s.weapons.some(w=>w.id==='f'))return 140;return s.weapons.length<3?35:0;}
  if(c.kind==='module'){
@@ -61,8 +63,17 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
   }
   if(s.raid?.state==='active'){step(s,1/60,movement(s,s.raid.target,ctx));continue;}
   if(s.stage==='holdout'){
-   if(pursuit&&s.operation?.region===0&&!s.challenge)action(s,'challenge');
+   if(!s.challenge&&s.operation&&(pursuit==='all'||pursuit&&s.operation.region===0))action(s,'challenge');
    if(s.challenge?.state==='active'){
+    if(s.challenge.type==='defend'){
+     const angle=s.t*1.3;
+     const goal={x:DEFENSE_ZONE.x+Math.cos(angle)*58,y:DEFENSE_ZONE.y+Math.sin(angle)*58};
+     step(s,1/60,movement(s,goal,ctx,false));continue;
+    }
+    const signal=signalCourier(s);
+    if(signal){
+     step(s,1/60,movement(s,{x:signal.x,y:Math.max(70,signal.y-140)},ctx));continue;
+    }
     const target=s.enemies.filter(e=>!e.dead&&s.challenge.targets.includes(e.id)).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];
     const angle=target?Math.atan2(s.player.y-target.y,s.player.x-target.x)+.6:0;
     const goal=target?{x:Math.max(70,Math.min(1530,target.x+Math.cos(angle)*170)),y:Math.max(70,Math.min(1130,target.y+Math.sin(angle)*170))}:exitGate(s);

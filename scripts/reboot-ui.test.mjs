@@ -4,25 +4,27 @@ import {lobbyView,reportView} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 
-test('mission briefing does not select a later starting map, and saved operations offer resume',()=>{
+test('mission briefing does not select a later starting map, and saved operations offer a fresh sortie',()=>{
  const p=emptyProfile(),html=lobbyView(p,{brief:2});
- assert.match(html,/heading|작전 지령/);assert.match(html,/data-action="launch">피오 · 해안에 출격/);
+ assert.match(html,/heading|작전 지령/);assert.match(html,/data-action="launch">피오 · 새 출격/);
  const run=createOperation(17);run.operation.region=1;const active=beginProfile(p,run),view=lobbyView(active);
- assert.match(view,/data-action="resume-run">저장한 작전 계속/);
- assert.match(view,/이어서 2\/3 철도 차단/);assert.doesNotMatch(view,/data-action="launch"/);
+ assert.match(view,/data-action="launch">피오 · 새 출격/);
+ assert.match(view,/이전 판은 확보 성과를 정산/);assert.doesNotMatch(view,/data-action="resume-run"/);
 });
 test('research makes condition, funds, active-run block and owned trial explicit',()=>{
  const p=emptyProfile();let html=lobbyView(p,{tab:'research'});assert.match(html,/실증 조건 미달/);
  p.milestones.medic=true;p.credits=299;html=lobbyView(p,{tab:'research'});assert.match(html,/1C 부족/);
  p.credits=300;html=lobbyView(p,{tab:'research'});assert.match(html,/<button  class="primary" data-research="medic">300C · 연구/);
  p.research=['medic'];p.trials=['medic'];html=lobbyView(p,{tab:'research'});assert.match(html,/새 연구 · 조건에 맞는 첫 보급에서 제시/);assert.match(html,/disabled[^>]*data-research="medic"/);
- const active=beginProfile(emptyProfile(),createOperation(17));assert.match(lobbyView(active,{tab:'research'}),/진행 중인 작전을 귀환·정산한 뒤/);
+ const active=beginProfile(emptyProfile(),createOperation(17));assert.match(lobbyView(active,{tab:'research'}),/이전 판을 정산한 뒤/);
 });
 test('settled reports lead to affordable research and preserve exact replay seed',()=>{
  const run=createOperation(17);let p=beginProfile(emptyProfile(),run);run.operation.cleared=3;run.operation.extracted=true;run.stats.bossKilled=true;finish(run,true);p=settleProfile(p,run);
  const html=reportView(p.recent[0],p);assert.match(html,/data-target="research"/);assert.match(html,/data-action="same-seed" data-seed="17"/);assert.match(html,/첫 완주 보너스 200C 포함/);
  const old={...p.recent[0],balanceRevision:'old-rules'};assert.doesNotMatch(reportView(old,p),/첫 완주 보너스/);
  assert.match(reportView(p.recent[0],p,{archived:true}),/data-target="archive"/);
+ const withActive=beginProfile(p,createOperation(18)),archived=reportView(p.recent[0],withActive,{archived:true});
+ assert.match(archived,/data-action="same-seed" data-seed="17"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
 });
 test('history handles empty states and escapes externally readable migration notes',()=>{
  const p=emptyProfile();assert.match(lobbyView(p,{tab:'archive'}),/첫 보고서를 기다립니다/);
@@ -94,8 +96,9 @@ test('a failed launch keeps its briefing, and retry success consumes the plan ex
  finish(run,false);const beforeSettle=store.get(),settled=settleProfile(beforeSettle,run);await store.commit(settled);plan.committed(beforeSettle,settled,run);assert.equal(plan.seed,18);assert.equal(createOperation(plan.seed).seed,18);assert.equal(calls,2);
 });
 
-test('saved operation charts show current position and remove destroyed obstacles',()=>{
- const run=createOperation(17);run.player.x=123;run.player.y=456;const b=run.blocks[0];b.hp=0;run.sites[0].state='done';
- const map=regionPreview(0,17,run);assert.ok(map.includes('<circle cx="123" cy="456"'));assert.ok(!map.includes(`x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"`));
- assert.match(lobbyView(beginProfile(emptyProfile(),run)),/현재 위치/);assert.match(lobbyView(beginProfile(emptyProfile(),run)),/확보 완료/);
+test('lobby briefing uses the new operation plan even with a prior active checkpoint',()=>{
+ const s=createOperation(17);s.player.x=900;s.player.y=990;s.operation.region=1;s.weapons[0].level=5;
+ const html=lobbyView(beginProfile(emptyProfile(),s),{seed:18});
+ assert.match(html,/투입 지점/);assert.doesNotMatch(html,/현재 위치|<small>L5<\/small>/);
+ for(const site of createOperation(18).sites)assert.ok(html.includes(`translate(${site.x} ${site.y})`));
 });

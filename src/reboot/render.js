@@ -3,6 +3,7 @@ import {exitGate} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach} from './model.js';
+import {DEFENSE_ZONE,SIGNAL_ROUTE,signalCourier} from './campaign.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
 function bar(c,x,y,width,ratio,color){c.fillStyle='#101d26';c.fillRect(x-width/2,y,width,5);c.fillStyle=color;c.fillRect(x-width/2,y,width*clamp(ratio,0,1),5);}
@@ -89,10 +90,21 @@ export function createRenderer(canvas,art){
   for(const n of s.sites)if(n.kind==='relay'&&n.state==='active'){circle(c,n.x,n.y,125,'#83c5a40b','#c7dfb566',1);c.strokeStyle='#e8d49a';c.lineWidth=2;c.beginPath();c.arc(n.x,n.y,125,-Math.PI/2,-Math.PI/2+n.progress/5*TAU);c.stroke();}
   for(const z of s.zones){circle(c,z.x,z.y,z.r,'#552f282d','#cb753769',1);circle(c,z.x,z.y,z.r*.75,'#e7a05a30');for(let i=0;i<5;i++){const a=i*2.4+z.x,r=z.r*(.25+(i%3)*.22);flame(c,z.x+Math.cos(a)*r,z.y+Math.sin(a)*r,14+(reduced?0:Math.sin(s.t*12+i)*4),s.t*9+i);}}
   const reach=pickupReach(s);
+  const signal=signalCourier(s);
+  if(s.challenge?.state==='active'&&s.challenge.type==='defend'){
+   const {x,y,r}=DEFENSE_ZONE,inside=distance(s.player,DEFENSE_ZONE)<=r;
+   circle(c,x,y,r,'#a085c023',inside?'#e6c4f2':'#a98ebd',2);
+   c.strokeStyle='#f4d1ff';c.lineWidth=4;c.beginPath();c.arc(x,y,r,-Math.PI/2,-Math.PI/2+TAU*s.challenge.progress/s.challenge.duration);c.stroke();
+   c.fillStyle='#34263b';c.fillRect(x-53,y-11,106,22);c.fillStyle='#f4d1ff';c.font='11px Galmuri';c.textAlign='center';c.fillText('중계기 방어',x,y+4);
+  }
+  if(signal){
+   c.strokeStyle='#d7a3e692';c.lineWidth=2;c.setLineDash([8,12]);c.beginPath();c.moveTo(SIGNAL_ROUTE.x,SIGNAL_ROUTE.end);c.lineTo(signal.x,signal.y);c.stroke();c.setLineDash([]);
+  }
   for(const g of s.gems)if(!g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   if(s.stage==='field'){c.fillStyle='#293c34';c.fillRect(718,326,42,16);c.fillRect(840,326,42,16);c.fillStyle='#d8b471';for(let i=0;i<3;i++){c.fillRect(720+i*13,326,6,16);c.fillRect(842+i*13,326,6,16);}if(distance(s.player,{x:800,y:350})<190){c.fillStyle='#1c302de8';c.fillRect(727,363,146,24);c.fillStyle='#efcf90';c.font='11px Galmuri';c.textAlign='center';c.fillText('보스전 진입',800,379);}}
   const entities=[...s.sites.map(e=>({y:e.y,kind:'site',e})),...s.blocks.map(e=>({y:e.y+e.h,kind:'block',e})),...s.enemies.map(e=>({y:e.y,kind:'enemy',e})),{y:s.player.y,kind:'player',e:s.player}];
   if(gate)entities.push({y:gate.y,kind:'gate',e:gate});
+  if(signal)entities.push({y:signal.y,kind:'courier',e:signal});
   if(s.raid?.state==='active')entities.push({y:s.raid.target.y,kind:'courier',e:s.raid.target});if(s.boss.active||s.boss.dead||s.stage==='field')entities.push({y:s.boss.y,kind:'boss',e:s.boss});
   for(const item of entities.sort((a,b)=>a.y-b.y)){
    const e=item.e;if(!visible(e.x,e.y,220))continue;c.save();

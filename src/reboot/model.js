@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,DEFENSE_ZONE,SIGNAL_ROUTE,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
@@ -18,8 +18,9 @@ export function createOperation(seed=17,research=[],trial=null){
 function advanceRegion(s){
  if(!s.operation||s.stage!=='holdout'||!s.boss.dead||s.operation.region>=2)return false;
  withdrawRaid(s);
+ s.operation.support=s.operation.nextSupport||null;delete s.operation.nextSupport;
  s.operation.history.push({region:s.operation.region,time:s.operation.regionTime,pressure:s.pressure,holdTime:s.holdTime,sites:s.sites.filter(n=>n.state==='done').length});s.operation.region++;s.operation.regionTime=0;s.operation.jammed=false;s.operation.challengeTier=0;delete s.operation.gate;delete s.pursuitClock;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[s.operation.region]};
- Object.assign(s,regionLayout(s.seed+s.operation.region*7919,s.operation.region));s.boss=regionBoss(s.operation.region);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;s.player.x=800;s.player.y=1040;s.player.invuln=1;s.choice=null;s.choices=[];s.phase='playing';
+ Object.assign(s,regionLayout(s.seed+s.operation.region*7919,s.operation.region));s.boss=regionBoss(s.operation.region);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;s.player.x=800;s.player.y=1040;s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
  if(s.stats.completedBuild)s.powerWave={delay:3,remaining:60,clock:0};
  for(let i=0;i<10;i++)spawnAround(s,i===0?'officer':'rifle',{cohort:'ambient'},360,30);emit(s,'region-entry',800,1040,{text:`${s.operation.region+1}/3 · ${region(s).name}`,life:1.6});nextChoice(s);return true;
 }
@@ -29,7 +30,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -40,9 +41,12 @@ export function restore(raw,{allowPrevious=false}={}){
  for(const key of ['enemies','shots','enemyShots','gems','zones','hazards','effects','excluded','seenGuns','offeredWeapons'])if(!Array.isArray(s[key]))fail();
  if(new Set(s.modules.map(m=>m.id)).size!==s.modules.length||s.modules.some(m=>RULES.modules[m.id].unique&&m.rank!==1)||new Set(s.weapons.map(w=>w.uid)).size!==s.weapons.length||s.weapons.some(w=>typeof w.uid!=='string'))fail();
  if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
- if(s.operation)s.trials??=s.trial?[s.trial]:[];
+ if(s.operation){
+  s.trials??=s.trial?[s.trial]:[];
+  if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
+ }
  if(s.player.maneuver&&!Object.hasOwn(MANEUVERS,s.player.maneuver))fail();
- const kinds=new Set(['advance','control','rank','module','gun','evolve','fusion','tune','repair','utility','refit','resupply','back','stay','extract','maneuver','permit']);
+ const kinds=new Set(['advance','control','rank','module','gun','evolve','fusion','tune','repair','utility','refit','resupply','back','stay','extract','maneuver','permit','front-support','cargo']);
  const cardsOk=cards=>Array.isArray(cards)&&cards.length>0&&cards.every(c=>(c.kind!=='resupply'||Number.isFinite(c.heal)&&Number.isFinite(c.charge)&&c.heal>=0&&c.charge>=0)&&typeof c.id==='string'&&kinds.has(c.kind)&&(!c.weapon||GUNS[c.weapon])&&(!c.module||MODULES[c.module])&&(!['rank','gun','evolve'].includes(c.kind)||!!GUNS[c.weapon])&&(!['module','tune'].includes(c.kind)||!!MODULES[c.module])&&(c.kind!=='module'||Number.isInteger(c.rank)&&c.rank>=1&&c.rank<=3));
  if((s.phase==='choice'||s.resumePhase==='choice')&&(!s.choice||!['level','supply','armory','raid-reward','pursuit-reward','assembly','clear','control'].includes(s.choice.type)||!cardsOk(s.choices)))fail();
  if(s.phase==='result'&&(!s.result||typeof s.result.won!=='boolean'||!Number.isFinite(s.result.score)||!Number.isFinite(s.result.seconds)||!s.result.stats||!Array.isArray(s.result.weapons)||!Array.isArray(s.result.modules)||s.result.weapons.some(w=>!GUNS[w.id])||s.result.modules.some(m=>!MODULES[m.id])))fail();
@@ -59,12 +63,14 @@ export function restore(raw,{allowPrevious=false}={}){
    if(s.choice?.type==='clear'){s.choice=null;s.choices=[];if(s.phase==='choice')s.phase='playing';if(s.resumePhase==='choice')s.resumePhase='playing';}
   }
  }
+ if(s.challenge?.type==='defend'&&(!Number.isFinite(s.challenge.progress)||!Number.isFinite(s.challenge.duration)||!Number.isFinite(s.challenge.strike)))fail();
+ if(s.challenge?.type==='intercept'&&(!Number.isFinite(s.challenge.timeLeft)||!Number.isFinite(s.challenge.target?.hp)||!Number.isFinite(s.challenge.target?.maxHp)))fail();
  s.events=[];return s;
 }
 export function pause(s){if(s.phase==='result'||s.phase==='paused')return;s.resumePhase=s.phase;s.phase='paused';}
 export function resume(s){if(s.phase==='paused'){s.phase=s.resumePhase||'playing';delete s.resumePhase;}}
 export function xpNeeded(s){return s.level<=17?RULES.xpCosts[s.level-1]:90+(s.level-18)*7;}
-export function pickupReach(s){return 65+s.boosts.pickup*10+moduleRank(s,'magnet')*30;}
+export function pickupReach(s){return 65+s.boosts.pickup*10+moduleRank(s,'magnet')*30+(s.operation?.support==='recovery'?55:0);}
 function gainXp(s,n){s.xp+=n;while(s.xp>=xpNeeded(s)){s.xp-=xpNeeded(s);s.level++;s.pendingLevels++;}}
 const gunCard=(w)=>{const before=weaponStats(w),after=weaponStats({...w,level:w.level+1}),changes=[];if(before.count!==after.count)changes.push(`사격 ${before.count} → ${after.count}발`);if(before.damage!==after.damage)changes.push(`피해 ${before.damage} → ${after.damage}`);if(before.interval!==after.interval)changes.push(`간격 ${before.interval.toFixed(2)} → ${after.interval.toFixed(2)}초`);if(before.range!==after.range)changes.push(`사거리 ${before.range} → ${after.range}`);if(before.radius!==after.radius)changes.push(`폭발 범위 ${before.radius} → ${after.radius}`);return{id:`rank:${w.id}`,kind:'rank',weapon:w.id,title:`${GUNS[w.id].name} L${w.level+1}`,desc:w.level===3?'발사 방식을 선택해 전투를 바꿉니다.':changes.join(' · ')||'보유 공격의 위력을 확장합니다.',label:'보유 무기 투자'};};
 const moduleCard=(id,rank=1)=>({id:`module:${id}`,kind:'module',module:id,rank:RULES.modules[id].unique?1:rank,title:MODULES[id].name,desc:MODULES[id].desc,label:'조건부 모듈'});
@@ -140,6 +146,14 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
   if(!assemblyOptions(s).some(o=>o.id===id))return false;const a=s.weapons.find(w=>w.id===c.primary&&!w.fusion),b=s.weapons.find(w=>w.id===c.secondary&&!w.fusion);a.fusion={secondary:b.id,branch:b.branch,overflow:Math.min(4,a.level+b.level-8)};a.level=6;a.evolved=true;s.weapons.splice(s.weapons.indexOf(b),1);s.tuning--;buildCompleted(s,'fusion');
  }else if(c.kind==='maneuver'){if(s.choice.type!=='assembly'||!assemblyOptions(s).some(o=>o.id===id&&o.key===c.key))return false;s.player.maneuver=c.key;s.stats.maneuver=c.key;}
  else if(c.kind==='permit'){if(s.choice.type!=='pursuit-reward'||c.id!=='pursuit:permit'||s.stage!=='holdout'||s.challenge?.state!=='complete'||s.challenge.tier!==1)return false;s.tuning++;}
+ else if(c.kind==='front-support'){
+  if(s.choice.type!=='pursuit-reward'||!s.operation||s.operation.region>=REGIONS.length-1||!Object.hasOwn(FRONT_SUPPORTS,c.key)||s.operation.nextSupport)return false;
+  s.operation.nextSupport=c.key;
+ }
+ else if(c.kind==='cargo'){
+  if(s.choice.type!=='pursuit-reward'||s.operation?.region!==2||s.stats.holdoutCargo)return false;
+  s.stats.holdoutCargo=true;
+ }
  else if(c.kind==='tune'){const m=s.modules.find(m=>m.id===c.module);if(s.tuning<1||!m||m.rank>=3)return false;m.rank++;s.tuning--;}
  else if(c.kind==='repair'){if(s.tuning<1)return false;s.tuning--;s.player.maxHp+=15;s.player.hp=Math.min(s.player.maxHp,s.player.hp+35);}
  else if(c.kind==='utility'){if(c.key==='health'){s.player.maxHp+=6;s.player.hp=Math.min(s.player.maxHp,s.player.hp+6);}if(c.key==='pickup'){if(s.boosts.pickup>=3)return false;s.boosts.pickup++;}if(c.key==='power')s.boosts.power++;if(c.key==='charge')s.player.charge=Math.min(100,s.player.charge+10);}
@@ -168,7 +182,7 @@ export function skip(s){if(s.phase!=='choice'||['assembly','clear','pursuit-rewa
 
 function buildCompleted(s,kind){if(!s.stats.completedBuild)s.stats.completedBuild={kind,t:s.t};if(!s.powerDone){s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='fusion'?'전도 격발망 가동':kind==='single'?'무기 진화 완료':'발동 연계 완성'});}}
 export function partPosition(s,part){const b=s.boss;if(s.operation?.region===1)return{x:b.x+part.ox,y:b.y};return{x:b.x+Math.cos(b.body-Math.PI/2)*part.ox,y:b.y+Math.sin(b.body-Math.PI/2)*part.ox};}
-function targets(s){const list=alive(s);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}}return list;}
+function targets(s){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}}return list;}
 const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
 function move(s,e,dx,dy,r){const x=clamp(e.x+dx,FIELD.left+r,FIELD.right-r),y=clamp(e.y+dy,FIELD.top+r,FIELD.bottom-r);if(!blocked(s,x,e.y,r))e.x=x;if(!blocked(s,e.x,y,r))e.y=y;}
 function lineBlocked(s,a,b){const n=Math.ceil(distance(a,b)/20);for(let i=1;i<=n;i++)if(blocked(s,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return true;return false;}
@@ -214,8 +228,10 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  if(e.hp<=0||e.dead)return;
  const catalyst=moduleRank(s,'catalyst');if(kind==='blast'&&e.burn>0&&catalyst)amount*=1+RULES.modules.catalyst.blastBonusOnBurn[catalyst-1];
  amount*=1+s.boosts.power*.01;
+ const breach=s.operation?.support==='breach';
+ if(e.type==='part'&&breach)amount*=1.55;
  if(e.type==='boss'){const b=s.boss,a=Math.atan2(s.player.y-b.y,s.player.x-b.x),rear=Math.cos(a-b.body)<-.35;amount*=s.operation?.region===1?(b.parts.some(p=>p.hp>0)?.5:b.mode==='recover'?1.5:1):s.operation?.region===2?(b.parts.some(p=>p.hp>0)?b.mode==='recover'?1:.65:b.mode==='recover'?1.6:1.15):b.mode==='recover'&&rear?1.5:Math.cos(a-b.body)>.35?.65:1;}
- if(e.type==='shield'&&kind==='bullet'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.45)amount*=.45;
+ if(e.type==='shield'&&kind==='bullet'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.45)amount*=breach?.65:.45;
  if(e.type==='courier'&&kind==='bullet'&&s.raid?.contract==='armored'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.5)amount*=.5;
  const actual=e.part||e;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
  if(['rifle','shield','mortar','officer'].includes(e.type)){const dx=e.x-s.player.x,dy=e.y-s.player.y,d=Math.hypot(dx,dy)||1,push=(kind==='blast'?RULES.combatFeel.blastPush:RULES.combatFeel.bulletPush)*(e.type==='shield'?RULES.combatFeel.shieldPushMultiplier:1);move(s,e,dx/d*push,dy/d*push,e.r);}
@@ -225,6 +241,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  if(e.dead||e.hp>0)return;
  if(e.type==='part'){emit(s,'break',e.x,e.y,{life:.7});return;}
  if(e.type==='boss'){s.boss.dead=true;s.stats.bossKilled=true;if(s.operation){s.operation.cleared=s.operation.region+1;if(s.weapons.some(w=>w.fusion))s.stats.fusionBosses++;if(s.weapons.some(w=>w.id==='f'&&w.evolved))s.stats.flameBosses++;}s.stats.score+=1000;emit(s,'boss-down',e.x,e.y,{r:e.r,life:1.2});return;}
+ if(e===signalCourier(s)){e.dead=true;dropXp(s,e.x,e.y,24,true);emit(s,'break',e.x,e.y);return;}
  if(e.type==='courier'){e.dead=true;s.raid.state='success';s.stats.raidSuccess++;s.stats.score+=300;gainXp(s,12);emit(s,'break',e.x,e.y);emit(s,'raid-success',e.x,e.y,{quality:s.raid.quality,text:`${QUALITY[s.raid.quality]} 보급 탈취`,life:1.4});return;}
  e.dead=true;e.death=.3;scoreKill(s,e,source);
 }
@@ -238,7 +255,7 @@ function feed(s,owner,weight,target){
 }
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect='explosion'){
  emit(s,effect,x,y,{r,life:.4});let budget=2;
- for(const e of targets(s)){if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;const w=source==='native'?Math.min(.5,budget):0;budget-=w;damage(s,e,amount,'blast',source,owner,w);if(ignite&&e.hp>0)burn(e);}
+ for(const e of (source==='support'?alive(s):targets(s))){if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;const w=source==='native'?Math.min(.5,budget):0;budget-=w;damage(s,e,amount,'blast',source,owner,w);if(ignite&&e.hp>0)burn(e);}
  for(const b of s.blocks)if(b.hp>0&&Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<r+Math.max(b.w,b.h)/2)b.hp=Math.max(0,b.hp-amount);
  if(source==='native'&&moduleRank(s,'shrapnel')&&!(s.shrapnelCd>0)){s.shrapnelCd=.65;s.stats.shrapnelBursts=(s.stats.shrapnelBursts||0)+1;for(let i=0;i<3;i++){const a=i*TAU/3;blast(s,x+Math.cos(a)*50,y+Math.sin(a)*50,42,20,'module',null,false,'shrapnel');}}
  if(ignite&&s.zones.length<12)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
@@ -341,7 +358,7 @@ function updateSites(s,dt){
  if(s.stage==='boss')return;
  for(const site of s.sites){
   if(site.id==='supply-b'&&site.state==='waiting'){site.baseX??=site.x;site.x=site.baseX+Math.sin(s.t*.35)*55;}
-  if(site.state==='waiting'&&distance(site,s.player)<215){const count=site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6,reserve=alive(s).length+count-160;if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}if(alive(s).length+count>160)continue;site.state='active';for(let i=0;i<count;i++){const angle=i*TAU/6;spawnEnemy(s,site.kind==='armory'&&i===0?'officer':i===1?'shield':'rifle',site.x+Math.cos(angle)*85,site.y+Math.sin(angle)*65,site.id);}emit(s,'engage',site.x,site.y);}
+  if(site.state==='waiting'&&distance(site,s.player)<215){const count=site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6,reserve=alive(s).length+count-160;if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets?.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}if(alive(s).length+count>160)continue;site.state='active';for(let i=0;i<count;i++){const angle=i*TAU/6;spawnEnemy(s,site.kind==='armory'&&i===0?'officer':i===1?'shield':'rifle',site.x+Math.cos(angle)*85,site.y+Math.sin(angle)*65,site.id);}emit(s,'engage',site.x,site.y);}
   if(site.kind==='relay'&&site.state==='active'&&distance(site,s.player)<125)site.progress=Math.min(5,site.progress+dt);
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
   if(site.state==='ready'&&distance(site,s.player)<74){site.state='done';
@@ -371,25 +388,71 @@ function withdrawRaid(s){
 }
 function updatePowerWave(s,dt){const wave=s.powerWave;if(!wave||s.stage==='boss')return;if(wave.delay>0){wave.delay-=dt;return;}wave.clock-=dt;if(wave.clock<=0&&wave.remaining>0){wave.clock=.4;for(let i=0;i<4&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{},360))wave.remaining--;}if(wave.remaining<=0)s.powerWave=null;}
 function pursuitReward(s){
- const needed=completionModules(s)[0],part=needed||modulePool(s)[0];
+ if(s.operation.region<2)return Object.entries(FRONT_SUPPORTS).map(([key,kit])=>({id:`support:${key}`,kind:'front-support',key,title:kit.name,desc:kit.impact,label:kit.role}));
  return [
-  {id:'pursuit:permit',kind:'permit',title:'야전 조율권',desc:'조율권 +1',label:'진화 · 합체 준비'},
-  part?{...moduleCard(part,2),label:needed?'병기 완성 부품':'지원 모듈'}:{id:'resupply:pursuit-ammo',kind:'resupply',title:'비축 탄창',heal:0,charge:55,label:'전탄 보급'},
-  {id:'resupply:pursuit-mixed',kind:'resupply',title:'지휘관 구급낭',heal:30,charge:25,label:'체력 · 충전 회복'}
+  {id:'pursuit:cargo',kind:'cargo',title:'통신 화물',label:'정산 크레딧'},
+  {id:'resupply:pursuit-mixed',kind:'resupply',title:'후송 구급낭',heal:36,charge:45,label:'귀환까지 생존'}
  ];
 }
-function updateChallenge(s){
+function updateChallenge(s,dt){
  const challenge=s.challenge;
- if(challenge?.state!=='active'||challenge.targets.some(id=>s.enemies.some(e=>e.id===id&&!e.dead)))return;
+ if(challenge?.state!=='active')return;
+ if(challenge.type==='defend'){
+  if(s.player.hp<=0||distance(s.player,DEFENSE_ZONE)>DEFENSE_ZONE.r)return;
+  challenge.progress+=dt;challenge.strike-=dt;
+  if(challenge.progress<challenge.duration){
+   if(challenge.strike<=0){
+    const {x,y}=s.player;
+    s.hazards.push({x,y,r:42,timer:.95,duration:.95});
+    challenge.strike=2.7;
+   }
+   return;
+  }
+ }else if(challenge.type==='intercept'){
+  const target=challenge.target;
+  updateBurn(s,target,dt);
+  if(target.hp>0){
+   challenge.timeLeft=Math.max(0,challenge.timeLeft-dt);
+   target.y=SIGNAL_ROUTE.end+(SIGNAL_ROUTE.start-SIGNAL_ROUTE.end)*(challenge.timeLeft/SIGNAL_ROUTE.seconds);
+   if(challenge.timeLeft===0){challenge.state='failed';emit(s,'challenge-failed',target.x,target.y,{text:'통신 차량 이탈 · 재도전 가능',life:1.6});}
+   return;
+  }
+ }else if(challenge.targets.some(id=>s.enemies.some(e=>e.id===id&&!e.dead)))return;
  challenge.state='complete';
  const tier=challenge.tier||1;
  s.stats.challenge=Math.max(s.stats.challenge,tier);s.stats.challengeWins=(s.stats.challengeWins||0)+1;
  if(s.operation){
   s.operation.challengeTier=tier;
-  if(tier===1&&s.player.hp>0)openChoice(s,'pursuit-reward',pursuitReward(s),'지휘관 2명 제압 · 이번 전선의 노획 보급');
+  if(tier===1&&s.player.hp>0){
+   s.player.invuln=Math.max(s.player.invuln,.5);
+   openChoice(s,'pursuit-reward',pursuitReward(s),`${holdoutContract(s).name} 완료 · 보급 한 가지 선택`);
+  }
  }
  s.stats.score+=500*tier;
  emit(s,'challenge-clear',s.player.x,s.player.y,{text:`잔류 도전 ${tier} 완료 · +${500*tier}`,life:1.5});
+}
+
+function startChallenge(s){
+ if(s.stage!=='holdout'||s.raid?.state==='active'||s.challenge?.state==='active'||s.challenge&&!s.operation)return false;
+ const tier=(s.operation?.challengeTier||0)+1;
+ const contract=holdoutContract(s);
+ if(contract.id==='defend'){
+  s.challenge={type:'defend',state:'active',tier,progress:0,strike:.8,duration:defenseSeconds(tier)};
+ }else if(contract.id==='intercept'){
+  const hp=Math.round(1050*1.22**Math.min(24,tier-1));
+  s.challenge={type:'intercept',state:'active',tier,timeLeft:SIGNAL_ROUTE.seconds,target:{id:'signal',type:'courier',x:SIGNAL_ROUTE.x,y:SIGNAL_ROUTE.start,r:34,hp,maxHp:hp,aim:-Math.PI/2,dead:false}};
+ }else{
+  const ids=[],hp=Math.round(450*1.22**Math.min(24,tier-1));
+  for(const dx of [-220,220]){
+   const kit={hp,maxHp:hp,cohort:'challenge'},x=clamp(s.player.x+dx,100,1500),y=clamp(s.player.y-240,100,1100);
+   const enemy=blocked(s,x,y,26)?spawnAround(s,'officer',kit,null,50):spawnEnemy(s,'officer',x,y,null,kit);
+   if(enemy)ids.push(enemy.id);
+  }
+  if(ids.length<2){s.enemies=s.enemies.filter(e=>!ids.includes(e.id));return false;}
+  s.challenge={type:'hunt',state:'active',tier,targets:ids};
+ }
+ emit(s,'challenge-start',s.player.x,s.player.y,{text:`${contract.name} · D${tier}`,life:1.25});
+ return true;
 }
 
 export function interaction(s){
@@ -405,16 +468,7 @@ export function action(s,kind){
  if(kind==='gear'){openChoice(s,'assembly',[...assemblyOptions(s),{id:'back',kind:'back',title:'전투로 돌아가기',desc:'조율권과 무장을 유지합니다.'}],'병기 조립');return true;}
  if(kind==='dash'){if(p.dashCd>0)return false;p.dash=.18;p.dashCd=2;p.invuln=Math.max(p.invuln,.30);if(p.maneuver==='assault')p.assaultTime=1.25;emit(s,'dash',p.x,p.y,{angle:p.aim,life:.2});return true;}
  if(kind==='skill'){const cfg=RULES.fio[p.doctrine];if(p.skillCd>0||p.overdrive>0||p.charge<cfg.cost)return false;p.charge-=cfg.cost;p.overdrive=cfg.duration;p.skillCd=cfg.cooldown;emit(s,'skill',p.x,p.y,{text:'전탄 보급',life:.7});return true;}
- if(kind==='challenge'){
-  if(s.stage!=='holdout'||s.raid?.state==='active'||s.challenge&&(s.challenge.state!=='complete'||!s.operation))return false;
-  const tier=s.operation?(s.operation.challengeTier||0)+1:1,ids=[],hp=Math.round(450*[1,1.35,1.8][s.operation?.region||0]*1.22**(tier-1));
-  for(const dx of [-220,220]){
-   const kit={hp,maxHp:hp,cohort:'challenge'},x=clamp(p.x+dx,100,1500),y=clamp(p.y-240,100,1100);
-   const e=blocked(s,x,y,26)?spawnAround(s,'officer',kit,null,50):spawnEnemy(s,'officer',x,y,null,kit);
-   if(e)ids.push(e.id);
-  }
-  if(ids.length<2){s.enemies=s.enemies.filter(e=>!ids.includes(e.id));return false;}s.challenge={state:'active',tier,targets:ids};emit(s,'challenge-start',p.x,p.y,{text:`지휘관 2기 처치 · 도전 ${tier}`,life:1});return true;
- }
+ if(kind==='challenge')return startChallenge(s);
  if(kind==='interact'){const item=interaction(s);if(!item)return false;if(item.id==='extract'){if(s.operation){openChoice(s,'clear',exitCards(s),'열린 출구');}else finish(s,true);return true;}if(s.raid?.state==='active')return false;s.stage='boss';s.refits=0;s.boss.active=true;s.boss.mode='aim';s.boss.timer=1.3;p.x=800;p.y=470;p.invuln=Math.max(p.invuln,1);s.enemies=s.enemies.filter(e=>distance(e,s.boss)<400);s.enemyShots=[];s.hazards=[];emit(s,'boss-arrival',800,250,{life:1.3});return true;}
  return false;
 }
@@ -465,11 +519,13 @@ function openGate(s){
 export function step(s,dt,input={x:0,y:0},view=null){
  if(s.phase!=='playing')return;dt=clamp(dt,0,1/30);if(!dt)return;if(view)s.view={w:view.w,h:view.h};s.hitCandidate=null;s.t+=dt;if(s.operation)s.operation.regionTime+=dt;const p=s.player;
  if(s.stage==='holdout')s.holdTime+=dt;const pressure=s.stage==='holdout'?s.clearPressure+(s.operation?holdoutTier(s.holdTime):Math.floor(s.holdTime/30)):Math.floor((s.operation?.regionTime??s.t)/60);if(pressure>s.pressure){s.pressure=pressure;emit(s,'pressure',p.x,p.y,{text:s.operation&&s.stage==='holdout'?`잔류 공세 ${holdoutTier(s.holdTime)}단계`:`경계 ${pressure} · 증원 강화`,life:1.3});}
+ const wasDashing=p.dash>0;
  for(const key of ['invuln','hurt','attack','dash','dashCd','skillCd','pickupTime'])p[key]=Math.max(0,p[key]-dt);
  const previousOverdrive=p.overdrive;p.overdrive=Math.max(0,p.overdrive-dt);if(previousOverdrive>0&&p.overdrive===0&&moduleRank(s,'overcharger'))blast(s,p.x,p.y,180,140,'module');
  p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
  const ix=Number.isFinite(input.x)?input.x:0,iy=Number.isFinite(input.y)?input.y:0,len=Math.max(1,Math.hypot(ix,iy)),moving=Math.hypot(ix,iy)>.07;p.moving=moving;
  if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;}
+ if(wasDashing&&p.dash<=0&&s.operation?.support==='overrun')blast(s,p.x,p.y,100,85,'support');
  if(p.maneuver==='brace')p.stillTime=moving?0:Math.min(.45,(p.stillTime||0)+dt);
  if(p.assaultTime>0)p.assaultTime=Math.max(0,p.assaultTime-dt);
  updateRaid(s,dt);
@@ -499,6 +555,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  if(pickedXp){
   gainXp(s,pickedXp);p.pickupTime=.6;s.gems=s.gems.filter(g=>!g.collected);
   const gained=Math.min(pickedXp*.15,p.pickupBudget);
+  if(s.operation?.support==='recovery'&&p.hp>0)p.hp=Math.min(p.maxHp,p.hp+gained);
   p.pickupBudget-=gained;p.charge=Math.min(100,p.charge+gained*(1+Math.min(.2,s.level*.01)));
   const receipt=s.effects.find(f=>f.type==='xp-pickup');
   if(receipt){receipt.value+=pickedXp;receipt.salvage||=salvage;receipt.age=0;}
@@ -514,7 +571,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
   }
   s.queue.unshift({type:'clear',source:'MISSION CLEAR',cards:exitCards(s)});
  }
- updateChallenge(s);if(p.hp<=0){finish(s,false,'hp');return;}if(s.phase!=='playing')return;
+ updateChallenge(s,dt);if(p.hp<=0){finish(s,false,'hp');return;}if(s.phase!=='playing')return;
  if(s.raid?.state==='success'&&!s.raid.rewardQueued){s.raid.rewardQueued=true;s.queue.push({type:'raid-reward',source:'습격 성공 · 새 보급',cards:crateCards(s,s.raid.quality,s.raid.contract),extra:{quality:s.raid.quality,contract:s.raid.contract,wagerQuality:s.raid.wager.quality}});}
  updateSites(s,dt);nextChoice(s);
 }

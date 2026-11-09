@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
-import {MANEUVERS,groundXp,holdoutTier} from './campaign.js';
+import {REGIONS,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,holdoutContract,groundXp,holdoutTier} from './campaign.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
@@ -29,10 +29,21 @@ export function choiceDetails(s,c){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){
   out.impact=`조율권 ${s.tuning} → ${s.tuning+1}`;out.detail='진화·합체·모듈 강화 또는 응급 정비에 사용합니다.';out.link='병기 개조에서 사용';out.cost='다음 전선까지 보관';
- }else if(c.kind==='advance'){out.impact='무장과 레벨을 이어 전진';out.detail=`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 지휘관 도전 종료':'새 전선에 도착';out.cost='현재 무장·모듈·체력·XP 유지';}
- else if(c.kind==='stay'){out.impact='바닥 XP와 증원군을 노린다';out.detail='공세 단계가 오를수록 물량과 내구가 증가합니다.';out.link=s.operation?.challengeTier?'추가 지휘관 도전 · 기록 점수':'지휘관 2명 제압 · 노획 보급';out.cost='열린 게이트에서 다시 선택';}
+ }else if(c.kind==='front-support'){
+  const kit=FRONT_SUPPORTS[c.key];
+  out.art=kit.art;out.impact=kit.impact;out.detail=kit.detail;out.link=`${REGIONS[s.operation.region+1].name} 진입 때 장착`;out.cost='다음 전선 한 곳에서 작동';
+ }else if(c.kind==='cargo'){
+  out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
+ }else if(c.kind==='advance'){
+  const support=FRONT_SUPPORTS[s.operation?.nextSupport];
+  out.impact=support?`${support.name} 장착 후 전진`:'무장과 레벨을 이어 전진';
+  out.detail=`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
+  out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':support?.impact||'새 전선에 도착';
+  out.cost='현재 무장·모듈·체력·XP 유지';
+ }
+ else if(c.kind==='stay'){out.impact='바닥 XP와 증원군을 노린다';out.detail='공세 단계가 오를수록 물량과 내구가 증가합니다.';out.link=`${holdoutContract(s).name} · ${s.operation?.challengeTier?'기록 점수':'노획 보급'}`;out.cost='열린 게이트에서 다시 선택';}
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}
- else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 지휘관 도전 종료':'크레딧·연구·기록 유지';out.cost='무장과 레벨은 다음 판에 초기화';}
+ else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':'크레딧·연구·기록 유지';out.cost='다음 판은 해안 · LV.1에서 시작';}
  return out;
 }
 export const isQuickMod=s=>s.choice.type==='level'&&s.level<4&&s.weapons.length===1&&!s.modules.length;

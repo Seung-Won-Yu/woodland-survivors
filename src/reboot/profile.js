@@ -1,6 +1,6 @@
 import {RESEARCH,operationCredits} from './campaign.js';
 import {VERSION,RULES} from './content.js';
-import {restore,snapshot,finish,canResumeRevision} from './model.js';
+import {createOperation,restore,snapshot,finish,canResumeRevision} from './model.js';
 export const STORAGE_KEY='operation-rift-profile-v2';
 const pickedTrials=stats=>stats.researchTrialsPicked||[stats.researchTrialPicked].filter(Boolean);
 const copy=x=>JSON.parse(JSON.stringify(x));
@@ -18,7 +18,16 @@ export function parseProfile(raw){
 
  return p;
 }
-export function beginProfile(p,run){if(p.active)throw Error('저장한 전투를 먼저 이어가세요.');const n=copy(p);n.sequence++;n.migrationNotice=null;run.runId=`${n.sequence}:${run.seed}`;n.active={version:VERSION,sequence:n.sequence,runId:run.runId,run:snapshot(run)};return n;}
+export function beginProfile(p,run){if(p.active)throw Error('이전 판을 먼저 정산하세요.');const n=copy(p);n.sequence++;n.migrationNotice=null;run.runId=`${n.sequence}:${run.seed}`;n.active={version:VERSION,sequence:n.sequence,runId:run.runId,run:snapshot(run)};return n;}
+export function freshSortie(p,seed){
+ if(p.active){
+  const prior=restore(p.active.run);
+  finish(prior,false,'new-run');
+  p=settleProfile(p,prior);
+ }
+ const run=createOperation(seed,p.research,p.trials);
+ return {run,next:beginProfile(p,run)};
+}
 export function checkpointProfile(p,run){if(!p.active)throw Error('활성 전투가 없습니다.');if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');const n=copy(p);n.active.run=snapshot(run);n.trials=n.trials.filter(id=>!pickedTrials(run.stats).includes(id));return n;}
 export function settleProfile(p,run){
  if(!run.result)throw Error('아직 끝나지 않은 전투입니다.');if(!p.active){if(p.settled===p.sequence)return copy(p);throw Error('정산할 전투를 찾지 못했습니다.');}

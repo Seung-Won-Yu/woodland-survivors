@@ -7,6 +7,21 @@ export const REGIONS=[
 ];
 export const region=s=>REGIONS[s.operation?.region||0];
 export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6};
+export const HOLDOUT_CONTRACTS=[
+ {id:'hunt',name:'지휘부 소탕',goal:'지휘관 2명 제압',risk:'양쪽에서 오는 장교의 부채꼴 사격'},
+ {id:'defend',name:'중계기 방어',goal:'중계기 반경 안에서 8초 버티기',risk:'범위 안에 포격이 떨어집니다.'},
+ {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'차량이 북쪽 검문선을 넘으면 실패합니다.'}
+];
+export const FRONT_SUPPORTS={
+ breach:{name:'철갑 급탄',role:'보스 부위 파괴',art:'ammo',impact:'보스 부위 피해 +55%',detail:'방패병 정면에 총탄 피해 65%를 줍니다. 포대와 장갑을 먼저 부수는 빌드에 맞습니다.'},
+ overrun:{name:'돌격 신관',role:'회피로 군집 돌파',art:'coil',impact:'회피 끝에 피해 85 충격파',detail:'반경 100의 일반·정예 적을 폭파합니다. 촉매가 있으면 점화한 적에게 더 큰 피해를 줍니다.'},
+ recovery:{name:'회수 의무 장비',role:'XP 회수와 생존',art:'medic',impact:'XP 회수 반경 +55 · 회복',detail:'XP를 주워 체력을 초당 최대 약 3 회복합니다. 보급 사이를 돌며 성장하는 빌드에 맞습니다.'}
+};
+export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
+export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'?s.challenge.target:null;
+export const DEFENSE_ZONE={x:800,y:560,r:108,seconds:8};
+export const defenseSeconds=tier=>DEFENSE_ZONE.seconds+Math.min(8,(tier-1)*2);
+export const SIGNAL_ROUTE={x:800,start:920,end:95,seconds:18};
 export const MANEUVERS={
  assault:{name:'돌파 격발',impact:'회피 시 1.25초간 이동 사격 가속',detail:'이동 중 기본 발사 간격 −22%. 달려서 포위망에 틈을 냅니다.'},
  brace:{name:'거치 사격',impact:'0.45초 정지하면 기본 사격 피해 +25%',detail:'움직이는 즉시 해제. 포격 사이의 빈틈에 화력을 집중합니다.'}
@@ -51,4 +66,5 @@ export const RESEARCH={
  shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'직접 폭발에 작은 파쇄 폭발3개 · 재사용0.65초. 모듈 한 칸을 씁니다.'},
  thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.'}
 };
-export function operationCredits(r,firstWin=false){if(!r.operation)return 0;const s=r.stats,boss=[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0);return Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10+Math.min(s.sitesCleared||0,6)*40+boss+(r.won?120:0)+Math.min(s.raidSuccess,3)*40+Math.min(s.challengeWins||s.challenge,3)*20+(firstWin&&r.won?200:0);}
+export const CARGO_CREDITS=70;
+export function operationCredits(r,firstWin=false){if(!r.operation)return 0;const s=r.stats,boss=[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0);return Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10+Math.min(s.sitesCleared||0,6)*40+boss+(r.won?120:0)+Math.min(s.raidSuccess,3)*40+Math.min(s.challengeWins||s.challenge,3)*20+(s.holdoutCargo?CARGO_CREDITS:0)+(firstWin&&r.won?200:0);}
