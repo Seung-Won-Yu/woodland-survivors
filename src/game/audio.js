@@ -1,4 +1,4 @@
-const IMPORTANT = ['hurt', 'forge-union', 'forge-evolve', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
+const IMPORTANT = ['hurt', 'armor-collapse', 'front-entry', 'forge-union', 'forge-evolve', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
 const IMPACTS = ['heat-break', 'power-kill', 'wood-impact', 'wood-kill', 'blade-impact', 'ember-impact'];
 const CASTS = ['flame-loop', 'scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
 
@@ -81,6 +81,13 @@ export function createAudio() {
     else if(event==='power-kill'){transient(now,.04,.05,1100);note(140,42,'triangle',now,.1,.038);note(790,1200,'sine',now+.01,.06,.013);}
     else if(event==='scatter-shot'){transient(now,.035,.03,1800);note(180,65,'triangle',now,.09,.03);note(78,45,'sine',now,.1,.018);}
     else if(event==='swarm-shot'){transient(now,.025,.02,2400);note(240,170,'triangle',now,.06,.014);}
+    else if(event==='armor-collapse'){
+      transient(now,.19,.065,620);note(100,32,'triangle',now,.29,.055);
+      note(295,139,'triangle',now+.035,.16,.021);note(570,270,'sine',now+.14,.14,.012);
+    }else if(event==='front-entry'){
+      transient(now,.055,.015,1500);
+      note(392,392,'square',now+.04,.07,.012);note(587,587,'square',now+.13,.15,.012);
+    }
     else if(event==='acorn-shot'){
       transient(now,.022,.023,2100);note(230,85,'triangle',now,.065,.028);note(90,55,'sine',now,.075,.018);
     }else if(event==='wood-kill'){

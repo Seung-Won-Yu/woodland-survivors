@@ -1,6 +1,6 @@
 import {RESEARCH,operationCredits} from './campaign.js';
 import {VERSION,RULES} from './content.js';
-import {restore,snapshot,finish} from './model.js';
+import {restore,snapshot,finish,canResumeRevision} from './model.js';
 export const STORAGE_KEY='operation-rift-profile-v2';
 const pickedTrials=stats=>stats.researchTrialsPicked||[stats.researchTrialPicked].filter(Boolean);
 const copy=x=>JSON.parse(JSON.stringify(x));
@@ -12,7 +12,7 @@ export function parseProfile(raw){
  if(p.recordArchive!==undefined&&!Array.isArray(p.recordArchive))throw Error('이전 작전 기록을 읽지 못했습니다.');
  if(p.active){
   if(p.active.version!==VERSION||p.active.sequence!==p.sequence||typeof p.active.runId!=='string'||p.active.runId!==p.active.run.runId)throw Error('다른 규칙의 저장 판입니다.');
-  if(p.active.run.balanceRevision!==RULES.balanceRevision){const old=restore(p.active.run,{allowPrevious:true});p.recordScope??=old.balanceRevision||'b05-campaign';finish(old,false,'rules-updated');p=settleProfile(p,old);p.migrationNotice='작전 규칙이 바뀌어 저장 판의 확보 성과를 정산했습니다. 크레딧과 연구를 유지하고 새 작전에 출격할 수 있습니다.';}else restore(p.active.run);
+  if(!canResumeRevision(p.active.run.balanceRevision)){const old=restore(p.active.run,{allowPrevious:true});p.recordScope??=old.balanceRevision||'b05-campaign';finish(old,false,'rules-updated');p=settleProfile(p,old);p.migrationNotice='작전 규칙이 바뀌어 저장 판의 확보 성과를 정산했습니다. 크레딧과 연구를 유지하고 새 작전에 출격할 수 있습니다.';}else p.active.run=restore(p.active.run);
  }
  if(p.recordScope!==RULES.balanceRevision){p.recordArchive??=[];p.recordArchive.push({scope:p.recordScope||'b05-campaign',records:copy(p.records)});p.records={score:0,time:null,challenge:0,wins:p.records.wins};p.recordScope=RULES.balanceRevision;}
 

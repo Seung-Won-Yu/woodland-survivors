@@ -1,6 +1,7 @@
 // Normal-input model pilot. It never edits HP, gear, XP, world time or RNG.
 import {pathToFileURL} from 'node:url';
 import {createRun,createOperation,step,choose,action,assemblyOptions,interaction,reroll,banish,banishOptions} from '../src/reboot/model.js';
+import {exitGate} from '../src/reboot/campaign.js';
 import {moduleRank,distance,compatible} from '../src/reboot/content.js';
 function free(s,x,y){return x>=60&&x<=1540&&y>=60&&y<=1140&&(!s.boss.active||Math.hypot(x-s.boss.x,y-s.boss.y)>s.boss.r+38)&&!s.blocks.some(b=>b.hp!==0&&x+22>b.x&&x-22<b.x+b.w&&y+22>b.y&&y-22<b.y+b.h);}
 function path(s,goal){
@@ -57,7 +58,7 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
    if(b.mode==='windup'&&b.timer<.25)action(s,'dash');step(s,1/60,movement(s,goal,ctx,false));continue;
   }
   if(s.raid?.state==='active'){step(s,1/60,movement(s,s.raid.target,ctx));continue;}
-  if(s.stage==='holdout'){if(interaction(s)?.id==='extract'){action(s,'interact');continue;}step(s,1/60,movement(s,{x:800,y:420},ctx));continue;}
+  if(s.stage==='holdout'){if(interaction(s)?.id==='extract'){action(s,'interact');continue;}step(s,1/60,movement(s,exitGate(s),ctx));continue;}
   const sites=s.sites.filter(n=>n.state!=='done'),target=sites[0];
   if(!target&&!s.stats.completedBuild&&s.t<130){const gem=[...s.gems].sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0],goal=gem||{x:800+Math.cos(s.t*.6)*170,y:650+Math.sin(s.t*.6)*140};step(s,1/60,movement(s,goal,ctx));continue;}
   if(!target||s.stats.completedBuild&&s.level>=8){if(interaction(s)?.id==='boss'){action(s,'interact');continue;}step(s,1/60,movement(s,{x:800,y:350},ctx));continue;}

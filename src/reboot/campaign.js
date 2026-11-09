@@ -1,4 +1,4 @@
-import {layout} from './content.js';
+import {FIELD,clamp,layout} from './content.js';
 
 export const REGIONS=[
  {id:'beach',name:'해안 침투',mission:'장갑 수송차를 격파하고 철도로 진입하라',boss:'장갑 수송차',hp:4200,partHp:450,theme:{ground:'#a49874',tile:'#c0ae88',road:'#59584a',edge:'#415d69'},hint:'해변에서 무기를 확보하고 분화를 정하세요.'},
@@ -6,6 +6,28 @@ export const REGIONS=[
  {id:'port',name:'항구 결전',mission:'지휘 병기를 파괴하고 살아서 귀환하라',boss:'지휘 병기',hp:9000,partHp:850,theme:{ground:'#4b606b',tile:'#8fa1a8',road:'#2e414c',edge:'#1b3a50'},hint:'관제소를 확보하면 최종전 증원을 줄일 수 있습니다.'}
 ];
 export const region=s=>REGIONS[s.operation?.region||0];
+export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6};
+export const MANEUVERS={
+ assault:{name:'돌파 격발',impact:'회피 시 1.25초간 이동 사격 가속',detail:'이동 중 기본 발사 간격 −22%. 달려서 포위망에 틈을 냅니다.'},
+ brace:{name:'거치 사격',impact:'0.45초 정지하면 기본 사격 피해 +25%',detail:'움직이는 즉시 해제. 포격 사이의 빈틈에 화력을 집중합니다.'}
+};
+export function gatePosition(s){
+ const b=s.boss,offset=b.r+48;
+ const points=[[0,offset],[offset,0],[-offset,0],[0,-offset],[0,0]];
+ for(const [dx,dy] of points){
+  const x=clamp(b.x+dx,FIELD.left+55,FIELD.right-55),y=clamp(b.y+dy,FIELD.top+55,FIELD.bottom-48);
+  if(!s.blocks.some(w=>w.hp!==0&&x+52>w.x&&x-52<w.x+w.w&&y+24>w.y&&y-32<w.y+w.h))return{x,y};
+ }
+ return{x:b.x,y:b.y};
+}
+export function exitGate(s){
+ if(s.stage!=='holdout')return null;
+ return s.operation?{...(s.operation.gate||gatePosition(s)),name:s.operation.region<2?'전진 게이트':'귀환 게이트'}:{x:800,y:420,name:'귀환 출구'};
+}
+export function holdoutTier(time){
+ return time<HOLDOUT.grace?0:Math.min(HOLDOUT.maxTier,1+Math.floor((time-HOLDOUT.grace)/HOLDOUT.tierSeconds));
+}
+export const groundXp=s=>s.gems.reduce((sum,g)=>sum+g.value,0);
 export function regionLayout(seed,index=0){
  const map=layout(seed);if(index===0)return map;
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});

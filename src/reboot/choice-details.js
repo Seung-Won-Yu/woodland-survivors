@@ -1,4 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
+import {MANEUVERS,groundXp,holdoutTier} from './campaign.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
@@ -6,7 +7,7 @@ export function choiceDetails(s,c){
   const a=weaponStats(w),b=weaponStats({...w,level:w.level+1});out.before=w.level;out.after=w.level+1;out.title=GUNS[w.id].name;
   const rate=pct(a.damage*a.count/a.interval,b.damage*b.count/b.interval);out.impact=w.level===3?'발사 방식 분화':b.count>a.count?`동시 사격 ${a.count} → ${b.count}발`:b.radius>a.radius?`폭발 반경 +${pct(a.radius,b.radius)}%`:b.range>a.range?`사거리 ${a.range} → ${b.range}`:b.cone>a.cone?`분사각 ${num(a.cone)}° → ${num(b.cone)}°`:rate?`연사 화력 +${rate}%`:'발사 성능 개조';
   out.detail=c.desc||'';const hp=RULES.enemies.rifle.hp*(s.operation?[1,1.35,1.8][s.operation.region]:1)*1.05**Math.min(s.pressure,12),power=1+s.boosts.power*.01,before=Math.ceil(hp/(a.damage*power)),after=Math.ceil(hp/(b.damage*power));
-  if(w.id==='h'&&before!==after)out.detail=`일반병 직격 ${before} → ${after}발 · 피해 ${num(a.damage)} → ${num(b.damage)}`;
+  if(w.id==='h'&&before!==after&&!(s.operation&&s.stage==='holdout'&&holdoutTier(s.holdTime)))out.detail=`일반병 직격 ${before} → ${after}발 · 피해 ${num(a.damage)} → ${num(b.damage)}`;
   const requirements=RULES.weapons[w.id].evolution.moduleByBranch,modules=(w.branch?requirements[w.branch]:[...new Set(Object.values(requirements).flat())]).map(id=>`${MODULES[id].name}2`).join(' 또는 ');
   out.link=out.after<4?`L4 분화까지 ${4-out.after}회 강화`:out.after===4?'다음 화면에서 발사 방식을 고릅니다.':`진화 · L6 + ${modules} + 조율권1`;
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
@@ -24,9 +25,12 @@ export function choiceDetails(s,c){
   out.impact='최종 진화';out.link='발사 구조 확장 · 모듈 유지';out.cost='조율권 1개 사용';out.before=6;out.after=6;
  }else if(c.kind==='fusion'){
   out.art=c.primary;out.impact=`${c.primary.toUpperCase()} + ${c.secondary.toUpperCase()} 합체`;out.detail='사격에 폭발을 계승';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
- }else if(c.kind==='advance'){out.impact='무장과 레벨을 이어 전진';out.detail='바닥 XP와 남은 보급은 두고 갑니다.';out.link='다음 전선에서 완성 화력 전개';out.cost='현재 무장·모듈·체력·XP 유지';}
+ }else if(c.kind==='maneuver'){
+  const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
+ }else if(c.kind==='advance'){out.impact='무장과 레벨을 이어 전진';out.detail=`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':'새 전선에 도착';out.cost='현재 무장·모듈·체력·XP 유지';}
+ else if(c.kind==='stay'){out.impact='바닥 XP와 증원군을 노린다';out.detail='공세 단계가 오를수록 물량과 내구가 증가합니다.';out.link='지휘관 도전 · 노획 교범';out.cost='열린 게이트에서 다시 선택';}
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}
- else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.link='크레딧·연구·기록은 유지';out.cost='무장과 레벨은 다음 판에 초기화';}
+ else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':'크레딧·연구·기록 유지';out.cost='무장과 레벨은 다음 판에 초기화';}
  return out;
 }
 export const isQuickMod=s=>s.choice.type==='level'&&s.level<4&&s.weapons.length===1&&!s.modules.length;

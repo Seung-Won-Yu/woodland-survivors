@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {exitGate,holdoutTier,HOLDOUT} from '../src/reboot/campaign.js';
 import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 const dt=1/60;
@@ -173,9 +174,10 @@ test('native explosion on burning targets emits a bounded distinct heat effect',
 test('heat audio stays distinct while hurt keeps foreground priority',async()=>{const {selectAudioEvents}=await import('../src/game/audio.js');assert.deepEqual(selectAudioEvents(new Set(['heat-break','power-kill'])),['heat-break']);assert.deepEqual(selectAudioEvents(new Set(['heat-break','flame-loop','hurt'])),['hurt']);});
 
 function quietOperation(){const s=createOperation(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
-function clearRegion(s){s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.shots=[bullet(s,s.boss)];step(s,dt);assert.equal(s.phase,'choice');assert.equal(s.choice.type,'clear');}
+function downBoss(s){s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.shots=[bullet(s,s.boss)];step(s,dt);}
+function clearRegion(s){downBoss(s);assert.equal(s.phase,'playing');assert.equal(s.stage,'holdout');Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.equal(s.choice.type,'clear');}
 test('campaign advances real maps while retaining gear, HP, XP, tokens and earned choices',()=>{
- const s=quietOperation();s.weapons[0].level=4;s.weapons[0].branch='grenade';s.modules=[{id:'coil',rank:2}];s.player.hp=50;s.xp=4;clearRegion(s);assert.equal(s.operation.cleared,1);assert.equal(s.player.hp,65);assert.equal(s.tuning,2);const gear=snapshot(s.weapons),modules=snapshot(s.modules),hp=s.player.hp,xp=s.xp;assert.ok(choose(s,'stay'));assert.equal(s.operation.region,0);assert.ok(action(s,'interact')===false);s.player.x=800;s.player.y=420;assert.ok(action(s,'interact'));assert.ok(choose(s,'advance'));assert.equal(s.operation.region,1);assert.equal(s.operation.regionTime,0);assert.equal(s.pressure,0);assert.deepEqual(s.weapons,gear);assert.deepEqual(s.modules,modules);assert.equal(s.player.hp,hp);assert.equal(s.xp,xp);assert.ok(s.sites.some(n=>n.kind==='relay'));assert.ok(s.blocks.some(b=>b.id==='r1'));assert.deepEqual(restore(snapshot(s)).operation,s.operation);
+ const s=quietOperation();s.weapons[0].level=4;s.weapons[0].branch='grenade';s.modules=[{id:'coil',rank:2}];s.player.hp=50;s.xp=4;clearRegion(s);assert.equal(s.operation.cleared,1);assert.equal(s.player.hp,65);assert.equal(s.tuning,2);const gear=snapshot(s.weapons),modules=snapshot(s.modules),hp=s.player.hp,xp=s.xp;assert.ok(choose(s,'stay'));assert.equal(s.operation.region,0);s.player.x=800;s.player.y=420;assert.equal(action(s,'interact'),false);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'advance'));assert.equal(s.operation.region,1);assert.equal(s.operation.regionTime,0);assert.equal(s.pressure,0);assert.deepEqual(s.weapons,gear);assert.deepEqual(s.modules,modules);assert.equal(s.player.hp,hp);assert.equal(s.xp,xp);assert.ok(s.sites.some(n=>n.kind==='relay'));assert.ok(s.blocks.some(b=>b.id==='r1'));assert.deepEqual(restore(snapshot(s)).operation,s.operation);
 });
 test('intermediate return is partial and only the third clear permits full extraction once',()=>{
  const partial=quietOperation();clearRegion(partial);choose(partial,'extract');assert.equal(partial.result.won,false);assert.equal(partial.result.operation.cleared,1);
@@ -201,7 +203,7 @@ test('researched effects are conditional, capped and cannot recursively trigger 
  const m=quiet();m.modules=[{id:'medic',rank:1}];m.player.hp=20;m.enemies=[enemy('elite-a',940,800,'officer',1),enemy('elite-b',960,800,'officer',1)];m.shots=m.enemies.map(e=>bullet(m,e));step(m,dt);assert.equal(m.player.hp,32);assert.ok(m.medicCd>0);
 });
 test('final stay and menu retreat remain partial until the exit extraction decision',()=>{
- const s=quietOperation();s.operation.region=2;clearRegion(s);choose(s,'stay');const partial=snapshot(s);assert.ok(finish(partial,true,'retreat'));assert.equal(partial.result.won,false);assert.ok(!partial.stats.extractionPaid);s.player.x=800;s.player.y=420;assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));assert.ok(s.result.won);assert.ok(s.operation.extracted);
+ const s=quietOperation();s.operation.region=2;clearRegion(s);choose(s,'stay');const partial=snapshot(s);assert.ok(finish(partial,true,'retreat'));assert.equal(partial.result.won,false);assert.ok(!partial.stats.extractionPaid);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));assert.ok(s.result.won);assert.ok(s.operation.extracted);
 });
 test('checkpoints and settlements reject a different run instance including same-seed replay',()=>{
  const a=quietOperation(),p=beginProfile(emptyProfile(),a),other=quietOperation();const q=beginProfile({...emptyProfile(),sequence:1},other);assert.notEqual(a.runId,other.runId);for(let i=0;i<3;i++){clearRegion(other);if(i<2)choose(other,'advance');}choose(other,'extract');const before=snapshot(p);assert.throws(()=>checkpointProfile(p,other));assert.throws(()=>settleProfile(p,other));assert.deepEqual(p,before);assert.equal(q.active.runId,other.runId);
@@ -233,7 +235,7 @@ test('ambient population caps do not remove protected encounter targets',()=>{
 });
 test('jam reduces the actual mortar pressure and final infantry has a fixed XP value',()=>{
  const probe=jam=>{const s=directorFixture(2);s.operation.jammed=jam;s.stage='boss';s.boss.active=true;s.boss.timer=999;s.boss.spawnClock=0;tick(s,6.1);return s.enemies.filter(e=>e.cohort==='boss');};const jam=probe(true),normal=probe(false);assert.equal(jam.length,normal.length/2);assert.equal(jam.filter(e=>e.type==='mortar').length,1);assert.equal(normal.filter(e=>e.type==='mortar').length,2);
- const s=directorFixture(2);s.spawnClock=999;s.enemies=[enemy('rifle',950,800,'rifle',1)];s.shots=[bullet(s,s.enemies[0])];step(s,dt);assert.equal(s.stats.xpGenerated,2);assert.equal(s.gems[0].value,2);
+ const s=directorFixture(2),previousXp=s.stats.xpGenerated;s.spawnClock=999;s.enemies=[enemy('rifle',950,800,'rifle',1)];s.shots=[bullet(s,s.enemies[0])];step(s,dt);assert.equal(s.stats.xpGenerated-previousXp,2);assert.equal(s.gems[0].value,2);
 });
 test('previous active revisions settle secured rewards once without entering the new director or records',async()=>{
  const s=quietOperation();let p=beginProfile(emptyProfile(),s);s.stats.kills=30;clearRegion(s);p=checkpointProfile(p,s);p.recordScope='b05-campaign';delete p.active.run.balanceRevision;delete p.active.run.director;p.active.run.enemies.forEach(e=>delete e.cohort);const raw=JSON.stringify(p);assert.throws(()=>restore(p.active.run));const migrated=parseProfile(raw);assert.equal(migrated.active,null);assert.equal(migrated.credits,92);assert.equal(migrated.recordScope,RULES.balanceRevision);assert.equal(migrated.records.score,0);assert.equal(migrated.recent[0].reason,'rules-updated');assert.equal(migrated.recent[0].won,false);assert.ok(migrated.migrationNotice);assert.equal(parseProfile(JSON.stringify(migrated)).credits,92);
@@ -249,4 +251,84 @@ test('boss telegraphs render safely from their first warning frame through impac
  const {createRenderer}=await import('../src/reboot/render.js'),saved={innerWidth:globalThis.innerWidth,innerHeight:globalThis.innerHeight,devicePixelRatio:globalThis.devicePixelRatio};let arcs=0;
  const gradient={addColorStop(){}},context=new Proxy({arc(x,y,r){assert.ok(Number.isFinite(r)&&r>=0,`unsafe canvas radius ${r}`);arcs++;},createRadialGradient:()=>gradient},{get:(target,key)=>key in target?target[key]:()=>{}});
  try{Object.assign(globalThis,{innerWidth:960,innerHeight:540,devicePixelRatio:1});const canvas={getContext:()=>context},renderer=createRenderer(canvas,null),s=createOperation(17);s.operation.region=2;s.stage='boss';s.boss.active=true;s.hazards=[{x:800,y:500,r:58,timer:.95,duration:.95},{x:500,y:600,r:48,timer:1.2}];for(const timer of [.95,.94,.5,0]){s.hazards[0].timer=timer;renderer.draw(s);renderer.draw(s,true);}assert.ok(arcs>0);}finally{for(const [key,value]of Object.entries(saved))if(value===undefined)delete globalThis[key];else globalThis[key]=value;}
+});
+
+test('the cleared boss opens a physical gate and recoverable XP without pausing',()=>{
+ const s=quietOperation(),profile=beginProfile(emptyProfile(),s);downBoss(s);
+ const gate=exitGate(s),drop=s.gems.reduce((n,g)=>n+g.value,0);
+ assert.equal(s.phase,'playing');assert.equal(s.choice,null);assert.equal(s.stage,'holdout');
+ assert.ok(Math.hypot(gate.x-s.boss.x,gate.y-s.boss.y)<130);assert.equal(drop,32);
+ assert.equal(action(s,'interact'),false);assert.equal(choose(s,'advance'),false);
+ const loaded=parseProfile(JSON.stringify(checkpointProfile(profile,s))).active.run;
+ assert.deepEqual(exitGate(loaded),gate);assert.equal(loaded.operation.cleared,1);
+ assert.equal(loaded.tuning,s.tuning);assert.deepEqual(loaded.gems,s.gems);assert.deepEqual(loaded.events,[]);
+ loaded.player.x=s.gems[0].x;loaded.player.y=s.gems[0].y;step(loaded,dt);
+ assert.ok(loaded.gems.reduce((n,g)=>n+g.value,0)<drop);
+ while(loaded.phase==='choice')assert.ok(skip(loaded));
+ loaded.player.x=gate.x;loaded.player.y=gate.y;assert.ok(action(loaded,'interact'));assert.ok(choose(loaded,'advance'));
+ assert.equal(exitGate(loaded),null);assert.equal(loaded.holdTime,0);assert.equal(loaded.gems.length,0);
+});
+test('XP picked up together displays its exact total and plays a single cue per streak',()=>{
+ const s=quietOperation(),{x,y}=s.player;
+ s.gems=[{x,y,age:0,value:2},{x:x+1,y,age:0,value:3,salvage:true}];step(s,dt);
+ assert.equal(s.xp,5);assert.equal(s.gems.length,0);
+ assert.deepEqual(takeEvents(s),['xp-pickup']);
+ s.gems.push({x,y,age:0,value:1});step(s,dt);
+ assert.equal(s.xp,6);assert.equal(s.effects.find(f=>f.type==='xp-pickup').value,6);
+ assert.equal(s.effects.find(f=>f.type==='xp-pickup').salvage,true);assert.deepEqual(takeEvents(s),[]);
+ tick(s,.7);assert.equal(s.effects.some(f=>f.type==='xp-pickup'),false);
+});
+test('staying at the gate keeps an active wager while departing counts its withdrawal once',()=>{
+ const s=quietOperation();downBoss(s);Object.assign(s.player,exitGate(s));
+ s.raidUsed=true;s.raid={state:'active'};
+ assert.ok(action(s,'interact'));assert.ok(choose(s,'stay'));
+ assert.equal(s.raid.state,'active');assert.equal(s.stats.raidFailed,0);
+ assert.ok(action(s,'interact'));assert.ok(choose(s,'advance'));
+ assert.equal(s.raid,null);assert.equal(s.stats.raidFailed,1);
+});
+test('remaining on the field escalates waves, armor and mortars on the same clock after stay or resume',()=>{
+ const s=quietOperation();downBoss(s);s.player.invuln=200;
+ tick(s,HOLDOUT.grace-.1);assert.equal(s.enemies.length,0);
+ tick(s,.2);const first=s.enemies.filter(e=>e.cohort==='holdout');
+ assert.ok(first.length>=10);assert.equal(holdoutTier(s.holdTime),1);assert.ok(first.every(e=>e.type!=='mortar'));
+ const lightHp=first.find(e=>e.type==='rifle').maxHp;
+ s.player.x=exitGate(s).x;s.player.y=exitGate(s).y;assert.ok(action(s,'interact'));
+ const time=s.holdTime;tick(s,3);assert.equal(s.holdTime,time);assert.ok(choose(s,'stay'));
+ assert.equal(s.holdTime,time);const r=restore(snapshot(s));assert.deepEqual(r.operation.gate,s.operation.gate);
+ r.enemies=[];r.holdTime=HOLDOUT.grace+HOLDOUT.tierSeconds*2;r.spawnClock=0;step(r,dt);
+ assert.equal(holdoutTier(r.holdTime),3);assert.ok(r.enemies.length>first.length);
+ assert.ok(r.enemies.some(e=>e.type==='officer'));assert.ok(r.enemies.some(e=>e.type==='mortar'));
+ assert.ok(r.enemies.find(e=>e.type==='rifle').maxHp>lightHp);assert.deepEqual(exitGate(r),exitGate(s));
+});
+test('last-version boss clear checkpoints resume at the physical gate without removing earned supplies',()=>{
+ const s=quietOperation();clearRegion(s);s.balanceRevision='b06-swarms';delete s.operation.gate;
+ pause(s);const previous=emptyProfile();previous.recordScope=s.balanceRevision;previous.records.score=456;
+ const p=parseProfile(JSON.stringify(beginProfile(previous,s)));const loaded=p.active.run;
+ assert.equal(loaded.phase,'paused');assert.equal(loaded.resumePhase,'playing');assert.equal(loaded.choice,null);
+ assert.ok(loaded.operation.gate);assert.equal(loaded.tuning,2);assert.equal(p.recordArchive[0].records.score,456);
+ resume(loaded);assert.ok(action(loaded,'interact'));assert.ok(choose(loaded,'advance'));
+});
+test('opening XP levels can pick a working module ahead of a gun rank',()=>{
+ const candidates=new Set();
+ for(const seed of [17,71,109,214,300]){
+  const s=quietOperation();s.rng.supply=seed;s.gems=[{x:s.player.x,y:s.player.y,age:0,value:8}];step(s,dt);
+  assert.equal(s.choice.type,'level');assert.ok(s.choices.some(c=>c.id==='rank:h'));
+  const module=s.choices.find(c=>c.kind==='module');assert.ok(module);candidates.add(module.id);
+  assert.ok(choose(s,module.id));assert.equal(s.weapons[0].level,1);assert.deepEqual(s.modules,[{id:module.module,rank:1}]);
+ }
+ assert.ok(candidates.size>=2);
+});
+test('a cleared pursuit unlocks one free maneuver with distinct stationary and moving effects',()=>{
+ const s=quietOperation();downBoss(s);s.tuning=0;
+ assert.equal(assemblyOptions(s).length,0);assert.ok(action(s,'challenge'));
+ s.enemies.filter(e=>e.cohort==='challenge').forEach(e=>e.dead=true);step(s,dt);
+ assert.equal(s.stats.challengeWins,1);assert.ok(action(s,'gear'));
+ const assault=restore(snapshot(s));assert.ok(choose(s,'maneuver:brace'));assert.ok(choose(assault,'maneuver:assault'));
+ assert.equal(s.tuning,0);assert.equal(assemblyOptions(s).length,0);assert.equal(activeManeuver(s.player),null);
+ s.enemies=[enemy('range',1100,800)];tick(s,.5);assert.equal(activeManeuver(s.player),'brace');
+ s.weapons[0].cd=0;step(s,dt);assert.equal(s.shots[0].damage,weaponStats(s.weapons[0]).damage*1.25);
+ step(s,dt,{x:1,y:0});assert.equal(activeManeuver(s.player),null);
+ assault.enemies=[enemy('range',1100,800)];assert.ok(action(assault,'dash'));assault.weapons[0].cd=0;step(assault,dt,{x:1,y:0});
+ assert.equal(activeManeuver(assault.player),'assault');assert.equal(assault.weapons[0].cd,weaponStats(assault.weapons[0]).interval*.78);
+ step(assault,dt);assert.equal(activeManeuver(assault.player),null);
 });
