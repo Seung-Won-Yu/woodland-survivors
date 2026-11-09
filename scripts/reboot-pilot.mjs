@@ -48,7 +48,7 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
    const args={branch,doctrine:'reserve'};if(c.kind==='gun'&&s.weapons.length>=3)args.slot=s.weapons.findIndex(w=>!w.evolved&&!w.fusion);if(c.kind==='module'&&s.modules.length>=4&&!moduleRank(s,c.module))args.slot=0;
    if(!choose(s,c.id,args)){stalled={choice:s.choice,card:c};break;}decisions++;continue;
   }
-  const options=assemblyOptions(s),repair=s.operation&&s.player.hp<55?options.find(c=>c.kind==='repair'):null,wanted=repair||(policy==='single'?options.find(c=>c.kind==='evolve'&&c.weapon==='h'):policy==='fusion'?options.find(c=>c.kind==='fusion'):options.find(c=>c.kind==='tune'&&c.module==='catalyst'&&moduleRank(s,'catalyst')===2&&s.weapons.filter(w=>w.level>=4).length>=2));
+  const options=assemblyOptions(s),repair=s.operation&&s.player.hp<55?options.find(c=>c.kind==='repair'):null,wanted=repair||(policy==='single'?options.find(c=>c.kind==='evolve'&&c.weapon==='h'):policy==='fusion'?options.find(c=>c.kind==='fusion'):options.find(c=>c.id==='evolve:f')||options.find(c=>c.kind==='tune'&&c.module==='catalyst'&&moduleRank(s,'catalyst')===2&&s.weapons.filter(w=>w.level>=4).length>=2));
   if(wanted){action(s,'gear');choose(s,wanted.id);continue;}
   action(s,'skill');
   if(s.stage==='boss'){

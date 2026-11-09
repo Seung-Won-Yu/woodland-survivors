@@ -30,7 +30,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -222,10 +222,11 @@ function dropXp(s,x,y,value,salvage=false){
  if(s.gems.length>220){const oldest=s.gems.shift();s.gems[0].value+=oldest.value;}
 }
 function scoreKill(s,e,source){
+ if(source==='payload'||source==='wake'){const key=source==='payload'?'payloadKills':'wakeKills';s.stats[key]=(s.stats[key]||0)+1;}
  if(e.type==='officer'){if(s.player.hp>0&&moduleRank(s,'medic')&&!(s.medicCd>0)){s.player.hp=Math.min(s.player.maxHp,s.player.hp+12);s.medicCd=12;emit(s,'heal',e.x,e.y,{text:'정예 제압 · 체력 +12'});}s.stats.elites++;if(s.stats.elites<=8)s.stats.score+=100;}else{s.stats.kills++;if(s.stats.kills<=(s.operation?900:300))s.stats.score+=10;}
  s.player.charge=Math.min(100,s.player.charge+1*(1+Math.min(.2,s.level*.01)));s.combo++;s.comboTime=2;s.stats.bestCombo=Math.max(s.combo,s.stats.bestCombo);
  const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);emit(s,'kill',e.x,e.y,{angle:s.player.aim});
- const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
+ const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
 }
 function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  if(e.hp<=0||e.dead)return;
@@ -240,7 +241,14 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  if(['rifle','shield','mortar','officer'].includes(e.type)){const dx=e.x-s.player.x,dy=e.y-s.player.y,d=Math.hypot(dx,dy)||1,push=(kind==='blast'?RULES.combatFeel.blastPush:RULES.combatFeel.bulletPush)*(e.type==='shield'?RULES.combatFeel.shieldPushMultiplier:1);move(s,e,dx/d*push,dy/d*push,e.r);}
  if(source==='module')s.stats.moduleDamage+=amount;
  if(kind==='electric'&&e.burn>0&&moduleRank(s,'thermal')&&!(s.thermalCd>0)){s.thermalCd=.25;s.player.charge=Math.min(100,s.player.charge+2);s.stats.thermalCharges=(s.stats.thermalCharges||0)+2;}
- if(source==='native'&&weight>0){feed(s,owner,weight,e);if(kind==='blast'&&e.burn>0&&catalyst&&s.heatCd<=0){s.heatCd=.5;s.stats.heatBursts++;blast(s,e.x,e.y,80,RULES.modules.catalyst.heatBurstDamage[catalyst-1],'module',null,false,'heat');}}
+ if(source==='native'){
+  if(weight>0)feed(s,owner,weight,e);
+  if(kind==='blast'&&e.burn>0&&catalyst&&s.heatCd<=0){
+   const chained=heatSynergyReady(s),config=RULES.modules.catalyst;
+   s.heatCd=config.heatBurstCooldown;s.stats.heatBursts++;
+   blast(s,e.x,e.y,chained?110:config.heatBurstRadius,chained?52:config.heatBurstDamage[catalyst-1],'module',null,false,'heat');
+  }
+ }
  if(e.dead||e.hp>0)return;
  if(e.type==='part'){emit(s,'break',e.x,e.y,{life:.7});return;}
  if(e.type==='boss'){s.boss.dead=true;s.stats.bossKilled=true;if(s.operation){s.operation.cleared=s.operation.region+1;if(s.weapons.some(w=>w.fusion))s.stats.fusionBosses++;if(s.weapons.some(w=>w.id==='f'&&w.evolved))s.stats.flameBosses++;}s.stats.score+=1000;emit(s,'boss-down',e.x,e.y,{r:e.r,life:1.2});return;}
@@ -250,13 +258,17 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
 }
 function feed(s,owner,weight,target){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}
- const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){w.payload+=weight;if(w.payload>=10&&w.payloadCd<=0){w.payload-=10;w.payloadCd=.6;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<300&&!lineBlocked(s,target,e)).sort((a,b)=>distance(a,target)-distance(b,target)),next=near[0];s.stats.payloadBursts=(s.stats.payloadBursts||0)+1;
+ const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){const cfg=RULES.fusion;w.payload+=weight;if(w.payload>=cfg.hitsPerPayload&&w.payloadCd<=0){w.payload-=cfg.hitsPerPayload;w.payloadCd=cfg.payloadCooldown;
+  const near=targets(s).filter(e=>e.hp>0&&e!==target&&distance(e,target)>=42&&distance(e,target)<300&&!lineBlocked(s,target,e)).sort((a,b)=>distance(a,target)-distance(b,target));
+  const next=near.find(e=>distance(e,target)>=100)||near[0];
+  s.stats.payloadBursts=(s.stats.payloadBursts||0)+1;
   emit(s,'payload',target.x,target.y,{life:.25});
-  if(next)fire(s,w,next,Math.atan2(next.y-target.y,next.x-target.x),80,{rocket:true,radius:130,source:'payload',homing:w.fusion.branch==='homing',incendiary:w.fusion.branch==='incendiary',origin:target});
-  else blast(s,target.x,target.y,130,80,'payload',w.uid,w.fusion.branch==='incendiary');
+  const incendiary=w.fusion.branch==='incendiary';
+  if(next)fire(s,w,next,Math.atan2(next.y-target.y,next.x-target.x),cfg.payloadDamage,{rocket:true,radius:cfg.payloadRadius,source:'payload',homing:w.fusion.branch==='homing',incendiary,origin:target,ignore:target.id});
+  else blast(s,target.x,target.y,cfg.payloadRadius,cfg.payloadDamage,'payload',w.uid,incendiary);
  }}
 }
-function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect='explosion'){
+function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion'){
  emit(s,effect,x,y,{r,life:.4});let budget=2;
  for(const e of (source==='support'?alive(s):targets(s))){if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;const w=source==='native'?Math.min(.5,budget):0;budget-=w;damage(s,e,amount,'blast',source,owner,w);if(ignite&&e.hp>0)burn(e);}
  for(const b of s.blocks)if(b.hp>0&&Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<r+Math.max(b.w,b.h)/2)b.hp=Math.max(0,b.hp-amount);
@@ -264,7 +276,8 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect='ex
  if(ignite&&s.zones.length<12)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
 }
 function fire(s,w,target,a,amount,opts={}){
- if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin;s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*(rocket?300:700),vy:Math.sin(a)*(rocket?300:700),life:d.range/(rocket?300:700),damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source:opts.source||'native',owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:[]});return true;
+ if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin,source=opts.source||'native',evolved=w.evolved&&!w.fusion;
+ s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*(rocket?300:700),vy:Math.sin(a)*(rocket?300:700),life:d.range/(rocket?300:700),damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(opts.ignore?{arming:.16}:evolved&&!rocket?{pierce:1}:evolved&&source==='native'&&w.id==='r'?{salvo:true}:{})});return true;
 }
 export function activeManeuver(p){
  if(p.maneuver==='assault'&&p.moving&&p.assaultTime>0)return 'assault';
@@ -276,9 +289,18 @@ function shoot(s,w){
  const damageScale=activeManeuver(p)==='brace'?1.25:1;
  const a=Math.atan2(target.y-p.y,target.x-p.x);p.aim=a;p.attack=.12;
  if(w.id==='f'){
-  for(const e of targets(s)){const angle=Math.atan2(e.y-p.y,e.x-p.x),delta=Math.atan2(Math.sin(angle-a),Math.cos(angle-a));if(distance(p,e)<d.range+e.r&&Math.abs(delta)<d.cone*Math.PI/360&&!lineBlocked(s,p,e)){burn(e);damage(s,e,d.damage*damageScale,'fire','native',w.uid,0);}}
-  emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14});
-  if(w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<3)s.zones.push({x:p.x,y:p.y,r:50,dps:12,life:2,tick:.25,source:'dot',owner:w.uid});
+  const catalyst=moduleRank(s,'catalyst'),focused=w.branch==='focused';
+  for(const e of candidates){
+   const angle=Math.atan2(e.y-p.y,e.x-p.x),delta=Math.atan2(Math.sin(angle-a),Math.cos(angle-a));
+   if(Math.abs(delta)>=d.cone*Math.PI/360)continue;
+   burn(e,w.evolved?(focused&&e===target?36:24):RULES.modules.catalyst.burnDamagePerSecond[catalyst-1]||6,w.evolved?2:1.5);
+   damage(s,e,d.damage*damageScale,'fire','native',w.uid,0);
+  }
+  emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14,evolved:w.evolved});
+  if(w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<(w.evolved?4:3)){
+   const reach=w.evolved?Math.min(120,distance(p,target)*.65):0;
+   s.zones.push({x:p.x+Math.cos(a)*reach,y:p.y+Math.sin(a)*reach,r:w.evolved?74:50,dps:w.evolved?56:12,life:w.evolved?2.3:2,tick:.25,source:w.evolved?'wake':'dot',owner:w.uid});
+  }
  }else{
   const ordered=[target,...candidates.filter(e=>e.id!==target.id)];
   for(let i=0;i<d.count;i++){const t=ordered[i%ordered.length],angle=Math.atan2(t.y-p.y,t.x-p.x)+(ordered.length===1?(i-(d.count-1)/2)*.035:0);fire(s,w,t,angle,d.damage*damageScale);}
@@ -287,15 +309,21 @@ function shoot(s,w){
  w.shots++;return true;
 }
 function segmentDistance(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,t=clamp(((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(px-ax-t*dx,py-ay-t*dy);}
+function detonate(s,q){
+ const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
+ blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect);q.life=0;
+}
 function updateShots(s,dt){
- for(const q of s.shots){q.life-=dt;if(q.life<=0)continue;const old={x:q.x,y:q.y};
-  if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8);q.vx=Math.cos(angle)*300;q.vy=Math.sin(angle)*300;}}
+ for(const q of s.shots){q.life-=dt;if(q.life<=0)continue;if(q.arming>0)q.arming-=dt;const old={x:q.x,y:q.y};
+  if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8);q.vx=Math.cos(angle)*300;q.vy=Math.sin(angle)*300;}}
   q.x+=q.vx*dt;q.y+=q.vy*dt;
-  const wall=blocked(s,q.x,q.y,q.r);if(wall){if(q.rocket)blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary);else if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);q.life=0;emit(s,'impact',q.x,q.y);continue;}
+  const wall=blocked(s,q.x,q.y,q.r);if(wall){if(q.rocket)detonate(s,q);else if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);q.life=0;emit(s,'impact',q.x,q.y);continue;}
   for(const e of targets(s)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
-   q.hitIds.push(e.id);if(q.rocket){blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary);q.life=0;break;}
-   const wasBounce=q.hitIds.length>1;damage(s,e,q.damage,'bullet',q.source,q.owner,wasBounce?.35:1);if(wasBounce)s.stats.ricochetHits++;emit(s,'impact',e.x,e.y,{life:.12});
-   if(q.bounces>0){const next=targets(s).filter(t=>t.hp>0&&!q.hitIds.includes(t.id)&&distance(t,e)<180&&!lineBlocked(s,e,t)).sort((a,b)=>distance(a,e)-distance(b,e))[0];if(next){q.bounces--;q.damage*=.7;q.x=e.x;q.y=e.y;const a=Math.atan2(next.y-e.y,next.x-e.x);q.vx=Math.cos(a)*700;q.vy=Math.sin(a)*700;q.life=Math.max(q.life,.28);s.effects.push({type:'ricochet',x:e.x,y:e.y,x2:next.x,y2:next.y,age:0,life:.1});break;}}
+   if(q.arming>0&&q.target!==e.id)continue;
+   q.hitIds.push(e.id);if(q.rocket){detonate(s,q);break;}
+   const wasBounce=q.pierce===undefined?q.hitIds.length>1:!!q.reflected;damage(s,e,q.damage,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1);if(wasBounce)s.stats.ricochetHits++;emit(s,'impact',e.x,e.y,{life:.12});
+   if(q.pierce>0){q.pierce--;q.damage*=.72;emit(s,'pierce',e.x,e.y,{angle:Math.atan2(q.vy,q.vx),life:.18});break;}
+   if(q.bounces>0){const next=targets(s).filter(t=>t.hp>0&&!q.hitIds.includes(t.id)&&distance(t,e)<180&&!lineBlocked(s,e,t)).sort((a,b)=>distance(a,e)-distance(b,e))[0];if(next){q.bounces--;q.reflected=true;q.damage*=.7;q.x=e.x;q.y=e.y;const a=Math.atan2(next.y-e.y,next.x-e.x);q.vx=Math.cos(a)*700;q.vy=Math.sin(a)*700;q.life=Math.max(q.life,.28);s.effects.push({type:'ricochet',x:e.x,y:e.y,x2:next.x,y2:next.y,age:0,life:.1});break;}}
    q.life=0;break;
   }
  }
@@ -553,7 +581,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const cadence=(p.overdrive>0?.65:1)*(activeManeuver(p)==='assault'?.78:1);
  for(const w of s.weapons){w.cd-=dt;w.payloadCd=Math.max(0,w.payloadCd-dt);if(w.cd<=0){const fired=shoot(s,w);w.cd=fired?weaponStats(w).interval*cadence:0;}}
  updateShots(s,dt);
- for(const z of s.zones){z.life-=dt;z.tick-=dt;if(z.tick<=0){z.tick=.25;for(const e of targets(s))if(e.hp>0&&distance(z,e)<z.r+e.r&&!lineBlocked(s,z,e)){burn(e);damage(s,e,z.dps*.25,'fire','dot');}}}s.zones=s.zones.filter(z=>z.life>0);
+ for(const z of s.zones){z.life-=dt;z.tick-=dt;if(z.tick<=0){z.tick=.25;for(const e of targets(s))if(e.hp>0&&distance(z,e)<z.r+e.r&&!lineBlocked(s,z,e)){burn(e);damage(s,e,z.dps*.25,'fire',z.source==='wake'?'wake':'dot');}}}s.zones=s.zones.filter(z=>z.life>0);
  updateEnemies(s,dt);updateBoss(s,dt);if(s.hitCandidate)hurt(s,s.hitCandidate.amount,s.hitCandidate.x,s.hitCandidate.y);delete s.hitCandidate;
  let pickedXp=0,salvage=false;
  const reach=pickupReach(s);

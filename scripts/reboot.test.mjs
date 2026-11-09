@@ -39,6 +39,20 @@ test('flame auto aim prioritizes a reachable crowd over a closer isolated soldie
 test('fusion payload starts at its triggering impact and does not charge itself',()=>{
  const s=quiet(),w=s.weapons[0];w.level=6;w.evolved=true;w.fusion={secondary:'r',branch:'homing',overflow:0};w.payload=9;s.enemies=[enemy('impact',1000,800,'rifle',1),enemy('next',1100,800,'rifle',1000)];s.shots=[bullet(s,s.enemies[0],2)];step(s,dt);const payload=s.shots.find(q=>q.source==='payload');assert.ok(payload);assert.ok(payload.x>=1000);assert.equal(payload.target,'next');assert.equal(s.stats.payloadBursts,1);tick(s,.5);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
 });
+test('fusion flies past a surviving trigger and detonates in a second pack',()=>{
+ const s=quiet(),w=s.weapons[0];Object.assign(w,{level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0},payload:9});
+ const first=enemy('survivor',960,800,'rifle',1000),crowd=[enemy('second-a',1160,800,'rifle',65),enemy('second-b',1185,825,'rifle',65)];
+ s.enemies=[first,...crowd];s.shots=[bullet(s,first,2)];step(s,dt);
+ const q=s.shots.find(q=>q.source==='payload');assert.ok(q);assert.equal(q.target,'second-a');assert.deepEqual(q.hitIds,['survivor']);assert.equal(first.hp,998);
+ tick(s,.75);assert.ok(crowd.every(e=>e.dead));assert.equal(s.stats.payloadKills,2);assert.equal(s.stats.payloadBursts,1);assert.ok(takeEvents(s).includes('payload-impact'));
+});
+test('evolved sweeping fire leaves a forward wake while focused fire builds a stronger burn',()=>{
+ const fixture=branch=>{const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:0,level:6,evolved:true,branch}];s.enemies=[enemy('guard',970,800,'rifle',1000)];step(s,dt,{x:1,y:0});return s;};
+ const sweep=fixture('trail'),jet=fixture('focused'),patch=sweep.zones[0];
+ assert.equal(patch.source,'wake');assert.ok(patch.x>sweep.player.x+90);assert.equal(patch.r,74);
+ assert.equal(jet.zones.length,0);assert.ok(jet.enemies[0].burnDps>sweep.enemies[0].burnDps);
+ const victim=enemy('crossing',patch.x,patch.y+50,'rifle',10);sweep.enemies.push(victim);sweep.weapons[0].cd=999;tick(sweep,.3);assert.equal(sweep.stats.wakeKills,1);
+});
 test('assembly progress distinguishes a ready recipe from an already completed weapon',()=>{
  const s=quiet();assert.ok(buildPaths(s).every(p=>!p.ready&&!p.complete));s.weapons[0].level=6;s.weapons[0].branch='ricochet';s.modules=[{id:'ricochet',rank:2}];assert.ok(buildPaths(s).some(p=>p.ready&&p.title.includes('사중')));action(s,'gear');choose(s,'evolve:h');assert.ok(buildPaths(s).some(p=>p.complete&&p.title.includes('사중')));assert.ok(buildPaths(s).every(p=>!p.ready));
 });
@@ -161,6 +175,12 @@ test('catalyst flame selects unburned groups while explosive aim selects a burni
 test('native explosion on burning targets emits a bounded distinct heat effect',()=>{
  const s=quiet();s.modules=[{id:'catalyst',rank:3}];s.enemies=[enemy('hot',940,800,'rifle',1000),enemy('near',955,800,'rifle',1000)];s.enemies.forEach(e=>{e.burn=2;e.burnDps=6;});s.shots=[{...bullet(s,s.enemies[0],50),rocket:true,radius:100}];step(s,dt);assert.equal(s.stats.heatBursts,1);assert.equal(s.effects.filter(e=>e.type==='heat').length,1);assert.ok(takeEvents(s).includes('heat'));assert.ok(s.stats.moduleDamage>0);tick(s,.2);assert.equal(s.stats.heatBursts,1);
 });
+test('heat ignition is independent of the first four targets using the coil hit budget',()=>{
+ const s=quiet();s.modules=[{id:'catalyst',rank:3}];const hot=enemy('last-hot',1040,800,'rifle',1000);hot.burn=1;
+ s.enemies=[...Array.from({length:4},(_,i)=>enemy(`cold-${i}`,940,760+i*27,'rifle',1000)),hot];
+ s.shots=[{...bullet(s,s.enemies[0],30),rocket:true,radius:140}];step(s,dt);
+ assert.equal(s.stats.heatBursts,1);assert.ok(Math.abs(s.effects.find(e=>e.type==='heat').x-hot.x)<12);
+});
 
  test('exhausted crate banish stays quality-scaled and owned support may be excluded',()=>{
  const s=quiet();s.excluded=['coil','magnet'];s.phase='choice';s.choice={type:'armory',quality:'prototype'};s.choices=[{id:'module:ricochet',kind:'module',module:'ricochet',rank:3}];assert.ok(banish(s,'module:ricochet'));assert.equal(s.choices[0].kind,'resupply');assert.equal(s.choices[0].heal,36);
@@ -204,6 +224,10 @@ test('researched effects are conditional, capped and cannot recursively trigger 
 });
 test('final stay and menu retreat remain partial until the exit extraction decision',()=>{
  const s=quietOperation();s.operation.region=2;clearRegion(s);choose(s,'stay');const partial=snapshot(s);assert.ok(finish(partial,true,'retreat'));assert.equal(partial.result.won,false);assert.ok(!partial.stats.extractionPaid);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));assert.ok(s.result.won);assert.ok(s.operation.extracted);
+});
+test('seed 19 can extract after all three fronts with evolved fire and no checkpoint edits',()=>{
+ const run=pilot(19,'fire',{operation:true,pursuit:'all',maxSeconds:240});
+ assert.ok(run.won&&!run.stalled);assert.equal(run.regions,3);assert.ok(run.hp>0);assert.ok(run.weapons.some(w=>w.id==='f'&&w.evolved));
 });
 test('checkpoints and settlements reject a different run instance including same-seed replay',()=>{
  const a=quietOperation(),p=beginProfile(emptyProfile(),a),other=quietOperation();const q=beginProfile({...emptyProfile(),sequence:1},other);assert.notEqual(a.runId,other.runId);for(let i=0;i<3;i++){clearRegion(other);if(i<2)choose(other,'advance');}choose(other,'extract');const before=snapshot(p);assert.throws(()=>checkpointProfile(p,other));assert.throws(()=>settleProfile(p,other));assert.deepEqual(p,before);assert.equal(q.active.runId,other.runId);

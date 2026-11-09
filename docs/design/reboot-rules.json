@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b10-beach-routes",
+  "balanceRevision": "b11-capstone-combat",
   "prototypeWeapons": [
     "h",
     "r",
