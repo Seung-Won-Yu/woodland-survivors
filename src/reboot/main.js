@@ -6,7 +6,7 @@ import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalLane,signalLaneLabel,COAST_APPROACHES,activeEntry,coastLead,coastLeadColor,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynergyReady,moduleRank,refitWeapons} from './content.js';
-import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,portTurretInSight} from './model.js';
+import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,portTurretInSight,showcaseWindow} from './model.js';
 import {createStore,buyResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
 import {loadFioPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
@@ -302,7 +302,7 @@ function updateHud(){
  $('operation-track').textContent=run.operation?REGIONS.map((d,i)=>`${i<run.operation.region?'✓':i===run.operation.region?'▶':'○'} ${d.name}`).join('  /  '):'';
  $('stage').textContent=run.operation?`${run.operation.region+1}/3 ${region(run).name}${run.stage==='holdout'?' · 돌파 완료':run.stage==='boss'?' · 보스 교전':''}`:run.powerWave&&run.stage==='field'?'POWER TEST / 완성 화력 전개':run.stage==='holdout'?'MISSION CLEAR / 잔류 가능':run.stage==='boss'?'ARMORED CARRIER':'BEACHHEAD / 해안 침투';
  const wave=run.powerWave,showcase=wave?.showcase&&wave.paired>0;
- const reinforcements=showcase?run.stage==='boss'&&run.boss.mode!=='recover'?' · 재장전 때 시험 공세':` · 화력 시험 ${wave.paired}회 남음`:wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
+ const reinforcements=showcase?showcaseWindow(run)?' · 시험 편대 접근':' · 재장전 때 시험 공세':wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
  $('objective').textContent=choosingEntry?(front===1?'선로 갈림길':'하역장 갈림길'):`${direction} ${next.kind?sitePresentation(next).name:next.name} · ${Math.round(distance(p,next)/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;
  const siteHint=next.state==='active'?next.kind==='relay'?` · 범위 안에서 해킹 ${Math.round(next.progress/5*100)}%`:` · 경비 ${guards}명, 이동하며 제압`:next.state==='ready'?' · 제압 완료, 접근해 회수':'';

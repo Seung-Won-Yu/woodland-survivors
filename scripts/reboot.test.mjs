@@ -47,7 +47,7 @@ test('fusion flies past a surviving trigger and detonates in a second pack',()=>
  const first=enemy('survivor',960,800,'rifle',1000),crowd=[enemy('second-a',1160,800,'rifle',65),enemy('second-b',1185,825,'rifle',65)];
  s.enemies=[first,...crowd];s.shots=[bullet(s,first,2)];step(s,dt);
  const q=s.shots.find(q=>q.source==='payload');assert.ok(q);assert.equal(q.target,'second-a');assert.deepEqual(q.hitIds,['survivor']);assert.equal(first.hp,998);
- tick(s,.75);assert.ok(crowd.every(e=>e.dead));assert.equal(s.stats.payloadKills,2);assert.equal(s.stats.payloadBursts,1);assert.ok(takeEvents(s).includes('payload-impact'));
+ tick(s,.75);assert.ok(crowd.every(e=>e.dead&&e.deathFlavor==='arc'));assert.equal(s.stats.payloadKills,2);assert.equal(s.stats.payloadBursts,1);assert.ok(takeEvents(s).includes('payload-impact'));
 });
 test('a saved in-flight homing payload keeps its launch speed and lifetime',()=>{
  const s=quiet(),target=enemy('ahead',1140,800,'rifle',1000);s.enemies=[target];
@@ -68,13 +68,13 @@ test('two payload kills send a single relay into another pack without feeding th
  assert.ok(groups.slice(0,2).flat().every(e=>e.dead));assert.ok(groups[2].every(e=>!e.dead));
  assert.equal(s.stats.payloadRelays,1);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
 });
-test('first fusion primes the launcher and stages two legal packs even after an earlier completion',()=>{
+test('first fusion primes the launcher and stages three legal packs when there is room',()=>{
  const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});s.modules=[{id:'coil',rank:2}];
  s.powerDone=true;s.stats.completedBuild={kind:'synergy',t:0};
  assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));assert.equal(s.weapons[0].payload,RULES.fusion.hitsPerPayload);
  const resumed=restore(snapshot(s));tick(resumed,.72);
  const groups=[...new Set(resumed.enemies.map(e=>e.waveGroup))];
- assert.deepEqual(groups.map(id=>resumed.enemies.filter(e=>e.waveGroup===id).length),[4,4]);assert.ok(groups.every(Number.isInteger));assert.equal(resumed.powerWave.remaining,16);
+ assert.deepEqual(groups.map(id=>resumed.enemies.filter(e=>e.waveGroup===id).length),[4,4,4]);assert.ok(groups.every(Number.isInteger));assert.equal(resumed.powerWave.remaining,12);
  assert.ok(resumed.enemies.every(e=>Math.hypot(e.x-resumed.player.x,e.y-resumed.player.y)>150));
 });
 test('evolved sweeping fire leaves a forward wake while focused fire builds a stronger burn',()=>{
@@ -335,14 +335,29 @@ test('heat audio stays distinct while hurt keeps foreground priority',async()=>{
 function quietOperation(){const s=createOperation(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function downBoss(s){s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.shots=[bullet(s,s.boss)];step(s,dt);}
 function clearRegion(s){downBoss(s);assert.equal(s.phase,'playing');assert.equal(s.stage,'holdout');Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.equal(s.choice.type,'clear');}
-test('the fusion showcase waits for a boss opening and survives a quick gate transition',()=>{
+test('the fusion showcase waits through the boss attack and survives a quick gate transition',()=>{
  const s=quietOperation();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing',cd:999});s.modules=[{id:'coil',rank:2}];
  assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));
- s.boss.timer=99;s.boss.spawnClock=99;tick(s,1);
+ s.boss.mode='charge';s.boss.cycle=1;s.boss.timer=99;s.boss.spawnClock=99;tick(s,1);
  assert.equal(s.powerWave.paired,3);assert.ok(s.enemies.every(e=>e.waveGroup==null));
  s.boss.mode='recover';tick(s,.72);assert.equal(s.powerWave.paired,2);
- assert.equal(s.enemies.filter(e=>e.waveGroup!=null).length,8);
+ assert.ok(s.enemies.filter(e=>e.waveGroup!=null).length>=8);
  clearRegion(s);assert.ok(choose(s,'advance'));assert.equal(s.powerWave.showcase,'fusion');assert.equal(s.powerWave.paired,2);
+});
+test('entering a boss keeps the staged infantry and lets a pending wave approach from behind during opening aim',()=>{
+ const s=quietOperation();Object.assign(s.player,{aim:Math.PI/2});
+ Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing',cd:999});s.modules=[{id:'coil',rank:2}];
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));tick(s,.72);
+ const first=s.enemies.filter(e=>e.showcase==='fusion').map(e=>e.id);
+ assert.equal(first.length,12);
+ s.enemies.push(enemy('ordinary',800,1060));
+ Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));
+ assert.ok(first.every(id=>s.enemies.some(e=>e.id===id)));
+ assert.ok(!s.enemies.some(e=>e.id==='ordinary'));
+ tick(s,.95);
+ assert.equal(s.boss.mode,'aim');assert.equal(s.powerWave.paired,1);
+ const second=s.enemies.filter(e=>e.showcase==='fusion'&&!first.includes(e.id));
+ assert.ok(second.length>=8&&second.every(e=>e.y>s.player.y+80));
 });
 test('Inferno forms a dense lane even when heat synergy was completed earlier',()=>{
  const s=quiet();s.powerDone=true;s.stats.completedBuild={kind:'synergy',t:0};s.weapons=[{...makeWeapon('f'),uid:'inferno',level:6,branch:'trail',cd:999}];s.modules=[{id:'catalyst',rank:2}];

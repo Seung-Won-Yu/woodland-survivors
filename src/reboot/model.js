@@ -39,7 +39,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -409,6 +409,7 @@ function scoreKill(s,e,source,kind){
  s.player.charge=Math.min(100,s.player.charge+1*(1+Math.min(.2,s.level*.01)));s.combo++;s.comboTime=2;s.stats.bestCombo=Math.max(s.combo,s.stats.bestCombo);
  const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);
  const flavor=source==='payload'?'arc':kind==='fire'?'fire':null;
+ if(flavor)e.deathFlavor=flavor;
  emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{})});
  const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
 }
@@ -831,30 +832,37 @@ function withdrawRaid(s){
  if(s.raid?.state!=='active')return false;
  s.raid.state='withdrawn';s.stats.raidFailed++;return true;
 }
-function spawnPairedWave(s,pulse,showcase){
+function spawnShowcaseWave(s,pulse,showcase,remaining){
  const p=s.player,crowd=alive(s);
- if(crowd.length>152)return false;
- for(let i=0;i<8;i++){
-  const heading=p.aim+i*TAU/8;
-  const flame=showcase==='flame',lanes=flame?[[0,190],[0,264]]:[[-.34,205],[.48,248]];
-  const centers=lanes.map(([offset,reach])=>({x:p.x+Math.cos(heading+offset)*reach,y:p.y+Math.sin(heading+offset)*reach}));
-  const cos=flame?Math.cos(heading):1,sin=flame?Math.sin(heading):0;
-  const packs=centers.map(({x,y})=>[[-18,-20],[18,-20],[-18,20],[18,20]].map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
-  if(lineBlocked(s,...centers)||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||s.boss.active&&distance(q,s.boss)<s.boss.r+28||crowd.some(e=>distance(q,e)<32)))continue;
-  for(let group=0;group<2;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',...(flame?{}:{waveGroup:pulse*2+group})});
-  for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase});
-  return true;
+ const flame=showcase==='flame',approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x):p.aim;
+ const pair=flame?[[0,190],[0,264]]:[[-.34,205],[.48,248]];
+ const plans=!flame&&remaining>=12?[[[-.75,208],[.1,224],[.93,242]],pair]:[pair];
+ for(const lanes of plans){
+  const count=lanes.length*4;
+  if(crowd.length+count>160)continue;
+  for(let i=0;i<8;i++){
+   const heading=approach+i*TAU/8;
+   const centers=lanes.map(([offset,reach])=>({x:p.x+Math.cos(heading+offset)*reach,y:p.y+Math.sin(heading+offset)*reach}));
+   const cos=flame?Math.cos(heading):1,sin=flame?Math.sin(heading):0;
+   const packs=centers.map(({x,y})=>[[-18,-20],[18,-20],[-18,20],[18,20]].map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
+   if(centers.some((q,j)=>j>0&&lineBlocked(s,centers[j-1],q))||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||s.boss.active&&distance(q,s.boss)<s.boss.r+28||crowd.some(e=>distance(q,e)<32)))continue;
+   for(let group=0;group<packs.length;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',showcase,...(flame?{}:{waveGroup:pulse*4+group})});
+   for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase,angle:Math.atan2(p.y-q.y,p.x-q.x)});
+   return count;
+  }
  }
- return false;
+ return 0;
 }
+export const showcaseWindow=s=>s.stage!=='boss'||s.boss.mode==='recover'||s.boss.cycle===0&&s.boss.mode==='aim';
 function updatePowerWave(s,dt){
  const wave=s.powerWave;if(!wave)return;
  const showcase=wave.paired>0&&wave.showcase;
- if(s.stage==='boss'&&(!showcase||s.boss.mode!=='recover'))return;
+ if(s.stage==='boss'&&(!showcase||!showcaseWindow(s)))return;
  if(wave.delay>0){wave.delay-=dt;return;}
  wave.clock-=dt;if(wave.clock>0)return;
  if(wave.paired>0){
-  if(wave.remaining>=8&&spawnPairedWave(s,wave.paired,wave.showcase))wave.remaining-=8;
+  const count=wave.remaining>=8?spawnShowcaseWave(s,wave.paired,wave.showcase,wave.remaining):0;
+  if(count)wave.remaining-=count;
   else{
    const before=wave.remaining;
    for(let i=0;i<8&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{cohort:'ambient'},360))wave.remaining--;
@@ -984,7 +992,7 @@ export function action(s,kind){
   p.x=item.gantry?.x??800;p.y=item.gantry?.y??470;
   if(!(s.operation?.region>0))clearCoastOverlap(s,p,16,{x:800,y:350});
   p.invuln=Math.max(p.invuln,1);
-  s.enemies=s.enemies.filter(e=>distance(e,s.boss)<400&&(!dock||e.siteId!==dock.id));
+  s.enemies=s.enemies.filter(e=>(!e.dead&&e.showcase||distance(e,s.boss)<400)&&(!dock||e.siteId!==dock.id));
   s.enemyShots=[];s.hazards=[];
   if(item.gantry)emit(s,'port-ambush',800,250,{text:'측면 기습 · 포탑 사선 확보',life:1.3});
   else emit(s,'boss-arrival',800,250,{life:1.3});
