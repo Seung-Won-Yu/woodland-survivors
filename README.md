@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.63.0" src="https://img.shields.io/badge/RIFT-0.63.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.64.0" src="https://img.shields.io/badge/RIFT-0.64.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.64는 철도에서 회수 의무 장비를 고른 판에 항구 지원 포격을 추가합니다. 측면 화물을 회수하고 스킬을 쓰면 장갑을 타격합니다. 가로 포격 예고에 맞추면 장갑탄도 끊습니다. 시드 22·23에서 인페르노와 전도 합체로 모바일 귀환을 확인했습니다. [부품별 항구 공략 검증](docs/RIFT-GAMEPLAY-V1.md#064-항구-화물과-지원-포격).
 
 0.63은 양갈래 호위가 좌우를 유지하며 접근하고, 분산 박격포가 시간차로 조준하게 바꿉니다. 실제 포대와 포탄 낙하지점을 구분하고, 시드 26의 모바일 화면에서 스틱으로 첫 포격을 피한 뒤 전도 합체로 귀환했습니다. [해안 교전 검증](docs/RIFT-GAMEPLAY-V1.md#063-해안-호위와-교대-포격).
 

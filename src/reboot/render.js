@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,portAidBaitRisk,railGunOf,COAST_MORTAR,coastLead,coastLeadColor,coastEncounterCue,coastMortarAiming,coastMortarThreatens,activeEntry} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,portAidCounterReady,portAidBaitRisk,railGunOf,COAST_MORTAR,coastLead,coastLeadColor,coastEncounterCue,coastMortarAiming,coastMortarThreatens,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
@@ -198,6 +198,11 @@ function paintPortCue(c,s){
   }
  }else if(portCoreDisrupted(s)){
   circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
+ }
+ if(portAidCounterReady(s)){
+  const p=partPosition(s,b.parts[1]);
+  c.setLineDash([5,4]);circle(c,p.x,p.y,31,null,'#d7f0b8',2);c.setLineDash([]);
+  c.fillStyle='#d7f0b8';c.fillRect(p.x-9,p.y-34,18,3);c.fillRect(p.x-2,p.y-41,4,10);
  }
  const aid=portAidPreview(s);
  if(b.harborSupply){
@@ -660,9 +665,9 @@ export function createRenderer(canvas,art){
    else if(f.type==='payload-impact'){
     if(visible(f.x,f.y,f.r+25))paintConduitImpact(c,f,t,reduced);
    }
-   else if(f.type==='salvo-impact'){
-    const r=f.r*(.4+t*.65),edge='#ffe49a';
-    circle(c,f.x,f.y,r,'#ff913b32',edge,3);
+   else if(f.type==='salvo-impact'||f.type==='aid-counter'){
+    const aid=f.type==='aid-counter',r=(aid?68:f.r)*(.4+t*.65),edge=aid?'#d7f0b8':'#ffe49a';
+    circle(c,f.x,f.y,r,aid?'#b2d59928':'#ff913b32',edge,3);
     circle(c,f.x,f.y,r*.48,null,edge,2);
     if(!reduced)for(let i=0;i<8;i++){const a=i*TAU/8;circle(c,f.x+Math.cos(a)*r,f.y+Math.sin(a)*r,5,edge);}
    }

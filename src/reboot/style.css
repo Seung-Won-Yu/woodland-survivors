@@ -125,6 +125,7 @@
 #boss-tactic:not([hidden]){display:block;padding-top:5px;margin-top:5px;border-top:1px solid #afba8f58;color:#f6d897;line-height:1.45}
 #boss-support:not([hidden]){display:block;margin-top:4px;color:#fff0bf;line-height:1.45}
 #boss-support[data-part="breach"]{color:#c6e6f3}#boss-support[data-part="overrun"]{color:#ffc9a0}#boss-support[data-part="recovery"]{color:#c7f1bd}
+#skill[data-counter="ready"]:not(:disabled){background:#c7e4a8;border-color:#eef6ce;color:#253a28}
 .mission-board>.launch-dock{border-bottom:1px solid #a7a276}
 .opening-supply .upgrade-card[data-choice="gun:f"]{--accent:#ffd0a0}
 .opening-supply .upgrade-card[data-choice="gun:r"]{--accent:#bcece4}

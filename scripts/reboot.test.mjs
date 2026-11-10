@@ -1100,6 +1100,49 @@ test('only a fresh safe harbor pickup grants bonus charge and shortens the next 
   assert.deepEqual(regular,{charge:30,dashCd:1.8-dt,payoff:{aid:1}});
  }
 });
+test('a recovered harbor aid charge adds one counterstrike to the next operator skill',()=>{
+ const s=supportArena(2,'recovery','aim');
+ const [turret,armor]=s.boss.parts;
+ Object.assign(s.boss,{cycle:0,timer:0});
+ Object.assign(s.player,{x:800,y:435,charge:10});
+ step(s,dt);
+ Object.assign(s.player,s.boss.harborSupply);
+ step(s,dt);
+ assert.equal(s.boss.harborCounter,true);
+ assert.equal(action(s,'skill'),false);
+ assert.equal(s.boss.harborCounter,true);
+
+ const loaded=restore(snapshot(s));
+ loaded.player.charge=100;
+ assert.ok(loaded.hazards.some(h=>h.portRound==='rake'));
+ assert.ok(action(loaded,'skill'));
+ assert.ok(loaded.player.overdrive>0);
+ assert.equal(loaded.boss.harborCounter,undefined);
+ assert.equal(loaded.boss.parts[1].hp,armor.hp-360);
+ assert.equal(loaded.boss.parts[0].hp,turret.hp);
+ assert.deepEqual(loaded.hazards.map(h=>h.portRound),['lock','turret','turret']);
+ assert.deepEqual(loaded.operation.harborPayoff,{safeAid:1,counterfire:1,rakes:1});
+ assert.ok(loaded.effects.some(e=>e.type==='aid-counter'));
+ Object.assign(loaded.player,{charge:100,overdrive:0,skillCd:0});
+ assert.ok(action(loaded,'skill'));
+ assert.equal(loaded.boss.parts[1].hp,armor.hp-360);
+ assert.equal(loaded.operation.harborPayoff.counterfire,1);
+});
+test('a dodge into a safe harbor crate clears the warning edge before auto-pickup',()=>{
+ const s=supportArena(2,'recovery','aim');
+ s.operation.harborPayoff={};
+ Object.assign(s.boss,{cycle:0,timer:0});
+ Object.assign(s.player,{x:975,y:435,charge:10});
+ step(s,dt);
+ assert.deepEqual(s.boss.harborSupply,{x:975,y:335});
+ assert.ok(action(s,'dash'));
+ tick(s,6*dt,{x:0,y:-1});
+ assert.ok(s.boss.harborSupply);
+ tick(s,dt,{x:0,y:-1});
+ assert.equal(s.boss.harborSupply,undefined);
+ assert.equal(s.player.dashCd,.35);
+ assert.deepEqual(s.operation.harborPayoff,{safeAid:1});
+});
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};
  assert.ok(Math.abs(warning('done')-warning('waiting')-.4)<1e-9);

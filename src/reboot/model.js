@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -107,6 +107,7 @@ export function restore(raw,{allowPrevious=false}={}){
   const supply=s.boss.harborSupply;
   if(supply!=null&&(s.operation.region!==2||s.operation.support!=='recovery'||!PORT_SUPPORT.recovery.lanes.includes(supply.x)||supply.y!==PORT_SUPPORT.recovery.y))fail();
   if(s.boss.harborSupplyCycle!=null&&(!Number.isInteger(s.boss.harborSupplyCycle)||s.boss.harborSupplyCycle<1||s.boss.harborSupplyCycle>PORT_SUPPORT.recovery.limit))fail();
+  if(s.boss.harborCounter!==undefined&&(s.boss.harborCounter!==true||s.operation.region!==2||s.operation.support!=='recovery'||s.stage!=='boss'))fail();
   if(s.operation.holdoutKills!=null&&(!Number.isSafeInteger(s.operation.holdoutKills)||s.operation.holdoutKills<0))fail();
   const {coastStrike:planned,coastStrikeUsed}=s.operation;
   if(planned!==undefined&&(!Object.hasOwn(COAST_STRIKES,planned)||planned!==s.firstNew||s.operation.region===0&&!claimedCoastLead(s)))fail();
@@ -621,6 +622,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if(s.operation?.region===1)stopRailGun(s,actual);
   if(s.operation?.region===2){
    const turret=actual===s.boss.parts[0];
+   if(!turret)delete s.boss.harborCounter;
    if(clearPortRounds(s,turret?'turret':'rake'))emit(s,'barrage-cancel',e.x,e.y,{life:1.1,text:turret?'포탑 파괴 · 포탑탄 차단':'측면 장갑 파괴 · 가로 포격 차단'});
   }
   emit(s,'break',e.x,e.y,{life:.7});return;
@@ -827,6 +829,16 @@ function dropHarborAid(s){
  const point=portAidPoint(b,b.cycle);
  b.harborSupply=point;b.harborSupplyCycle=b.cycle;
  emit(s,'supply-ready',point.x,point.y,{life:1.1,text:`${point.x<800?'좌측':'우측'} 구급 화물 투하`});
+}
+function fireHarborAidCounter(s){
+ const b=s.boss,armor=b.parts[1];
+ delete b.harborCounter;
+ const cancelled=clearPortRounds(s,'rake');
+ Object.assign(armor,partPosition(s,armor));
+ damage(s,armor,PORT_SUPPORT.recovery.counterDamage,'blast','support');
+ recordHarborPayoff(s,'counterfire');
+ if(cancelled)recordHarborPayoff(s,'rakes');
+ emit(s,'aid-counter',armor.x,armor.y,{life:.72,text:cancelled?'지원 포격 · 가로 포격 차단':'지원 포격 · 측면 장갑 명중'});
 }
 function updateOperationBoss(s,dt){
  const b=s.boss,p=s.player,index=s.operation.region;
@@ -1190,6 +1202,7 @@ export function action(s,kind,input){
  }
  if(kind==='skill'){
   if(!canUseSkill(s))return false;
+  if(portAidCounterReady(s))fireHarborAidCounter(s);
   const cfg=skillRules(s);p.charge-=cfg.cost;p.skillCd=cfg.cooldown;
   if(s.operator==='marco'){p.moveAim=aimFromInput(input,p.moveAim);fireFocus(s,cfg);}
   else{p.overdrive=cfg.duration;emit(s,'skill',p.x,p.y,{text:'전탄 보급',life:.7});}
@@ -1306,12 +1319,15 @@ export function step(s,dt,input={x:0,y:0},view=null){
  if(s.operation?.region>0&&b.active&&!b.dead)for(const part of b.parts)updateBurn(s,part,dt);
  updateEnemies(s,dt);updateBoss(s,dt);if(s.hitCandidate)hurt(s,s.hitCandidate.amount,s.hitCandidate.x,s.hitCandidate.y);delete s.hitCandidate;
  const crate=s.boss.harborSupply;
- if(crate&&s.boss.active&&!s.boss.dead&&p.hp>0&&distance(p,crate)<PORT_SUPPORT.recovery.reach&&!lineBlocked(s,p,crate)){
+ const aidInReach=crate&&s.boss.active&&!s.boss.dead&&p.hp>0&&distance(p,crate)<PORT_SUPPORT.recovery.reach&&!lineBlocked(s,p,crate);
+ const early=aidInReach&&portAidWindow(s,p);
+ // Keep a safe crate available until the pilot clears the edge of the warning.
+ if(aidInReach&&(early||!portAidWindow(s))){
   const kit=PORT_SUPPORT.recovery,hp=p.hp,charge=p.charge;
-  const early=portAidWindow(s,p);
   const rearmed=early&&p.dashCd>kit.dashDelay;
   p.hp=Math.min(p.maxHp,hp+kit.heal);p.charge=Math.min(100,charge+(early?kit.warningCharge:kit.charge));
   if(rearmed)p.dashCd=kit.dashDelay;
+  if(s.boss.parts[1].hp>0){s.boss.harborCounter=true;s.operation.harborPayoff??={};}
   delete s.boss.harborSupply;recordSupportUse(s);
   recordHarborPayoff(s,early?'safeAid':'aid');
   const healed=Math.ceil(p.hp)-Math.ceil(hp),charged=Math.floor(p.charge)-Math.floor(charge);
@@ -1346,7 +1362,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  }
  s.comboTime-=dt;if(s.comboTime<=0)s.combo=0;for(const fx of s.effects)fx.age+=dt;s.effects=s.effects.filter(fx=>fx.age<fx.life);
  if(s.boss.dead&&s.stage==='boss'&&p.hp>0){
-  s.stage='holdout';s.boss.active=false;delete s.boss.harborSupply;s.clearPressure=s.pressure;s.holdTime=0;s.enemyShots=[];s.hazards=[];
+  s.stage='holdout';s.boss.active=false;delete s.boss.harborSupply;delete s.boss.harborCounter;s.clearPressure=s.pressure;s.holdTime=0;s.enemyShots=[];s.hazards=[];
   if(s.operation){
    if(s.operation.region<2){s.tuning++;p.hp=Math.min(p.maxHp,p.hp+15);}
    openGate(s);
