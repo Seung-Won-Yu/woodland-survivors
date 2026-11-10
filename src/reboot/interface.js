@@ -45,8 +45,8 @@ function operationMap(selected,seed){const map=previewLayout(seed,selected);
 
 function frontIntel(index,seed){
  if(index===0){const route=beachRoute(seed);return `<div class="front-intel"><div class="front-intel-heading"><span>01 · 포로 구출 후 F / R 선택</span><strong>${route.name}</strong></div>${Object.entries(COAST_APPROACHES).map(([id,approach])=>`<div class="front-intel-stop"><span>${id.toUpperCase()} · ${approach.name}</span><b>${MODULES[approach.module].name}</b></div>`).join('')}</div>`;}
- const [site,heat,signal]=index===1?['통신 중계기','열차 측면 냉각 차단','원거리 포대 역송']:['항구 관제소','근접 코어 과열','원거리 포탑 교신 탈취'];
- return `<div class="front-intel"><div class="front-intel-heading"><span>${site} · 현장 작전 선택</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>화염</span><b>${heat}</b></div><div class="front-intel-stop"><span>전도</span><b>${signal}</b></div></div>`;
+ const [cache,order,task]=index===1?['화차 보급','통신 중계기','화차를 돌아 5초 해킹 · 포대 공략 선택']:['하역장 보급','항구 관제소','경비 제압 · 최종전 교란 또는 시험 탄약'];
+ return `<div class="front-intel"><div class="front-intel-heading"><span>투입 지점의 두 갈래</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>${cache}</span><b>가까운 경비 제압 · 무장·모듈 보급</b></div><div class="front-intel-stop"><span>${order}</span><b>${task}</b></div></div>`;
 }
 
 function launchDock(profile){

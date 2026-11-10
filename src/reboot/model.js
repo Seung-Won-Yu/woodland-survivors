@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
@@ -23,11 +23,12 @@ function advanceRegion(s){
  s.operation.support=support;delete s.operation.nextSupport;delete s.operation.tactic;
  if(support==='vanguard')Object.assign(s.player,vanguardAid(s.player));
  s.operation.region++;s.operation.regionTime=0;s.operation.jammed=false;s.operation.challengeTier=0;s.operation.holdoutKills=0;delete s.operation.gate;delete s.pursuitClock;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[s.operation.region]};
- Object.assign(s,regionLayout(s.seed+s.operation.region*7919,s.operation.region));s.boss=regionBoss(s.operation.region,s.seed);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;s.player.x=800;s.player.y=1040;s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
+ const sectorSeed=mapSeed(s.seed,s.operation.region),arrival=frontEntry(sectorSeed,s.operation.region).arrival;
+ Object.assign(s,regionLayout(sectorSeed,s.operation.region));s.boss=regionBoss(s.operation.region,s.seed);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;Object.assign(s.player,arrival);s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
  if(s.powerWave?.showcase&&s.powerWave.paired>0){
   s.powerWave.remaining=Math.max(s.powerWave.remaining,60);s.powerWave.delay=1;
  }else if(s.stats.completedBuild)s.powerWave={delay:3,remaining:60,clock:0};
- for(let i=0;i<10;i++)spawnAround(s,i===0?'officer':'rifle',{cohort:'ambient'},360,30);emit(s,'region-entry',800,1040,{text:`${s.operation.region+1}/3 · ${region(s).name}`,life:1.6});nextChoice(s);return true;
+ for(let i=0;i<10;i++)spawnAround(s,i===0?'officer':'rifle',{cohort:'ambient'},360,30);emit(s,'region-entry',arrival.x,arrival.y,{text:`${s.operation.region+1}/3 · ${region(s).name}`,life:1.6});nextChoice(s);return true;
 }
 function exitCards(s){
  const rare=s.operation?.region<2&&!s.operation.challengeTier;
@@ -36,9 +37,18 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+// Older later-front checkpoints contain site coordinates from before the route change.
+export function canResumeRun(run){
+ if(!canResumeRevision(run.balanceRevision))return false;
+ const front=run.operation?.region;
+ if(!front||run.balanceRevision===RULES.balanceRevision)return true;
+ if((front!==1&&front!==2)||!Array.isArray(run.sites))return false;
+ return regionLayout(mapSeed(run.seed,front),front).sites.every(site=>
+  run.sites.some(n=>n?.id===site.id&&n.x===site.x&&n.y===site.y));
+}
 export function restore(raw,{allowPrevious=false}={}){
- const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
+ const s=clone(raw);if(!allowPrevious&&!canResumeRun(s))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
  for(const m of s.modules)if(!MODULES[m.id]||!Number.isInteger(m.rank)||m.rank<1||m.rank>3)throw Error('모듈 저장이 손상됐습니다.');
  if(!Number.isFinite(s.player.hp)||s.player.hp<0||!Number.isFinite(s.player.maxHp)||s.player.maxHp<=0||s.player.hp>s.player.maxHp||!Number.isFinite(s.t)||s.t<0||s.tuning<0||s.rerolls<0||s.banishes<0)throw Error('작전 저장이 손상됐습니다.');

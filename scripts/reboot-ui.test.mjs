@@ -62,6 +62,16 @@ test('only simple opening levels use the compact field menu',()=>{
  const run=createOperation(17);run.choice={type:'level'};run.level=2;assert.equal(isQuickMod(run),true);
  run.modules=[{id:'coil',rank:1}];assert.equal(isQuickMod(run),false);run.modules=[];run.level=4;assert.equal(isQuickMod(run),false);
 });
+test('briefings show matching seeded arrival routes and mirror the railway',()=>{
+ const rail=regionPreview(1,19),port=regionPreview(2,19);
+ assert.match(rail,/data-approach="rail-cache"/);
+ assert.match(rail,/data-approach="rail-relay"/);
+ assert.match(port,/data-approach="port-landing"/);
+ assert.match(port,/data-approach="port-control"/);
+ assert.match(port,/<circle cx="720" cy="1040"/);
+ assert.deepEqual(fieldScene(1,19).rails[2][0],[900,1190]);
+ assert.deepEqual(fieldScene(1,58).rails[2][0],[700,1190]);
+});
 test('briefings share distinct field terrain and recognizable site symbols',()=>{
  assert.equal(fieldScene(0).water,'#365766');assert.ok(fieldScene(1).rails.length);assert.equal(fieldScene(1).water,null);assert.equal(fieldScene(2).water,'#234b5e');
  const run=createOperation(17),html=regionPreview(0,17);for(const site of run.sites)assert.ok(html.includes(`translate(${site.x} ${site.y})`));

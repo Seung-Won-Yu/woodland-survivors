@@ -1,5 +1,5 @@
-import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry} from './field-art.js';
-import {exitGate,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,coastLead,coastLeadColor} from './campaign.js';
+import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes} from './field-art.js';
+import {exitGate,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,coastLead,coastLeadColor,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach} from './model.js';
@@ -223,6 +223,7 @@ export function createRenderer(canvas,art){
    if(visible(s.boss.x,s.boss.y,150))paintWreckGround(c,s.boss.x,s.boss.y,index);
    if(visible(gate.x,gate.y,80))paintGateApproach(c,gate,gateNear);
   }
+  const approach=activeEntry(s);if(approach)paintEntryRoutes(c,approach);
   const entry=s.effects.find(f=>f.type==='region-entry');
   if(entry)paintFrontEntry(c,entry.x,entry.y,index,entry.age,reduced);
   for(const n of s.sites){const previous=siteStates.get(n.id);siteStates.set(n.id,{state:n.state,collected:previous&&previous.state!=='done'&&n.state==='done'?s.t:previous?.collected});}

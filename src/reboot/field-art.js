@@ -14,7 +14,7 @@ export function paintTerrainMargins(c,index,margin){
  }
 }
 export function paintTerrain(c,index,seed,art){
- const scene=fieldScene(index);c.fillStyle=scene.ground;c.fillRect(0,0,1600,1200);
+ const scene=fieldScene(index,seed);c.fillStyle=scene.ground;c.fillRect(0,0,1600,1200);
  for(const s of scene.shapes){c.beginPath();if(s.type==='rect'){c.fillStyle=s.fill;c.fillRect(s.x,s.y,s.w,s.h);continue;}s.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));if(s.fill){c.closePath();c.fillStyle=s.fill;c.fill();}if(s.stroke){c.strokeStyle=s.stroke;c.lineWidth=s.width;c.setLineDash(s.dash||[]);c.stroke();c.setLineDash([]);}}
  // Sparse wear breaks large flat surfaces without drawing a tile grid.
  for(let i=0;i<2600;i++){const x=(i*137+(seed%211))%1600,y=(i*263+(seed%137))%1200;if(x<80||x>1560)continue;c.fillStyle=scene.grain[i%2]+(i%3?'28':'38');c.fillRect(x,y,i%5+2,i%3+1);}
@@ -106,6 +106,21 @@ export function paintWreckSmoke(c,x,y,age,reduced){
   c.globalAlpha=(1-rise)*.38;
   c.fillStyle='#28312b';c.fillRect(drift-sz/2,top,sz,sz*.74);
   c.fillStyle='#465047';c.fillRect(drift-sz*.63,top+sz*.3,sz*.72,sz*.52);
+ }
+ c.restore();
+}
+export function paintEntryRoutes(c,entry){
+ c.save();
+ c.lineWidth=3;c.lineCap='round';c.lineJoin='round';
+ for(const route of entry.routes){
+  c.strokeStyle=route.color+'a0';c.setLineDash([10,11]);c.beginPath();
+  route.path.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();
+  c.setLineDash([]);
+  const [x,y]=route.path[1],labelY=y-43;
+  c.font='bold 12px Galmuri';c.textAlign='center';
+  const width=c.measureText(route.sign).width+20;
+  c.fillStyle='#182a2ade';c.fillRect(x-width/2,labelY-14,width,23);
+  c.fillStyle=route.color;c.fillRect(x-width/2,labelY+7,width,2);c.fillText(route.sign,x,labelY+2);
  }
  c.restore();
 }

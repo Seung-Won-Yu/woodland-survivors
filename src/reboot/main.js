@@ -1,8 +1,8 @@
 import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,isQuickMod} from './choice-details.js';
-import {terrainSvg,siteSymbol,sitePresentation,gateSymbol} from './field-scene.js';
+import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg} from './field-scene.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,coastLead,coastLeadColor,frontTactic,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,activeEntry,coastLead,coastLeadColor,frontTactic,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynergyReady,moduleRank,refitWeapons} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents} from './model.js';
 import {createStore,buyResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -222,10 +222,11 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&run&&mode==='battle'&&run.phase==='playing')mutate(d=>{pause(d);return true;});});
 window.addEventListener('blur',()=>{keys.clear();controls?.reset();if(run&&mode==='battle'&&run.phase==='playing'&&!busy)mutate(d=>{pause(d);return true;});});
-function updateMap(lead){
- const key=`${run.seed}:${Math.floor(run.t*5)}:${run.stage}:${run.operation?.region}:${run.raid?.state}:${run.challenge?.state}:${lead?.id}:${run.sites.map(n=>n.state).join()}`;if(key===mapStamp)return;mapStamp=key;
+function bearing(p,x,y){return ['→','↘','↓','↙','←','↖','↑','↗'][(Math.round(Math.atan2(y-p.y,x-p.x)/(Math.PI/4))+8)%8];}
+function updateMap(lead,entry){
+ const key=`${run.seed}:${Math.floor(run.t*5)}:${run.stage}:${run.operation?.region}:${run.raid?.state}:${run.challenge?.state}:${lead?.id}:${!!entry}:${run.sites.map(n=>n.state).join()}`;if(key===mapStamp)return;mapStamp=key;
  const dot=(cls,x,y,r,color,label='')=>`<circle class="${cls}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}"${label?` aria-label="${esc(label)}"`:''}/>`;
- let map=terrainSvg(run.operation?.region||0)+run.hazards.filter(h=>!h.hit).map(h=>h.lane?`<rect class="map-danger-lane" x="${h.x-h.w/2}" y="${h.y-h.h/2}" width="${h.w}" height="${h.h}" fill="#ee975e66" stroke="#ffda99" stroke-width="8"/>`:dot('map-danger',h.x,h.y,h.r,'#f77e778c')).join('');
+ let map=terrainSvg(run.operation?.region||0,run.seed)+entryRouteSvg(entry)+run.hazards.filter(h=>!h.hit).map(h=>h.lane?`<rect class="map-danger-lane" x="${h.x-h.w/2}" y="${h.y-h.h/2}" width="${h.w}" height="${h.h}" fill="#ee975e66" stroke="#ffda99" stroke-width="8"/>`:dot('map-danger',h.x,h.y,h.r,'#f77e778c')).join('');
  map+=run.blocks.filter(b=>b.hp!==0).map(b=>`<rect class="map-block" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#71837e"/>`).join('');
  map+=run.gems.map(g=>dot('map-xp',g.x,g.y,g.salvage?14:9,g.salvage?'#f5d487':'#a5ddcc')).join('');
  map+=run.enemies.filter(e=>!e.dead).map(e=>dot('map-enemy',e.x,e.y,e.cohort==='challenge'?24:e.type==='officer'?19:13,e.cohort==='challenge'?'#efb6ff':e.type==='officer'?'#f7b58d':'#d28257')).join('');
@@ -250,12 +251,12 @@ function updateMap(lead){
  map+=dot('map-player',run.player.x,run.player.y,30,'#fff7d9','피오');$('tactical-map').innerHTML=map;
 }
 function updateHud(){
- const battle=mode==='battle'&&renderer&&run;$('hud').hidden=!battle;$('hud').inert=!!battle&&run.phase!=='playing';$('controls').hidden=!battle||run.phase!=='playing'||!!pending;if(!battle){$('field-feedback').hidden=true;return;}const p=run.player,coastSite=coastLead(run);updateMap(coastSite);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
+ const battle=mode==='battle'&&renderer&&run;$('hud').hidden=!battle;$('hud').inert=!!battle&&run.phase!=='playing';$('controls').hidden=!battle||run.phase!=='playing'||!!pending;if(!battle){$('field-feedback').hidden=true;return;}const p=run.player,coastSite=coastLead(run),entry=activeEntry(run);updateMap(coastSite,entry);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
  document.body.classList.toggle('coast-lead',!!coastSite);
  $('level').textContent=`LV.${run.level}`;$('hp').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;document.body.classList.toggle('low-hp',p.hp/p.maxHp<.3);$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('charge').textContent=p.overdrive>0?`전탄 보급 ${p.overdrive.toFixed(1)}초`:`전탄 보급 ${Math.floor(p.charge)}%`;
  $('kills').textContent=`${run.stats.kills} K.O.`;$('score').textContent=`${run.stats.score.toLocaleString()}점 · 확보 ${operationCredits({operation:run.operation,stats:run.stats,won:false})}C`;$('time').textContent=fmt(run.t);$('xp-fill').style.width=`${run.xp/xpNeeded(run)*100}%`;
  const front=run.operation?.region;
- const localSite=run.stage!=='boss'?run.sites.filter(n=>['active','ready'].includes(n.state)&&distance(n,p)<260).sort((a,b)=>distance(a,p)-distance(b,p))[0]:null;
+ const localSite=run.stage!=='boss'?run.sites.filter(n=>['active','ready'].includes(n.state)&&(distance(n,p)<260||entry?.routes.some(route=>route.site===n.id))).sort((a,b)=>distance(a,p)-distance(b,p))[0]:null;
  const gate=exitGate(run),holdout=!!(gate&&run.operation),interact=interaction(run);
  const bossName=run.operation?region(run).boss:'장갑 수송차';
  const bossTarget={name:bossName,x:run.boss.active?run.boss.x:800,y:run.boss.active?run.boss.y:350};
@@ -263,19 +264,21 @@ function updateHud(){
  const orderSite=run.stage==='field'&&front>0&&!tactic
   ?run.sites.find(n=>['rail-relay','port-control'].includes(n.id)&&n.state!=='done'):null;
  const focusBoss=run.boss.active||(interact?.id==='boss'&&!interact.blocked)||run.stats.completedBuild&&!localSite&&!orderSite;
- const next=gate||coastSite||(focusBoss?bossTarget:orderSite||localSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
- const direction=['→','↘','↓','↙','←','↖','↑','↗'][(Math.round(Math.atan2(next.y-p.y,next.x-p.x)/(Math.PI/4))+8)%8];
+ const next=gate||coastSite||(focusBoss?bossTarget:localSite||orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
+ const choosingEntry=entry&&!localSite&&!focusBoss;
+ const direction=bearing(p,next.x,next.y);
  $('operation-track').textContent=run.operation?REGIONS.map((d,i)=>`${i<run.operation.region?'✓':i===run.operation.region?'▶':'○'} ${d.name}`).join('  /  '):'';
  $('stage').textContent=run.operation?`${run.operation.region+1}/3 ${region(run).name}${run.stage==='holdout'?' · 돌파 완료':run.stage==='boss'?' · 보스 교전':''}`:run.powerWave&&run.stage==='field'?'POWER TEST / 완성 화력 전개':run.stage==='holdout'?'MISSION CLEAR / 잔류 가능':run.stage==='boss'?'ARMORED CARRIER':'BEACHHEAD / 해안 침투';
  const wave=run.powerWave,showcase=wave?.showcase&&wave.paired>0;
  const reinforcements=showcase?run.stage==='boss'&&run.boss.mode!=='recover'?' · 재장전 때 시험 공세':` · 화력 시험 ${wave.paired}회 남음`:wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
- $('objective').textContent=`${direction} ${next.kind?sitePresentation(next).name:next.name} · ${Math.round(distance(p,next)/10)}m`;
+ $('objective').textContent=choosingEntry?(front===1?'선로 갈림길':'하역장 갈림길'):`${direction} ${next.kind?sitePresentation(next).name:next.name} · ${Math.round(distance(p,next)/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;
  const siteHint=next.state==='active'?next.kind==='relay'?` · 범위 안에서 해킹 ${Math.round(next.progress/5*100)}%`:` · 경비 ${guards}명, 이동하며 제압`:next.state==='ready'?' · 제압 완료, 접근해 회수':'';
  $('threat').textContent=`경계 ${run.pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${reinforcements}`;
  const fieldIntel=$('field-intel');
  let intel='';
- if(orderSite&&next===orderSite)intel='확보하면 보스 공략을 고를 수 있습니다.';
+ if(choosingEntry)intel=entry.routes.map(route=>`${bearing(p,...route.path[1])} ${route.sign}`).join(' · ');
+ else if(orderSite&&next===orderSite)intel='확보하면 보스 공략을 고를 수 있습니다.';
  else if(tactic&&run.stage==='field')intel=`${tactic.name} 확보 · 보스전에 적용`;
  else if(coastSite&&next===coastSite){
   if(coastSite.opening){

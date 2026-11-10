@@ -100,6 +100,32 @@ export function coastLead(s){
  return s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done')||null;
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
+export const mapSeed=(seed,index)=>seed+index*7919;
+const ENTRY={
+ 1:{arrival:{x:800,y:1040},routes:[
+  {site:'rail-cache',sign:'화차 보급',color:'#edce8e',path:[[800,1040],[665,1002],[562,947],[535,850]]},
+  {site:'rail-relay',sign:'중계기 해킹',color:'#b1dfcb',path:[[800,1040],[936,980],[1120,835],[1120,580]]}
+ ]},
+ 2:{arrival:{x:720,y:1040},routes:[
+  {site:'port-landing',sign:'하역장 보급',color:'#edce8e',path:[[720,1040],[620,992],[520,900]]},
+  {site:'port-control',sign:'관제소 돌파',color:'#b5dce7',path:[[720,1040],[875,1010],[995,929],[1030,821],[1090,740],[1180,690],[1180,620]]}
+ ]}
+};
+const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry])=>[index,{
+ arrival:{x:1600-entry.arrival.x,y:entry.arrival.y},
+ routes:entry.routes.map(route=>({...route,path:route.path.map(([x,y])=>[1600-x,y])}))
+}]));
+export const frontEntry=(sectorSeed,index)=>(sectorSeed%2===0?MIRRORED_ENTRY:ENTRY)[index];
+export function activeEntry(s){
+ const index=s.operation?.region;
+ if(!index||s.stage!=='field'||s.operation.regionTime>15)return null;
+ const entry=frontEntry(mapSeed(s.seed,index),index);
+ if(!entry||Math.hypot(s.player.x-entry.arrival.x,s.player.y-entry.arrival.y)>525)return null;
+ return entry.routes.every(route=>{
+  const [x,y]=route.path.at(-1);
+  return s.sites.some(n=>n.id===route.site&&n.x===x&&n.y===y&&n.state!=='done');
+ })?entry:null;
+}
 export function regionLayout(seed,index=0){
  const map=layout(seed);
  if(index===0){
@@ -110,18 +136,19 @@ export function regionLayout(seed,index=0){
   })};
  }
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});
+ const entry=frontEntry(seed,index),landing=i=>{const [x,y]=entry.routes[i].path.at(-1);return {x,y};};
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});
  if(index===1)return {...map,sites:[
-  {id:'rail-cache',kind:'supply',name:'화차 무기고',...p(570,850),state:'waiting'},
-  {id:'rail-relay',kind:'relay',name:'통신 중계기',...p(1050,650),state:'waiting',progress:0},
+  {id:'rail-cache',kind:'supply',name:'화차 보급',...landing(0),state:'waiting'},
+  {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),state:'waiting',progress:0},
   {id:'arsenal',kind:'armory',name:'선로 정비창',...p(350,430),state:'waiting'},
-  {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1120,300),state:'waiting'}
+  {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1160,300),state:'waiting'}
  ],blocks:[block('r1',640,730,100,185),block('r2',640,385,100,180),block('r3',950,600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};
  return {...map,sites:[
-  {id:'port-landing',kind:'supply',name:'하역장 무장',...p(520,900),state:'waiting'},
-  {id:'port-control',kind:'control',name:'항구 관제소',...p(1180,620),state:'waiting'},
-  {id:'arsenal',kind:'armory',name:'시험 병기 창고',...p(330,430),state:'waiting'},
-  {id:'port-ammo',kind:'supply',name:'지휘부 탄약',...p(1100,300),state:'waiting'}
+  {id:'port-landing',kind:'supply',name:'하역장 보급',...landing(0),state:'waiting'},
+  {id:'port-control',kind:'control',name:'항구 관제소',...landing(1),state:'waiting'},
+  {id:'arsenal',kind:'armory',name:'시험 병기 창고',...p(280,475),state:'waiting'},
+  {id:'port-ammo',kind:'supply',name:'지휘부 탄약',...p(1100,320),state:'waiting'}
  ],blocks:[block('p1',550,690,210,100),block('p2',850,470,235,100),block('p3',340,350,170,100),block('p4',1120,800,160,100),block('p5',1070,170,160,75,280)]};
 }
 export function regionBoss(index,seed=1){const d=REGIONS[index],turretSide=index===2&&seed%2===0?1:-1;return{id:'boss',type:'boss',x:800,y:180,hp:d.hp,maxHp:d.hp,r:index===1?76:65,active:false,dead:false,body:Math.PI/2,aim:Math.PI/2,mode:'aim',timer:1.3,cycle:0,spawnClock:4,kick:0,flash:0,parts:[{id:'part-a',type:'part',ox:60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25},{id:'part-b',type:'part',ox:-60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25}]};}

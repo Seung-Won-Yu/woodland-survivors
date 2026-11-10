@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.36.0" src="https://img.shields.io/badge/RIFT-0.36.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.37.0" src="https://img.shields.io/badge/RIFT-0.37.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -77,6 +77,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.37은 철도·항구에 보급과 전술 목표로 갈라지는 길을 표시합니다. 철도 중계기와 경비를 엄폐물 밖으로 옮겼고, 브리핑과 현장에 같은 시드의 좌우 배치를 사용합니다. [전선 진입 검증](docs/RIFT-GAMEPLAY-V1.md#037-철도와-항구-진입로).
 
 0.36은 인페르노의 분사·불씨와 전도 격발망의 도약·착탄을 구분합니다. 고정 입력 비교에서 합체 뒤 첫 15초의 도약이 14회에서 31회로 늘었습니다. [첫 공세 검증](docs/RIFT-GAMEPLAY-V1.md#036-완성-무장의-첫-공세).
 

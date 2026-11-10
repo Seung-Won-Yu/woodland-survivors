@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry} from '../src/reboot/campaign.js';
 import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
@@ -495,6 +495,49 @@ test('starting a fresh sortie settles a previous run once and survives a failed 
 });
 test('all region supplies and boss entrances stay reachable around permanent geometry',()=>{
  for(const seed of [16,17,18,19])for(let index=0;index<3;index++){const m=regionLayout(seed,index),free=(x,y)=>x>55&&x<1545&&y>55&&y<1145&&!m.blocks.some(b=>b.hp!==0&&x+16>b.x&&x-16<b.x+b.w&&y+16>b.y&&y-16<b.y+b.h),key=(x,y)=>`${x},${y}`,queue=[[800,1040]],seen=new Set(['800,1040']);for(let i=0;i<queue.length;i++){const [x,y]=queue[i];for(const [dx,dy]of [[20,0],[-20,0],[0,20],[0,-20]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||!free(nx,ny))continue;seen.add(k);queue.push([nx,ny]);}}for(const goal of [...m.sites,{x:800,y:350}])assert.ok(queue.some(([x,y])=>Math.hypot(x-goal.x,y-goal.y)<55),`${index}/${seed} ${goal.id||'boss'}`);}
+});
+test('marked later-front approaches and actual guard formations clear collision geometry',()=>{
+ const clear=(s,x,y,r)=>!s.blocks.some(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
+ for(const seed of [19,58]){
+  const s=createOperation(seed);
+  for(const index of [1,2]){
+   clearRegion(s);assert.ok(choose(s,'advance'));
+   const entry=frontEntry(mapSeed(seed,index),index);
+   assert.deepEqual([s.player.x,s.player.y],[entry.arrival.x,entry.arrival.y]);
+   assert.equal(activeEntry(s),entry);
+   for(const route of entry.routes){
+    const site=s.sites.find(n=>n.id===route.site);
+    assert.deepEqual(route.path.at(-1),[site.x,site.y]);
+    for(let i=1;i<route.path.length;i++){
+     const [ax,ay]=route.path[i-1],[bx,by]=route.path[i],steps=Math.ceil(Math.hypot(bx-ax,by-ay)/8);
+     for(let j=0;j<=steps;j++)assert.ok(clear(s,ax+(bx-ax)*j/steps,ay+(by-ay)*j/steps,16),route.site);
+    }
+   }
+   for(const site of s.sites){
+    assert.ok(clear(s,site.x,site.y,16),site.id);
+    const probe=restore(snapshot(s));Object.assign(probe.player,{x:site.x,y:site.y});
+    probe.enemies=[];probe.spawnClock=999;step(probe,dt);
+    const guards=probe.enemies.filter(e=>e.siteId===site.id);
+    assert.equal(guards.length,site.kind==='relay'?3:site.kind==='armory'?5:6);
+    assert.ok(guards.every(e=>clear(probe,e.x,e.y,e.r)),site.id);
+   }
+  }
+ }
+});
+test('previous later-front placements are settled once with earned credits',()=>{
+ const s=createOperation(19);
+ clearRegion(s);assert.ok(choose(s,'advance'));
+ s.balanceRevision='b22-capstone-impact';
+ assert.doesNotThrow(()=>restore(snapshot(s)));
+ const relay=s.sites.find(n=>n.id==='rail-relay');
+ Object.assign(relay,{x:550,y:650});
+ const p=beginProfile(emptyProfile(),s);
+ assert.throws(()=>restore(p.active.run),/이전 규칙/);
+ const migrated=parseProfile(JSON.stringify(p));
+ assert.equal(migrated.active,null);
+ assert.equal(migrated.recent[0].reason,'rules-updated');
+ assert.ok(migrated.credits>=90);
+ assert.equal(parseProfile(JSON.stringify(migrated)).credits,migrated.credits);
 });
 test('every beach offers both opening guns and the matching approach has safe guards and its module',()=>{
  for(const seed of [16,17,18,19])for(const weapon of ['f','r']){

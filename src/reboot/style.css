@@ -217,3 +217,16 @@
  #field-upgrade:not([hidden]){min-height:48px}
  #field-upgrade kbd{display:none}
 }
+
+@media(max-width:700px) and (orientation:portrait){
+ #banner[data-kind="region-entry"] {
+  left:auto;
+  right:12px;
+  top:210px;
+  transform:none;
+  width:min(224px,calc(100% - 128px));
+  padding:9px 12px;
+  text-align:left;
+ }
+ #banner[data-kind="region-entry"] strong {font-size:17px;margin:3px 0}
+}
