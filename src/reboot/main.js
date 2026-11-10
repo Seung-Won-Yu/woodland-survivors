@@ -486,6 +486,7 @@ function updateHud(){
   let hint=tactic?.hint||(supportId==='vanguard'||harborPart?'':supportHint);
   if(active&&run.operation.tactic==='heat')hint='장갑 과열 · 지금 집중 공격';
   else if(railOpen)hint='';
+  else if(front===2&&run.operation.tactic==='signal'&&boss.parts[0].hp<=0)hint=boss.parts[1].hp>0?'측면 장갑 파괴로 장갑탄 차단':'';
   else if(active)hint='전류 연결 완료 · 남은 부위 사격';
   else if(firstWarning||dashWindow)hint=supportHint;
   if(!(front>0)&&boss.mode==='windup'){
@@ -507,7 +508,7 @@ function updateHud(){
     else line.textContent=`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
    }else if(supportId==='overrun'){
     const gap=distance(p,boss)-portCoreReach(boss);
-    line.textContent=portCoreDisrupted(run)?'돌격 · 코어 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 코어 경계까지 이동':p.dashCd>0?'돌격 · 회피 재사용 대기':gap<=0?'돌격 · 경계 밖으로 이동':gap>110?'돌격 · 코어 경계까지 접근':'돌격 · 지금 경계 안으로 회피';
+    line.textContent=portCoreDisrupted(run)?'돌격 · 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 경계 안으로 이동':p.dash>0&&Number.isFinite(p.portCutX)?'돌격 · 좌우 이동 유지':p.dashCd>0?'돌격 · 회피 재사용 대기':gap<=0?'돌격 · 원 안에서 좌우 회피':gap>110?'돌격 · 코어 경계까지 접근':'돌격 · 원 안으로 회피';
    }else{
     const crate=boss.harborSupply,aid=portAidPreview(run),kit=PORT_SUPPORT.recovery;
     if(crate){

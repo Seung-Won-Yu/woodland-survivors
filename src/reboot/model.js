@@ -1042,8 +1042,11 @@ export function action(s,kind,input){
  if(kind==='dash'){
   if(p.dashCd>0)return false;
   const b=s.boss;
-  if(s.operation?.region===2&&s.operation.support==='overrun'&&b.active&&distance(p,b)>portCoreReach(b))p.portRush=true;
-  else delete p.portRush;
+  delete p.portRush;delete p.portCutX;
+  if(s.operation?.region===2&&s.operation.support==='overrun'&&b.active&&!b.dead){
+   if(distance(p,b)>portCoreReach(b))p.portRush=true;
+   else p.portCutX=p.x;
+  }
   p.dash=.18;p.dashCd=2;p.invuln=Math.max(p.invuln,.30);
   if(p.maneuver==='assault')p.assaultTime=1.25;
   emit(s,'dash',p.x,p.y,{angle:p.aim,life:.2});return true;
@@ -1128,15 +1131,18 @@ export function step(s,dt,input={x:0,y:0},view=null){
  if(s.operator!=='marco')p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);
  s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
  const ix=Number.isFinite(input.x)?input.x:0,iy=Number.isFinite(input.y)?input.y:0,len=Math.max(1,Math.hypot(ix,iy)),moving=Math.hypot(ix,iy)>.07;p.moving=moving;
- const b=s.boss,coreEntry=p.dash>0&&p.portRush&&portCoreWindow(s)&&distance(p,b)>portCoreReach(b);
+ const b=s.boss,coreDash=p.dash>0&&portCoreWindow(s),coreReach=portCoreReach(b);
+ const coreEntry=coreDash&&p.portRush&&distance(p,b)>coreReach;
  if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;if(s.operator==='marco')p.moveAim=Math.atan2(iy,ix);}
- if(coreEntry&&distance(p,b)<=portCoreReach(b)&&!lineBlocked(s,p,b)){
-  const kit=PORT_SUPPORT.overrun;
-  delete p.portRush;b.harborStrikeCycle=b.cycle;b.timer+=kit.delay;recordSupportUse(s);
-  damage(s,b,kit.damage,'blast','support');emit(s,'break',b.x,b.y,{text:'돌격 신관 · 코어 장갑 해제'});
+ const kit=PORT_SUPPORT.overrun;
+ const coreCut=coreDash&&Number.isFinite(p.portCutX)&&Math.abs(p.x-p.portCutX)>=kit.sideStep;
+ if((coreEntry||coreCut)&&distance(p,b)<=coreReach&&!lineBlocked(s,p,b)){
+  delete p.portRush;delete p.portCutX;b.harborStrikeCycle=b.cycle;b.timer+=kit.delay;recordSupportUse(s);
+  damage(s,b,kit.damage,'blast','support');
+  emit(s,'break',b.x,b.y,{text:`${coreCut?'측면 회피':'돌격 신관'} · 코어 장갑 해제`});
  }
  if(wasDashing&&p.dash<=0&&s.operation?.support==='overrun'){
-  delete p.portRush;
+  delete p.portRush;delete p.portCutX;
   blast(s,p.x,p.y,100,85,'support');
   if(s.operation.region!==2&&b.active&&!b.dead&&b.mode==='recover'&&distance(p,b)<=100+b.r&&!lineBlocked(s,p,b)){
    const target=b.parts.filter(part=>part.hp>0).map(part=>Object.assign(part,partPosition(s,part))).sort((a,b)=>distance(p,a)-distance(p,b))[0]||b;

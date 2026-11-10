@@ -71,7 +71,7 @@ export const PORT_LANDING={range:215,guards:[
 ]};
 export const PORT_SUPPORT={
  breach:{impact:'측면 발사로 포탑 포격 저지 · 피해 +65%',detail:'측면에서 쏜 탄이 포격 예고 중 명중하면 포탑탄 두 발을 취소합니다. 발사 후 바로 회피해도 됩니다.',hint:'포탑 쪽 사선을 잡으세요. 발밑 집중 포격은 계속됩니다.',flank:105,boost:1.65},
- overrun:{impact:'회피 돌입으로 코어 직격 320 · 장갑 해제',detail:'재장전 중 표시된 경계를 회피로 넘으세요. 남은 노출 동안 코어가 피해를 더 받고, 노출이 0.9초 늘어납니다.',hint:'포격을 피한 뒤 코어 경계 밖에서 안으로 회피하세요.',reach:100,damage:320,delay:.9},
+ overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'재장전 때 코어 원으로 돌입하거나 원 안에서 옆으로 회피하세요.',reach:100,sideStep:48,damage:320,delay:.9},
  recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 세 포격에 좌우 교대로 투하합니다. 붉은 원 밖에서 경고 중 회수하면 전탄 +45.',hint:'표시된 화물에서 떨어져 포격을 유도한 뒤 경고 중 회수하세요.',heal:12,charge:20,warningCharge:45,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';

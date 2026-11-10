@@ -138,9 +138,17 @@ function paintPortCue(c,s){
    circle(c,p.x,p.y,25,null,'#c8f4ff',3);c.fillStyle='#c8f4ff';c.fillRect(p.x-2,p.y-30,4,10);
   }
  }else if(portCoreWindow(s)){
-  c.setLineDash([9,7]);circle(c,b.x,b.y,portCoreReach(b),null,'#ffc889b8',2);c.setLineDash([]);
+  const reach=portCoreReach(b),p=s.player;
+  c.setLineDash([9,7]);circle(c,b.x,b.y,reach,null,'#ffc889b8',2);c.setLineDash([]);
   circle(c,b.x,b.y-21,22,'#432820aa','#ffd0a1',3);
   c.fillStyle='#ffe6bb';c.beginPath();c.moveTo(b.x-9,b.y-22);c.lineTo(b.x+9,b.y-22);c.lineTo(b.x,b.y-33);c.closePath();c.fill();c.fillRect(b.x-3,b.y-22,6,12);
+  if(p.dashCd<=0&&distance(p,b)<=reach){
+   c.strokeStyle='#ffe6bb';c.lineWidth=3;
+   for(const side of [-1,1]){
+    const x=p.x+side*32,y=p.y+5;
+    c.beginPath();c.moveTo(x-side*7,y-6);c.lineTo(x,y);c.lineTo(x-side*7,y+6);c.stroke();
+   }
+  }
  }else if(portCoreDisrupted(s)){
   circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
  }

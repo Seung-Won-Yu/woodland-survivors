@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.52.0" src="https://img.shields.io/badge/RIFT-0.52.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.53.0" src="https://img.shields.io/badge/RIFT-0.53.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -18,6 +18,8 @@
 피오는 전탄 보급으로 여러 무장의 연사를 가속합니다. 마르코는 가까이서 직접 명중시켜 집중을 채우고, 이동 방향으로 관통 사격합니다. 레벨 6에서 보스용 집중 조준과 밀집 보병용 산개 관통 중 하나를 고릅니다.
 
 철도에서는 시드에 따라 정비대와 중계기에 방패 검문 또는 박격포 경계가 배치됩니다. 선택 거점과 보스 직행은 전장의 목표판에서 각각 확인할 수 있습니다. 항구에서는 정면과 측면 해치의 첫 포격 방향이 다르고, 관제소 교란을 고르면 첫 가로 포격의 장갑탄을 끊습니다.
+
+철도에 잔류해 고른 부품은 항구 보스전의 동선을 바꿉니다. **철갑 급탄**은 측면에서 포탑탄을 차단하고, **돌격 신관**은 재장전 중 코어 원으로 돌입하거나 원 안에서 좌우로 회피해 장갑을 엽니다. **회수 의무 장비**는 포격을 유도한 뒤 측면 화물을 회수해 체력과 전탄을 채웁니다.
 
 기본 주소와 `reboot.html`은 **같은 RIFT**를 실행합니다. 구형 작전실·동물 원정·이전 전투 실험의 진입점은 공개 빌드에서 제외했습니다. 과거 원본과 설계 이력은 Git에 남깁니다.
 

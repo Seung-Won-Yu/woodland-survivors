@@ -906,6 +906,30 @@ test('late harbor dash registers on entry and core exposure expires with the ext
  s.shots=[bullet(s,s.boss)];step(s,dt);
  assert.equal(s.boss.hp,s.boss.maxHp-320-160-65);
 });
+test('a harbor sidestep opens the core inside the ring but vertical or blocked dashes do not',()=>{
+ const arena=()=>{
+  const s=supportArena(2,'overrun','recover');
+  Object.assign(s.player,{x:760,y:400});
+  return s;
+ };
+ const vertical=arena();
+ assert.ok(action(vertical,'dash'));tick(vertical,.18,{x:0,y:-1});
+ assert.equal(vertical.boss.hp,vertical.boss.maxHp);
+ const blocked=arena();
+ blocked.blocks=[{x:720,y:326,w:150,h:18}];
+ assert.ok(action(blocked,'dash'));tick(blocked,.18,{x:1,y:0});
+ assert.equal(blocked.boss.hp,blocked.boss.maxHp);
+ const s=arena();
+ assert.ok(action(s,'dash'));tick(s,.05,{x:1,y:0});
+ assert.equal(s.boss.hp,s.boss.maxHp);
+ const loaded=restore(snapshot(s));tick(loaded,.13,{x:1,y:0});
+ assert.equal(loaded.boss.hp,loaded.boss.maxHp-320);
+ assert.equal(loaded.stats.supportUses[2],1);
+ assert.ok(loaded.effects.some(e=>e.text==='측면 회피 · 코어 장갑 해제'));
+ Object.assign(loaded.player,{x:760,y:400,dashCd:0});
+ assert.ok(action(loaded,'dash'));tick(loaded,.18,{x:1,y:0});
+ assert.equal(loaded.stats.supportUses[2],1);
+});
 test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
  const s=supportArena(2,'recovery','aim');Object.assign(s.boss,{cycle:0,timer:0});Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
  step(s,dt);assert.equal(s.boss.mode,'salvo');assert.deepEqual(s.boss.harborSupply,{x:975,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);
