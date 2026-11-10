@@ -35,6 +35,9 @@ function equippedFeedback(c,d,openingGun,heatActivated){
  equippedUntil=performance.now()+1900;
  equippedWeapon=c.weapon||c.primary||null;
  const feedback=$('field-feedback');
+ if(c.kind==='fusion'||c.kind==='evolve'&&c.weapon==='f'){
+  feedback.replaceChildren();feedback.hidden=true;return;
+ }
  feedback.classList.toggle('opening-receipt',openingGun);
  if(heatActivated){
   feedback.innerHTML=`${moduleIcon('catalyst')}<div><span>전투 연계 개방</span><b>열압 연계 가동</b><small>불붙은 적에 폭발을 맞히세요.</small></div>`;
@@ -360,7 +363,7 @@ function updateHud(){
   gear.setAttribute('aria-keyshortcuts','G');
   gear.innerHTML=`<b>${esc(gearTitle)}</b><small>${gearHint}</small><kbd class="key-hint" aria-hidden="true">G</kbd>`;
  }
- for(const el of $('weapons').children)el.classList.toggle('just-equipped',performance.now()<equippedUntil&&el.dataset.weaponId===equippedWeapon);$('field-feedback').hidden=mode!=='battle'||run.phase!=='playing'||performance.now()>equippedUntil;
+ for(const el of $('weapons').children)el.classList.toggle('just-equipped',performance.now()<equippedUntil&&el.dataset.weaponId===equippedWeapon);const feedback=$('field-feedback');feedback.hidden=!feedback.childElementCount||run.phase!=='playing'||performance.now()>equippedUntil;
  $('interact').hidden=!interact||!!interact.blocked;$('interact-label').textContent=interact?.label||'';
  const skill=RULES.fio[p.doctrine];$('skill').disabled=p.charge<skill.cost||p.skillCd>0||p.overdrive>0;$('skill').innerHTML=`전탄 보급<small>${p.overdrive>0?`${p.overdrive.toFixed(1)}초 가동`:p.skillCd>0?`${p.skillCd.toFixed(1)}초`:`${Math.floor(p.charge)}/${skill.cost}`}</small>`;$('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비<span class="key-hint"> · SPACE</span>'}</small>`;
  const raid=run.raid?.state==='active';$('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',raid);if(raid){$('raid-progress').value=run.raid.progress/run.raid.maxProgress;$('raid-hp').textContent=`${run.raid.contract==='armored'?'장갑 수송대':'보급차'} ${Math.ceil(run.raid.target.hp)} / ${run.raid.target.maxHp}`;}
@@ -394,7 +397,7 @@ function updateHud(){
   }
  }
 }
-const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill','salvo-impact':'power-kill','payload-impact':'burst',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve',heal:'heal',break:'crowd-break'};
+const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve',heal:'heal',break:'crowd-break'};
 const bannerPriority=['region-entry','gate-open'];
 function processEvents(){
  const banner=$('banner'),events=new Set(takeEvents(run));
@@ -404,16 +407,18 @@ function processEvents(){
  if(mode!=='battle'||!events.size)return;
  if(store.settings().sound){
   const cues=new Set([...events].map(event=>fieldCues[event]).filter(Boolean));
+  if(cues.has('flame-loop')&&run.weapons.some(w=>w.id==='f'&&w.evolved)){cues.delete('flame-loop');cues.add('inferno-jet');}
   if(cues.has('heat-break')){cues.delete('power-kill');cues.delete('wood-kill');}
   for(const cue of selectAudioEvents(cues))audio.play(cue,0,run.weapons.some(w=>w.evolved));
   if(events.has('xp-pickup')&&!cues.has('hurt')&&!cues.has('armor-collapse'))audio.play('xp',0);
  }
  const priority=bannerPriority.find(type=>events.has(type));
- if(!priority&&bannerPriority.includes(banner.dataset.kind))return;
- const fx=run.effects.findLast(f=>priority?f.type===priority:events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
+ const capstone=events.has('complete')&&run.effects.findLast(f=>f.type==='complete'&&f.showcase);
+ if(!priority&&!capstone&&bannerPriority.includes(banner.dataset.kind))return;
+ const fx=capstone||run.effects.findLast(f=>priority?f.type===priority:events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
  if(!fx)return;
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
- bannerUntil=run.t+(priority?2.1:1.5);
+ bannerUntil=run.t+(bannerPriority.includes(fx.type)?2.1:1.5);
  if(fx.type==='region-entry'){
   const kit=FRONT_SUPPORTS[run.operation.support];
   banner.innerHTML=`<span>전선 ${String(run.operation.region+1).padStart(2,'0')} / 03</span><strong>${esc(region(run).name)}</strong><small>${esc(kit?`${kit.name} 장착 · ${kit.role}`:region(run).mission)}</small>`;

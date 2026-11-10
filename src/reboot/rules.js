@@ -1,7 +1,7 @@
 export const RULES = {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b21-field-rhythm",
+  "balanceRevision": "b22-capstone-impact",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",
@@ -620,6 +620,7 @@ export const RULES = {
     "primaryBaseLevel": 6,
     "hitsPerPayload": 10,
     "payloadDamage": 80,
+    "payloadSpeed": 640,
     "payloadRadius": 130,
     "payloadCooldown": 0.6,
     "overflowIntervalReductionPerLevel": 0.03,

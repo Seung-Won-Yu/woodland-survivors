@@ -38,7 +38,7 @@ test('flame auto aim prioritizes a reachable crowd over a closer isolated soldie
  const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:0,level:6,evolved:true,branch:'trail'}];s.enemies=[enemy('isolated',900,800,'rifle',1000),...Array.from({length:10},(_,i)=>enemy(`crowd-${i}`,650,775+i*5,'rifle',1000))];step(s,dt);assert.equal(s.enemies[0].hp,1000);assert.ok(s.enemies.slice(1).every(e=>e.hp<1000));
 });
 test('fusion payload starts at its triggering impact and does not charge itself',()=>{
- const s=quiet(),w=s.weapons[0];w.level=6;w.evolved=true;w.fusion={secondary:'r',branch:'homing',overflow:0};w.payload=9;s.enemies=[enemy('impact',1000,800,'rifle',1),enemy('next',1100,800,'rifle',1000)];s.shots=[bullet(s,s.enemies[0],2)];step(s,dt);const payload=s.shots.find(q=>q.source==='payload');assert.ok(payload);assert.ok(payload.x>=1000);assert.equal(payload.target,'next');assert.equal(s.stats.payloadBursts,1);tick(s,.5);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
+ const s=quiet(),w=s.weapons[0];w.level=6;w.evolved=true;w.fusion={secondary:'r',branch:'homing',overflow:0};w.payload=9;s.enemies=[enemy('impact',1000,800,'rifle',1),enemy('next',1100,800,'rifle',1000)];s.shots=[bullet(s,s.enemies[0],2)];step(s,dt);const payload=s.shots.find(q=>q.source==='payload');assert.ok(payload);assert.ok(payload.x>=1000);assert.equal(payload.target,'next');assert.ok(Math.abs(Math.hypot(payload.vx,payload.vy)-RULES.fusion.payloadSpeed)<1e-6);assert.equal(s.stats.payloadBursts,1);tick(s,.5);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
 });
 test('fusion flies past a surviving trigger and detonates in a second pack',()=>{
  const s=quiet(),w=s.weapons[0];Object.assign(w,{level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0},payload:9});
@@ -46,6 +46,14 @@ test('fusion flies past a surviving trigger and detonates in a second pack',()=>
  s.enemies=[first,...crowd];s.shots=[bullet(s,first,2)];step(s,dt);
  const q=s.shots.find(q=>q.source==='payload');assert.ok(q);assert.equal(q.target,'second-a');assert.deepEqual(q.hitIds,['survivor']);assert.equal(first.hp,998);
  tick(s,.75);assert.ok(crowd.every(e=>e.dead));assert.equal(s.stats.payloadKills,2);assert.equal(s.stats.payloadBursts,1);assert.ok(takeEvents(s).includes('payload-impact'));
+});
+test('a saved in-flight homing payload keeps its launch speed and lifetime',()=>{
+ const s=quiet(),target=enemy('ahead',1140,800,'rifle',1000);s.enemies=[target];
+ s.shots=[{...bullet(s,target,80),x:920,vx:420,life:.5,rocket:true,radius:130,source:'payload',homing:true}];
+ const loaded=restore(snapshot(s));step(loaded,dt);
+ const [shot]=loaded.shots;
+ assert.ok(Math.abs(Math.hypot(shot.vx,shot.vy)-420)<1e-6);
+ assert.ok(Math.abs(shot.life-(.5-dt))<1e-6);
 });
 test('two payload kills send a single relay into another pack without feeding the launcher',()=>{
  const s=quiet(),w=s.weapons[0];Object.assign(w,{level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0},payload:9});
@@ -251,6 +259,12 @@ test('heat ignition is independent of the first four targets using the coil hit 
  const s=quiet();s.phase='choice';s.choice={type:'armory',quality:'rare'};s.choices=[{id:'bad',kind:'resupply',heal:-1,charge:0}];assert.throws(()=>restore(s));
  });
 
+test('capstone contacts use the same bounded sound lanes as other weapons',async()=>{
+ const {selectAudioEvents}=await import('../src/game/audio.js');
+ assert.deepEqual(selectAudioEvents(new Set(['conduit-impact','power-kill','swarm-shot'])),['swarm-shot','conduit-impact']);
+ assert.deepEqual(selectAudioEvents(new Set(['conduit-impact','conduit-hop','inferno-jet','flame-loop'])),['inferno-jet','conduit-hop']);
+ assert.deepEqual(selectAudioEvents(new Set(['conduit-impact','inferno-jet','hurt'])),['hurt']);
+});
 test('heat audio stays distinct while hurt keeps foreground priority',async()=>{const {selectAudioEvents}=await import('../src/game/audio.js');assert.deepEqual(selectAudioEvents(new Set(['heat-break','power-kill'])),['heat-break']);assert.deepEqual(selectAudioEvents(new Set(['heat-break','flame-loop','hurt'])),['hurt']);});
 
 function quietOperation(){const s=createOperation(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}

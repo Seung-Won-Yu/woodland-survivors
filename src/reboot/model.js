@@ -36,7 +36,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -241,7 +241,7 @@ function buildCompleted(s,kind,weapon){
   s.stats[revealed]=true;
   s.powerWave={delay:.65,remaining:s.powerDone?Math.max(24,s.powerWave?.remaining||0):60,clock:0,paired:3,showcase};
   s.powerDone=true;
-  emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:showcase==='fusion'?'전도 격발망 가동 · 첫 연쇄탄 장전':'인페르노 가동 · 밀집 보병 접근'});
+  emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text:showcase==='fusion'?'전도 격발망 가동 · 첫 연쇄탄 장전':'인페르노 가동 · 밀집 보병 접근'});
  }else if(!s.powerDone){
   s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};
   emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='single'?'무기 진화 완료':'발동 연계 완성'});
@@ -296,7 +296,7 @@ function recordSupportUse(s){
  s.stats.supportUses??={};
  s.stats.supportUses[front]=(s.stats.supportUses[front]||0)+1;
 }
-function scoreKill(s,e,source){
+function scoreKill(s,e,source,kind){
  if(s.operation&&s.stage==='holdout'&&e.cohort==='holdout'){
   s.operation.holdoutKills=(s.operation.holdoutKills||0)+1;
   s.stats.holdoutDefeated=(s.stats.holdoutDefeated||0)+1;
@@ -304,7 +304,9 @@ function scoreKill(s,e,source){
  if(source==='payload'||source==='wake'){const key=source==='payload'?'payloadKills':'wakeKills';s.stats[key]=(s.stats[key]||0)+1;}
  if(e.type==='officer'){if(s.player.hp>0&&moduleRank(s,'medic')&&!(s.medicCd>0)){s.player.hp=Math.min(s.player.maxHp,s.player.hp+12);s.medicCd=12;emit(s,'heal',e.x,e.y,{text:'정예 제압 · 체력 +12'});}s.stats.elites++;if(s.stats.elites<=8)s.stats.score+=100;}else{s.stats.kills++;if(s.stats.kills<=(s.operation?900:300))s.stats.score+=10;}
  s.player.charge=Math.min(100,s.player.charge+1*(1+Math.min(.2,s.level*.01)));s.combo++;s.comboTime=2;s.stats.bestCombo=Math.max(s.combo,s.stats.bestCombo);
- const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);emit(s,'kill',e.x,e.y,{angle:s.player.aim});
+ const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);
+ const flavor=source==='payload'?'arc':kind==='fire'?'fire':null;
+ emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{})});
  const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
 }
 function activateFrontTactic(s,e,kind,source,owner){
@@ -375,7 +377,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  if(e.type==='boss'){s.boss.dead=true;s.stats.bossKilled=true;if(s.operation){s.operation.cleared=s.operation.region+1;if(s.weapons.some(w=>w.fusion))s.stats.fusionBosses++;if(s.weapons.some(w=>w.id==='f'&&w.evolved))s.stats.flameBosses++;}s.stats.score+=1000;emit(s,'boss-down',e.x,e.y,{r:e.r,life:1.2});return;}
  if(e===signalCourier(s)){e.dead=true;dropXp(s,e.x,e.y,24,true);emit(s,'break',e.x,e.y);return;}
  if(e.type==='courier'){e.dead=true;s.raid.state='success';s.stats.raidSuccess++;s.stats.score+=300;gainXp(s,12);emit(s,'break',e.x,e.y);emit(s,'raid-success',e.x,e.y,{quality:s.raid.quality,text:`${QUALITY[s.raid.quality]} 보급 탈취`,life:1.4});return;}
- e.dead=true;e.death=.3;scoreKill(s,e,source);
+ e.dead=true;e.death=.3;scoreKill(s,e,source,kind);
 }
 function feed(s,owner,weight,target){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}
@@ -402,8 +404,8 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=sou
 }
 function fire(s,w,target,a,amount,opts={}){
  if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin,source=opts.source||'native',evolved=w.evolved&&!w.fusion;
- const speed=rocket?source==='payload'?420:300:700;
- s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(source==='payload'?{arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
+ const speed=rocket?source==='payload'?RULES.fusion.payloadSpeed:300:700;
+ s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
 }
 export function activeManeuver(p){
  if(p.maneuver==='assault'&&p.moving&&p.assaultTime>0)return 'assault';
@@ -448,7 +450,7 @@ function detonate(s,q){
 }
 function updateShots(s,dt){
  for(const q of s.shots){q.life-=dt;if(q.life<=0)continue;if(q.arming>0)q.arming-=dt;const old={x:q.x,y:q.y};
-  if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)&&(q.avoidGroup==null||e.waveGroup!==q.avoidGroup)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8),speed=q.source==='payload'?420:300;q.vx=Math.cos(angle)*speed;q.vy=Math.sin(angle)*speed;}}
+  if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)&&(q.avoidGroup==null||e.waveGroup!==q.avoidGroup)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8),speed=q.source==='payload'?(q.speed??Math.hypot(q.vx,q.vy)):300;q.vx=Math.cos(angle)*speed;q.vy=Math.sin(angle)*speed;}}
   q.x+=q.vx*dt;q.y+=q.vy*dt;
   const wall=blocked(s,q.x,q.y,q.r);if(wall){if(q.rocket)detonate(s,q);else if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);q.life=0;emit(s,'impact',q.x,q.y);continue;}
   for(const e of targets(s)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
