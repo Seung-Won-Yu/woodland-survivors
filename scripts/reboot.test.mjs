@@ -8,6 +8,7 @@ import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,sett
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
+import {COAST_CHARGE,coastChargeLane} from '../src/reboot/coast-charge.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -360,6 +361,77 @@ test('intermediate return is partial and only the third clear permits full extra
 test('a simultaneous intermediate boss death cannot heal or advance a dead pilot',()=>{
  const s=quietOperation();s.player.hp=1;s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.shots=[bullet(s,s.boss)];s.enemyShots=[{x:800,y:800,vx:0,vy:0,life:1,r:5}];step(s,dt);assert.equal(s.phase,'result');assert.equal(s.player.hp,0);assert.equal(s.tuning,1);assert.equal(s.result.operation.cleared,1);assert.equal(s.result.won,false);
 });
+const overlapsCover=(s,e,r)=>s.blocks.some(b=>b.hp!==0&&e.x+r>b.x&&e.x-r<b.x+b.w&&e.y+r>b.y&&e.y-r<b.y+b.h);
+function coastEncounter(hp){
+ const s=quietOperation();
+ s.stage='boss';Object.assign(s.boss,{active:true,timer:0});
+ Object.assign(s.player,{x:800,y:470});
+ s.blocks=hp===undefined?[]:[{id:'test-cover',x:740,y:350,w:120,h:60,hp,maxHp:hp}];
+ return s;
+}
+function runLockedCharge(s){
+ let ticks=0;
+ while(['windup','charge'].includes(s.boss.mode)&&ticks++<120)step(s,dt);
+ assert.equal(s.boss.mode,'recover');
+}
+test('coast boss entry is clear on both mirrored shores with live cover',()=>{
+ for(const seed of [17,18,19,22]){
+  const s=createOperation(seed);
+  Object.assign(s.player,{x:800,y:350});
+  assert.ok(action(s,'interact'));assert.equal(s.stage,'boss');
+  assert.ok(!overlapsCover(s,s.player,16));
+  assert.ok(s.blocks.find(b=>b.id==='b2').hp>0);
+ }
+});
+test('a locked coast charge stops at its preview against permanent cover and leaves the rear open',()=>{
+ const s=coastEncounter(-1);step(s,dt);
+ const lane=coastChargeLane(s);
+ assert.equal(lane.blockId,'test-cover');assert.equal(lane.r,s.boss.r+16);
+ assert.ok(Math.abs(lane.endY-(350-s.boss.r))<.1);
+ s.player.x=1040;
+ runLockedCharge(s);
+ assert.ok(Math.hypot(s.boss.x-lane.endX,s.boss.y-lane.endY)<.01);
+ assert.ok(!overlapsCover(s,s.boss,s.boss.r));
+ assert.equal(s.blocks[0].hp,-1);
+ assert.equal(s.boss.timer,COAST_CHARGE.recover+COAST_CHARGE.impactBonus);
+ assert.ok(takeEvents(s).includes('charge-impact'));
+});
+test('coast cover breaks on impact, and an early break does not lengthen the locked lane',()=>{
+ for(const clearedEarly of [false,true]){
+  const s=coastEncounter(240);step(s,dt);
+  const lane=coastChargeLane(s);assert.equal(lane.blockId,'test-cover');
+  if(clearedEarly)s.blocks[0].hp=0;
+  runLockedCharge(s);
+  assert.equal(s.blocks[0].hp,0);
+  assert.ok(Math.hypot(s.boss.x-lane.endX,s.boss.y-lane.endY)<.01);
+  assert.equal(s.boss.timer,COAST_CHARGE.recover+(clearedEarly?0:COAST_CHARGE.impactBonus));
+  assert.equal(takeEvents(s).includes('charge-impact'),!clearedEarly);
+ }
+});
+test('a coast charge brakes at the edge and b26 embedded checkpoints keep their remaining charge',()=>{
+ const edge=coastEncounter();
+ Object.assign(edge.boss,{x:1430,y:400});Object.assign(edge.player,{x:1520,y:400});
+ step(edge,dt);const limit=FIELD.right-edge.boss.r-25;
+ assert.equal(coastChargeLane(edge).endX,limit);runLockedCharge(edge);
+ assert.equal(edge.boss.x,limit);assert.equal(edge.boss.timer,COAST_CHARGE.recover);
+ const old=createOperation(18);old.balanceRevision='b26-rail-gun-lock';old.stage='boss';
+ Object.assign(old.boss,{active:true,mode:'charge',x:800,y:445,body:Math.PI/2,timer:.4});
+ Object.assign(old.player,{x:800,y:470});
+ const restored=restore(snapshot(old));
+ assert.ok(!overlapsCover(restored,restored.player,16));assert.ok(!overlapsCover(restored,restored.boss,restored.boss.r));
+ assert.equal(restored.boss.body,Math.PI/2);assert.equal(restored.boss.timer,.4);
+ assert.equal(restored.boss.chargePath.offset,150);
+ runLockedCharge(restored);assert.ok(!overlapsCover(restored,restored.boss,restored.boss.r));
+ const clear=coastEncounter();Object.assign(clear.boss,{mode:'charge',timer:.4,body:Math.PI/2});
+ const resumed=restore(snapshot(clear)),start=resumed.boss.y;
+ runLockedCharge(resumed);assert.equal(resumed.boss.y-start,150);
+ Object.assign(clear.boss,{mode:'windup',timer:.4,chargePath:{x:-10000,y:-10000,length:100,offset:0}});
+ assert.throws(()=>restore(snapshot(clear)),/체크포인트/);
+ const through=coastEncounter(-1);step(through,dt);
+ assert.deepEqual(restore(snapshot(through)).boss.chargePath,through.boss.chargePath);
+ Object.assign(through.boss.chargePath,{length:300,blockId:null});
+ assert.throws(()=>restore(snapshot(through)),/체크포인트/);
+});
 test('rail and harbor use different telegraphs and disabled rail parts open permanent safe lanes',()=>{
  const s=quietOperation();s.operation.region=1;s.stage='boss';s.boss.active=true;s.boss.timer=0;s.boss.parts[0].hp=0;step(s,dt);assert.ok(s.hazards.some(h=>h.lane));assert.ok(!s.hazards.some(h=>h.lane&&h.x===500));assert.equal(s.boss.mode,'salvo');
  const p=quietOperation();p.operation.region=2;p.stage='boss';p.boss.active=true;p.boss.timer=0;step(p,dt);assert.ok(p.hazards.length>=3);assert.ok(p.hazards.every(h=>!h.lane));
@@ -540,6 +612,37 @@ test('harbor armor support rewards a flank and disables the turret fan',()=>{
  }
  assert.equal(front.boss.parts[0].hp,450);assert.equal(front.enemyShots.length,9);
  assert.equal(flank.boss.parts[0].hp,0);assert.equal(flank.enemyShots.length,0);assert.equal(flank.stats.supportUses[2],1);
+});
+test('harbor artillery locks the standing player and leaves an escape on the opposite flank',()=>{
+ for(const seed of [17,18]){
+  const s=supportArena(2,null,'aim');
+  s.boss={...regionBoss(2,seed),active:true,timer:0,spawnClock:999};
+  Object.assign(s.player,{x:800,y:470});
+  step(s,dt);
+  const aim=s.hazards.find(h=>h.portRound==='lock'),side=Math.sign(s.boss.parts[0].ox);
+  assert.deepEqual([aim.x,aim.y],[800,470]);
+  assert.equal(s.hazards.filter(h=>h.portRound==='turret'&&(h.x-aim.x)*side>0).length,2);
+  const evade=restore(snapshot(s)),hp=s.player.hp;
+  tick(s,1);tick(evade,1,{x:-side,y:0});
+  assert.equal(s.player.hp,hp-14);
+  assert.equal(evade.player.hp,hp);
+  assert.deepEqual([evade.hazards.find(h=>h.portRound==='lock').x,aim.y],[800,470]);
+ }
+});
+test('breaching the harbor turret cancels only its pending rounds and opens its flank',()=>{
+ const s=supportArena(2,'breach','aim');
+ Object.assign(s.boss,{cycle:0,timer:0});
+ Object.assign(s.player,{x:650,y:410});
+ step(s,dt);
+ const turret=s.boss.parts[0],pending=s.hazards.filter(h=>h.portRound!=='turret');
+ assert.equal(s.hazards.length,5);
+ s.shots=[bullet(s,{x:s.boss.x+turret.ox,y:s.boss.y},300)];
+ step(s,dt);
+ assert.equal(turret.hp,0);assert.deepEqual(s.hazards,pending);
+ assert.ok(takeEvents(s).includes('barrage-cancel'));
+ assert.ok(s.hazards.some(h=>h.portRound==='lock'));
+ s.boss.timer=0;step(s,dt);
+ assert.equal(s.enemyShots.length,0);
 });
 test('harbor opening shutter resists normal damage and armor only pierces from the mirrored turret flank',()=>{
  for(const seed of [17,18]){

@@ -32,8 +32,9 @@ export function vanguardAid(player){
  };
 }
 export const PORT_TURRET={shutterDamage:.16};
+export const PORT_BARRAGE={warning:.95,radius:58,batteryOffset:114,turretOffset:116,turretSpread:54};
 export const PORT_SUPPORT={
- breach:{impact:'포탑 쪽 사선에서 장갑 관통 · 피해 +65%',detail:'측면에서 포탑이 사거리에 들어오면 자동 사격을 집중합니다. 포탑 파괴 시 부채꼴 사격이 멈춥니다.',hint:'작전도에 표시된 포탑 쪽 측면으로 이동하세요.',flank:105,boost:1.65},
+ breach:{impact:'포탑 쪽 사선에서 장갑 관통 · 피해 +65%',detail:'측면에서 포탑을 먼저 조준합니다. 포탑을 부수면 조준 중인 측면 포격과 부채꼴 사격이 멈춥니다.',hint:'작전도에 표시된 포탑 쪽 측면으로 이동하세요.',flank:105,boost:1.65},
  overrun:{impact:'회피 돌입으로 코어 직격 320 · 장갑 해제',detail:'재장전 중 표시된 경계를 회피로 넘으세요. 남은 노출 동안 코어가 피해를 더 받고, 노출이 0.9초 늘어납니다.',hint:'포격을 피한 뒤 코어 경계 밖에서 안으로 회피하세요.',reach:100,damage:320,delay:.9},
  recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 포격 예고에 포탑 반대편으로 화물이 옵니다. 이후 재장전 때 좌우로 투하하며, 남은 화물은 그 자리에 있습니다.',hint:'집중 포격을 피해 측면 화물을 밟고 전탄을 충전하세요.',heal:12,charge:20,reach:36,limit:3,lanes:[625,975],y:335}
 };

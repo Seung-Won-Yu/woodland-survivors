@@ -2,6 +2,7 @@ import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,isQuickMod} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,raidRouteSvg,raidPreview} from './field-scene.js';
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
+import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,activeEntry,coastLead,coastLeadColor,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynergyReady,moduleRank,refitWeapons} from './content.js';
@@ -233,9 +234,9 @@ window.addEventListener('blur',()=>{keys.clear();controls?.reset();if(run&&mode=
 function bearing(p,x,y){return ['→','↘','↓','↙','←','↖','↑','↗'][(Math.round(Math.atan2(y-p.y,x-p.x)/(Math.PI/4))+8)%8];}
 function updateMap(lead,entry){
  const lanes=run.hazards.filter(h=>h.lane&&!h.hit).map(h=>h.x).join();
- const key=`${run.seed}:${Math.floor(run.t*5)}:${run.stage}:${run.operation?.region}:${run.raid?.state}:${run.challenge?.state}:${lead?.id}:${!!entry}:${lanes}:${run.sites.map(n=>n.state).join()}`;if(key===mapStamp)return;mapStamp=key;
+ const key=`${run.seed}:${Math.floor(run.t*5)}:${run.stage}:${run.boss.active?run.boss.mode:''}:${run.operation?.region}:${run.raid?.state}:${run.challenge?.state}:${lead?.id}:${!!entry}:${lanes}:${run.sites.map(n=>n.state).join()}`;if(key===mapStamp)return;mapStamp=key;
  const dot=(cls,x,y,r,color,label='')=>`<circle class="${cls}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}"${label?` aria-label="${esc(label)}"`:''}/>`;
- let map=terrainSvg(run.operation?.region||0,run.seed)+entryRouteSvg(entry)+run.hazards.filter(h=>!h.hit).map(h=>h.lane?`<rect class="map-danger-lane" x="${h.x-h.w/2}" y="${h.y-h.h/2}" width="${h.w}" height="${h.h}" fill="${h.tracked?'#ef9a6799':'#ee975e66'}" stroke="#ffda99" stroke-width="8"/>`:dot('map-danger',h.x,h.y,h.r,'#f77e778c')).join('');
+ let map=terrainSvg(run.operation?.region||0,run.seed)+entryRouteSvg(entry)+run.hazards.filter(h=>!h.hit).map(h=>h.lane?`<rect class="map-danger-lane" x="${h.x-h.w/2}" y="${h.y-h.h/2}" width="${h.w}" height="${h.h}" fill="${h.tracked?'#ef9a6799':'#ee975e66'}" stroke="#ffda99" stroke-width="8"/>`:dot('map-danger',h.x,h.y,h.r,h.portRound==='turret'?'#f9bf83b0':'#f77e778c',h.portRound==='lock'?'집중 포격 조준점':h.portRound==='turret'?'포탑 측면 포격':'')).join('');
  map+=run.blocks.filter(b=>b.hp!==0).map(b=>`<rect class="map-block" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#71837e"/>`).join('');
  map+=run.gems.map(g=>dot('map-xp',g.x,g.y,g.salvage?14:9,g.salvage?'#f5d487':'#a5ddcc')).join('');
  map+=run.enemies.filter(e=>!e.dead).map(e=>dot('map-enemy',e.x,e.y,e.cohort==='challenge'?24:e.type==='officer'?19:13,e.cohort==='challenge'?'#efb6ff':e.type==='officer'?'#f7b58d':'#d28257')).join('');
@@ -245,6 +246,11 @@ function updateMap(lead,entry){
  if(run.stage==='field')map+=dot('map-boss-entry',800,350,34,'#ef8e64','보스 진입');
  if(run.boss.active){const b=run.boss;map+=dot('map-boss',b.x,b.y,50,'#ef8e64',run.operation?region(run).boss:'장갑 수송차')+`<line class="map-boss-facing" x1="${b.x}" y1="${b.y}" x2="${b.x+Math.cos(b.body)*120}" y2="${b.y+Math.sin(b.body)*120}" stroke="#ef8e64" stroke-width="16"/>`;}
  const boss=run.boss;
+ const charge=coastChargeLane(run);
+ if(charge){
+  const x=boss.mode==='charge'?boss.x:charge.x,y=boss.mode==='charge'?boss.y:charge.y;
+  map+=`<path class="map-charge-lane" d="M${x} ${y}L${charge.endX} ${charge.endY}" stroke="#e6aa6780" stroke-width="${charge.r*2}" stroke-linecap="round" aria-label="장갑 수송차 돌진 범위"/><path d="M${x} ${y}L${charge.endX} ${charge.endY}" stroke="#ffdd9d" stroke-width="10" stroke-dasharray="26 18"/>`;
+ }
  if(boss.active&&run.operation?.region===2){
   if(run.operation.support==='breach'&&boss.parts[0].hp>0){
    const {x,y}=portFlankPoint(boss);
@@ -406,7 +412,12 @@ function updateHud(){
   if(front===1){
    const countdown=railRounds.length?(Math.ceil(Math.min(...railRounds.map(h=>h.timer))*10)/10).toFixed(1):null;
    $('boss-state').textContent=railOpen?'양쪽 포대 파괴 · 차체 노출':recovering?'재장전 · 반격 기회':countdown?`조준 고정 · ${countdown}초 뒤 포격`:boss.mode==='salvo'?'포격 종료 · 반격 준비':'포격 열차 · 조준 준비';
-  }else $('boss-state').textContent=front===2?(recovering?'코어 노출 · 집중 공격':'지휘 병기 · 붉은 원 밖으로 회피'):recovering?'후면 엔진 노출 · 뒤를 노려라':boss.mode==='windup'?'돌진 예고 · 옆으로 회피':'장갑 수송차 · 측후면을 노려라';
+  }else if(front===2){
+   const lock=run.hazards.find(h=>!h.hit&&h.portRound==='lock');
+   const countdown=lock&&(Math.ceil(lock.timer*10)/10).toFixed(1);
+   $('boss-state').textContent=recovering?'코어 노출 · 집중 공격':countdown?`발밑 조준 고정 · ${countdown}초 뒤 포격`:boss.mode==='salvo'?'포격 종료 · 반격 준비':'지휘 병기 · 포격 준비';
+  }
+  else $('boss-state').textContent=recovering?'후면 엔진 노출 · 주황 표식으로':boss.mode==='windup'?`돌진 방향 고정 · ${(Math.ceil(boss.timer*10)/10).toFixed(1)}초`:boss.mode==='charge'?'돌진 중 · 진행선 밖으로':'장갑 수송차 · 측후면을 노려라';
   const names=front===1?['좌측 포대','우측 포대']:front===2?['포탑','측면 장갑']:['포탑','궤도'];
   $('boss-parts').textContent=names.map((name,i)=>`${name} ${boss.parts[i].hp<=0?'파괴':railRounds.some(h=>railGunOf(h)===i)?'조준':i===0&&portTurretShutter(run)?'포격 장갑':'가동'}`).join(' / ');
   const active=tactic&&recovering&&boss.tacticCycle===boss.cycle;
@@ -420,13 +431,17 @@ function updateHud(){
   else if(railOpen)hint='';
   else if(active)hint='전류 연결 완료 · 남은 부위 사격';
   else if(firstWarning||dashWindow)hint=supportHint;
+  if(!(front>0)&&boss.mode==='windup'){
+   const blockId=boss.chargePath?.blockId;
+   hint=blockId&&run.blocks.some(b=>b.id===blockId&&b.hp!==0)?'엄폐까지 돌진 · 진행선 옆으로 빠지세요.':'고정된 돌진선 밖으로 빠지세요.';
+  }
   $('boss-tactic').hidden=!hint;$('boss-tactic').textContent=hint;
   const line=$('boss-support');
   line.hidden=!harborPart;
   if(harborPart){
    line.dataset.part=supportId;
    if(supportId==='breach'){
-    line.textContent=boss.parts[0].hp<=0?'철갑 · 포탑 사격 차단':portTurretInSight(run)?'철갑 · 포탑 집중 사격':portBreachFlank(run)?'철갑 · 포탑 사거리까지 접근':`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
+    line.textContent=boss.parts[0].hp<=0?'철갑 · 측면 포격 차단':portTurretInSight(run)?'철갑 · 포탑 집중 사격':portBreachFlank(run)?'철갑 · 포탑 사거리까지 접근':`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
    }else if(supportId==='overrun'){
     const gap=distance(p,boss)-portCoreReach(boss);
     line.textContent=portCoreDisrupted(run)?'돌격 · 코어 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 코어 경계까지 이동':p.dashCd>0?'돌격 · 회피 재사용 대기':gap<=0?'돌격 · 경계 밖으로 이동':gap>110?'돌격 · 코어 경계까지 접근':'돌격 · 지금 경계 안으로 회피';
@@ -438,7 +453,7 @@ function updateHud(){
   }
  }
 }
-const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill',barrage:'slam','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve','armor-impact':'guard-block',heal:'heal',break:'crowd-break'};
+const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill',barrage:'slam','charge-impact':'slam','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-charge':'boss-charge','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve','armor-impact':'guard-block',heal:'heal',break:'crowd-break'};
 const bannerPriority=['region-entry','gate-open'];
 function processEvents(){
  const banner=$('banner'),events=new Set(takeEvents(run));

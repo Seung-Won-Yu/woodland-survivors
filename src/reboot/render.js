@@ -5,9 +5,42 @@ import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_ROUTE,signalCourier} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
+import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
 function bar(c,x,y,width,ratio,color){c.fillStyle='#101d26';c.fillRect(x-width/2,y,width,5);c.fillStyle=color;c.fillRect(x-width/2,y,width*clamp(ratio,0,1),5);}
+function paintChargeLane(c,b,lane){
+ const {endX,endY,r}=lane,warning=b.mode==='windup';
+ const x=warning?lane.x:b.x,y=warning?lane.y:b.y,angle=b.body;
+ const sideX=-Math.sin(angle)*r,sideY=Math.cos(angle)*r;
+ c.save();c.beginPath();
+ c.moveTo(x+sideX,y+sideY);c.lineTo(endX+sideX,endY+sideY);
+ c.arc(endX,endY,r,angle+Math.PI/2,angle-Math.PI/2,true);
+ c.lineTo(x-sideX,y-sideY);c.arc(x,y,r,angle-Math.PI/2,angle+Math.PI/2,true);c.closePath();
+ c.fillStyle=warning?'#9b5d312e':'#ac46282c';c.fill();
+ c.strokeStyle='#483625';c.lineWidth=5;c.stroke();
+ c.strokeStyle=warning?'#f3be79':'#eb9668';c.lineWidth=2;c.setLineDash(warning?[11,8]:[]);c.stroke();c.setLineDash([]);
+ c.translate(x,y);c.rotate(angle);
+ const remaining=Math.hypot(endX-x,endY-y);
+ c.fillStyle=warning?'#ffe1a9':'#fbb882';
+ if(warning&&lane.blockId)c.fillRect(remaining-2,-19,4,38);
+ for(let d=64;d<remaining-12;d+=72){
+  c.beginPath();c.moveTo(d+13,0);c.lineTo(d-8,-10);c.lineTo(d-3,0);c.lineTo(d-8,10);c.closePath();c.fill();
+ }
+ c.restore();
+}
+function paintCoastRear(c,s){
+ const b=s.boss;
+ if(s.operation?.region>0||!b.active||b.dead||b.mode!=='recover')return;
+ const rear=b.body+Math.PI,half=Math.acos(-COAST_CHARGE.rearDot),reach=b.r+13;
+ const x=b.x+Math.cos(rear)*reach,y=b.y+Math.sin(rear)*reach;
+ c.save();
+ c.beginPath();c.arc(b.x,b.y,reach,rear-half,rear+half);c.strokeStyle='#513425';c.lineWidth=6;c.stroke();
+ c.strokeStyle='#f9bc74';c.lineWidth=3;c.stroke();
+ c.translate(x,y);c.rotate(rear);c.fillStyle='#ffe1ac';
+ for(const sy of [-10,5])c.fillRect(-5,sy,10,5);
+ c.restore();
+}
 function paintRaidLane(c,raid,visible){
  const path=raidAhead(raid),end=path.at(-1),prior=path.at(-2),{color}=RAID_MARKS[raid.contract];
  c.save();c.lineCap='round';c.lineJoin='round';c.beginPath();
@@ -54,6 +87,16 @@ function paintCoastCue(c,site,size,cx,cy,scale){
  c.beginPath();
  c.moveTo(5,0);c.lineTo(-4,-4);c.lineTo(-2,0);c.lineTo(-4,4);c.closePath();c.fill();
  c.restore();
+}
+function paintAidBearing(c,crate,size,cx,cy,scale){
+ const tx=size.w/2+(crate.x-cx)*scale,ty=size.h/2+(crate.y-cy)*scale;
+ const left=tx<26;
+ if(!left&&tx<=size.w-26)return;
+ const x=left?12:size.w-72,y=clamp(ty,Math.min(320,size.h*.5),size.h-152);
+ c.fillStyle='#182c27';c.fillRect(x,y-12,60,24);
+ c.strokeStyle='#b6d79a';c.lineWidth=1;c.strokeRect(x+.5,y-11.5,59,23);
+ c.fillStyle='#d7f0b8';c.font='bold 11px Galmuri, sans-serif';c.textAlign='center';
+ c.fillText(left?'‹ 구급':'구급 ›',x+30,y+4);
 }
 function paintPortCue(c,s){
  const b=s.boss;
@@ -260,8 +303,8 @@ export function createRenderer(canvas,art){
   // A gate near a boundary needs room beside the objective rail and tactical map.
   const edgeMargin=gate&&s.operation?112*(1-follow):0;
   // Keep northern bosses and their barrels below the portrait HUD.
-  const bossMargin=mobile&&size.h>size.w&&s.boss.active&&s.operation?.region>0?
-   Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y)):0;
+  const bossMargin=mobile&&size.h>size.w&&follow>0?
+   Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y))*follow:0;
   const cx=clamp(focusX,view.w/2-edgeMargin,Math.max(view.w/2,1600-view.w/2)+edgeMargin);
   const cy=clamp(focusY,view.h/2-bossMargin,Math.max(view.h/2,1200-view.h/2));
   c.setTransform(size.dpr,0,0,size.dpr,0,0);c.clearRect(0,0,size.w,size.h);c.fillStyle='#263a44';c.fillRect(0,0,size.w,size.h);c.translate(size.w/2,size.h/2);c.scale(scale,scale);c.translate(-cx,-cy);c.imageSmoothingEnabled=false;
@@ -280,6 +323,7 @@ export function createRenderer(canvas,art){
   const raid=s.raid?.state==='active'?s.raid:null;
   const approach=activeEntry(s);
   if(raid)paintRaidLane(c,raid,visible);else if(approach)paintEntryRoutes(c,approach);
+  const chargeLane=coastChargeLane(s);if(chargeLane)paintChargeLane(c,s.boss,chargeLane);
   const entry=s.effects.find(f=>f.type==='region-entry');
   if(entry)paintFrontEntry(c,entry.x,entry.y,index,entry.age,reduced);
   for(const n of s.sites){const previous=siteStates.get(n.id);siteStates.set(n.id,{state:n.state,collected:previous&&previous.state!=='done'&&n.state==='done'?s.t:previous?.collected});}
@@ -336,7 +380,12 @@ export function createRenderer(canvas,art){
     bar(c,e.x,e.y-66,100,e.hp/e.maxHp,color);
    }else{
     if(s.operation?.region===1)paintRailBoss(c,e,s);
-    else if(art)vehicle(c,art,{x:e.x,y:e.y,width:s.operation?.region===2?225:185,enemy:true,body:e.body,turret:e.aim,kick:e.kick,tread:s.t*80,moving:!e.dead&&e.mode==='charge',flash:e.dead?0:e.flash,damaged:e.hp<e.maxHp*.5,wreck:e.dead,reduced});
+    else if(art){
+     const moving=!e.dead&&e.mode==='charge';
+     const tread=moving&&chargeLane?Math.hypot(e.x-chargeLane.x,e.y-chargeLane.y)*2:s.t*80;
+     const pitch=chargeLane?(moving?.035:-.025):0;
+     vehicle(c,art,{x:e.x,y:e.y,width:s.operation?.region===2?225:185,enemy:true,body:e.body,turret:e.aim,kick:e.kick,tread,moving,pitch,flash:e.dead?0:e.flash,damaged:e.hp<e.maxHp*.5,wreck:e.dead,reduced});
+    }
     else{c.save();c.translate(e.x,e.y);c.rotate(e.body);c.fillStyle=e.dead?'#384747':'#667263';c.fillRect(-70,-45,140,90);c.restore();}
     if(e.dead&&gate)paintWreckSmoke(c,e.x,e.y,s.holdTime,reduced);
     if(e.active&&!e.dead)for(const part of e.parts){if(part.hp<=0)continue;const p=partPosition(s,part);circle(c,p.x,p.y,17,'#ffc96024','#ffdc8c',2);bar(c,p.x,p.y-25,35,part.hp/part.maxHp,'#ffcd7e');}
@@ -344,6 +393,7 @@ export function createRenderer(canvas,art){
    c.restore();
   }
   for(const g of s.gems)if(g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
+  paintCoastRear(c,s);
   paintPortCue(c,s);
   for(const n of s.sites)if(n!==lead)paintSiteLabel(c,n,s);
   if(gate&&distance(s.player,gate)<220){
@@ -375,6 +425,14 @@ export function createRenderer(canvas,art){
     c.fillStyle=f.salvage?'#ffe3a0':'#c8ead2';c.fillText(label,x,y-68-rise);
    }
    else if(f.type==='boss-down'&&visible(f.x,f.y,150))paintBossImpact(c,f,reduced?0:t,reduced);
+   else if(f.type==='charge-impact'&&visible(f.x,f.y,110)){
+    c.translate(f.x,f.y);c.rotate(f.angle);
+    c.fillStyle=f.crushed?'#dca171':'#b2ac89';
+    for(let i=0;i<8;i++){
+     const spread=(i-3.5)*12,travel=reduced?12:t*(34+i%3*10);
+     c.fillRect(-travel+Math.abs(spread)*.27,spread*(.5+t*.6),6+i%4,3+i%3);
+    }
+   }
    else if(f.type==='barrage'){c.fillStyle=reduced?'#df985325':'#ffd39345';c.fillRect(f.x-f.w/2,f.y-f.h/2,f.w,f.h);for(let y=f.y-f.h/2;y<f.y+f.h/2;y+=80)circle(c,f.x,y,20+t*30,'#f3ae6944','#ffcc87',2);}
    else if(f.type==='explosion'||f.type==='break'||f.type==='shrapnel'){const r=(f.r||80)*(.35+t*.7);circle(c,f.x,f.y,r,'#ec963b30','#ffd384',2);circle(c,f.x,f.y,r*.45,'#ffe0a178');for(let i=0;i<7;i++){const a=i*TAU/7;c.fillStyle='#efbd76';c.fillRect(f.x+Math.cos(a)*r,f.y+Math.sin(a)*r,4,4);}}
    else if(f.type==='heat'){const r=(f.r||100)*(.25+t*.85);circle(c,f.x,f.y,r,null,'#ffc48a',reduced?2:5*(1-t)+1);if(!reduced)circle(c,f.x,f.y,r*.55,'#fff1c2'+(t<.15?'bb':'25'));for(let i=0;i<8;i++){const a=i*TAU/8;flame(c,f.x+Math.cos(a)*r*.65,f.y+Math.sin(a)*r*.5,16*(1-t)+4,i+t*8);}c.textAlign='center';c.font='bold 12px Galmuri';c.fillStyle='#ffe1aa';c.fillText('열압',f.x,f.y-r*.55-10);}
@@ -420,22 +478,25 @@ export function createRenderer(canvas,art){
    else if(f.type==='impact'||f.type==='kill'){c.strokeStyle=f.type==='kill'?'#f9dcb4':'#fff1be';c.lineWidth=2;for(let i=0;i<4;i++){const a=i*TAU/4+f.age*4,r=5+t*16;c.beginPath();c.moveTo(f.x+Math.cos(a)*r,f.y-18+Math.sin(a)*r);c.lineTo(f.x+Math.cos(a)*(r+7),f.y-18+Math.sin(a)*(r+7));c.stroke();}}
    c.restore();
   }
-  if(s.boss.active&&s.boss.mode==='windup'){
-   const b=s.boss;
-   c.save();c.translate(b.x,b.y);c.rotate(b.body);
-   c.fillStyle='#d9633b35';c.strokeStyle='#ffd588';c.lineWidth=2;
-   c.fillRect(20,-55,300,110);c.strokeRect(20,-55,300,110);c.restore();
-  }
   for(const q of s.enemyShots)if(visible(q.x,q.y))circle(c,q.x,q.y-18,6,'#b0422c','#ffe1a1',2);
   for(const h of s.hazards){
    if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:h.r))continue;
    if(h.lane){paintRailWarning(c,h,s.player.y);continue;}
    circle(c,h.x,h.y,h.r,'#d83d4120','#321e25',6);
-   circle(c,h.x,h.y,h.r,null,'#ffada0',3);
+   circle(c,h.x,h.y,h.r,null,h.portRound==='turret'?'#f9bf83':'#ffada0',3);
    circle(c,h.x,h.y,h.r*clamp(1-h.timer/(h.duration||.9),0,1),null,'#fff0bb',h.timer<.25?3:1);
+   if(h.portRound==='lock'){
+    c.strokeStyle='#ffe1bc';c.lineWidth=3;c.beginPath();
+    for(let i=0;i<4;i++){
+     const a=i*Math.PI/2,x=Math.cos(a),y=Math.sin(a);
+     c.moveTo(h.x+x*10,h.y+y*10);c.lineTo(h.x+x*23,h.y+y*23);
+    }
+    c.stroke();
+   }
   }
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   if(lead)paintCoastCue(c,lead,size,cx,cy,scale);
+  if(mobile&&s.boss.active&&s.boss.harborSupply)paintAidBearing(c,s.boss.harborSupply,size,cx,cy,scale);
  }
  return{draw,view:()=>view,resize};
 }
