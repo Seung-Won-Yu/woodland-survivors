@@ -6,7 +6,7 @@ import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/conte
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
-import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
+import {choiceDetails,growthForecast,gateContractDetails} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
@@ -686,6 +686,30 @@ test('checkpoints and settlements reject a different run instance including same
 test('campaign holdout opens D2 after D1 with rising score and finite credit basis',()=>{
  const s=quietOperation();clearRegion(s);choose(s,'stay');assert.ok(action(s,'challenge'));assert.equal(s.challenge.tier,1);s.operation.holdoutKills=HOLDOUT.rareKills;s.challenge.targets.forEach(id=>{s.enemies.find(e=>e.id===id).dead=true;});step(s,dt);assert.equal(s.challenge.state,'complete');assert.equal(s.stats.challenge,1);const score=s.stats.score;assert.ok(choose(s,'support:breach'));assert.ok(action(s,'challenge'));assert.equal(s.challenge.tier,2);s.challenge.targets.forEach(id=>{s.enemies.find(e=>e.id===id).dead=true;});step(s,dt);assert.equal(s.stats.challenge,2);assert.equal(s.stats.score-score,1000);assert.equal(s.stats.challengeWins,2);
 });
+test('the paused gate can call a real contract or leave the clock and early aid uncommitted',()=>{
+ const gate=quietOperation();clearRegion(gate);
+ const passive=restore(snapshot(gate)),crowded=restore(snapshot(gate));
+ assert.match(gateContractDetails(gate).cost,/선발 지원 포기/);
+ assert.ok(choose(passive,'stay'));assert.equal(passive.challenge,null);
+ assert.ok(action(passive,'interact'));assert.ok(choose(passive,'advance'));
+ assert.equal(passive.operation.support,'vanguard');
+ crowded.enemies=Array.from({length:159},(_,i)=>enemy(`crowd-${i}`,800,550));
+ const crowdedBefore=snapshot(crowded);assert.equal(action(crowded,'gate-challenge'),false);assert.deepEqual(crowded,crowdedBefore);
+
+ const start=gate.t;
+ assert.ok(action(gate,'gate-challenge'));assert.equal(gate.phase,'playing');assert.equal(gate.t,start);
+ assert.equal(gate.challenge.type,'hunt');assert.equal(gate.challenge.reserveAt,HOLDOUT.coastReserveDelay);
+ assert.equal(action(gate,'gate-challenge'),false);
+ const saved=restore(snapshot(gate));
+ const legacy=restore(snapshot(gate));delete legacy.challenge.reserveAt;
+ tick(saved,HOLDOUT.coastReserveDelay+.05);tick(legacy,HOLDOUT.coastReserveDelay+.05);
+ assert.ok(saved.enemies.filter(e=>e.cohort==='holdout').length>=HOLDOUT.rareKills);
+ assert.ok(!legacy.enemies.some(e=>e.cohort==='holdout'));
+ assert.equal(saved.operation.holdoutKills,0);assert.equal(saved.challenge.reserveAt,undefined);
+ assert.equal(saved.phase,'playing');assert.ok(takeEvents(saved).includes('hunt-reserve'));
+ assert.ok(action(saved,'interact'));assert.ok(choose(saved,'advance'));
+ assert.equal(saved.operation.support,null);
+});
 test('rare parts wait for actual reinforcements and match the fixed seed preview',()=>{
  const s=quietOperation();clearRegion(s);assert.ok(choose(s,'stay'));assert.ok(action(s,'challenge'));
  s.enemies.filter(e=>e.cohort==='challenge').forEach(e=>e.dead=true);step(s,dt);
@@ -714,7 +738,7 @@ test('advance preview matches emergency stabilization and preserves tuning',()=>
   const s=quietOperation();clearRegion(s);
   Object.assign(s.player,{hp,charge:90});
   const card=s.choices.find(c=>c.id==='advance'),tuning=s.tuning;
-  assert.equal(choiceDetails(s,card).cost,`도착 시 체력 ${hp} → ${expected} · 전탄 90 → 100`);
+  assert.equal(choiceDetails(s,card).cost,`체력 ${hp} → ${expected} · 충전 90 → 100`);
   assert.ok(choose(s,'advance'));assert.equal(s.player.hp,expected);
   assert.equal(s.player.charge,100);assert.equal(s.tuning,tuning);
  }
@@ -1108,7 +1132,7 @@ test('a flank shot after the shell impacts still stops the live turret follow-up
  assert.equal(s.enemyShots.length,0);
  assert.deepEqual(s.operation.harborPayoff,{fans:1});
 });
-test('a lethal armor-piercing hit records the pending salvo it actually cancels',()=>{
+test('a lethal armor-piercing hit records the turret and only a salvo it actually cancels',()=>{
  const s=supportArena(2,'breach','aim');
  s.operation.harborPayoff={};
  Object.assign(s.boss,{cycle:0,timer:0});
@@ -1118,9 +1142,17 @@ test('a lethal armor-piercing hit records the pending salvo it actually cancels'
  s.shots=[bullet(s,partPosition(s,turret),15)];
  step(s,dt);tick(s,1.2);
  assert.equal(turret.hp,0);
- assert.deepEqual(s.operation.harborPayoff,{salvos:1});
+ assert.deepEqual(s.operation.harborPayoff,{salvos:1,turrets:1});
  assert.equal(s.enemyShots.length,0);
  assert.ok(s.hazards.some(h=>h.portRound==='lock'&&h.hit));
+ const reloading=supportArena(2,'breach','recover');
+ reloading.operation.harborPayoff={};
+ Object.assign(reloading.player,{x:625,y:370});
+ const exposed=reloading.boss.parts[0];exposed.hp=20;
+ reloading.shots=[bullet(reloading,partPosition(reloading,exposed),15)];
+ step(reloading,dt);
+ assert.equal(exposed.hp,0);
+ assert.deepEqual(reloading.operation.harborPayoff,{turrets:1});
 });
 test('a harbor rocket keeps the flank it was fired from when the player sidesteps',()=>{
  const launch=(x,direction)=>{

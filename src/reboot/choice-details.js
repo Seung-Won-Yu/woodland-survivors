@@ -1,8 +1,17 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_STRIKES,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_STRIKES,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
+export function gateContractDetails(s){
+ const front=s.operation.region,tier=(s.operation.challengeTier||0)+1,contract=holdoutContract(s);
+ const rare=front<2&&tier===1;
+ const goal=contract.id==='defend'?`중계기 방어 ${defenseSeconds(tier)}초`:contract.id==='intercept'?`${signalLaneLabel[signalLane(s.seed)]} · ${SIGNAL_SECONDS}초 안에 차량 저지`:contract.goal;
+ const quota=rare?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
+ const reward=rare?holdoutParts(s.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / ')
+  :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:`완료 점수 +${tier*500}`;
+ return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':''};
+}
 
 function projectedGrowth(s,c,args,before){
  const draft=snapshot(s);
@@ -109,7 +118,7 @@ export function choiceDetails(s,c){
   const kit=FRONT_SUPPORTS[c.key];
   const index=s.operation.region+1;
   const effect=index===2?PORT_SUPPORT[c.key]||kit:kit;
-  out.art=kit.art;out.impact=effect.impact.replace('전탄',chargeLabel(s));out.detail=effect.detail.replace('전탄',chargeLabel(s));out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
+  out.art=kit.art;out.impact=effect.impact.replaceAll('전탄',chargeLabel(s));out.detail=effect.detail.replaceAll('전탄',chargeLabel(s));out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
  }else if(c.kind==='cargo'){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
  }else if(c.kind==='advance'){
@@ -121,17 +130,15 @@ export function choiceDetails(s,c){
   if(s.operation.region===0&&s.operation.coastStrikeUsed)out.detail+=' · 수송차 노획 보급 이월';
   if(s.operation?.region===0&&s.operation.order&&!s.operation.orderDone)out.link=s.raid?.state==='active'?'습격 철수 · 상자 소실 · 지령 보너스 없음':'해안 지령 미완료 · 전진 시 추가 보상 없음';
   const aid=vanguard?vanguardAid(s.player):null;
-  out.cost=aid?`도착 시 체력 ${Math.ceil(s.player.hp)} → ${Math.ceil(aid.hp)} · ${chargeLabel(s)} ${Math.floor(s.player.charge)} → ${Math.floor(aid.charge)}`:'현재 무장·모듈·체력·XP 유지';
+  const changes=aid?[Math.ceil(aid.hp)>Math.ceil(s.player.hp)?`체력 ${Math.ceil(s.player.hp)} → ${Math.ceil(aid.hp)}`:'',Math.floor(aid.charge)>Math.floor(s.player.charge)?`충전 ${Math.floor(s.player.charge)} → ${Math.floor(aid.charge)}`:''].filter(Boolean):[];
+  out.cost=aid?changes.join(' · '):'현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){
-  const rare=s.operation?.region<2&&!s.operation.challengeTier;
-  const port=s.operation?.region===2,active=s.challenge?.state==='active';
-  out.impact=rare?'다음 전선 희귀 부품':'바닥 XP와 증원군을 노린다';
-  out.detail=rare?`${holdoutContract(s).name} 호출 → 증원 ${HOLDOUT.rareKills}명 제압`:'공세 단계가 오를수록 물량과 내구가 증가합니다.';
-  const reward=s.operation?.challengeTier?'기록 점수':port?`화물 ${CARGO_CREDITS}C 또는 후송 보급`:'노획 보급';
-  const target=port?`${signalLaneLabel[active?s.challenge.lane||'center':signalLane(s.seed)]} 차량 저지`:holdoutContract(s).name;
-  out.link=rare?holdoutParts(s.seed,s.operation.region).map(id=>FRONT_SUPPORTS[id].name).join(' / '):`${target} · ${reward}`;
-  out.cost=rare&&canAdvanceWithVanguard(s)?'도전 호출 시 선발 지원 포기':'열린 게이트에서 다시 선택';
+  const active=s.challenge?.state==='active';
+  out.title=active?'진행 중인 도전 계속':'전장 복귀 · XP 회수';
+  out.impact=active?holdoutContract(s).name:'바닥 XP 회수';
+  out.detail=active?`D${s.challenge.tier} · ${out.impact}`:`남은 바닥 XP ${groundXp(s)}`;
+  out.link='게이트는 계속 열려 있습니다.';out.cost='';
  }
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}
  else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':'크레딧·연구·기록 유지';out.cost='다음 판은 해안 · LV.1에서 시작';}

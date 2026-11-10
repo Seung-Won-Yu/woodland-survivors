@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.74.0" src="https://img.shields.io/badge/RIFT-0.74.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.75.0" src="https://img.shields.io/badge/RIFT-0.75.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.75에서는 게이트에서 잔류 도전을 바로 호출하거나 전장으로 돌아가 XP만 회수할 수 있습니다. 철도 잔류 부품을 고르면 항구에서 측면 포탑, 재장전 중 코어, 구급 화물 중 어느 쪽을 노릴지 달라집니다. [게이트와 항구 부품별 모바일 검증](docs/RIFT-GAMEPLAY-V1.md#075-게이트-도전과-항구-부품).
 
 0.74에서는 철도 정비대·중계기·포격 열차 직행이 전장과 작전도에서 갈라집니다. 중계기는 조준이 고정되기 전 예상 차선을 보여 주고, 실제 포격 때는 벽과 포탄 사이에서 멈출 지점을 안내합니다. [철도 갈림길과 정지 표식 검증](docs/RIFT-GAMEPLAY-V1.md#074-철도-갈림길과-포격-사이에서-멈추기).
 

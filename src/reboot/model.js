@@ -48,8 +48,8 @@ function advanceRegion(s){
  for(let i=0;i<10;i++)spawnAround(s,i===0?'officer':'rifle',{cohort:'ambient'},360,30);emit(s,'region-entry',arrival.x,arrival.y,{text:`${s.operation.region+1}/3 · ${region(s).name}`,life:1.6});nextChoice(s);return true;
 }
 function exitCards(s){
- const rare=s.operation?.region<2&&!s.operation.challengeTier;
- const stay={id:'stay',kind:'stay',title:rare?'남아서 희귀 부품 노리기':'남아서 더 성장',desc:'바닥 XP를 회수하고 증원군을 상대합니다. 게이트는 계속 열려 있습니다.',label:rare?'희귀 부품 추적':'잔류 성장'};
+ const active=s.challenge?.state==='active';
+ const stay={id:'stay',kind:'stay',title:active?'진행 중인 도전 계속':'전장 복귀 · XP 회수',desc:'게이트는 계속 열려 있습니다.',label:active?'잔류 도전':'잔류 성장'};
  if(s.operation&&s.operation.region<2)return [{id:'advance',kind:'advance',title:`${REGIONS[s.operation.region+1].name} 진입`,desc:'무장·체력·XP 유지. 남은 상자와 바닥 XP는 두고 전진합니다.',label:'다음 전선'},stay,{id:'extract',kind:'extract',title:'확보 보상으로 중도귀환',desc:'현재까지의 크레딧을 정산합니다. 최종 완주 보너스는 없습니다.',label:'작전 중단'}];
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
@@ -191,6 +191,8 @@ export function restore(raw,{allowPrevious=false}={}){
   }
  }
  if(s.challenge?.type==='defend'&&(!Number.isFinite(s.challenge.progress)||!Number.isFinite(s.challenge.duration)||!Number.isFinite(s.challenge.strike)))fail();
+ if(s.challenge?.reserveAt!==undefined&&(s.operation?.region!==0||s.challenge.type!=='hunt'||s.challenge.tier!==1||s.challenge.state!=='active'
+  ||!Number.isFinite(s.challenge.reserveAt)||s.challenge.reserveAt<0||s.challenge.reserveAt>=HOLDOUT.grace))fail();
  if(s.challenge?.type==='intercept'){
   const {lane,timeLeft,target}=s.challenge;
   if(![timeLeft,target?.x,target?.y,target?.hp,target?.maxHp].every(Number.isFinite)||timeLeft<0||timeLeft>SIGNAL_SECONDS||lane!==undefined&&lane!==signalLane(s.seed))fail();
@@ -672,7 +674,10 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
     if(cancelled)recordHarborPayoff(s,'salvos');
     if(cancelled||!lethal)emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:cancelled?'철갑 명중 · 포탑탄 차단':'철갑 명중 · 후속 탄막 차단'});
    }
-   if(lethal)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 파괴'});
+   if(lethal){
+    recordHarborPayoff(s,'turrets');
+    emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 파괴'});
+   }
   }else if(portTurretShutter(s))amount*=PORT_TURRET.shutterDamage;
  }else if(e.type==='part'&&breach&&s.operation.region!==2){
   amount*=1.55;recordSupportUse(s);
@@ -1293,6 +1298,7 @@ function updateChallenge(s,dt){
  }
  if(s.operation?.region<2&&tier===1&&(s.operation.holdoutKills||0)<HOLDOUT.rareKills)return;
  challenge.state='complete';
+ delete challenge.reserveAt;
  s.stats.challenge=Math.max(s.stats.challenge,tier);s.stats.challengeWins=(s.stats.challengeWins||0)+1;
  if(s.operation){
   s.operation.challengeTier=tier;
@@ -1305,8 +1311,16 @@ function updateChallenge(s,dt){
  emit(s,'challenge-clear',s.player.x,s.player.y,{text:`잔류 도전 ${tier} 완료 · +${500*tier}`,life:1.5});
 }
 
+export function canStartChallenge(s){
+ return s.stage==='holdout'&&s.player.hp>0&&s.raid?.state!=='active'&&s.challenge?.state!=='active'
+  &&(!s.challenge||!!s.operation)&&(holdoutContract(s).id!=='hunt'||alive(s).length<=158);
+}
+export function canCallGateChallenge(s){
+ return !!s.operation&&s.phase==='choice'&&s.choice?.type==='clear'&&canStartChallenge(s)
+  &&interaction({...s,phase:'playing'})?.id==='extract';
+}
 function startChallenge(s){
- if(s.stage!=='holdout'||s.raid?.state==='active'||s.challenge?.state==='active'||s.challenge&&!s.operation)return false;
+ if(!canStartChallenge(s))return false;
  const tier=(s.operation?.challengeTier||0)+1;
  const contract=holdoutContract(s);
  if(contract.id==='defend'){
@@ -1317,13 +1331,16 @@ function startChallenge(s){
   s.challenge={type:'intercept',state:'active',tier,lane,timeLeft,target:{id:'signal',type:'courier',...signalPosition(lane,timeLeft),r:34,hp,maxHp:hp,dead:false}};
  }else{
   const ids=[],hp=Math.round(450*1.22**Math.min(24,tier-1));
+  const oldId=s.id,oldCombat=s.rng.combat;
   for(const dx of [-220,220]){
    const kit={hp,maxHp:hp,cohort:'challenge'},x=clamp(s.player.x+dx,100,1500),y=clamp(s.player.y-240,100,1100);
    const enemy=blocked(s,x,y,26)?spawnAround(s,'officer',kit,null,50):spawnEnemy(s,'officer',x,y,null,kit);
    if(enemy)ids.push(enemy.id);
   }
-  if(ids.length<2){s.enemies=s.enemies.filter(e=>!ids.includes(e.id));return false;}
+  if(ids.length<2){s.enemies=s.enemies.filter(e=>!ids.includes(e.id));s.id=oldId;s.rng.combat=oldCombat;return false;}
   s.challenge={type:'hunt',state:'active',tier,targets:ids};
+  const reserveAt=s.holdTime+HOLDOUT.coastReserveDelay;
+  if(s.operation?.region===0&&tier===1&&reserveAt<HOLDOUT.grace)s.challenge.reserveAt=reserveAt;
  }
  emit(s,'challenge-start',s.player.x,s.player.y,{text:`${contract.name} · D${tier}`,life:1.25});
  return true;
@@ -1374,6 +1391,10 @@ export function action(s,kind,input){
   if(kind==='gate-upgrade'&&prep?.upgrades){openLevel(s,{gatePrep:true});return true;}
   if(kind==='gate-assemble'&&prep?.capstones.length){openAssembly(s,prep.capstones,true);return true;}
   return false;
+ }
+ if(kind==='gate-challenge'){
+  if(!canCallGateChallenge(s)||!startChallenge(s))return false;
+  closeChoice(s);return true;
  }
  if(s.phase!=='playing')return false;const p=s.player;
  if(kind==='upgrade'){if(!canOpenLevel(s))return false;openLevel(s);return true;}
@@ -1432,11 +1453,14 @@ function updateCampaignAmbient(s,dt){
  if(s.pressure>=4){s.pursuitClock=(s.pursuitClock??1)-dt;if(s.pursuitClock<=0){s.pursuitClock=Math.max(4,18-s.pressure);if(!alive(s).some(e=>e.cohort==='pursuit')){const hp=300*Math.pow(1.12,s.pressure-3);spawnAround(s,'officer',{hp,maxHp:hp,cohort:'pursuit'});}}}
 }
 function updateHoldout(s,dt){
- const tier=holdoutTier(s.holdTime);
- if(tier===0)return;
+ const pressure=holdoutTier(s.holdTime),challenge=s.challenge;
+ const early=pressure===0&&challenge?.state==='active'&&challenge.reserveAt<=s.holdTime;
+ if(!pressure&&!early)return;
+ const tier=Math.max(1,pressure);
  s.spawnClock-=dt;
  if(s.spawnClock>0)return;
  s.spawnClock=Math.max(.9,2.1-tier*.2);
+ if(challenge)delete challenge.reserveAt;
  const count=8+s.operation.region*2+tier*3;
  const reinforcements=alive(s).filter(e=>e.cohort==='holdout');
  const officers=reinforcements.filter(e=>e.type==='officer').length;
@@ -1447,6 +1471,7 @@ function updateHoldout(s,dt){
   if(!enemy)continue;
   enemy.hp=enemy.maxHp=Math.round(enemy.maxHp*(1+tier*(type==='rifle'?.035:.13)));
  }
+ if(early)emit(s,'hunt-reserve',s.player.x,s.player.y,{text:'지휘부 역습 · 증원 합류',life:1.1});
 }
 function openGate(s){
  const gate=s.operation.gate=gatePosition(s);

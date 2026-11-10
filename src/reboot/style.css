@@ -74,6 +74,11 @@
 .gate-deck[data-count="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
 .gate-order{--route-color:#b8d6a4;display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:start;gap:10px;min-height:104px;padding:12px;text-align:left;background:#273d35;border:1px solid #728673;border-top:2px solid var(--route-color);box-shadow:none}
 .gate-order[data-choice="stay"]{--route-color:#e0bc78}
+.gate-contract.gate-order{--route-color:#e0bc78}
+.gate-holdout{display:grid;align-content:start;gap:4px}
+.gate-passive{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:7px 10px;text-align:left;font-size:11px}
+.gate-passive kbd{font:inherit;color:#d6d8be;border:1px solid #7b8a74;padding:1px 4px}
+.debrief-route .debrief-wager{color:#f2d291;line-height:1.4}
 .gate-order[data-choice="extract"]{--route-color:#acc3c5}
 .gate-order:hover,.gate-order:focus-visible{background:#3b4b3a;border-color:var(--route-color)}
 .gate-order-icon{display:grid;place-items:center;width:38px;height:38px;color:var(--route-color);background:#1b3029;border:1px solid #788773}

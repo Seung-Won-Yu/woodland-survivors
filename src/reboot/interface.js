@@ -141,7 +141,7 @@ function requisitionReceipt(r){
 function harborPayoff(r){
  const part=r.operation?.support,log=r.operation?.harborPayoff;
  const labels={
-  breach:[['salvos','포탑탄 차단'],['fans','후속 탄막 차단']],
+  breach:[['turrets','측면 포탑 파괴'],['salvos','포탑탄 차단'],['fans','후속 탄막 차단']],
   overrun:[['dives','코어 돌입'],['sidesteps','측면 회피']],
   recovery:[['locks','발밑 조준탄 차단'],['rakes','가로 포격 차단'],['counterfire','측면 장갑 타격'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
  };
@@ -167,10 +167,13 @@ function debriefRoute(operation){
  const history=Array.isArray(operation.history)?operation.history:[];
  const front=Number.isInteger(operation.region)?operation.region:-1;
  return `<ol class="debrief-route" aria-label="전선별 진행 기록">${REGIONS.map((d,i)=>{
-  const cleared=i<operation.cleared,elapsed=history.find(entry=>entry?.region===i)?.time??(front===i?operation.regionTime:null);
+  const entry=history.find(step=>step?.region===i);
+  const cleared=i<operation.cleared,elapsed=entry?.time??(front===i?operation.regionTime:null);
   const state=cleared?'돌파':front===i?'도달':'미도달';
   const time=(cleared||front===i)&&Number.isFinite(elapsed)&&elapsed>=0?` · ${clockText(elapsed)}`:'';
-  return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small></li>`;
+  const part=Object.hasOwn(FRONT_SUPPORTS,entry?.nextSupport)?FRONT_SUPPORTS[entry.nextSupport]:null;
+  const wager=entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'';
+  return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small>${wager?`<small class="debrief-wager">${e(wager)}</small>`:''}</li>`;
  }).join('')}</ol>`;
 }
 function debriefNext(r,p,archived){
