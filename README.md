@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.73.0" src="https://img.shields.io/badge/RIFT-0.73.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.74.0" src="https://img.shields.io/badge/RIFT-0.74.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.74에서는 철도 정비대·중계기·포격 열차 직행이 전장과 작전도에서 갈라집니다. 중계기는 조준이 고정되기 전 예상 차선을 보여 주고, 실제 포격 때는 벽과 포탄 사이에서 멈출 지점을 안내합니다. [철도 갈림길과 정지 표식 검증](docs/RIFT-GAMEPLAY-V1.md#074-철도-갈림길과-포격-사이에서-멈추기).
 
 0.73에서는 첫 무장 카드에서 교전 방식과 회수 보상을 비교합니다. 집결 포대에 열린 사선을 잡으면 로켓이 두 문 사이에서 터지고, 분산 포대는 한 문씩 끊습니다. [해안 첫 무장과 포대 사선 검증](docs/RIFT-GAMEPLAY-V1.md#073-해안-첫-무장과-포대-사선).
 

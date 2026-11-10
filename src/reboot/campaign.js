@@ -166,6 +166,65 @@ export const RAIL_BARRAGE={width:180,depth:900,y:600,outerOffset:300,warning:1.2
 export const railDisarmed=boss=>boss.parts.every(part=>part.hp<=0);
 // Fixed outer lanes in old checkpoints also belong to a gun.
 export const railGunOf=hazard=>hazard.railGun??(hazard.x===500?0:hazard.x===1100?1:null);
+export const railHasRelay=s=>s.sites.some(site=>site.kind==='relay'&&site.state==='done');
+export function railBarrageRounds(s,cycle){
+ const {boss:b,player:p}=s,plan=RAIL_BARRAGE;
+ const near=p.x===b.x?cycle%2:p.x<b.x?0:1;
+ const lead=b.parts[near]?.hp>0?near:1-near,wing=1-lead;
+ const left=Math.max(FIELD.left,p.x-plan.width/2),right=Math.min(FIELD.right,p.x+plan.width/2);
+ const round=(x,w,railGun,tracked)=>({x,y:plan.y,w,h:plan.depth,r:0,lane:true,railGun,tracked});
+ const rounds=[];
+ if(b.parts[lead]?.hp>0)rounds.push(round((left+right)/2,right-left,lead,true));
+ if(b.parts[wing]?.hp>0)rounds.push(round(b.x+(wing===0?-1:1)*plan.outerOffset,plan.width,wing,false));
+ return rounds;
+}
+export function railBarragePreview(s){
+ return s.operation?.region===1&&s.boss.active&&s.boss.mode==='aim'&&railHasRelay(s)?railBarrageRounds(s,s.boss.cycle+1):[];
+}
+export function railLaneBounds(h){
+ const width=h.w+32,height=h.h+32;
+ return {left:h.x-width/2,right:h.x+width/2,top:h.y-height/2,bottom:h.y+height/2,width,height};
+}
+export function railEscapeSlot(s,rounds){
+ const {player:p,boss}=s;
+ const lanes=rounds.map(railLaneBounds).filter(lane=>p.y>lane.top&&p.y<lane.bottom);
+ if(!lanes.some(lane=>p.x>lane.left&&p.x<lane.right))return {danger:false,slot:null};
+ for(const h of s.hazards){
+  const radius=blastContactRadius(h),dy=h.y-p.y;
+  if(h.hit||h.lane||Math.abs(dy)>=radius)continue;
+  const width=Math.sqrt(radius**2-dy**2);
+  lanes.push({left:h.x-width,right:h.x+width});
+ }
+ lanes.sort((a,b)=>a.left-b.left);
+ let left=FIELD.left+16,right=FIELD.right-16;
+ const cover=s.blocks.filter(b=>b.hp!==0&&p.y>b.y-16&&p.y<b.y+b.h+16).map(b=>[b.x-16,b.x+b.w+16]);
+ if(boss?.active&&Math.abs(boss.y-p.y)<boss.r+16){
+  const reach=Math.sqrt((boss.r+16)**2-(boss.y-p.y)**2);
+  cover.push([boss.x-reach,boss.x+reach]);
+ }
+ for(const [from,to] of cover){
+  if(to<=p.x)left=Math.max(left,to);
+  else if(from>=p.x)right=Math.min(right,from);
+  else return {danger:true,slot:null};
+ }
+ const slots=[];
+ const add=(from,to)=>{
+  if(to-from<24)return;
+  const inset=Math.min(24,(to-from)/2);
+  const x=p.x<from?from+inset:to-inset;
+  slots.push({x,y:p.y,left:from,right:to});
+ };
+ let cursor=left;
+ for(const lane of lanes){
+  if(lane.right<=cursor)continue;
+  add(cursor,Math.min(right,lane.left));
+  cursor=Math.max(cursor,lane.right);
+  if(cursor>=right)break;
+ }
+ add(cursor,right);
+ const slot=slots.sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0]||null;
+ return {danger:true,slot};
+}
 export const FRONT_TACTICS={
  1:{
   heat:{name:'냉각 밸브 차단',role:'화염 · 측면 진입',impact:'재장전 중 측면에 붙어 분사하면 포대와 차체 피해 +45%',hint:'고정된 조준선을 피한 뒤 열차 옆에 붙어 불을 쏘세요.',range:176,side:55,boost:1.45},
@@ -329,6 +388,13 @@ const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry]
  routes:entry.routes.map(route=>({...route,path:route.path.map(([x,y])=>[1600-x,y])}))
 }]));
 export const frontEntry=(sectorSeed,index)=>(sectorSeed%2===0?MIRRORED_ENTRY:ENTRY)[index];
+export function railCenterRoute(seed,origin='arrival'){
+ const entry=frontEntry(mapSeed(seed,1),1);
+ const cache=entry.routes[0].path.at(-1),relay=entry.routes[1].path.at(-1);
+ const path=origin==='rail-cache'?[cache,[cache[0],710],[800,710],[800,350]]
+  :origin==='rail-relay'?[relay,[800,580],[800,350]]:[[800,1040],[800,920],[800,350]];
+ return {site:'rail-center',name:'포격 열차',sign:'포격 열차 직행',path,color:'#cab9a4'};
+}
 const GANTRY_PATH=[[520,900],[510,812],[510,630],[550,520],[595,400],[595,340]];
 const GANTRY_MIRRORED=GANTRY_PATH.map(([x,y])=>[1600-x,y]);
 export function portCenterRoute(seed,origin='arrival'){
@@ -363,7 +429,9 @@ export function activeEntry(s){
   if(s.operation.jammed)direct.sign='정면 · 첫 장갑탄 차단';
   return {...entry,routes,direct};
  }
- return routes.length?{...entry,routes}:null;
+ const origin=s.sites.filter(site=>['rail-cache','rail-relay'].includes(site.id)&&site.state==='done')
+  .sort((a,b)=>distance(s.player,a)-distance(s.player,b))[0]?.id;
+ return {...entry,routes,direct:railCenterRoute(s.seed,origin)};
 }
 export function entryWaypoint(path,p){
  let best=Infinity,next=path.at(-1);

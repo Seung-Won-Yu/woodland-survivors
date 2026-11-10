@@ -194,6 +194,7 @@ test('briefings show matching seeded arrival routes and mirror the railway',()=>
  const rail=regionPreview(1,19),port=regionPreview(2,19);
  assert.match(rail,/data-approach="rail-cache"/);
  assert.match(rail,/data-approach="rail-relay"/);
+ assert.match(rail,/data-approach="rail-center"/);
  assert.match(port,/data-approach="port-landing"/);
  assert.match(port,/data-approach="port-control"/);
  assert.match(port,/<circle cx="720" cy="1040"/);

@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -948,7 +948,12 @@ function updateEnemies(s,dt){
  separateEnemies(s,dt);
  for(const e of alive(s))if(e.spawnAge>.5&&distance(e,p)<e.r+16){const amount=RULES.enemies[e.type].contactDamage||12;if(!incoming||amount>incoming.amount)incoming={amount,x:e.x,y:e.y};}
  for(const q of s.enemyShots){q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;if(blocked(s,q.x,q.y,q.r))q.life=0;if(distance(q,p)<21){q.life=0;if(!incoming||incoming.amount<10)incoming={amount:10,x:q.x,y:q.y};}}
- for(const h of s.hazards){h.timer-=dt;if(h.timer<=0&&!h.hit){h.hit=true;emit(s,h.lane?'barrage':'explosion',h.x,h.y,{r:h.r,w:h.w,h:h.h,life:.3});s.events.push('shell-land');if((h.lane?Math.abs(p.x-h.x)<h.w/2+16&&Math.abs(p.y-h.y)<h.h/2+16:distance(h,p)<blastContactRadius(h))&&(!incoming||incoming.amount<14))incoming={amount:14,x:h.x,y:h.y};}}
+ for(const h of s.hazards){h.timer-=dt;if(h.timer<=0&&!h.hit){
+  h.hit=true;emit(s,h.lane?'barrage':'explosion',h.x,h.y,{r:h.r,w:h.w,h:h.h,life:.3});s.events.push('shell-land');
+  const lane=h.lane?railLaneBounds(h):null;
+  const caught=lane?p.x>lane.left&&p.x<lane.right&&p.y>lane.top&&p.y<lane.bottom:distance(h,p)<blastContactRadius(h);
+  if(caught&&(!incoming||incoming.amount<14))incoming={amount:14,x:h.x,y:h.y};
+ }}
  s.enemyShots=s.enemyShots.filter(q=>q.life>0);s.hazards=s.hazards.filter(h=>h.timer>-.3);s.enemies=s.enemies.filter(e=>!e.dead||e.death>0);
  if(incoming&&(!s.hitCandidate||incoming.amount>s.hitCandidate.amount))s.hitCandidate=incoming;
 }
@@ -962,16 +967,10 @@ function stopRailGun(s,part){
  emit(s,'barrage-cancel',part.x,part.y,{life:1.1,text:`${railGun===0?'좌측':'우측'} 포대 파괴 · 포격 차단`});
 }
 function startRailBarrage(s,warning){
- const b=s.boss,p=s.player,plan=RAIL_BARRAGE;
- const early=s.sites.some(site=>site.kind==='relay'&&site.state==='done')?.4:0;
- const duration=plan.warning+early+warning;
+ const b=s.boss;
+ const duration=RAIL_BARRAGE.warning+(railHasRelay(s)?.4:0)+warning;
  b.timer=duration+.2;
- const near=p.x===b.x?b.cycle%2:p.x<b.x?0:1;
- const lead=b.parts[near]?.hp>0?near:1-near,wing=1-lead;
- const left=Math.max(FIELD.left,p.x-plan.width/2),right=Math.min(FIELD.right,p.x+plan.width/2);
- const push=(x,w,railGun,tracked)=>s.hazards.push({x,y:plan.y,w,h:plan.depth,r:0,lane:true,railGun,tracked,timer:duration,duration});
- push((left+right)/2,right-left,lead,true);
- if(b.parts[wing]?.hp>0)push(b.x+(wing===0?-1:1)*plan.outerOffset,plan.width,wing,false);
+ s.hazards.push(...railBarrageRounds(s,b.cycle).map(round=>({...round,timer:duration,duration})));
  emitBossWarning(s,'rail-lock',b.x,b.y,warning?{text:'선발 지원 · 첫 조준 경고 +1초',life:1}:{life:1});
 }
 function startPortBarrage(s,warning){

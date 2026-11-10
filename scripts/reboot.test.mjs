@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -542,6 +542,32 @@ test('rail artillery locks the first position, leaves a path out and clips the m
  const clipped=edge.hazards.find(h=>h.tracked);
  assert.equal(clipped.x-clipped.w/2,FIELD.left);
  assert.equal(clipped.x+clipped.w/2,edge.player.x+RAIL_BARRAGE.width/2);
+});
+test('rail relay forecasts the live lanes and the stop marker leaves room before the outer shell',()=>{
+ const s=railEncounter();
+ const map=regionLayout(mapSeed(17,1),1);
+ s.blocks=map.blocks;s.sites=map.sites;
+ assert.deepEqual(railBarragePreview(s),[]);
+ s.sites.find(site=>site.kind==='relay').state='done';
+ const preview=railBarragePreview(s);
+ assert.equal(preview.length,2);
+ assert.equal(s.hazards.length,0);
+ step(s,dt);
+ assert.deepEqual(s.hazards.map(({timer,duration,...h})=>h),preview);
+ assert.deepEqual(railBarragePreview(s),[]);
+ const tracked=s.hazards.find(h=>h.tracked),bounds=railLaneBounds(tracked);
+ assert.deepEqual([bounds.left,bounds.right],[694,906]);
+ assert.deepEqual(railEscapeSlot(s,s.hazards),{danger:true,slot:{x:670,y:470,left:606,right:694}});
+
+ const crossing=restore(snapshot(s));
+ tick(crossing,.68,{x:-1,y:0});
+ assert.deepEqual(railEscapeSlot(crossing,crossing.hazards),{danger:false,slot:null});
+ tick(crossing,1.03);assert.equal(crossing.player.hp,100);
+ const blocked=restore(snapshot(s));
+ blocked.hazards.push({x:650,y:470,r:48,timer:1});
+ assert.ok(!railEscapeSlot(blocked,blocked.hazards.filter(h=>h.lane)).slot
+  ||railEscapeSlot(blocked,blocked.hazards.filter(h=>h.lane)).slot.x<=586);
+ tick(s,1.71,{x:-1,y:0});assert.equal(s.player.hp,86);
 });
 test('direct hits cancel only the destroyed gun and leave the disarmed train open',()=>{
  const s=railEncounter();step(s,dt);
@@ -1414,13 +1440,20 @@ test('marked later-front approaches and actual guard formations clear collision 
    assert.deepEqual([s.player.x,s.player.y],[entry.arrival.x,entry.arrival.y]);
    const {direct,...visibleEntry}=activeEntry(s);
    assert.deepEqual(visibleEntry,entry);
-   const routes=[...entry.routes];
-   if(direct){
+   const routes=[...entry.routes,direct];
+   if(index===1){
+    for(const route of entry.routes){
+     const origin=s.sites.find(site=>site.id===route.site);
+     origin.state='done';Object.assign(s.player,{x:origin.x,y:origin.y});
+     const returnRoute=activeEntry(s).direct;
+     assert.deepEqual(returnRoute.path[0],[origin.x,origin.y]);
+     routes.push(returnRoute);origin.state='waiting';
+    }
+   }else{
     const control=s.sites.find(site=>site.id==='port-control');
     const dock=s.sites.find(site=>site.id==='port-landing');
     control.state='done';
     s.operation.portDock=true;
-    routes.push(direct);
     for(const origin of [control,dock]){
      Object.assign(s.player,{x:origin.x,y:origin.y});
      const returnRoute=activeEntry(s).direct;
@@ -1508,7 +1541,8 @@ test('route bearings advance past traversed corners and unfinished routes remain
  s.sites.find(site=>site.id==='rail-cache').state='done';
  assert.deepEqual(activeEntry(s).routes,[relay]);
  s.sites.find(site=>site.id==='rail-relay').state='done';
- assert.equal(activeEntry(s),null);
+ assert.deepEqual(activeEntry(s).routes,[]);
+ assert.equal(activeEntry(s).direct.site,'rail-center');
 });
 test('previous later-front placements are settled once with earned credits',()=>{
  const s=createOperation(19);

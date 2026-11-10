@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,portCenterRoute,exitGate,sortieOrder,beachRoute} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -102,7 +102,7 @@ export function orderPinSvg(site,id){
 }
 export function regionPreview(index,seed=17,current=null,order=null){
  const front=frontEntry(mapSeed(seed,index),index);
- const entry=index===2?{...front,direct:portCenterRoute(seed)}:front;
+ const entry=front?{...front,direct:index===2?portCenterRoute(seed):railCenterRoute(seed)}:null;
  const map=current||previewLayout(seed,index,order),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
  const stops=index===0&&!current?map.sites.filter(n=>n.opening||n.coastApproach):[];
  const insertion=entry?entryRouteSvg(entry):stops.length?`<path d="M800 1040L${stops[0].x} ${stops[0].y}" stroke="#ffdf8b" stroke-width="12" stroke-dasharray="20 20"/>`:'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';
