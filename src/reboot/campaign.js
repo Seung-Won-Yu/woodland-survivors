@@ -75,7 +75,7 @@ export function regionLayout(seed,index=0){
 export function regionBoss(index){const d=REGIONS[index];return{id:'boss',type:'boss',x:800,y:180,hp:d.hp,maxHp:d.hp,r:index===1?76:65,active:false,dead:false,body:Math.PI/2,aim:Math.PI/2,mode:'aim',timer:1.3,cycle:0,spawnClock:4,kick:0,flash:0,parts:[{id:'part-a',type:'part',ox:-60,hp:d.partHp,maxHp:d.partHp,r:25},{id:'part-b',type:'part',ox:60,hp:d.partHp,maxHp:d.partHp,r:25}]};}
 export const RESEARCH={
  medic:{name:'응급 주사기',cost:300,condition:'첫 작전 완주',detail:'정예를 잡으면 체력12 회복 · 재사용12초. 보급 후보로 추가되며 모듈 한 칸을 씁니다.'},
- shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'직접 폭발에 작은 파쇄 폭발3개 · 재사용0.65초. 모듈 한 칸을 씁니다.'},
+ shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'유탄·로켓·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.'},
  thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.'}
 };
 export const CARGO_CREDITS=70;

@@ -46,6 +46,26 @@ test('fusion flies past a surviving trigger and detonates in a second pack',()=>
  const q=s.shots.find(q=>q.source==='payload');assert.ok(q);assert.equal(q.target,'second-a');assert.deepEqual(q.hitIds,['survivor']);assert.equal(first.hp,998);
  tick(s,.75);assert.ok(crowd.every(e=>e.dead));assert.equal(s.stats.payloadKills,2);assert.equal(s.stats.payloadBursts,1);assert.ok(takeEvents(s).includes('payload-impact'));
 });
+test('two payload kills send a single relay into another pack without feeding the launcher',()=>{
+ const s=quiet(),w=s.weapons[0];Object.assign(w,{level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0},payload:9});
+ const trigger=enemy('trigger',800,800,'rifle',1000),groups=[
+  [enemy('a',960,800,'rifle',65),enemy('b',975,833,'rifle',65)],
+  [enemy('c',1160,800,'rifle',60),enemy('d',1175,833,'rifle',60)],
+  [enemy('e',1360,800,'rifle',60),enemy('f',1375,833,'rifle',60)]
+ ];
+ s.enemies=[trigger,...groups.flat()];s.shots=[bullet(s,trigger,2)];tick(s,1.1);
+ assert.ok(groups.slice(0,2).flat().every(e=>e.dead));assert.ok(groups[2].every(e=>!e.dead));
+ assert.equal(s.stats.payloadRelays,1);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
+});
+test('first fusion primes the launcher and stages two legal packs even after an earlier completion',()=>{
+ const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});s.modules=[{id:'coil',rank:2}];
+ s.powerDone=true;s.stats.completedBuild={kind:'synergy',t:0};
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));assert.equal(s.weapons[0].payload,RULES.fusion.hitsPerPayload);
+ const resumed=restore(snapshot(s));tick(resumed,.72);
+ const groups=[...new Set(resumed.enemies.map(e=>e.waveGroup))];
+ assert.deepEqual(groups.map(id=>resumed.enemies.filter(e=>e.waveGroup===id).length),[4,4]);assert.ok(groups.every(Number.isInteger));assert.equal(resumed.powerWave.remaining,16);
+ assert.ok(resumed.enemies.every(e=>Math.hypot(e.x-resumed.player.x,e.y-resumed.player.y)>150));
+});
 test('evolved sweeping fire leaves a forward wake while focused fire builds a stronger burn',()=>{
  const fixture=branch=>{const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:0,level:6,evolved:true,branch}];s.enemies=[enemy('guard',970,800,'rifle',1000)];step(s,dt,{x:1,y:0});return s;};
  const sweep=fixture('trail'),jet=fixture('focused'),patch=sweep.zones[0];
@@ -217,6 +237,21 @@ test('relay progresses only while in range and port control offers a real safety
 test('campaign rewards settle once and research adds a future slotted candidate rather than free damage',()=>{
  const s=quietOperation();let p=beginProfile(emptyProfile(),s);for(let i=0;i<3;i++){clearRegion(s);if(i<2)choose(s,'advance');}choose(s,'extract');p=settleProfile(p,s);assert.equal(p.credits,710);assert.ok(p.milestones.medic);assert.equal(p.records.wins,1);const again=settleProfile(p,s);assert.equal(again.credits,710);const researched=buyResearch(p,'medic');assert.equal(researched.credits,410);assert.deepEqual(researched.research,['medic']);assert.deepEqual(researched.trials,['medic']);assert.equal(buyResearch(researched,'medic'),null);assert.equal(p.credits,710);
  const next=createOperation(71,researched.research,'medic');next.sites.forEach(n=>n.state='done');next.enemies=[];next.spawnClock=999;supply(next);assert.ok(next.choices.some(c=>c.module==='medic'));assert.equal(next.modules.length,0);assert.ok(choose(next,'module:medic'));assert.equal(next.modules[0].rank,1);assert.equal(next.stats.researchTrialPicked,'medic');
+});
+test('a settled fusion unlocks shrapnel in a fresh sortie and its payload uses the equipped research',()=>{
+ const s=quietOperation(),profile=beginProfile(emptyProfile(),s);s.weapons[0].fusion={secondary:'r',branch:'homing',overflow:0};
+ for(let i=0;i<3;i++){clearRegion(s);if(i<2)choose(s,'advance');}choose(s,'extract');
+ const settled=settleProfile(profile,s),researched=buyResearch(settled,'shrapnel');
+ assert.equal(settled.credits-researched.credits,350);
+ const {run,next}=freshSortie(researched,16);run.enemies=[];run.spawnClock=999;run.sites.forEach(site=>site.state='done');
+ assert.deepEqual(run.weapons.map(w=>[w.id,w.level]),[['h',1]]);assert.equal(run.modules.length,0);
+ assert.ok(supply(run).every(c=>c.id!=='module:shrapnel'));assert.ok(choose(run,'gun:r'));
+ assert.equal(supply(run,'supply-b').find(c=>c.id==='module:shrapnel')?.label,'새 연구 · 첫 실전');assert.ok(choose(run,'module:shrapnel'));
+ const checkpoint=checkpointProfile(next,run);assert.deepEqual(checkpoint.research,['shrapnel']);assert.deepEqual(checkpoint.trials,[]);
+ Object.assign(run.weapons[0],{level:4,branch:'ricochet',cd:999});Object.assign(run.weapons[1],{level:4,branch:'homing',cd:999});run.modules.push({id:'coil',rank:2});assert.ok(action(run,'gear'));assert.ok(choose(run,'fusion:h:r'));
+ const dummy=enemy('fused-hit',run.player.x,run.player.y-100,'rifle',1000);run.enemies=[dummy];run.shots=[bullet(run,dummy,1)];step(run,dt);
+ assert.equal(run.stats.payloadBursts,1);assert.equal(run.stats.shrapnelBursts,1);assert.equal(run.effects.filter(f=>f.type==='shrapnel').length,3);
+ tick(run,.3);assert.equal(run.stats.shrapnelBursts,1);
 });
 test('researched effects are conditional, capped and cannot recursively trigger themselves',()=>{
  const s=quiet();s.modules=[{id:'shrapnel',rank:1}];s.enemies=[enemy('burst',940,800,'rifle',1000)];s.shots=[{...bullet(s,s.enemies[0],50),rocket:true,radius:100}];step(s,dt);assert.equal(s.stats.shrapnelBursts,1);assert.equal(s.effects.filter(f=>f.type==='shrapnel').length,3);

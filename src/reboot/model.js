@@ -30,7 +30,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -143,7 +143,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  }
  else if(c.kind==='evolve'){if(!assemblyOptions(s).some(o=>o.id===id))return false;const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion&&!w.evolved);w.evolved=true;s.tuning--;buildCompleted(s,'single');}
  else if(c.kind==='fusion'){
-  if(!assemblyOptions(s).some(o=>o.id===id))return false;const a=s.weapons.find(w=>w.id===c.primary&&!w.fusion),b=s.weapons.find(w=>w.id===c.secondary&&!w.fusion);a.fusion={secondary:b.id,branch:b.branch,overflow:Math.min(4,a.level+b.level-8)};a.level=6;a.evolved=true;s.weapons.splice(s.weapons.indexOf(b),1);s.tuning--;buildCompleted(s,'fusion');
+  if(!assemblyOptions(s).some(o=>o.id===id))return false;const a=s.weapons.find(w=>w.id===c.primary&&!w.fusion),b=s.weapons.find(w=>w.id===c.secondary&&!w.fusion);a.fusion={secondary:b.id,branch:b.branch,overflow:Math.min(4,a.level+b.level-8)};a.level=6;a.evolved=true;a.payload=RULES.fusion.hitsPerPayload;s.weapons.splice(s.weapons.indexOf(b),1);s.tuning--;buildCompleted(s,'fusion');
  }else if(c.kind==='maneuver'){if(s.choice.type!=='assembly'||!assemblyOptions(s).some(o=>o.id===id&&o.key===c.key))return false;s.player.maneuver=c.key;s.stats.maneuver=c.key;}
  else if(c.kind==='permit'){if(s.choice.type!=='pursuit-reward'||c.id!=='pursuit:permit'||s.stage!=='holdout'||s.challenge?.state!=='complete'||s.challenge.tier!==1)return false;s.tuning++;}
  else if(c.kind==='front-support'){
@@ -180,7 +180,18 @@ export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)r
 }
 export function skip(s){if(s.phase!=='choice'||['assembly','clear','pursuit-reward'].includes(s.choice.type))return false;if(s.player.hp<s.player.maxHp)s.player.hp=Math.min(s.player.maxHp,s.player.hp+s.player.maxHp*.05);else s.player.charge=Math.min(100,s.player.charge+5);if(s.choice.type==='supply')s.supplyCount++;s.phase='playing';s.choice=null;s.choices=[];nextChoice(s);return true;}
 
-function buildCompleted(s,kind){if(!s.stats.completedBuild)s.stats.completedBuild={kind,t:s.t};if(!s.powerDone){s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='fusion'?'전도 격발망 가동':kind==='single'?'무기 진화 완료':'발동 연계 완성'});}}
+function buildCompleted(s,kind){
+ if(!s.stats.completedBuild)s.stats.completedBuild={kind,t:s.t};
+ if(kind==='fusion'&&!s.stats.fusionReveal){
+  s.stats.fusionReveal=true;
+  s.powerWave={delay:.65,remaining:s.powerDone?Math.max(24,s.powerWave?.remaining||0):60,clock:0,paired:3};
+  s.powerDone=true;
+  emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:'전도 격발망 가동 · 첫 연쇄탄 장전'});
+ }else if(!s.powerDone){
+  s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};
+  emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='single'?'무기 진화 완료':'발동 연계 완성'});
+ }
+}
 export function partPosition(s,part){const b=s.boss;if(s.operation?.region===1)return{x:b.x+part.ox,y:b.y};return{x:b.x+Math.cos(b.body-Math.PI/2)*part.ox,y:b.y+Math.sin(b.body-Math.PI/2)*part.ox};}
 function targets(s){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){const breach=s.operation?.support==='breach';if(!breach)list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}if(breach)list.push(s.boss);}return list;}
 const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
@@ -258,26 +269,31 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
 }
 function feed(s,owner,weight,target){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}
- const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){const cfg=RULES.fusion;w.payload+=weight;if(w.payload>=cfg.hitsPerPayload&&w.payloadCd<=0){w.payload-=cfg.hitsPerPayload;w.payloadCd=cfg.payloadCooldown;
-  const near=targets(s).filter(e=>e.hp>0&&e!==target&&distance(e,target)>=42&&distance(e,target)<300&&!lineBlocked(s,target,e)).sort((a,b)=>distance(a,target)-distance(b,target));
-  const next=near.find(e=>distance(e,target)>=100)||near[0];
+ const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){const cfg=RULES.fusion;w.payload=Math.min(cfg.hitsPerPayload,w.payload+weight);if(w.payload>=cfg.hitsPerPayload&&w.payloadCd<=0){w.payload-=cfg.hitsPerPayload;w.payloadCd=cfg.payloadCooldown;
+  const near=payloadTargets(s,target,42);
+  const opposite=target.waveGroup==null?null:near.find(e=>e.waveGroup!=null&&(e.waveGroup^1)===target.waveGroup);
+  const next=opposite||near.find(e=>distance(e,target)>=100)||near[0];
   s.stats.payloadBursts=(s.stats.payloadBursts||0)+1;
   emit(s,'payload',target.x,target.y,{life:.25});
-  const incendiary=w.fusion.branch==='incendiary';
-  if(next)fire(s,w,next,Math.atan2(next.y-target.y,next.x-target.x),cfg.payloadDamage,{rocket:true,radius:cfg.payloadRadius,source:'payload',homing:w.fusion.branch==='homing',incendiary,origin:target,ignore:target.id});
-  else blast(s,target.x,target.y,cfg.payloadRadius,cfg.payloadDamage,'payload',w.uid,incendiary);
+  if(!next||!launchPayload(s,w,target,next,cfg.payloadDamage))blast(s,target.x,target.y,cfg.payloadRadius,cfg.payloadDamage,'payload',w.uid,w.fusion.branch==='incendiary');
  }}
+}
+function payloadTargets(s,origin,min){return targets(s).filter(e=>e.hp>0&&distance(e,origin)>=min&&distance(e,origin)<300&&!lineBlocked(s,origin,e)).sort((a,b)=>distance(a,origin)-distance(b,origin));}
+function launchPayload(s,w,origin,target,amount,relay=false){
+ const angle=Math.atan2(target.y-origin.y,target.x-origin.x);
+ return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:w.fusion.branch==='homing',incendiary:w.fusion.branch==='incendiary',origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay});
 }
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion'){
  emit(s,effect,x,y,{r,life:.4});let budget=2;
  for(const e of (source==='support'?alive(s):targets(s))){if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;const w=source==='native'?Math.min(.5,budget):0;budget-=w;damage(s,e,amount,'blast',source,owner,w);if(ignite&&e.hp>0)burn(e);}
  for(const b of s.blocks)if(b.hp>0&&Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<r+Math.max(b.w,b.h)/2)b.hp=Math.max(0,b.hp-amount);
- if(source==='native'&&moduleRank(s,'shrapnel')&&!(s.shrapnelCd>0)){s.shrapnelCd=.65;s.stats.shrapnelBursts=(s.stats.shrapnelBursts||0)+1;for(let i=0;i<3;i++){const a=i*TAU/3;blast(s,x+Math.cos(a)*50,y+Math.sin(a)*50,42,20,'module',null,false,'shrapnel');}}
+ if((source==='native'||source==='payload')&&moduleRank(s,'shrapnel')&&!(s.shrapnelCd>0)){s.shrapnelCd=.65;s.stats.shrapnelBursts=(s.stats.shrapnelBursts||0)+1;for(let i=0;i<3;i++){const a=i*TAU/3;blast(s,x+Math.cos(a)*50,y+Math.sin(a)*50,42,20,'module',null,false,'shrapnel');}}
  if(ignite&&s.zones.length<12)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
 }
 function fire(s,w,target,a,amount,opts={}){
  if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin,source=opts.source||'native',evolved=w.evolved&&!w.fusion;
- s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*(rocket?300:700),vy:Math.sin(a)*(rocket?300:700),life:d.range/(rocket?300:700),damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(opts.ignore?{arming:.16}:evolved&&!rocket?{pierce:1}:evolved&&source==='native'&&w.id==='r'?{salvo:true}:{})});return true;
+ const speed=rocket?source==='payload'?420:300:700;
+ s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(source==='payload'?{arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
 }
 export function activeManeuver(p){
  if(p.maneuver==='assault'&&p.moving&&p.assaultTime>0)return 'assault';
@@ -311,15 +327,22 @@ function shoot(s,w){
 function segmentDistance(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,t=clamp(((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(px-ax-t*dx,py-ay-t*dy);}
 function detonate(s,q){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
+ const before=s.stats.payloadKills||0;
  blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect);q.life=0;
+ if(q.source!=='payload'||q.relay||(s.stats.payloadKills||0)-before<2)return;
+ const owner=s.weapons.find(w=>w.uid===q.owner&&w.fusion),next=payloadTargets(s,q,q.radius+22)[0];
+ if(owner&&next&&launchPayload(s,owner,q,next,RULES.fusion.payloadDamage*.8,true)){
+  s.stats.payloadRelays=(s.stats.payloadRelays||0)+1;
+  emit(s,'payload-relay',q.x,q.y,{x2:next.x,y2:next.y,life:.32});
+ }
 }
 function updateShots(s,dt){
  for(const q of s.shots){q.life-=dt;if(q.life<=0)continue;if(q.arming>0)q.arming-=dt;const old={x:q.x,y:q.y};
-  if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8);q.vx=Math.cos(angle)*300;q.vy=Math.sin(angle)*300;}}
+  if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)&&(q.avoidGroup==null||e.waveGroup!==q.avoidGroup)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8),speed=q.source==='payload'?420:300;q.vx=Math.cos(angle)*speed;q.vy=Math.sin(angle)*speed;}}
   q.x+=q.vx*dt;q.y+=q.vy*dt;
   const wall=blocked(s,q.x,q.y,q.r);if(wall){if(q.rocket)detonate(s,q);else if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);q.life=0;emit(s,'impact',q.x,q.y);continue;}
   for(const e of targets(s)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
-   if(q.arming>0&&q.target!==e.id)continue;
+   if(q.arming>0&&q.target!==e.id||q.avoidGroup!=null&&q.avoidGroup===e.waveGroup)continue;
    q.hitIds.push(e.id);if(q.rocket){detonate(s,q);break;}
    const wasBounce=q.pierce===undefined?q.hitIds.length>1:!!q.reflected;damage(s,e,q.damage,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1);if(wasBounce)s.stats.ricochetHits++;emit(s,'impact',e.x,e.y,{life:.12});
    if(q.pierce>0){q.pierce--;q.damage*=.72;emit(s,'pierce',e.x,e.y,{angle:Math.atan2(q.vy,q.vx),life:.18});break;}
@@ -421,7 +444,33 @@ function withdrawRaid(s){
  if(s.raid?.state!=='active')return false;
  s.raid.state='withdrawn';s.stats.raidFailed++;return true;
 }
-function updatePowerWave(s,dt){const wave=s.powerWave;if(!wave||s.stage==='boss')return;if(wave.delay>0){wave.delay-=dt;return;}wave.clock-=dt;if(wave.clock<=0&&wave.remaining>0){wave.clock=.4;for(let i=0;i<4&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{},360))wave.remaining--;}if(wave.remaining<=0)s.powerWave=null;}
+function spawnPairedWave(s,pulse){
+ const p=s.player,crowd=alive(s);
+ if(crowd.length>152)return false;
+ for(let i=0;i<8;i++){
+  const heading=p.aim+i*TAU/8;
+  const centers=[{x:p.x+Math.cos(heading-.34)*205,y:p.y+Math.sin(heading-.34)*205},{x:p.x+Math.cos(heading+.48)*248,y:p.y+Math.sin(heading+.48)*248}];
+  const packs=centers.map(({x,y})=>[[-20,-20],[20,-20],[-20,20],[20,20]].map(([dx,dy])=>({x:x+dx,y:y+dy})));
+  if(lineBlocked(s,...centers)||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||crowd.some(e=>distance(q,e)<32)))continue;
+  for(let group=0;group<2;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',waveGroup:pulse*2+group});
+  for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75});
+  return true;
+ }
+ return false;
+}
+function updatePowerWave(s,dt){
+ const wave=s.powerWave;if(!wave||s.stage==='boss')return;
+ if(wave.delay>0){wave.delay-=dt;return;}
+ wave.clock-=dt;if(wave.clock>0)return;
+ if(wave.paired>0){
+  if(wave.remaining>=8&&spawnPairedWave(s,wave.paired))wave.remaining-=8;
+  else for(let i=0;i<8&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{cohort:'ambient'},360))wave.remaining--;
+  wave.paired--;wave.clock=.9;
+ }else{
+  wave.clock=.4;for(let i=0;i<4&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{},360))wave.remaining--;
+ }
+ if(wave.remaining<=0)s.powerWave=null;
+}
 function pursuitReward(s){
  if(s.operation.region<2)return Object.entries(FRONT_SUPPORTS).map(([key,kit])=>({id:`support:${key}`,kind:'front-support',key,title:kit.name,desc:kit.impact,label:kit.role}));
  return [

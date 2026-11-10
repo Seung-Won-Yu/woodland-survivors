@@ -25,7 +25,7 @@ export function choiceDetails(s,c){
   out.impact=c.weapon==='f'?w.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
   out.link=c.weapon==='f'?w.branch==='focused'?'직격 표적에 강한 잔불을 남깁니다.':'이동 중 화염을 뿌리면 앞쪽에 불길이 남습니다.':'강화한 모듈과 발사 방식을 유지합니다.';out.cost='조율권 1개 사용';out.before=6;out.after=6;
  }else if(c.kind==='fusion'){
-  out.art=c.primary;out.impact='탄착점에서 다음 무리로 연쇄탄';out.detail=`${c.primary.toUpperCase()} + ${c.secondary.toUpperCase()} · 적중을 쌓아 두 번째 무리를 폭파`;out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
+  out.art=c.primary;out.impact='연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail='합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){
