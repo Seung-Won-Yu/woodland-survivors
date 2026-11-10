@@ -309,7 +309,7 @@ function updateHud(){
  if(raid)intel='';
  else if(choosingEntry)intel=entry.routes.map(route=>`${bearing(p,...route.path[1])} ${route.sign}`).join(' · ');
  else if(next.site==='port-gantry')intel='측면 해치로 진입하면 첫 포격 동안 포탑 측면을 노릴 수 있습니다.';
- else if(next.id==='port-landing')intel='방패병 뒤 박격포까지 제압하면 측면 해치가 열립니다.';
+ else if(next.id==='port-landing'&&next.gantry)intel='방패병 뒤 박격포까지 제압하면 측면 해치가 열립니다.';
  else if(next.id==='rail-cache')intel='경비를 제압하면 완성 병기 개장 또는 강화 재료를 고릅니다.';
  else if(orderSite&&next===orderSite)intel='확보하면 보스 공략을 고를 수 있습니다.';
  else if(tactic&&run.stage==='field')intel=`${tactic.name} 확보 · 보스전에 적용`;

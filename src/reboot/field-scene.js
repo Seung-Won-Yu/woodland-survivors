@@ -54,7 +54,7 @@ export function sitePresentation(n){
  if(n.id==='supply-a')return{icon:'rescue',name:'포로 구출',verb:'경비를 제압하라'};
  if(n.id==='supply-b')return{icon:'truck',name:'이동 보급차',verb:'경비를 제압하라'};
  if(n.id==='rail-cache')return{icon:'workshop',name:'화차 정비대',verb:'경비를 제압하라'};
- if(n.id==='port-landing')return{icon:'gantry',name:'하역장 해치',verb:'방패병과 박격포를 제압하라'};
+ if(n.id==='port-landing'&&n.gantry)return{icon:'gantry',name:'하역장 해치',verb:'방패병과 박격포를 제압하라'};
  if(n.coastApproach==='r')return{icon:'battery',name:n.name,verb:'박격포를 제압하라'};
  return{icon:'crate',name:n.name,verb:'경비를 제압하라'};
 }

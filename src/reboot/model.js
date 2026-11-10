@@ -64,6 +64,11 @@ export function restore(raw,{allowPrevious=false}={}){
  if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
  if(s.operation){
   s.trials??=s.trial?[s.trial]:[];
+  // The first b30 release opened the hatch before the site stored its variant.
+  if(s.operation.region===2&&s.balanceRevision==='b30-port-gantry'){
+   const dock=s.sites.find(site=>site.id==='port-landing');
+   if(dock)dock.gantry=true;
+  }
   if(s.operation.portDock!==undefined&&(s.operation.portDock!==true||s.operation.region!==2||!s.sites.some(site=>site.id==='port-landing'&&site.state==='done')))fail();
   if(s.operation.portEntry!==undefined&&(s.operation.portEntry!=='gantry'||!s.operation.portDock||s.stage==='field'))fail();
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
@@ -751,7 +756,7 @@ function updateSites(s,dt){
  if(s.stage==='boss')return;
  for(const site of s.sites){
   if(site.id==='supply-b'&&site.state==='waiting'){site.baseX??=site.x;site.x=site.baseX+Math.sin(s.t*.35)*55;}
-  const dock=s.operation?.region===2&&site.id==='port-landing';
+  const dock=s.operation?.region===2&&site.id==='port-landing'&&site.gantry===true;
   if(dock&&s.stage!=='field')continue;
   const approach=dock?PORT_LANDING:COAST_APPROACHES[site.coastApproach];
   if(site.coastApproach&&s.sites[0].state!=='done')continue;

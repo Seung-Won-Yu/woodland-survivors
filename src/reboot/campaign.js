@@ -143,10 +143,16 @@ export function activeEntry(s){
  if(!index||s.stage!=='field'||s.operation.regionTime>15)return null;
  const entry=frontEntry(mapSeed(s.seed,index),index);
  if(!entry||Math.hypot(s.player.x-entry.arrival.x,s.player.y-entry.arrival.y)>525)return null;
- return entry.routes.every(route=>{
+ const routesOpen=entry.routes.every(route=>{
   const [x,y]=route.path.at(-1);
   return s.sites.some(n=>n.id===route.site&&n.x===x&&n.y===y&&n.state!=='done');
- })?entry:null;
+ });
+ if(!routesOpen)return null;
+ if(index===2&&!s.sites.some(site=>site.id==='port-landing'&&site.gantry)){
+  const [landing,control]=entry.routes;
+  return {...entry,routes:[{...landing,sign:'하역장 보급'},control]};
+ }
+ return entry;
 }
 export function regionLayout(seed,index=0){
  const map=layout(seed);
@@ -167,7 +173,7 @@ export function regionLayout(seed,index=0){
   {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1160,300),state:'waiting'}
  ],blocks:[block('r1',640,730,100,185),block('r2',640,385,100,180),block('r3',950,600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};
  return {...map,sites:[
-  {id:'port-landing',kind:'supply',name:'하역장 해치',...landing(0),state:'waiting'},
+  {id:'port-landing',kind:'supply',name:'하역장 해치',...landing(0),state:'waiting',gantry:true},
   {id:'port-control',kind:'control',name:'항구 관제소',...landing(1),state:'waiting'},
   {id:'arsenal',kind:'armory',name:'시험 병기 창고',...p(280,475),state:'waiting'},
   {id:'port-ammo',kind:'supply',name:'지휘부 탄약',...p(1100,320),state:'waiting'}

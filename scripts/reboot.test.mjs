@@ -719,6 +719,27 @@ test('an abandoned harbor landing cannot clear for free after the boss',()=>{
  Object.assign(s.player,dock);step(s,dt);
  assert.equal(dock.state,'waiting');assert.equal(s.operation.portDock,undefined);assert.equal(s.stats.sitesCleared,0);
 });
+test('a legacy harbor checkpoint preserves its earned but uncollected landing supply',()=>{
+ const old=harborLanding(17);old.balanceRevision='b29-rail-workshop';
+ const dock=old.sites[0];
+ delete dock.gantry;dock.name='하역장 보급';
+ for(const state of ['waiting','active','ready','done']){
+  dock.state=state;
+  const s=restore(snapshot(old));
+  Object.assign(s.player,dock);step(s,dt);
+  assert.equal(s.operation.portDock,undefined);
+  assert.equal(portGantry(s),null);
+  if(state==='waiting')assert.deepEqual(s.enemies.map(e=>e.type),['rifle','shield','rifle','rifle','rifle','rifle']);
+  if(state==='active'||state==='ready')assert.equal(s.choice.type,'supply');
+  if(state==='done')assert.equal(s.phase,'playing');
+ }
+ const early=harborLanding(18),earlyDock=early.sites[0];
+ delete earlyDock.gantry;earlyDock.state='ready';
+ const resumed=restore(snapshot(early));
+ Object.assign(resumed.player,earlyDock);step(resumed,dt);
+ assert.equal(resumed.operation.portDock,true);
+ assert.equal(resumed.phase,'playing');
+});
 test('breaching the harbor turret cancels only its pending rounds and opens its flank',()=>{
  const s=supportArena(2,'breach','aim');
  Object.assign(s.boss,{cycle:0,timer:0});
