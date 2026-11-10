@@ -885,6 +885,20 @@ test('a flank shot after the shell impacts still stops the live turret follow-up
  assert.equal(s.enemyShots.length,0);
  assert.deepEqual(s.operation.harborPayoff,{fans:1});
 });
+test('a lethal armor-piercing hit records the pending salvo it actually cancels',()=>{
+ const s=supportArena(2,'breach','aim');
+ s.operation.harborPayoff={};
+ Object.assign(s.boss,{cycle:0,timer:0});
+ step(s,dt);
+ Object.assign(s.player,{x:625,y:370});
+ const turret=s.boss.parts[0];turret.hp=20;
+ s.shots=[bullet(s,partPosition(s,turret),15)];
+ step(s,dt);tick(s,1.2);
+ assert.equal(turret.hp,0);
+ assert.deepEqual(s.operation.harborPayoff,{salvos:1});
+ assert.equal(s.enemyShots.length,0);
+ assert.ok(s.hazards.some(h=>h.portRound==='lock'&&h.hit));
+});
 test('a harbor rocket keeps the flank it was fired from when the player sidesteps',()=>{
  const launch=(x,direction)=>{
   const s=supportArena(2,'breach','aim');

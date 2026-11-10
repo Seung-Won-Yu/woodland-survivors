@@ -522,13 +522,14 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
  if(e===s.boss.parts[0]&&s.operation?.region===2){
   if((source==='native'||source==='payload'||source==='focus')&&(breachLane??(portBreachFlank(s)&&!lineBlocked(s,s.player,e)))){
    amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
-   if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
-   else if(s.boss.mode==='salvo'&&s.boss.turretSuppressedCycle!==s.boss.cycle){
+   const lethal=e.hp<=amount;
+   if(s.boss.mode==='salvo'&&s.boss.turretSuppressedCycle!==s.boss.cycle){
     const cancelled=clearPortRounds(s,'turret');
-    s.boss.turretSuppressedCycle=s.boss.cycle;
+    if(!lethal)s.boss.turretSuppressedCycle=s.boss.cycle;
     if(cancelled)recordHarborPayoff(s,'salvos');
-    emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:cancelled?'철갑 명중 · 포탑탄 차단':'철갑 명중 · 후속 탄막 차단'});
+    if(cancelled||!lethal)emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:cancelled?'철갑 명중 · 포탑탄 차단':'철갑 명중 · 후속 탄막 차단'});
    }
+   if(lethal)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 파괴'});
   }else if(portTurretShutter(s))amount*=PORT_TURRET.shutterDamage;
  }else if(e.type==='part'&&breach&&s.operation.region!==2){
   amount*=1.55;recordSupportUse(s);
@@ -1240,12 +1241,17 @@ export function step(s,dt,input={x:0,y:0},view=null){
  if(crate&&s.boss.active&&!s.boss.dead&&p.hp>0&&distance(p,crate)<PORT_SUPPORT.recovery.reach&&!lineBlocked(s,p,crate)){
   const kit=PORT_SUPPORT.recovery,hp=p.hp,charge=p.charge;
   const early=portAidWindow(s,p);
+  const rearmed=early&&p.dashCd>kit.dashDelay;
   p.hp=Math.min(p.maxHp,hp+kit.heal);p.charge=Math.min(100,charge+(early?kit.warningCharge:kit.charge));
-  if(early)p.dashCd=Math.min(p.dashCd,kit.dashDelay);
+  if(rearmed)p.dashCd=kit.dashDelay;
   delete s.boss.harborSupply;recordSupportUse(s);
   recordHarborPayoff(s,early?'safeAid':'aid');
-  const refill=chargeLabel(s)+' +'+(Math.floor(p.charge)-Math.floor(charge));
-  emit(s,'heal',crate.x,crate.y,{life:1,text:early?`포격 회피 보급 · 회피 재정비 / ${refill}`:`구급 화물 회수 · 체력 +${Math.ceil(p.hp)-Math.ceil(hp)} / ${refill}`});
+  const healed=Math.ceil(p.hp)-Math.ceil(hp),charged=Math.floor(p.charge)-Math.floor(charge);
+  const text=[early?'포격 회피 보급':'구급 화물 회수'];
+  if(rearmed)text.push('회피 재정비');
+  if(healed)text.push(`체력 +${healed}`);
+  if(charged)text.push(`${chargeLabel(s)} +${charged}`);
+  emit(s,'heal',crate.x,crate.y,{life:1,text:text.join(' · ')});
  }
  let pickedXp=0,salvage=false;
  const reach=pickupReach(s);
