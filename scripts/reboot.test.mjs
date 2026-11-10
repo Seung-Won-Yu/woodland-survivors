@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
-import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
+import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
@@ -1316,4 +1316,70 @@ test('a cleared pursuit unlocks one free maneuver with distinct stationary and m
  assault.enemies=[enemy('range',1100,800)];assert.ok(action(assault,'dash'));assault.weapons[0].cd=0;step(assault,dt,{x:1,y:0});
  assert.equal(activeManeuver(assault.player),'assault');assert.equal(assault.weapons[0].cd,weaponStats(assault.weapons[0]).interval*.78);
  step(assault,dt);assert.equal(activeManeuver(assault.player),null);
+});
+
+test('coast orders are optional, debit once on committed launch, and keep a fresh loadout',async()=>{
+ const base=emptyProfile(),fee=SORTIE_ORDERS.wire.fee;
+ assert.equal(canLaunchOrder({...base,credits:900},'wire'),false);
+ const p={...base,records:{...base.records,wins:1},credits:900, research:['medic'],trials:['medic'],milestones:{medic:true}};
+ assert.throws(()=>freshSortie(p,19,'bogus'));
+ assert.throws(()=>freshSortie({...p,credits:fee-1},19,'wire'));
+ const {run,next}=freshSortie(p,19,'wire');
+ assert.equal(run.level,1);assert.deepEqual(run.weapons.map(w=>[w.id,w.level]),[['h',1]]);
+ assert.deepEqual(run.trials,['medic']);assert.equal(next.credits,900-fee);assert.equal(p.credits,900);
+ assert.equal(orderTarget(run).kind,'relay');assert.equal(restore(snapshot(run)).operation.order,'wire');
+ assert.equal(freshSortie(p,19).run.sites.find(n=>n.id==='arsenal').kind,'armory');
+ assert.equal(canLaunchOrder(next,'convoy'),false);
+ const mem=memory();mem.setItem(STORAGE_KEY,JSON.stringify(p));const store=createStore(mem);
+ mem.setFail(true);await assert.rejects(store.commit(next));assert.equal(store.get().credits,900);
+ mem.setFail(false);await store.commit(next);assert.equal(store.get().credits,900-fee);
+ const saved=checkpointProfile(store.get(),run);await store.commit(saved);assert.equal(store.get().credits,900-fee);
+});
+
+test('wire order requires recovering the completed relay and pays only after the final gate',()=>{
+ const base=emptyProfile(),p={...base,records:{...base.records,wins:1,score:999},credits:900,milestones:{medic:true}};
+ const {run:s,next}=freshSortie(p,19,'wire'),relay=orderTarget(s);
+ s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.invuln=999;
+ for(const n of s.sites)if(n!==relay)n.state='done';
+ Object.assign(s.player,{x:relay.x+100,y:relay.y});tick(s,5.1);
+ assert.equal(relay.state,'ready');assert.equal(s.operation.orderDone,false);
+ Object.assign(s.player,relay);step(s,dt);
+ assert.equal(s.operation.orderDone,true);assert.equal(orderTarget(s),null);
+ const abandoned=restore(snapshot(s));finish(abandoned,false);
+ const partial=settleProfile(next,abandoned);
+ assert.equal(partial.recent[0].orderBonus,0);assert.equal(partial.orderRecords,undefined);
+ assert.equal(partial.records.score,999);
+ assert.ok(skip(s));
+ for(let i=0;i<3;i++){clearRegion(s);if(i<2)assert.ok(choose(s,'advance'));}
+ assert.ok(choose(s,'extract'));assert.equal(orderBonus(s.result),SORTIE_ORDERS.wire.bonus);
+ const complete=settleProfile(next,s),r=complete.recent[0];
+ assert.equal(complete.credits,next.credits+r.credits);assert.equal(complete.records.score,999);
+ assert.equal(complete.orderRecords.wire.wins,1);assert.equal(complete.orderRecords.wire.score,r.score);
+ assert.equal(r.orderFee,70);assert.equal(r.orderBonus,180);assert.ok(r.newTime);
+ assert.deepEqual(settleProfile(complete,s),complete);
+ assert.equal(parseProfile(JSON.stringify(complete)).orderRecords.wire.time,r.seconds);
+});
+
+test('only the designated light coast convoy secures the convoy order',()=>{
+ for(const contract of ['light','armored']){
+  const s=createOperation(22,[],null,'convoy'),site=orderTarget(s);
+  s.enemies=[];s.blocks=[];s.spawnClock=999;
+  for(const n of s.sites)n.state=n===site?'ready':'done';
+  Object.assign(s.player,site);step(s,dt);
+  assert.equal(s.choice.type,'armory');assert.ok(action(s,`raid:${contract}`));
+  const loaded=restore(snapshot(s));loaded.shots=[bullet(loaded,loaded.raid.target,10000)];step(loaded,dt);
+  assert.equal(loaded.raid.state,'success');
+  assert.equal(loaded.operation.orderDone,contract==='light');
+  assert.equal(restore(snapshot(loaded)).operation.orderDone,contract==='light');
+ }
+});
+
+test('missing the coast objective still permits standard extraction without an order bonus',()=>{
+ const base=emptyProfile(),p={...base,records:{...base.records,wins:1},credits:900,milestones:{medic:true}};
+ const {run:s,next}=freshSortie(p,17,'convoy');
+ for(let i=0;i<3;i++){clearRegion(s);if(i<2)assert.ok(choose(s,'advance'));}
+ assert.ok(choose(s,'extract'));assert.equal(s.result.won,true);
+ const settled=settleProfile(next,s);
+ assert.equal(settled.recent[0].orderBonus,0);assert.equal(settled.orderRecords,undefined);
+ assert.equal(settled.records.wins,2);assert.equal(settled.records.time,null);
 });

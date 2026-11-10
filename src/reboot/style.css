@@ -304,7 +304,35 @@
 .rail-workshop .upgrade-card[data-choice^="calibrate:"]{--accent:#99c6c8;border-color:#7ea9ad;background:linear-gradient(125deg,#354948,#263839)}
 .rail-workshop-record{display:flex;gap:8px 14px;flex-wrap:wrap;margin:12px 0;color:#d7dfc4;font-size:11px;line-height:1.5}
 .rail-workshop-record b{color:#b9e4e1}
+.sortie-orders{padding:14px 22px 16px;background:#293e37;color:#f1e5bd;border-top:1px solid #98a086}
+.sortie-orders header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.sortie-orders .section-index{margin-bottom:3px;color:#c0c9aa}
+.sortie-orders h2{font-size:15px}
+.sortie-orders .text-button{min-height:44px;color:#f1d59c}
+.order-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.order-slip{display:flex;align-items:center;gap:10px;min-height:68px;min-width:0;padding:8px 10px;text-align:left;background:#344b41;color:#f2e7c1;border:1px solid #829385;box-shadow:none}
+.order-slip[aria-pressed="true"]{background:#465748;border-color:#f3d18c;box-shadow:inset 3px 0 #f3d18c}
+.order-slip:focus-visible{outline:2px solid #fff0bd;outline-offset:2px}
+.order-stamp{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;color:#bde3cf;background:#20352f;border:1px solid #8eaa96}
+.order-stamp svg{width:22px;height:22px}
+.order-slip[data-order="convoy"] .order-stamp{color:#f2ce91;border-color:#b4a176}
+.order-copy{display:grid;gap:3px;min-width:0}
+.order-copy strong{font-size:13px}
+.order-copy small{font-size:10px;line-height:1.4;color:#e0ddbf}
+.order-copy small:last-child{color:#f1d59c}
+.sortie-receipt{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin:12px 0;padding:10px 12px;border-left:3px solid #b6ce9f;background:#34483d;color:#f0e6c4}
+.sortie-receipt .section-index{margin-bottom:3px;color:#c1d0b3}
+.sortie-receipt b{font-size:13px}
+.sortie-receipt small{display:block;font-size:10px;line-height:1.5;color:#d9dfc1}
+.sortie-pay{text-align:right;white-space:nowrap}
+.sortie-pay b,.raid-contract .raid-order-tag{color:#f1d18e}
+.armory-order-note{padding:9px 12px;border-left:2px solid #e6c782;background:#38483d;color:#f0dba4;font-size:11px;line-height:1.5}
 @media(max-width:700px){
+ .sortie-orders{padding:11px 12px 13px}
+ .order-slip{padding:7px 8px;gap:7px}
+ .order-stamp{width:28px;height:28px;flex-basis:28px}
+ .order-stamp svg{width:18px;height:18px}
+ .order-copy strong{font-size:12px}
  .gantry-near #field-feedback{visibility:hidden}
  .boss-active #banner[data-kind="port-ambush"]{
   top:auto;bottom:max(116px,calc(env(safe-area-inset-bottom) + 96px));left:auto;right:14px;

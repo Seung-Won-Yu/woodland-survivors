@@ -13,6 +13,16 @@ export const HOLDOUT_CONTRACTS=[
  {id:'defend',name:'중계기 방어',goal:'중계기 반경 안에서 8초 버티기',risk:'범위 안에 포격이 떨어집니다.'},
  {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'하역장 바깥 굽이에서 차량의 진로를 끊으세요.'}
 ];
+export const SORTIE_ORDERS={
+ wire:{name:'전파 절단',site:'해안 통신소',action:'범위 안에서 5초 해킹한 뒤 회수',fee:70,bonus:180,color:'#bde3cf'},
+ convoy:{name:'보급선 절단',site:'해안 무기고',action:'무기고에서 보급을 걸고 경량 보급차 저지',fee:70,bonus:180,color:'#f2ce91'}
+};
+export const sortieOrder=id=>Object.hasOwn(SORTIE_ORDERS,id)?SORTIE_ORDERS[id]:null;
+export const orderBonus=r=>r.won&&r.operation?.orderDone?sortieOrder(r.operation.order)?.bonus||0:0;
+export function orderTarget(s){
+ if(s.operation?.region!==0||s.stage==='boss'||s.operation.orderDone||!sortieOrder(s.operation.order))return null;
+ return s.sites.find(site=>site.id==='arsenal'&&site.state!=='done')||null;
+}
 export const FRONT_SUPPORTS={
  breach:{name:'철갑 급탄',role:'부위 조준',art:'ammo',impact:'보스 부위 우선 조준 · 피해 +55%',detail:'측면에서 부위가 사거리에 들어오면 차체보다 먼저 조준합니다.',tactics:['조준 중인 포대를 부수면 해당 포격이 멈춥니다.','포탑을 먼저 파괴하면 재장전 직전 부채꼴 사격이 멈춥니다.']},
  overrun:{name:'돌격 신관',role:'재장전 돌입',art:'coil',impact:'회피 충격파 · 빈틈에 기본 피해 260',detail:'회피가 끝날 때 일반 적을 폭파하고, 재장전 중인 보스에도 근접 충격을 줍니다.',tactics:['포격이 끝나면 차선 밖에서 열차 쪽으로 회피하세요.','집중 포격을 벗어난 뒤 노출 코어 쪽으로 회피하세요.']},
@@ -185,13 +195,14 @@ export function activeEntry(s){
  }
  return entry;
 }
-export function regionLayout(seed,index=0){
+export function regionLayout(seed,index=0,order=null){
  const map=layout(seed);
  if(index===0){
   const route=beachRoute(seed);
   return {...map,sites:map.sites.map((site,i)=>{
    const approach=i===1?'f':i===3?'r':null;
-   return {...site,x:route.points[i][0],y:route.points[i][1],...(i===0?{gun:route.gun,opening:true}:approach?{coastApproach:approach,name:COAST_APPROACHES[approach].name,module:COAST_APPROACHES[approach].module}:{})};
+   const objective=site.id==='arsenal'&&sortieOrder(order);
+   return {...site,x:route.points[i][0],y:route.points[i][1],...(objective?{name:objective.site,...(order==='wire'?{kind:'relay',progress:0}:{})}:i===0?{gun:route.gun,opening:true}:approach?{coastApproach:approach,name:COAST_APPROACHES[approach].name,module:COAST_APPROACHES[approach].module}:{})};
   })};
  }
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});
@@ -217,4 +228,4 @@ export const RESEARCH={
  thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'화염방사기와 축전 코일을 갖춘 뒤 보급을 여세요. 연소한 적에 전기가 닿으면 전탄이 찹니다.'}
 };
 export const CARGO_CREDITS=70;
-export function operationCredits(r,firstWin=false){if(!r.operation)return 0;const s=r.stats,boss=[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0);return Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10+Math.min(s.sitesCleared||0,6)*40+boss+(r.won?120:0)+Math.min(s.raidSuccess,3)*40+Math.min(s.challengeWins||s.challenge,3)*20+(s.holdoutCargo?CARGO_CREDITS:0)+(firstWin&&r.won?200:0);}
+export function operationCredits(r,firstWin=false){if(!r.operation)return 0;const s=r.stats,boss=[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0);return Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10+Math.min(s.sitesCleared||0,6)*40+boss+(r.won?120:0)+Math.min(s.raidSuccess,3)*40+Math.min(s.challengeWins||s.challenge,3)*20+(s.holdoutCargo?CARGO_CREDITS:0)+(firstWin&&r.won?200:0)+orderBonus(r);}

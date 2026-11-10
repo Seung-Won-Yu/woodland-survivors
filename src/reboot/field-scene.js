@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,exitGate} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,exitGate,sortieOrder} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -46,9 +46,9 @@ const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
  landmarks:scene.landmarks.map(([row,col,x,y,w])=>[row,col,1600-x,y,w])
 });
 export const fieldScene=(index,seed=17)=>(mapSeed(seed,index)%2===0?mirrored:scenes)[index]||scenes[0];
-export function previewLayout(seed,index){return regionLayout(mapSeed(seed,index),index);}
+export function previewLayout(seed,index,order=null){return regionLayout(mapSeed(seed,index),index,order);}
 export function sitePresentation(n){
- if(n.kind==='relay')return{icon:'relay',name:'통신 중계기',verb:'범위 안에서 해킹'};
+ if(n.kind==='relay')return{icon:'relay',name:n.name,verb:'범위 안에서 해킹'};
  if(n.kind==='control')return{icon:'control',name:'항구 관제소',verb:'경비를 제압하라'};
  if(n.kind==='armory')return{icon:'armory',name:n.name,verb:'경비를 제압하라'};
  if(n.id==='supply-a')return{icon:'rescue',name:'포로 구출',verb:'경비를 제압하라'};
@@ -83,11 +83,16 @@ export function raidPreview(s){
  const paths=Object.keys(RAID_MARKS).map(id=>raidRouteSvg(raidRoute(s,id),id)).join('');
  return `<svg class="raid-preview" viewBox="0 0 1600 1200" role="img" aria-label="보급차와 장갑 수송대의 출발점과 검문선. 흰 점은 현재 위치.">${ground}${cover}${paths}<circle cx="${s.player.x}" cy="${s.player.y}" r="31" fill="#fff5d5" stroke="#243a34" stroke-width="10"/></svg>`;
 }
-export function regionPreview(index,seed=17,current=null){
+export function orderPinSvg(site,id){
+ const order=sortieOrder(id);
+ return order&&site?`<path data-order-pin="${id}" d="M${site.x} ${site.y-57}l57 57 -57 57 -57 -57Z" fill="none" stroke="${order.color}" stroke-width="11" aria-label="${order.name} · ${order.site}"/>`:'';
+}
+export function regionPreview(index,seed=17,current=null,order=null){
  const entry=frontEntry(mapSeed(seed,index),index);
- const map=current||previewLayout(seed,index),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
+ const map=current||previewLayout(seed,index,order),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
  const stops=index===0&&!current?map.sites.filter(n=>n.opening||n.coastApproach):[];
  const insertion=entry?entryRouteSvg(entry):stops.length?`<path d="M800 1040L${stops[0].x} ${stops[0].y}" stroke="#ffdf8b" stroke-width="12" stroke-dasharray="20 20"/>`:'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';
  const numbers=stops.map(site=>`<g transform="translate(${site.x+54} ${site.y-46})" aria-hidden="true"><circle r="30" fill="#f1cc79" stroke="#263d35" stroke-width="6"/><text y="12" text-anchor="middle" fill="#263d35" font-size="35" font-weight="bold">${site.coastApproach?.toUpperCase()||'1'}</text></g>`).join('');
- return `<svg class="sector-preview" viewBox="0 0 1600 1200" role="img" aria-label="${REGIONS[index].name} · 전장과 같은 지형과 보급 위치">${terrainSvg(index,seed)}${map.blocks.filter(b=>b.hp!==0).map(b=>`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#354a40" stroke="#b6b394" stroke-width="10"/>`).join('')}${gate?gateSymbol(gate):`${insertion}<path d="m800 315-40 60h80Z" fill="#e6a36a"/>`}${map.sites.map(n=>siteSymbol(n,n.x,n.y,40)).join('')}${numbers}<circle cx="${player.x}" cy="${player.y}" r="22" fill="#fff1bf" stroke="#263d35" stroke-width="10"/></svg>`;
+ const orderPin=index===0?orderPinSvg(map.sites.find(site=>site.id==='arsenal'),order):'';
+ return `<svg class="sector-preview" viewBox="0 0 1600 1200" role="img" aria-label="${REGIONS[index].name} · 전장과 같은 지형과 보급 위치">${terrainSvg(index,seed)}${map.blocks.filter(b=>b.hp!==0).map(b=>`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#354a40" stroke="#b6b394" stroke-width="10"/>`).join('')}${gate?gateSymbol(gate):`${insertion}<path d="m800 315-40 60h80Z" fill="#e6a36a"/>`}${map.sites.map(n=>siteSymbol(n,n.x,n.y,40)).join('')}${numbers}${orderPin}<circle cx="${player.x}" cy="${player.y}" r="22" fill="#fff1bf" stroke="#263d35" stroke-width="10"/></svg>`;
 }

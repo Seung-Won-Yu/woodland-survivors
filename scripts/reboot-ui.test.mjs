@@ -161,3 +161,14 @@ test('fresh launch avoids the previous beach route, including after reload and s
  assert.notDeepEqual(holdoutParts(sameDraft.seed,1),holdoutParts(16,1));
  assert.ok(plan.seed>=0&&plan.seed<=0xffffffff);
 });
+
+test('the post-clear order dock previews the correct field site and never silently opts in',()=>{
+ const p=emptyProfile();assert.doesNotMatch(lobbyView(p),/추가 작전 지령/);
+ p.records.wins=1;p.credits=600;
+ const normal=lobbyView(p);assert.match(normal,/추가 작전 지령/);assert.doesNotMatch(normal,/data-sortie=/);
+ const wire=lobbyView(p,{seed:19,order:'wire'});assert.match(wire,/data-sortie="wire"/);
+ assert.match(wire,/data-order-pin="wire"/);assert.match(wire,/해안 통신소/);assert.match(wire,/70C 선납.*최종 귀환 \+180C/);
+ const convoy=lobbyView(p,{seed:19,order:'convoy'});assert.match(convoy,/data-sortie="convoy"/);
+ assert.match(convoy,/data-order-pin="convoy"/);assert.match(convoy,/경량 보급차 저지/);
+ p.credits=69;const poor=lobbyView(p,{order:'wire'});assert.doesNotMatch(poor,/data-sortie=/);assert.match(poor,/1C 부족/);
+});
