@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,exitGate,sortieOrder,beachRoute} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,portCenterRoute,exitGate,sortieOrder,beachRoute} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -79,7 +79,9 @@ export function gateSymbol({x,y,name}){
  return `<g class="map-exit" transform="translate(${x} ${y})" aria-label="${name}"><rect x="-39" y="-32" width="78" height="64" rx="8" fill="#23473a" stroke="#b8efbd" stroke-width="9"/><path d="m-18 7 18-16 18 16" fill="none" stroke="#b8efbd" stroke-width="8"/></g>`;
 }
 export function entryRouteSvg(entry){
- return entry?.routes.map(route=>`<polyline data-approach="${route.site}" points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="22 18" aria-label="${route.sign} 경로"/>`).join('')||'';
+ if(!entry)return '';
+ const routes=entry.direct?[entry.direct,...entry.routes]:entry.routes;
+ return routes.map(route=>`<polyline data-approach="${route.site}" points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="22 18" aria-label="${route.sign} 경로"/>`).join('');
 }
 export function escapeRouteSvg(route,marker,color,name,dash='12 16'){
  const start=route[0],end=route.at(-1),previous=route.at(-2);
@@ -99,7 +101,8 @@ export function orderPinSvg(site,id){
  return order&&site?`<path data-order-pin="${id}" d="M${site.x} ${site.y-57}l57 57 -57 57 -57 -57Z" fill="none" stroke="${order.color}" stroke-width="11" aria-label="${order.name} · ${order.site}"/>`:'';
 }
 export function regionPreview(index,seed=17,current=null,order=null){
- const entry=frontEntry(mapSeed(seed,index),index);
+ const front=frontEntry(mapSeed(seed,index),index);
+ const entry=index===2?{...front,direct:portCenterRoute(seed)}:front;
  const map=current||previewLayout(seed,index,order),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
  const stops=index===0&&!current?map.sites.filter(n=>n.opening||n.coastApproach):[];
  const insertion=entry?entryRouteSvg(entry):stops.length?`<path d="M800 1040L${stops[0].x} ${stops[0].y}" stroke="#ffdf8b" stroke-width="12" stroke-dasharray="20 20"/>`:'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';

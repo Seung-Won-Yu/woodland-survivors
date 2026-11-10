@@ -102,8 +102,9 @@ export function choiceDetails(s,c){
   if(plan){out.art=c.key;out.impact=plan.impact;out.detail=plan.hint;out.link=plan.detail;out.cost='무장 대신 선택 · 공략 성공 시 철도 진입 보급';}
  }else if(c.kind==='control'){
   const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
-  out.art=c.key==='heat'?'f':c.key==='signal'?'coil':'ammo';
-  if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';out.cost='이 전선 보스전에 적용';}
+  out.art=c.key==='heat'||c.key==='lens'?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
+  out.cost='';
+  if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';}
  }else if(c.kind==='front-support'){
   const kit=FRONT_SUPPORTS[c.key];
   const index=s.operation.region+1;

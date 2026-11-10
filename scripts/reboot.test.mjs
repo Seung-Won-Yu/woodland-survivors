@@ -743,6 +743,58 @@ test('focused Inferno holds the clear harbor core line at midrange during reload
  assert.ok(sweep.enemies[0].hp<500);
  assert.ok(sweep.zones.some(zone=>zone.source==='wake'));
 });
+test('the harbor control cards match equipped capstones and focused fire extends one reload per cycle',()=>{
+ const s=supportArena(2,null,'recover');
+ s.stage='field';s.boss.active=false;
+ Object.assign(s.weapons[0],{level:6,evolved:true,branch:'ricochet',fusion:{secondary:'r',branch:'incendiary',overflow:0}});
+ s.weapons.push({...makeWeapon('f'),uid:'fire',level:6,evolved:true,branch:'focused',cd:999});
+ s.sites=[{id:'port-control',kind:'control',state:'ready',x:800,y:535,name:'항구 관제소'}];
+ Object.assign(s.player,{x:800,y:535});step(s,dt);
+ assert.deepEqual(s.choices.map(c=>c.id),['control:lens','control:ember','control:jam','control:loot']);
+ assert.ok(choose(s,'control:lens'));
+ s.stage='boss';s.boss.active=true;s.boss.timer=2;
+ const flame=s.weapons[1];flame.cd=0;step(s,dt);
+ assert.ok(Math.abs(s.boss.timer-(2+.8-dt))<1e-9);
+ flame.cd=0;step(s,dt);
+ assert.ok(Math.abs(s.boss.timer-(2+.8-2*dt))<1e-9);
+ assert.equal(s.stats.frontTactics[2],1);
+});
+test('one soldier can trigger a port charge against a live turret with pending rounds',()=>{
+ const s=supportArena(2,null,'salvo');
+ s.operation.tactic='ember';
+ const turret=partPosition(s,s.boss.parts[0]);
+ s.zones=[{...turret,r:130,life:2,tick:0,source:'ember-charge',owner:s.weapons[0].uid}];
+ s.enemies=[enemy('bait',turret.x,turret.y+50,'rifle',80)];
+ s.hazards=['lock','rake','turret','turret'].map((portRound,i)=>({portRound,x:620+i*115,y:585,r:58,timer:.6}));
+ const without=restore(snapshot(s));delete without.operation.tactic;step(without,dt);
+ assert.equal(without.stats.emberBursts,undefined);
+ step(s,dt);
+ assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','rake']);
+ assert.equal(s.stats.emberBursts,1);
+ assert.equal(s.stats.emberIntercepts,1);
+ assert.equal(s.stats.frontTactics[2],1);
+ assert.ok(s.boss.parts[0].hp>0);
+ assert.ok(takeEvents(s).includes('barrage-cancel'));
+});
+test('a port charge prepared before the warning survives a checkpoint and omits just the next turret rounds',()=>{
+ const s=supportArena(2,null,'aim');
+ s.operation.tactic='ember';s.boss.cycle=0;s.boss.timer=.1;
+ const turret=partPosition(s,s.boss.parts[0]);
+ s.zones=[{...turret,r:130,life:2,tick:0,source:'ember-charge',owner:s.weapons[0].uid}];
+ s.enemies=[enemy('bait',turret.x,turret.y+50,'rifle',80)];
+ step(s,dt);
+ assert.equal(s.boss.emberCycle,1);
+ assert.equal(s.stats.emberIntercepts,undefined);
+ const loaded=restore(snapshot(s));
+ tick(loaded,.2);
+ assert.deepEqual(loaded.hazards.map(h=>h.portRound),['lock','rake','rake']);
+ assert.equal(loaded.stats.emberIntercepts,1);
+ assert.ok(loaded.boss.parts[0].hp>0);
+ Object.assign(loaded.boss,{mode:'aim',timer:0});loaded.hazards=[];
+ step(loaded,dt);
+ assert.equal(loaded.hazards.filter(h=>h.portRound==='turret').length,2);
+ assert.equal(loaded.stats.emberIntercepts,1);
+});
 test('rail parts retain the part hit, dash and XP routes',()=>{
  const opening=supportArena(1,'overrun','recover');Object.assign(opening.player,{x:800,y:400,dash:.01});step(opening,dt);
  assert.equal(opening.boss.parts[0].hp,190);
@@ -885,10 +937,12 @@ test('the harbor landing opens a mirrored, traversable hatch only after its defe
   const center=restore(snapshot(s));
   Object.assign(center.player,{x:800,y:350});
   assert.ok(action(center,'interact'));assert.equal(center.operation.portEntry,undefined);
+  assert.deepEqual([center.player.x,center.player.y],[800,390]);
   Object.assign(s.player,{x:gantry.x,y:gantry.y});
   assert.equal(interaction(s).gantry.x,gantry.x);
   assert.ok(action(s,'interact'));assert.equal(s.operation.portEntry,'gantry');
   assert.deepEqual([s.player.x,s.player.y],[gantry.x,gantry.y]);
+  assert.equal(s.player.y,340);
   assert.ok(portGantryBypass(restore(snapshot(s))));
   assert.ok(portTurretShutter(center));
   for(const state of [s,center]){
@@ -1358,10 +1412,34 @@ test('marked later-front approaches and actual guard formations clear collision 
    clearRegion(s);assert.ok(choose(s,'advance'));
    const entry=frontEntry(mapSeed(seed,index),index);
    assert.deepEqual([s.player.x,s.player.y],[entry.arrival.x,entry.arrival.y]);
-   assert.deepEqual(activeEntry(s),entry);
-   for(const route of entry.routes){
+   const {direct,...visibleEntry}=activeEntry(s);
+   assert.deepEqual(visibleEntry,entry);
+   const routes=[...entry.routes];
+   if(direct){
+    const control=s.sites.find(site=>site.id==='port-control');
+    const dock=s.sites.find(site=>site.id==='port-landing');
+    control.state='done';
+    s.operation.portDock=true;
+    routes.push(direct);
+    for(const origin of [control,dock]){
+     Object.assign(s.player,{x:origin.x,y:origin.y});
+     const returnRoute=activeEntry(s).direct;
+     const p={x:origin.x,y:origin.y};
+     assert.deepEqual(returnRoute.path[0],[p.x,p.y]);
+     for(let i=0;i<350&&p.y>354;i++){
+      const [x,y]=entryWaypoint(returnRoute.path,p),gap=Math.hypot(x-p.x,y-p.y);
+      if(gap>0){p.x+=(x-p.x)*Math.min(1,3/gap);p.y+=(y-p.y)*Math.min(1,3/gap);}
+      assert.ok(clear(s,p.x,p.y,16),origin.id);
+     }
+     assert.ok(p.y<355);
+     routes.push(returnRoute);
+    }
+    control.state='waiting';
+    delete s.operation.portDock;
+   }
+   for(const route of routes){
     const site=s.sites.find(n=>n.id===route.site);
-    assert.deepEqual(route.path.at(-1),[site.x,site.y]);
+    assert.deepEqual(route.path.at(-1),site?[site.x,site.y]:[800,350]);
     for(let i=1;i<route.path.length;i++){
      const [ax,ay]=route.path[i-1],[bx,by]=route.path[i],steps=Math.ceil(Math.hypot(bx-ax,by-ay)/8);
      for(let j=0;j<=steps;j++)assert.ok(clear(s,ax+(bx-ax)*j/steps,ay+(by-ay)*j/steps,16),route.site);

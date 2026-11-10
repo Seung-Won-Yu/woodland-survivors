@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -117,6 +117,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(supply!=null&&(s.operation.region!==2||s.operation.support!=='recovery'||!PORT_SUPPORT.recovery.lanes.includes(supply.x)||supply.y!==PORT_SUPPORT.recovery.y))fail();
   if(s.boss.harborSupplyCycle!=null&&(!Number.isInteger(s.boss.harborSupplyCycle)||s.boss.harborSupplyCycle<1||s.boss.harborSupplyCycle>PORT_SUPPORT.recovery.limit))fail();
   if(s.boss.harborCounter!==undefined&&(s.boss.harborCounter!==true||s.operation.region!==2||s.operation.support!=='recovery'||s.stage!=='boss'))fail();
+  if(s.boss.emberCycle!==undefined&&(s.operation.region!==2||s.operation.tactic!=='ember'||!Number.isSafeInteger(s.boss.emberCycle)||s.boss.emberCycle<1||s.boss.emberCycle>s.boss.cycle+1))fail();
   if(s.operation.holdoutKills!=null&&(!Number.isSafeInteger(s.operation.holdoutKills)||s.operation.holdoutKills<0))fail();
   const {coastStrike:planned,coastStrikeUsed}=s.operation;
   if(planned!==undefined&&(!Object.hasOwn(COAST_STRIKES,planned)||planned!==s.firstNew||s.operation.region===0&&!claimedCoastLead(s)))fail();
@@ -588,9 +589,14 @@ function scoreKill(s,e,source,kind){
  emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{})});
  const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
 }
+function recordFrontTactic(s){
+ const front=s.operation.region;
+ s.stats.frontTactics??={};
+ s.stats.frontTactics[front]=(s.stats.frontTactics[front]||0)+1;
+}
 function activateFrontTactic(s,e,kind,source,owner){
  const b=s.boss,tactic=frontTactic(s),p=s.player;
- if(!tactic||source==='front-relay')return;
+ if(!tactic||source==='front-relay'||!['heat','signal'].includes(s.operation.tactic))return;
  const gap=distance(p,b),index=s.operation.region;
  const cycle=index===1&&s.operation.tactic==='signal'&&b.mode==='aim'?b.cycle+1:b.cycle;
  if(b.tacticCycle===cycle)return;
@@ -610,8 +616,7 @@ function activateFrontTactic(s,e,kind,source,owner){
   emit(s,'weakpoint',target.x,target.y,{life:1,text:index===1?'포대 역송 · 재장전 지연':'포탑 역송 · 증원 호출 지연'});
   damage(s,target,tactic.hop,'electric','front-relay');
  }
- s.stats.frontTactics??={};
- s.stats.frontTactics[index]=(s.stats.frontTactics[index]||0)+1;
+ recordFrontTactic(s);
 }
 function coastStrikeDamage(s,target,kind,source,owner){
  const b=s.boss;
@@ -753,13 +758,24 @@ function updateZones(s,dt){
   z.life-=dt;z.tick-=dt;
   if(z.source==='ember-charge'){
    if(z.life<=0||z.tick>0)continue;
+   const b=s.boss,turret=b.parts[0];
+   const eligible=s.operation?.tactic==='ember'&&b.active&&!b.dead&&turret?.hp>0&&emberContact(s,z,{...partPosition(s,turret),r:turret.r});
+   const pending=eligible&&s.hazards.some(h=>h.portRound==='turret'&&!h.hit);
+   const cycle=pending?b.cycle:b.cycle+1;
+   const suppress=eligible&&b.emberCycle!==cycle;
+   const needed=suppress?1:2;
    let hostiles=0;
    for(const e of s.enemies){
-    if(e.dead||e.hp<=0||distance(z,e)>z.r+e.r||lineBlocked(s,z,e))continue;
-    if(++hostiles===2)break;
+    if(e.dead||e.hp<=0||!emberContact(s,z,e))continue;
+    if(++hostiles===needed)break;
    }
-   if(hostiles<2)continue;
+   if(hostiles<needed)continue;
    z.life=0;
+   if(suppress){
+    b.emberCycle=cycle;
+    if(pending){clearPortRounds(s,'turret');recordPortEmberIntercept(s,z);}
+    else emit(s,'weakpoint',z.x,z.y,{text:'급탄선 단선 · 다음 포탑탄 차단',life:1.2});
+   }
    s.stats.emberBursts=(s.stats.emberBursts||0)+1;
    const kills=s.stats.payloadKills||0;
    blast(s,z.x,z.y,z.r,EMBER_CHARGE.damage,'payload',z.owner,true,'ember-burst',z.breachLane);
@@ -772,6 +788,12 @@ function updateZones(s,dt){
   }
  }
  s.zones=s.zones.filter(z=>z.life>0);
+}
+const emberContact=(s,z,target)=>distance(z,target)<=z.r+target.r&&!lineBlocked(s,z,target);
+function recordPortEmberIntercept(s,point){
+ s.boss.tacticCycle=s.boss.cycle;recordFrontTactic(s);
+ s.stats.emberIntercepts=(s.stats.emberIntercepts||0)+1;
+ emit(s,'barrage-cancel',point.x,point.y,{text:'급탄선 단선 · 포탑탄 차단',life:1.2});
 }
 function fire(s,w,target,a,amount,opts={}){
  if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin,source=opts.source||'native',evolved=w.evolved&&!w.fusion;
@@ -798,7 +820,14 @@ function shoot(s,w){
    burn(e,w.evolved?(focused&&e===target?36:24):RULES.modules.catalyst.burnDamagePerSecond[catalyst-1]||6,w.evolved?2:1.5);
    const core=lance&&e===s.boss;
    const bypass=core&&s.boss.parts.some(part=>part.hp>0)&&!portCoreDisrupted(s);
-   if(core)s.stats.infernoCoreHits=(s.stats.infernoCoreHits||0)+1;
+   if(core){
+    s.stats.infernoCoreHits=(s.stats.infernoCoreHits||0)+1;
+    const b=s.boss;
+    if(s.operation.tactic==='lens'&&b.tacticCycle!==b.cycle){
+     b.tacticCycle=b.cycle;b.timer+=FRONT_TACTICS[2].lens.delay;recordFrontTactic(s);
+     emit(s,'weakpoint',b.x,b.y,{text:'코어 재장전 지연 · 사선 유지',life:1.2});
+    }
+   }
    damage(s,e,d.damage*damageScale*(core?1.4:1)*(bypass?1.6:1),'fire','native',w.uid,0);
   }
   emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14,evolved:w.evolved,...(focused?{focused:true}:null),...(lance?{coreDistance:distance(p,target)}:null)});
@@ -921,11 +950,13 @@ function startPortBarrage(s,warning){
   ...round,timer:duration,duration,
   ...(round.portRound==='lock'?{portAxis:axis,...(jammed?{jammed:true}:{})}:{})
  });
- const mark=portBarrageMark(axis,b.parts[0].hp>0?portTurretSide(b):0);
+ const mark=portBarrageMark(axis,rounds.some(h=>h.portRound==='turret')?portTurretSide(b):0);
  const rake=rounds.some(h=>h.portRound==='rake');
  const message=jammed?'관제소 교란 · 장갑탄 차단':rake?`가로 포격 ${mark}`:horizontal?'장갑탄 차단 · 발밑 포격':`세로 포격 ${mark}`;
  const signal=rake?'harbor-rake-lock':horizontal?'harbor-center-lock':'harbor-vertical-lock';
- emitBossWarning(s,signal,p.x,p.y,{text:warning?`${message} · 선행 경보 +1초`:message,life:1});
+ const cut=b.emberCycle===b.cycle&&b.parts[0].hp>0;
+ if(cut)recordPortEmberIntercept(s,partPosition(s,b.parts[0]));
+ emitBossWarning(s,signal,p.x,p.y,{text:`${message}${cut?' · 포탑탄 차단':''}${warning?' · 선행 경보 +1초':''}`,life:1});
 }
 function clearPortRounds(s,round){
  const before=s.hazards.length;
@@ -1046,12 +1077,14 @@ function updateBoss(s,dt){
  if(b.spawnClock<=0){b.spawnClock=5;for(let i=0;i<6;i++)spawnAround(s,i===0?'shield':'rifle');}
  if(distance(b,p)<b.r+16&&(!s.hitCandidate||s.hitCandidate.amount<16))s.hitCandidate={amount:16,x:b.x,y:b.y};
 }
-function frontControlCards(index){
- const orders=Object.entries(FRONT_TACTICS[index]).map(([key,t])=>({id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role}));
+function frontControlCards(s){
+ const index=s.operation.region,tactics=FRONT_TACTICS[index];
+ const keys=index===2?portTacticKeys(s):Object.keys(tactics);
+ const orders=keys.map(key=>{const t=tactics[key];return {id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role};});
  if(index===1)return [...orders,{id:'control:supply',kind:'control',key:'supply',title:'중계기 보급 회수',desc:'보유 병기를 개조하거나 새 무장과 모듈을 확보합니다.',label:'일반 보급'}];
  return [...orders,
-  {id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'첫 가로 포격의 장갑탄을 차단하고, 보스 증원과 포격병 투입을 절반으로 줄입니다.',label:'최종전 안전'},
-  {id:'control:loot',kind:'control',key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈·재보급 3후보 중 하나를 받습니다.',label:'추가 화력'}];
+  {id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'첫 가로 장갑탄 차단 · 증원 6명 → 3명',label:'최종전 안전'},
+  {id:'control:loot',kind:'control',key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈 또는 재보급 후보 3개',label:'추가 화력'}];
 }
 function updateSites(s,dt){
  if(s.stage==='boss')return;
@@ -1097,7 +1130,7 @@ function updateSites(s,dt){
     emit(s,'port-hatch',site.x,site.y,{text:'측면 해치 개방 · 작전도에 통로 표시',life:1.6});
     return;
    }
-   if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s.operation.region),site.name);
+   if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s),site.name);
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality,siteId:site.id});}
    else if(site.id==='rail-cache'&&s.operation?.region===1)openChoice(s,'rail-workshop',railWorkshopPlan(s).cards,site.name);
    else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:site.coastApproach?{siteId:site.id}:{});
@@ -1339,7 +1372,8 @@ export function action(s,kind,input){
   const dock=s.operation?.region===2&&s.sites.find(site=>site.id==='port-landing');
   if(dock?.state==='active')dock.state='waiting';
   s.stage='boss';s.refits=0;s.boss.active=true;s.boss.mode='aim';s.boss.timer=1.3;
-  p.x=item.gantry?.x??800;p.y=item.gantry?.y??470;
+  const arrival=item.gantry||(s.operation?.region===2?PORT_CENTER:{x:800,y:470});
+  p.x=arrival.x;p.y=arrival.y;
   if(!(s.operation?.region>0))clearCoastOverlap(s,p,16,{x:800,y:350});
   p.invuln=Math.max(p.invuln,1);
   s.enemies=s.enemies.filter(e=>(!e.dead&&(e.showcase||e.siteId)||distance(e,s.boss)<400)&&(!dock||e.siteId!==dock.id));

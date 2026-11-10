@@ -44,6 +44,7 @@ export function vanguardAid(player){
 }
 export const PORT_TURRET={shutterDamage:.16};
 export const PORT_BARRAGE={warning:.95,radius:58,batteryOffset:114,turretOffset:116,turretSpread:54};
+export const PORT_CENTER={x:800,y:390};
 export function portBarrageAxis(s,cycle){
  const gantry=s.operation.portEntry==='gantry';
  return (cycle%2===0)===gantry?'horizontal':'vertical';
@@ -61,7 +62,7 @@ export function portBarrageRounds(s,cycle){
  for(const side of [-1,1]){
   if(rake)push(side*plan.batteryOffset,0,'rake');
   else if(axis==='vertical')push(0,side*plan.batteryOffset,'battery');
-  if(b.parts[0].hp>0)push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
+  if(b.parts[0].hp>0&&b.emberCycle!==cycle)push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
  }
  return rounds;
 }
@@ -134,11 +135,18 @@ export const FRONT_TACTICS={
   signal:{name:'포대 신호 역송',role:'전도 · 원거리 연쇄',impact:'원거리 적중으로 포대 사이 전류 도약 · 재장전 +0.8초',hint:'차선 밖에서 전류를 이어 조준 중인 포대를 끊으세요.',range:220,hop:220,delay:.8}
  },
  2:{
-  heat:{name:'코어 냉각 차단',role:'화염 · 근접 돌파',impact:'붉은 원을 피해 접근한 뒤 분사하면 코어와 장갑 피해 +55%',hint:'집중 포격과 포탑 사격을 피해 노출 코어에 붙으세요.',range:168,boost:1.55},
-  signal:{name:'포탑 교신 탈취',role:'전도 · 원거리 제압',impact:'원거리 적중이 포탑으로 도약 · 다음 증원까지 최소 3초',hint:'붉은 원 바깥에서 로켓·전기·전도 격발망으로 포탑을 끊으세요.',range:220,hop:280,delay:3}
+  heat:{name:'코어 냉각 차단',role:'화염 · 근접 돌파',impact:'근접 분사 · 코어·장갑 피해 +55%',hint:'붉은 포격 범위를 피해 노출 코어에 붙으세요.',range:168,boost:1.55},
+  signal:{name:'포탑 교신 탈취',role:'전도 · 원거리 제압',impact:'원거리 적중 · 포탑 전류 도약',hint:'붉은 원 밖에서 사격하면 증원을 최소 3초 늦춥니다.',range:220,hop:280,delay:3},
+  lens:{name:'코어 재장전 지연',role:'압축 분사 · 사선 유지',impact:'코어 직격으로 재장전 +0.8초',hint:'포격 뒤 중거리에서 멈춰 압축 분사를 코어에 맞히세요.',delay:.8},
+  ember:{name:'포탑 급탄선 단선',role:'점화 탄두 · 포탑 유폭',impact:'포탑 옆 유폭 · 이번 또는 다음 포탑탄 차단',hint:'살아 있는 포탑과 보병 한 명을 화약에 넣으세요.'}
  }
 };
 export const frontTactic=s=>FRONT_TACTICS[s.operation?.region]?.[s.operation?.tactic];
+export function portTacticKeys(s){
+ const focused=s.weapons.some(w=>w.id==='f'&&w.evolved&&w.branch==='focused');
+ const incendiary=s.weapons.some(w=>w.fusion?.branch==='incendiary');
+ return [focused?'lens':'heat',incendiary?'ember':'signal'];
+}
 export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
 export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'?s.challenge.target:null;
 export const DEFENSE_ZONE={x:800,y:560,r:108,seconds:8};
@@ -270,8 +278,8 @@ const ENTRY={
   {site:'rail-relay',sign:'중계기 해킹',color:'#b1dfcb',path:[[800,1040],[936,980],[1120,835],[1120,580]]}
  ]},
  2:{arrival:{x:720,y:1040},routes:[
-  {site:'port-landing',sign:'해치 · 측면 기습',color:'#edce8e',path:[[720,1040],[620,992],[520,900]]},
-  {site:'port-control',sign:'관제소 · 전술 선택',color:'#b5dce7',path:[[720,1040],[875,1010],[995,929],[1030,821],[1090,740],[1180,690],[1180,620]]}
+  {site:'port-landing',sign:'해치 · 포탑 측면 기습',color:'#edce8e',path:[[720,1040],[620,992],[520,900]]},
+  {site:'port-control',sign:'관제소 · 전술 또는 증원 절반',color:'#b5dce7',path:[[720,1040],[875,1010],[995,929],[1030,821],[1090,740],[1180,690],[1180,620]]}
  ]}
 };
 const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry])=>[index,{
@@ -279,8 +287,15 @@ const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry]
  routes:entry.routes.map(route=>({...route,path:route.path.map(([x,y])=>[1600-x,y])}))
 }]));
 export const frontEntry=(sectorSeed,index)=>(sectorSeed%2===0?MIRRORED_ENTRY:ENTRY)[index];
-const GANTRY_PATH=[[520,900],[510,812],[510,630],[550,520],[595,400]];
+const GANTRY_PATH=[[520,900],[510,812],[510,630],[550,520],[595,400],[595,340]];
 const GANTRY_MIRRORED=GANTRY_PATH.map(([x,y])=>[1600-x,y]);
+export function portCenterRoute(seed,origin='arrival'){
+ const entry=frontEntry(mapSeed(seed,2),2),{x,y}=entry.arrival;
+ const path=origin==='control'?[entry.routes[1].path.at(-1),[800,620],[800,605],[800,350]]
+  :origin==='dock'?[entry.routes[0].path.at(-1),[800,900],[800,868],[800,350]]
+  :[[x,y],[800,990],[800,350]];
+ return {site:'port-center',name:'정면 돌입',sign:'정면 · 첫 가로 포격',path,labelAt:-1,color:'#cab9a4'};
+}
 export function portGantry(s){
  if(s.operation?.region!==2||!s.operation.portDock||s.stage!=='field')return null;
  const path=s.seed%2===0?GANTRY_MIRRORED:GANTRY_PATH,[x,y]=path.at(-1);
@@ -298,6 +313,14 @@ export function activeEntry(s){
   if(site.id==='rail-cache'&&s.operation.requisition)return [{...route,sign:'정비대 · 예약품'}];
   return [site.id==='port-landing'&&!site.gantry?{...route,sign:'하역장 보급'}:route];
  });
+ if(index===2){
+  const control=s.sites.find(site=>site.id==='port-control'&&site.state==='done');
+  const dock=s.operation.portDock&&s.sites.find(site=>site.id==='port-landing');
+  const origin=control&&(!dock||distance(s.player,control)<distance(s.player,dock))?'control':dock?'dock':'arrival';
+  const direct=portCenterRoute(s.seed,origin);
+  if(s.operation.jammed)direct.sign='정면 · 첫 장갑탄 차단';
+  return {...entry,routes,direct};
+ }
  return routes.length?{...entry,routes}:null;
 }
 export function entryWaypoint(path,p){

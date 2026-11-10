@@ -271,7 +271,7 @@ export function paintWreckSmoke(c,x,y,age,reduced){
 export function paintEntryRoutes(c,entry){
  c.save();
  c.lineWidth=3;c.lineCap='round';c.lineJoin='round';
- for(const route of entry.routes){
+ for(const route of entry.direct?[entry.direct,...entry.routes]:entry.routes){
   c.strokeStyle=route.color+'a0';c.setLineDash([10,11]);c.beginPath();
   route.path.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();
   c.setLineDash([]);
