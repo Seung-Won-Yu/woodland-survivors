@@ -6,7 +6,7 @@ import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js'
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
-import {choiceDetails} from '../src/reboot/choice-details.js';
+import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -76,6 +76,45 @@ test('evolved sweeping fire leaves a forward wake while focused fire builds a st
 });
 test('assembly progress distinguishes a ready recipe from an already completed weapon',()=>{
  const s=quiet();assert.ok(buildPaths(s).every(p=>!p.ready&&!p.complete));s.weapons[0].level=6;s.weapons[0].branch='ricochet';s.modules=[{id:'ricochet',rank:2}];assert.ok(buildPaths(s).some(p=>p.ready&&p.title.includes('사중')));action(s,'gear');choose(s,'evolve:h');assert.ok(buildPaths(s).some(p=>p.complete&&p.title.includes('사중')));assert.ok(buildPaths(s).every(p=>!p.ready));
+});
+test('workshop explains permit shortage and blocks an identical installed fusion',()=>{
+ const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});
+ s.weapons.push({...makeWeapon('r'),uid:'rocket',level:4,branch:'homing'});
+ s.modules=[{id:'coil',rank:2}];s.tuning=0;
+ const fusion=()=>buildPaths(s).find(path=>path.id==='fusion:h:r');
+ assert.equal(fusion().status,'permit');assert.equal(fusion().missing,'조율권 1개');
+ s.tuning=1;s.weapons.unshift({...makeWeapon('h'),uid:'fused',level:6,branch:'ricochet',evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}});
+ assert.equal(fusion().status,'blocked');assert.ok(!assemblyOptions(s).some(card=>card.id===fusion().id));
+ s.weapons[1].branch='grenade';
+ assert.equal(fusion().status,'ready');assert.ok(assemblyOptions(s).some(card=>card.id===fusion().id));
+});
+test('growth preview predicts the exact branch or rank without mutating the run',()=>{
+ const s=quiet();Object.assign(s.weapons[0],{level:3});
+ s.weapons.push({...makeWeapon('f'),uid:'flame',level:5,branch:'trail'});
+ s.modules=[{id:'catalyst',rank:3}];s.phase='choice';s.choice={type:'level'};
+ const rank=weapon=>({id:`rank:${weapon}`,kind:'rank',weapon});
+ const [machine,flame]=s.choices=[rank('h'),rank('f')];const before=snapshot(s);
+ assert.equal(growthForecast(s,machine).text,'유탄 급탄 선택 시 열압 연계 발동');
+ assert.equal(growthForecast(s,machine,{branch:'grenade'}).text,'열압 연계 발동');
+ assert.notEqual(growthForecast(s,machine,{branch:'ricochet'})?.kind,'ready');
+ assert.equal(growthForecast(s,flame).text,'인페르노 조립 가능');
+ assert.deepEqual(snapshot(s),before);
+ assert.ok(choose(s,flame.id));assert.ok(assemblyOptions(s).some(card=>card.id==='evolve:f'));
+ action(s,'gear');const repair=s.choices.find(card=>card.kind==='repair');
+ assert.equal(growthForecast(s,repair).text,'조율권을 쓰면 인페르노 대기');
+});
+test('replacing a full module slot previews the recipe gained and the recipe lost',()=>{
+ const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});
+ s.weapons.push({...makeWeapon('r'),uid:'rocket',level:4,branch:'homing'},
+  {...makeWeapon('f'),uid:'flame',level:6,branch:'trail'});
+ s.modules=[{id:'catalyst',rank:2},{id:'magnet',rank:1},{id:'ricochet',rank:1},{id:'overcharger',rank:1}];
+ s.phase='choice';s.choice={type:'armory'};
+ const [coil]=s.choices=[{id:'module:coil',kind:'module',module:'coil',rank:2}];
+ assert.equal(growthForecast(s,coil),null);
+ assert.equal(growthForecast(s,coil,{slot:0}).text,'전도 격발망 H+R 조립 가능 · 인페르노 · 열압 연계 대기');
+ assert.equal(growthForecast(s,coil,{slot:1}).text,'전도 격발망 H+R 조립 가능');
+ s.modules[0].rank=3;
+ assert.equal(growthForecast(s,coil,{slot:0}).text,'전도 격발망 H+R 조립 가능 · 인페르노 대기 · 열압 연계 해제');
 });
 test('same-seed ordinary inputs and checkpoint restoration produce identical continuation',()=>{
  const s=createRun(71);tick(s,1,{x:1,y:-1});takeEvents(s);const r=restore(snapshot(s));tick(s,.8,{x:-1,y:0});tick(r,.8,{x:-1,y:0});assert.deepEqual(snapshot(s),snapshot(r));

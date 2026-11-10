@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.31.0" src="https://img.shields.io/badge/RIFT-0.31.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.32.0" src="https://img.shields.io/badge/RIFT-0.32.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -77,6 +77,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.32는 강화와 분화를 고를 때 이번 선택으로 열리는 조합을 표시합니다. 시드 19에서 화염의 열압과 인페르노, 전도 격발망을 모바일 인앱 화면에서 각각 직접 장착하고 귀환을 확인했습니다. [성장 선택 검증](docs/RIFT-GAMEPLAY-V1.md#032-강화에서-조립까지).
 
 0.31은 390px와 360px 인앱 화면에서 조이스틱을 직접 움직여 포로를 구출하고 화염과 로켓을 각각 장착했습니다. 두 화면 모두 출격 버튼이 첫 화면에 들어오고, 장착 직후 선택한 무장의 다음 표적이 전장과 작전도에 표시됩니다. [해안 첫 출격 검증](docs/RIFT-GAMEPLAY-V1.md#031-포로-구출과-첫-무장).
 

@@ -20,10 +20,82 @@ export const MODULES={
 export const QUALITY={common:'일반',rare:'희귀',prototype:'원형품'};
 export const GUN_BRIEFS={h:'빠른 실탄 연사 · L4: 산개 도탄 / 유탄 급탄',r:'넓은 폭발로 무리 정리 · L4: 추적 다탄두 / 점화 탄두',f:'가까운 무리를 태우는 부채 화염 · L4: 연료 살포 / 압축 분사'};
 export const MODULE_LINKS={medic:'안전성을 얻는 대신 모듈 한 칸 사용',shrapnel:'유탄·로켓·전도 격발망의 군집 피해 확장',thermal:'연소+전기 → 전탄 보급 순환',ricochet:'H L6 + 도탄2 → 사중 기관포',coil:'H·R 각 L4 + 코일2 → 전도 합체',catalyst:'화염으로 점화 → 유탄·로켓으로 열압 폭발',magnet:'위험한 XP 회수 동선을 짧게',overcharger:'전탄 보급 종료 방출 · 받는 피해 +15%'};
-export function buildPaths(s){
- const paths=s.weapons.filter(w=>!w.fusion).map(w=>{const requirements=w.branch?RULES.weapons[w.id].evolution.moduleByBranch[w.branch]:[...new Set(Object.values(RULES.weapons[w.id].evolution.moduleByBranch).flat())],rank=Math.max(...requirements.map(id=>moduleRank(s,id))),ready=w.level===6&&rank>=2&&!w.evolved;return{title:`단일 진화 · ${GUNS[w.id].evolution}`,detail:`${GUNS[w.id].short} L${w.level}/6 · ${requirements.map(id=>MODULES[id].name).join(' 또는 ')} ${rank}/2`,ready:ready&&s.tuning>0,complete:w.evolved};});
- const h=s.weapons.find(w=>w.id==='h'&&!w.fusion),r=s.weapons.find(w=>w.id==='r'&&!w.fusion),fused=s.weapons.some(w=>w.fusion);paths.push({title:'전도 합체 · H+R',detail:`H ${h?`L${h.level}/4`:'미보유'} · R ${r?`L${r.level}/4`:'미보유'} · 코일 ${moduleRank(s,'coil')}/2`,ready:!!(h&&r&&!h.evolved&&!r.evolved&&h.level>=4&&r.level>=4&&moduleRank(s,'coil')>=2&&s.tuning>0),complete:fused});
- const fire=s.weapons.some(w=>w.level>=4&&tags(w).includes('burn')),blast=s.weapons.some(w=>w.level>=4&&tags(w).includes('blast')),rank=moduleRank(s,'catalyst');paths.push({title:'열압 연계 · 화염+폭발',detail:`서로 다른 두 총 L4 · 연소 ${fire?'확보':'필요'} · 폭발 ${blast?'확보':'필요'} · 촉매 ${rank}/3`,ready:rank===2&&heatSynergyReady(s,2)&&s.tuning>0,complete:heatSynergyReady(s)});return paths;
+export function evolutionParts(weapon,branch=weapon.branch){
+ const byBranch=RULES.weapons[weapon.id].evolution.moduleByBranch;
+ return branch?byBranch[branch]:[...new Set(Object.values(byBranch).flat())];
+}
+export function canEvolve(state,weapon){
+ return weapon.level===6&&!weapon.evolved&&!weapon.fusion&&!!weapon.branch&&
+  evolutionParts(weapon).some(id=>moduleRank(state,id)>=2);
+}
+function sameFusion(state,primary,secondary){
+ return state.weapons.some(w=>w.fusion&&w.id===primary.id&&w.branch===primary.branch&&
+  w.fusion.secondary===secondary.id&&w.fusion.branch===secondary.branch);
+}
+export function canFuse(state,primary,secondary){
+ return primary!==secondary&&primary.level>=4&&secondary.level>=4&&
+  !primary.evolved&&!secondary.evolved&&!primary.fusion&&!secondary.fusion&&
+  tags(primary).includes('bullet')&&tags(secondary).includes('blast')&&
+  moduleRank(state,'coil')>=2&&!sameFusion(state,primary,secondary);
+}
+function requirement(detail,missing,remaining){
+ return {detail,missing,remaining:Math.max(0,remaining)};
+}
+function gunRequirement(id,weapon,rank){
+ return requirement(weapon?`${GUNS[id].short} L${weapon.level}/${rank}`:`${GUNS[id].short} 미보유`,
+  weapon?`${GUNS[id].short} L${rank}`:`${GUNS[id].short} 확보`,rank-(weapon?.level||0));
+}
+function moduleRequirement(state,ids,rank){
+ const current=Math.max(...ids.map(id=>moduleRank(state,id)));
+ const names=ids.map(id=>MODULES[id].name).join(' 또는 ');
+ return requirement(`${names} ${current}/${rank}`,`${names} ${rank}`,rank-current);
+}
+function recipe(id,title,requirements,{complete=false,available=false,tuning=1,blocked=''}={}){
+ const remaining=requirements.reduce((count,item)=>count+item.remaining,0);
+ const ready=available&&tuning>0&&!complete&&!blocked;
+ const status=complete?'active':ready?'ready':blocked?'blocked':available?'permit':'progress';
+ return {id,title,ready,complete,status,remaining,
+  detail:blocked||requirements.map(item=>item.detail).join(' · '),
+  missing:status==='permit'?'조율권 1개':requirements.filter(item=>item.remaining>0).map(item=>item.missing).join(' · ')};
+}
+function heatPair(state){
+ let pair=null;
+ for(const burn of state.weapons.filter(w=>tags(w).includes('burn'))){
+  for(const blast of state.weapons.filter(w=>w!==burn&&tags(w).includes('blast'))){
+   const items=[gunRequirement(burn.id,burn,4),gunRequirement(blast.id,blast,4)];
+   const remaining=items.reduce((total,item)=>total+item.remaining,0);
+   if(!pair||remaining<pair.remaining)pair={items,remaining};
+  }
+ }
+ return pair?.items||[requirement('서로 다른 연소·폭발 무기 L4','서로 다른 연소·폭발 무기 L4',8)];
+}
+export function buildPaths(state){
+ const {tuning,weapons}=state;
+ const paths=weapons.filter(w=>!w.fusion).map(w=>{
+  const materials=[gunRequirement(w.id,w,6),moduleRequirement(state,evolutionParts(w),2)];
+  return recipe(`evolve:${w.id}`,GUNS[w.id].evolution,materials,{complete:w.evolved,available:canEvolve(state,w),tuning});
+ });
+ for(const w of weapons.filter(w=>w.fusion)){
+  const pair=`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`;
+  paths.push(recipe(`installed:${w.uid}`,`전도 격발망 ${pair}`,[requirement('무기 두 칸을 한 칸으로 합쳤습니다.','',0)],{complete:true}));
+ }
+ const h=weapons.find(w=>w.id==='h'&&!w.fusion&&!w.evolved);
+ const r=weapons.find(w=>w.id==='r'&&!w.fusion&&!w.evolved);
+ if(r||!weapons.some(w=>w.fusion)){
+  const materials=[gunRequirement('h',h,4),gunRequirement('r',r,4),moduleRequirement(state,['coil'],2)];
+  const duplicate=h&&r&&sameFusion(state,h,r);
+  const evolved=weapons.find(w=>w.evolved&&!w.fusion&&((w.id==='h'&&!h)||(w.id==='r'&&!r)));
+  const blocked=duplicate?'같은 분화의 전도 격발망을 장착 중입니다.':evolved?`${GUNS[evolved.id].name} 단일 진화 완료`:'';
+  paths.push(recipe('fusion:h:r','전도 격발망 H+R',materials,{
+   available:!!(h&&r&&canFuse(state,h,r)),tuning,blocked
+  }));
+ }
+ const heat=recipe('heat','열압 연계',[...heatPair(state),moduleRequirement(state,['catalyst'],3)],{
+  complete:heatSynergyReady(state),available:moduleRank(state,'catalyst')===2&&heatSynergyReady(state,2),tuning
+ });
+ if(heat.status==='permit')heat.missing='촉매 연료 3 또는 조율권 1개로 촉매 조율';
+ paths.push(heat);
+ return paths;
 }
 export const makeWeapon=id=>({id,level:1,branch:null,evolved:false,fusion:null,cd:.12,shots:0,payload:0,payloadCd:0});
 export function tags(w){const d=RULES.weapons[w.id],b=[d.branchA,d.branchB].find(b=>b.id===w.branch),secondary=w.fusion?RULES.weapons[w.fusion.secondary]:null,branch=secondary?[secondary.branchA,secondary.branchB].find(b=>b.id===w.fusion.branch):null;return [...new Set([...d.tags,...(b?.tags||[]),...(w.fusion?['bullet','blast','conductive',...(branch?.tags||[])]:[])])];}

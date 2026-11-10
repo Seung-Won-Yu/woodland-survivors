@@ -126,12 +126,38 @@
 .mission-board>.launch-dock{border-bottom:1px solid #a7a276}
 .opening-supply .upgrade-card[data-choice="gun:f"]{--accent:#ffd0a0}
 .opening-supply .upgrade-card[data-choice="gun:r"]{--accent:#bcece4}
+.upgrade-link.forecast-ready,.branch-list .forecast-ready{color:#ffe19e;font-weight:700}
+.upgrade-link.forecast-progress,.branch-list .forecast-progress{color:#d3e5c3}
+.upgrade-link.forecast-cost,.branch-list .forecast-cost{color:#f4bf9e}
+.workshop-blueprints{margin:0 0 16px;border:1px solid #778a73;background:#253e35}
+.workshop-blueprints summary{padding:10px 12px;color:#f2deac;font-size:12px;cursor:pointer}
+.workshop-blueprints summary small{margin-left:8px;color:#b8cbb2;font-size:10px}
+.workshop-blueprints .build-paths{display:block;margin:0;padding:0 11px 6px}
+.workshop-blueprints .build-paths>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:8px 0;background:none;border:0;border-top:1px solid #607964}
+.workshop-blueprints .build-paths b{grid-column:1;grid-row:1;margin:0}
+.workshop-blueprints .build-paths span{grid-column:2;grid-row:1;font-size:9px;color:#c7d4b3}
+.workshop-blueprints .build-paths small,.workshop-blueprints .build-paths em{grid-column:1/-1}
+.workshop-blueprints .build-paths em{font-size:9px;font-style:normal;color:#eed3a1}
+.workshop-blueprints .path-active span{color:#b4dfbf}
+.workshop-blueprints .path-ready span{color:#ffe19e}
+.workshop-blueprints .path-permit span{color:#f4bf9e}
+#gear[data-view]{display:flex;align-items:center;gap:8px;max-width:100%;min-height:44px;text-align:left}
+#gear small{color:#c9d1b4;font-size:9px;white-space:nowrap}
+#gear kbd{padding:1px 4px;border:1px solid currentColor;font:inherit;font-size:9px}
+#gear[data-mode="ready"]{border-color:#efcd83;background:#4a432a;color:#ffebba;box-shadow:inset 3px 0 #efcd83,0 2px #111a1c}
+#gear[data-mode="ready"] small{color:#ffe19e}
 #field-feedback.opening-receipt{min-width:0;max-width:calc(100% - 30px);padding:8px 13px;gap:0;text-align:center}
 @media(max-width:700px){
  .opening-supply .upgrade-card{min-height:158px}
  .coast-lead .arsenal .weapon.empty{display:none}
  #field-feedback.opening-receipt{top:min(39vh,312px);bottom:auto}
- #dash .key-hint{display:none}
+ #dash .key-hint,#gear .key-hint{display:none}
+ #gear[data-view]{min-height:48px}
+}
+@media(max-width:360px){
+ .field-menu:not(.quick-mod) .upgrade-card{padding-left:90px}
+ .field-menu:not(.quick-mod) .upgrade-illustration{width:74px}
+ .field-menu:not(.quick-mod) .upgrade-illustration .kit-sprite{width:86px;height:86px}
 }
 @media(max-width:700px) and (orientation:portrait){
  .boss-active #combo{top:auto;bottom:130px;right:16px}

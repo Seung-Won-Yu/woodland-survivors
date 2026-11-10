@@ -1,6 +1,46 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts} from './content.js';
 import {REGIONS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
+import {choose,snapshot} from './model.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
+
+function projectedGrowth(s,c,args,before){
+ const draft=snapshot(s);
+ if(!choose(draft,c.id,{doctrine:'reserve',...args}))return null;
+ const paths=buildPaths(draft);
+ const delayed=paths.filter(p=>before.get(p.id)?.ready&&!p.ready&&!p.complete);
+ const lost=[delayed.length?`${delayed.map(p=>p.title).join(' · ')} 대기`:'',
+  before.get('heat')?.complete&&!paths.find(p=>p.id==='heat')?.complete?'열압 연계 해제':''].filter(Boolean).join(' · ');
+ const suffix=lost?` · ${lost}`:'';
+ const gained=paths.filter(p=>!before.get(p.id)?.complete&&p.complete);
+ if(gained.length)return {kind:'ready',text:`${gained[0].title} 발동${suffix}`};
+ const ready=paths.filter(p=>!before.get(p.id)?.ready&&p.ready);
+ if(ready.length)return {kind:'ready',text:ready.map(p=>`${p.title} ${p.id==='heat'?'조율로 발동 가능':'조립 가능'}`).join(' · ')+suffix};
+ if(lost){
+  const reason=c.kind==='refit'?'개장하면':['module','gun'].includes(c.kind)?'교체하면':'조율권을 쓰면';
+  return {kind:'cost',text:`${reason} ${lost}`};
+ }
+ const advanced=paths.filter(p=>p.remaining<(before.get(p.id)?.remaining??0)&&p.status!=='blocked');
+ if(!advanced.length)return null;
+ const closest=advanced.sort((a,b)=>a.remaining-b.remaining)[0];
+ return {kind:'progress',text:`${closest.title}까지 ${closest.missing||'분화 조건 확인'}`};
+}
+
+export function growthForecast(s,c,args={}){
+ if(!['rank','module','tune','repair','gun','refit'].includes(c.kind)||s.phase!=='choice'||!s.choices.some(card=>card.id===c.id))return null;
+ if(c.kind==='gun'&&!Number.isInteger(args.slot)||c.kind==='refit'&&!args.weapon)return null;
+ if(c.kind==='rank'&&s.weapons.length===1&&!s.modules.length)return null;
+ const before=new Map(buildPaths(s).map(path=>[path.id,path]));
+ const weapon=c.kind==='rank'&&s.weapons.find(w=>w.id===c.weapon&&!w.fusion);
+ if(weapon?.level===3&&!args.branch){
+  const results=Object.entries(GUNS[weapon.id].branches).map(([branch,[name]])=>({name,result:projectedGrowth(s,c,{branch},before)}));
+  const first=results[0].result;
+  if(first&&results.every(({result})=>result?.text===first.text))return first;
+  const branch=results.find(({result})=>result?.kind==='ready');
+  return branch?{kind:'progress',text:`${branch.name} 선택 시 ${branch.result.text}`}:null;
+ }
+ return projectedGrowth(s,c,args,before);
+}
+
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
  if(c.kind==='rank'&&w){
@@ -8,7 +48,7 @@ export function choiceDetails(s,c){
   const rate=pct(a.damage*a.count/a.interval,b.damage*b.count/b.interval);out.impact=w.level===3?'발사 방식 분화':b.count>a.count?`동시 사격 ${a.count} → ${b.count}발`:b.radius>a.radius?`폭발 반경 +${pct(a.radius,b.radius)}%`:b.range>a.range?`사거리 ${a.range} → ${b.range}`:b.cone>a.cone?`분사각 ${num(a.cone)}° → ${num(b.cone)}°`:rate?`연사 화력 +${rate}%`:'발사 성능 개조';
   out.detail=c.desc||'';const hp=RULES.enemies.rifle.hp*(s.operation?[1,1.35,1.8][s.operation.region]:1)*1.05**Math.min(s.pressure,12),power=1+s.boosts.power*.01,before=Math.ceil(hp/(a.damage*power)),after=Math.ceil(hp/(b.damage*power));
   if(w.id==='h'&&before!==after&&!(s.operation&&s.stage==='holdout'&&holdoutTier(s.holdTime)))out.detail=`일반병 직격 ${before} → ${after}발 · 피해 ${num(a.damage)} → ${num(b.damage)}`;
-  const requirements=RULES.weapons[w.id].evolution.moduleByBranch,modules=(w.branch?requirements[w.branch]:[...new Set(Object.values(requirements).flat())]).map(id=>`${MODULES[id].name}2`).join(' 또는 ');
+  const modules=evolutionParts(w).map(id=>`${MODULES[id].name}2`).join(' 또는 ');
   out.link=out.after<4?`L4 분화까지 ${4-out.after}회 강화`:out.after===4?'다음 화면에서 발사 방식을 고릅니다.':`진화 · L6 + ${modules} + 조율권1`;
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
  }else if(c.kind==='gun'){
@@ -25,7 +65,7 @@ export function choiceDetails(s,c){
   out.art='ammo';out.impact=healed?`체력 +${healed}${after>before?` · 충전 +${after-before}`:''}`:after>before?`전탄 충전 +${after-before}`:'전탄 충전 최대';out.detail=`${c.heal?`체력 ${Math.ceil(hpBefore)}/${s.player.maxHp} → ${Math.ceil(hpAfter)}/${s.player.maxHp} · `:''}충전 ${before} → ${after} / 100`;out.link='';out.cost='';
  }else if(c.kind==='evolve'){
   out.impact=c.weapon==='f'?w.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
-  out.link=c.weapon==='f'?w.branch==='focused'?'직격 표적에 강한 잔불을 남깁니다.':'이동 중 화염을 뿌리면 앞쪽에 불길이 남습니다.':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';out.before=6;out.after=6;
+  out.link=c.weapon==='f'?w.branch==='focused'?'직격 표적에 강한 잔불을 남깁니다.':'이동 중 화염을 뿌리면 앞쪽에 불길이 남습니다.':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
  }else if(c.kind==='fusion'){
   out.art=c.primary;out.impact='연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail='합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
  }else if(c.kind==='maneuver'){
