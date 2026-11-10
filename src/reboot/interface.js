@@ -1,5 +1,5 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
-import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,HOLDOUT,HOLDOUT_CONTRACTS,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
+import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,makeWeapon,weaponStats} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
@@ -220,7 +220,9 @@ function debriefDetails(r,p,lines){
   <div class="debrief-detail-grid">
    <div>${ledger}${orderReceipt(r)}${requisitionReceipt(r)}${unlockedResearch(r,p)}${researchFieldReport(r)}</div>
    <section class="build-report"><h2>이번 작전의 화력</h2>
-    ${loadoutChips(r.weapons,r.modules)}${railWorkshopReport(r.stats)}
+    ${loadoutChips(r.weapons,r.modules)}
+    ${Object.hasOwn(COAST_STRIKES,r.operation?.coastStrike)?`<p class="rail-workshop-record"><span>수송차 공략</span><b>${COAST_STRIKES[r.operation.coastStrike].name} · ${r.operation.coastStrikeUsed?'성공':'미발동'}</b></p>`:''}
+    ${railWorkshopReport(r.stats)}
     ${r.operation?.portEntry==='gantry'?'<p class="rail-workshop-record"><span>항구 진입</span><b>측면 해치 기습</b></p>':''}
     ${Object.hasOwn(MANEUVERS,r.stats.maneuver)?`<small class="inline-note">노획 교범 · ${MANEUVERS[r.stats.maneuver].name}</small>`:''}
     ${procs.length?`<div class="proc-list">${procs.map(([label,v])=>`<span>${label}<b>${n(v)}회</b></span>`).join('')}</div>`:''}

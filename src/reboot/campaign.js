@@ -184,6 +184,16 @@ const SPLIT_COAST={
   guards:[['mortar',-78,-42],['mortar',78,-42]]}
 };
 export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_APPROACHES)[site?.coastApproach];
+export const COAST_STRIKES={
+ f:{name:'연료관 점화',impact:'후면 엔진 점화 · 추가 피해 560',hint:'돌진을 피한 뒤 후면 엔진에 불을 맞히세요.',detail:'재장전 2초 연장. 장갑 수송차에 한 번 적용됩니다.',damage:560,delay:2},
+ r:{name:'신호탄 포착',impact:'원거리 로켓으로 돌진 차단 · 차체 피해 +780',hint:'돌진 예고 중 떨어져 차체에 로켓을 맞히세요.',detail:'폭발에 맞으면 돌진이 멈추고 바로 재장전합니다. 한 번 적용됩니다.',damage:780,range:160}
+};
+export function coastStrike(s){
+ const id=s.operation?.coastStrike;
+ return s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,id)?COAST_STRIKES[id]:null;
+}
+export const coastStrikeArmed=(s,id=s.operation?.coastStrike)=>s.weapons.some(w=>w.id===id||id==='r'&&w.fusion?.secondary==='r');
+export const claimedCoastLead=s=>s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,s.firstNew)&&s.sites.find(site=>site.coastApproach===s.firstNew&&site.state==='done');
 export function coastLead(s){
  if(s.operation?.region!==0||s.stage!=='field')return null;
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');

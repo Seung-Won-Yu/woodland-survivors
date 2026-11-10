@@ -545,7 +545,8 @@ test('a pending route trial keeps the signature module and prioritizes the match
   if(gun==='f')s.modules.push({id:'coil',rank:1});
   for(const cards of [supply(s,site),null]){
    if(!cards)assert.ok(reroll(s));
-   assert.equal(s.choices.length,3);
+   assert.equal(s.choices.length,4);
+   assert.ok(s.choices.some(c=>c.id===`coast:${gun}`));
    assert.ok(s.choices.some(c=>c.module===signature&&c.label==='이 동선의 특화 모듈'));
    assert.ok(s.choices.some(c=>c.module===experiment&&c.label==='새 연구 · 첫 실전'));
   }
@@ -657,6 +658,55 @@ test('rail parts retain the part hit, dash and XP routes',()=>{
  assert.equal(opening.boss.parts[0].hp,190);
  const recovery=supportArena(1,'recovery','salvo');recovery.boss.timer=0;step(recovery,dt);
  assert.deepEqual(recovery.gems.map(g=>[g.x,g.y,g.value,g.salvage]),[[625,470,18,true]]);
+});
+test('a coastal strike trades the first matching supply for a single attack window',()=>{
+ const s=quietOperation();
+ supply(s);assert.ok(choose(s,'gun:f'));
+ assert.ok(!supply(s,'supply-c').some(c=>c.kind==='coast-strike'));assert.ok(choose(s,s.choices[0].id));
+ supply(s,'supply-b');
+ const candidate=restore(snapshot(s));assert.ok(choose(candidate,'coast:f'));
+ const battle=restore(snapshot(candidate));assert.equal(battle.operation.coastStrike,'f');
+ const premature=snapshot(battle);premature.operation.coastStrikeUsed=true;
+ assert.throws(()=>restore(premature),/체크포인트/);
+ Object.assign(battle.boss,{active:true,x:800,y:250,body:Math.PI/2,mode:'recover',timer:3,spawnClock:999});
+ battle.stage='boss';battle.enemies=[];battle.blocks=[];
+ const flame=battle.weapons.find(w=>w.id==='f');
+ Object.assign(battle.player,{x:800,y:382});flame.cd=0;step(battle,dt);
+ assert.equal(battle.operation.coastStrikeUsed,undefined);
+ Object.assign(battle.player,{x:800,y:122});flame.cd=0;
+ const before=battle.boss.hp,timer=battle.boss.timer;
+ step(battle,dt);
+ assert.ok(before-battle.boss.hp>=560);
+ assert.ok(battle.boss.timer>timer+1.9);
+ assert.equal(battle.operation.coastStrikeUsed,true);
+ const resumed=restore(snapshot(battle)),hp=resumed.boss.hp;
+ resumed.weapons.find(w=>w.id==='f').cd=0;step(resumed,dt);
+ assert.ok(hp-resumed.boss.hp<100);
+ downBoss(resumed);Object.assign(resumed.player,exitGate(resumed));
+ assert.ok(action(resumed,'interact'));assert.ok(choose(resumed,'advance'));
+ assert.equal(resumed.choice.source,'장갑 수송차 노획');
+ assert.equal(restore(snapshot(resumed)).choice.coastRecovery,true);
+ const duplicate=snapshot(resumed);
+ duplicate.queue.push({type:'supply',source:resumed.choice.source,cards:duplicate.choices,extra:{coastRecovery:true}});
+ assert.throws(()=>restore(duplicate),/체크포인트/);
+ assert.ok(resumed.choices.some(c=>c.id==='module:catalyst'));
+ assert.ok(reroll(resumed));assert.ok(resumed.choices.some(c=>c.id==='module:catalyst'));
+});
+test('a long-range rocket interrupts the fixed coastal charge, once and only during warning',()=>{
+ function shot(gap,mode,weapon){
+  const s=supportArena(0,null,mode);
+  s.firstNew='r';s.operation.coastStrike='r';
+  Object.assign(s.player,{x:800,y:250+gap});
+  s.weapons=[{...makeWeapon(weapon),uid:'test',cd:999}];
+  s.boss.timer=.85;step(s,dt);
+  s.shots=[{...bullet(s,s.boss,20),rocket:true,radius:60}];
+  step(s,dt);return s;
+ }
+ const applied=shot(205,'windup','r');
+ assert.equal(applied.operation.coastStrikeUsed,true);
+ assert.equal(applied.boss.mode,'recover');assert.equal(applied.boss.chargePath,undefined);
+ assert.ok(applied.boss.maxHp-applied.boss.hp>=780);
+ for(const refused of [shot(130,'windup','r'),shot(205,'aim','r'),shot(205,'windup','h')])assert.equal(refused.operation.coastStrikeUsed,undefined);
 });
 test('harbor armor support rewards a flank and disables the turret fan',()=>{
  const front=supportArena(2,'breach','salvo'),flank=restore(snapshot(front));

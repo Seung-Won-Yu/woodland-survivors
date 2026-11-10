@@ -439,3 +439,26 @@
  .debrief-replays{grid-template-columns:1.4fr 1fr}
  .debrief-replays button{font-size:11px}
 }
+
+.coast-options .upgrade-card[data-choice^="coast:"]{grid-column:1/-1;background:#d7c496;border-color:#f0ce83;color:#25382c;box-shadow:inset 0 0 0 3px #8c7753,0 4px #101c1c}
+.coast-options .upgrade-card[data-choice^="coast:"]:hover{background:#e9d5a4}
+.coast-options .upgrade-card[data-choice^="coast:"] :is(h3,.upgrade-impact,.upgrade-detail,.upgrade-link,.upgrade-cost,.install-label){color:#24392e}
+.coast-options .upgrade-card[data-choice^="coast:"] .upgrade-category{color:#4e5234}
+@media(min-width:701px){
+ .coast-options .upgrade-card[data-choice^="coast:"]{min-height:112px;padding:13px 122px 12px 115px}
+ .coast-options .upgrade-card[data-choice^="coast:"] .upgrade-illustration{position:absolute;inset:6px auto auto 12px;width:90px;height:90px;margin:0}
+ .coast-options .upgrade-card[data-choice^="coast:"] .upgrade-illustration .kit-sprite{width:103px;height:103px}
+}
+@media(max-width:700px){
+ .coast-options .upgrade-deck{gap:7px}
+ .coast-options .upgrade-card{min-height:0;padding:8px 25px 8px 63px;gap:3px}
+ .coast-options .upgrade-card kbd{right:8px;top:8px}
+ .coast-options .upgrade-copy{gap:3px}
+ .coast-options .upgrade-illustration{top:12px;left:1px;width:60px;height:64px}
+ .coast-options .upgrade-illustration .kit-sprite{width:70px;height:70px}
+ .coast-options .upgrade-card h3,.coast-options .upgrade-impact{line-height:1.25}
+ .coast-options :is(.upgrade-detail,.upgrade-link,.upgrade-cost){line-height:1.3;word-break:keep-all}
+ .coast-options .upgrade-cost{padding-top:0;border:0}
+ .coast-options .upgrade-levels{display:none}
+}
+.coast-options .choice-tools{margin-top:12px;margin-bottom:0}
