@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry} from '../src/reboot/campaign.js';
-import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry} from '../src/reboot/campaign.js';
+import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
@@ -363,6 +363,65 @@ test('a simultaneous intermediate boss death cannot heal or advance a dead pilot
 test('rail and harbor use different telegraphs and disabled rail parts open permanent safe lanes',()=>{
  const s=quietOperation();s.operation.region=1;s.stage='boss';s.boss.active=true;s.boss.timer=0;s.boss.parts[0].hp=0;step(s,dt);assert.ok(s.hazards.some(h=>h.lane));assert.ok(!s.hazards.some(h=>h.lane&&h.x===500));assert.equal(s.boss.mode,'salvo');
  const p=quietOperation();p.operation.region=2;p.stage='boss';p.boss.active=true;p.boss.timer=0;step(p,dt);assert.ok(p.hazards.length>=3);assert.ok(p.hazards.every(h=>!h.lane));
+});
+function railEncounter(x=800){
+ const s=quietOperation();
+ s.operation.region=1;s.stage='boss';
+ s.boss={...regionBoss(1,s.seed),active:true,timer:0,spawnClock:999};
+ Object.assign(s.player,{x,y:470});
+ return s;
+}
+test('rail artillery locks the first position, leaves a path out and clips the map boundary',()=>{
+ const s=railEncounter(),hold=railEncounter();
+ for(const r of [s,hold])step(r,dt);
+ const lane=s.hazards.find(h=>h.tracked);
+ assert.equal(lane.x,800);assert.equal(lane.w,RAIL_BARRAGE.width);
+ assert.notEqual(lane.railGun,s.hazards.find(h=>!h.tracked).railGun);
+ tick(s,.7,{x:1,y:0});
+ assert.equal(lane.x,800);assert.ok(s.player.x>906);
+ tick(s,.6);tick(hold,1.3);
+ assert.equal(s.player.hp,100);assert.equal(hold.player.hp,86);
+ const edge=railEncounter(FIELD.left+16);step(edge,dt);
+ const clipped=edge.hazards.find(h=>h.tracked);
+ assert.equal(clipped.x-clipped.w/2,FIELD.left);
+ assert.equal(clipped.x+clipped.w/2,edge.player.x+RAIL_BARRAGE.width/2);
+});
+test('direct hits cancel only the destroyed gun and leave the disarmed train open',()=>{
+ const s=railEncounter();step(s,dt);
+ const first=s.hazards.find(h=>h.tracked),other=s.hazards.find(h=>!h.tracked);
+ const breakGun=i=>{
+  const part=s.boss.parts[i];
+  part.hp=1;
+  s.shots=[bullet(s,{id:part.id,x:s.boss.x+part.ox+Math.sign(part.ox)*22,y:s.boss.y},5)];
+  step(s,dt);
+  assert.equal(part.hp,0);
+ };
+ breakGun(first.railGun);
+ assert.deepEqual(s.hazards,[other]);
+ assert.ok(takeEvents(s).includes('barrage-cancel'));
+ breakGun(other.railGun);
+ assert.equal(s.boss.mode,'recover');assert.equal(s.hazards.length,0);
+ tick(s,6);
+ assert.equal(s.player.hp,100);assert.equal(s.boss.mode,'recover');assert.equal(s.hazards.length,0);
+});
+test('a burning rail gun that breaks on the final warning tick cannot hit its lane',()=>{
+ const s=railEncounter();step(s,dt);
+ const lane=s.hazards.find(h=>h.tracked),part=s.boss.parts[lane.railGun];
+ Object.assign(part,{hp:1,burn:1,burnTick:.01,burnDps:10,x:s.boss.x+part.ox,y:s.boss.y});
+ lane.timer=.02;
+ step(s,1/30);
+ assert.equal(part.hp,0);assert.equal(s.player.hp,100);assert.ok(!s.hazards.includes(lane));
+ assert.ok(takeEvents(s).includes('barrage-cancel'));
+});
+test('b25 checkpoint drops a dead gun warning while preserving a live and a fired lane',()=>{
+ const s=railEncounter();
+ Object.assign(s,regionLayout(mapSeed(s.seed,1),1));
+ s.balanceRevision='b25-convoy-routes';s.boss.mode='salvo';s.boss.timer=.9;s.boss.parts[0].hp=0;
+ const lane=x=>({x,y:600,w:220,h:900,r:0,lane:true,timer:.7});
+ s.hazards=[lane(500),lane(800),lane(1100),{...lane(500),hit:true,timer:-.1}];
+ const r=restore(snapshot(s));
+ assert.deepEqual(r.hazards.map(h=>[h.x,!!h.hit]),[[800,false],[1100,false],[500,true]]);
+ assert.equal(r.boss.timer,.9);
 });
 test('relay progresses only while in range and port control offers a real safety or loot trade',()=>{
  const s=quietOperation();s.operation.region=1;s.sites=[{id:'relay',kind:'relay',name:'relay',state:'active',x:800,y:800,progress:0}];tick(s,1);assert.ok(s.sites[0].progress>.9);s.player.x=1100;const before=s.sites[0].progress;tick(s,1);assert.equal(s.sites[0].progress,before);
