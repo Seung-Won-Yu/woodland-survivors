@@ -1,6 +1,6 @@
 import {environmentProp,prop} from '../mission/art.js';
 import {fieldScene,sitePresentation} from './field-scene.js';
-import {orderTarget,sortieOrder} from './campaign.js';
+import {orderTarget,sortieOrder,railGarrison,railCrewLeft} from './campaign.js';
 
 export function paintTerrainMargins(c,index,margin){
  const scene=fieldScene(index);
@@ -264,7 +264,8 @@ export function paintSiteLabel(c,n,s){
  if(n.state==='done'||Math.hypot(n.x-s.player.x,n.y-s.player.y)>185)return;
  const info=sitePresentation(n),guards=s.enemies.filter(e=>!e.dead&&e.siteId===n.id).length;
  const dispatch=orderTarget(s)===n?sortieOrder(s.operation.order):null;
- const label=n.state==='ready'?`${info.name} · 회수`:n.kind==='relay'&&n.state==='active'?`해킹 ${Math.round(n.progress/5*100)}%`:n.state==='active'?`${info.name} · 경비 ${guards}`:info.name;
+ const crew=n.kind==='relay'&&n.state==='active'?railCrewLeft(s,n):0,garrison=railGarrison(n);
+ const label=n.state==='ready'?`${info.name} · 회수`:crew?`${garrison.crew} ${crew}${garrison.unit} · 해킹 차단`:n.kind==='relay'&&n.state==='active'?`해킹 ${Math.round(n.progress/5*100)}%`:n.state==='active'?`${info.name} · 경비 ${guards}`:info.name;
  const text=dispatch?`◇ ${label}`:label;
  c.font='10px Galmuri';const width=c.measureText(text).width+16,x=n.x-width/2,y=n.y+14;c.fillStyle='#1c302de6';c.fillRect(x,y,width,20);c.fillStyle=dispatch?.color||(n.state==='ready'?'#ffdb8e':'#e7dfbb');c.textAlign='center';c.fillText(text,n.x,y+14);
 }

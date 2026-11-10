@@ -86,6 +86,9 @@ test('briefings show matching seeded arrival routes and mirror the railway',()=>
  assert.match(port,/<circle cx="720" cy="1040"/);
  assert.deepEqual(fieldScene(1,19).rails[2][0],[900,1190]);
  assert.deepEqual(fieldScene(1,58).rails[2][0],[700,1190]);
+ const rail17=lobbyView(emptyProfile(),{brief:1,seed:17}),rail19=lobbyView(emptyProfile(),{brief:1,seed:19});
+ assert.match(rail17,/화차 정비대 · 방패 검문/);assert.match(rail17,/통신 중계기 · 박격포 경계/);
+ assert.match(rail19,/화차 정비대 · 박격포 경계/);assert.match(rail19,/통신 중계기 · 방패 검문/);
 });
 test('briefings share distinct field terrain and recognizable site symbols',()=>{
  assert.equal(fieldScene(0).water,'#365766');assert.ok(fieldScene(1).rails.length);assert.equal(fieldScene(1).water,null);assert.equal(fieldScene(2).water,'#234b5e');

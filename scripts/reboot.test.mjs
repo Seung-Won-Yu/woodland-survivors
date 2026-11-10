@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter,portAidPreview,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portAidPreview,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -1011,7 +1011,7 @@ test('marked later-front approaches and actual guard formations clear collision 
    clearRegion(s);assert.ok(choose(s,'advance'));
    const entry=frontEntry(mapSeed(seed,index),index);
    assert.deepEqual([s.player.x,s.player.y],[entry.arrival.x,entry.arrival.y]);
-   assert.equal(activeEntry(s),entry);
+   assert.deepEqual(activeEntry(s),entry);
    for(const route of entry.routes){
     const site=s.sites.find(n=>n.id===route.site);
     assert.deepEqual(route.path.at(-1),[site.x,site.y]);
@@ -1025,11 +1025,65 @@ test('marked later-front approaches and actual guard formations clear collision 
     const probe=restore(snapshot(s));Object.assign(probe.player,{x:site.x,y:site.y});
     probe.enemies=[];probe.spawnClock=999;step(probe,dt);
     const guards=probe.enemies.filter(e=>e.siteId===site.id);
-    assert.equal(guards.length,site.kind==='relay'?3:site.kind==='armory'?5:6);
+    assert.equal(guards.length,site.kind==='armory'?5:6);
     assert.ok(guards.every(e=>clear(probe,e.x,e.y,e.r)),site.id);
    }
   }
  }
+});
+test('rail garrisons swap by seed without changing their entry side and block hacking until the crew is down',()=>{
+ const arrive=seed=>{
+  const s=createOperation(seed);
+  clearRegion(s);assert.ok(choose(s,'advance'));
+  s.spawnClock=999;s.player.invuln=999;s.weapons[0].cd=999;
+  for(const site of s.sites)if(site.id!=='rail-relay')site.state='done';
+  return s;
+ };
+ for(const [seed,crew] of [[17,'mortar'],[19,'shield']]){
+  const s=arrive(seed),relay=s.sites.find(site=>site.id==='rail-relay');
+  assert.equal(relay.x,480);assert.equal(relay.guardPlan,crew);
+  assert.notEqual(s.sites[0].guardPlan,crew);
+  Object.assign(s.player,{x:relay.x,y:relay.y,hp:100});
+  step(s,dt);
+  assert.equal(railCrewLeft(s,relay),2);
+  tick(s,1);assert.equal(relay.progress,0);
+  s.shots=s.enemies.filter(e=>e.type===crew&&e.siteId===relay.id).map(e=>bullet(s,e,1000));
+  step(s,dt);
+  assert.equal(railCrewLeft(s,relay),0);
+  tick(s,5);
+  assert.equal(s.choice?.type,'control');
+ }
+ const legacy=arrive(17),relay=legacy.sites.find(site=>site.id==='rail-relay');
+ delete relay.guardPlan;
+ Object.assign(legacy.player,{x:relay.x,y:relay.y});
+ const loaded=restore(snapshot(legacy));
+ step(loaded,dt);assert.equal(loaded.enemies.filter(e=>e.siteId==='rail-relay').length,3);
+ assert.ok(loaded.sites.find(site=>site.id==='rail-relay').progress>0);
+});
+test('entering a boss arena does not erase the surviving guards of an unfinished site',()=>{
+ const s=createOperation(17);
+ clearRegion(s);assert.ok(choose(s,'advance'));
+ const relay=s.sites.find(site=>site.id==='rail-relay');
+ s.spawnClock=999;s.weapons[0].cd=999;
+ Object.assign(s.player,{x:relay.x,y:relay.y});step(s,dt);
+ assert.equal(railCrewLeft(s,relay),2);
+ Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));
+ assert.equal(relay.state,'active');
+ assert.equal(railCrewLeft(s,relay),2);
+ assert.equal(restore(snapshot(s)).enemies.filter(e=>!e.dead&&e.siteId===relay.id).length,6);
+});
+test('route bearings advance past traversed corners and unfinished routes remain after a detour',()=>{
+ const s=createOperation(18);
+ clearRegion(s);assert.ok(choose(s,'advance'));
+ s.operation.regionTime=45;
+ Object.assign(s.player,{x:985,y:950});
+ const entry=activeEntry(s);
+ const relay=entry.routes.find(route=>route.site==='rail-relay');
+ assert.deepEqual(entryWaypoint(relay.path,s.player),[1120,835]);
+ s.sites.find(site=>site.id==='rail-cache').state='done';
+ assert.deepEqual(activeEntry(s).routes,[relay]);
+ s.sites.find(site=>site.id==='rail-relay').state='done';
+ assert.equal(activeEntry(s),null);
 });
 test('previous later-front placements are settled once with earned credits',()=>{
  const s=createOperation(19);

@@ -163,6 +163,17 @@ export function coastLead(s){
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
 export const mapSeed=(seed,index)=>seed+index*7919;
+export const RAIL_GARRISONS={
+ shield:{name:'방패 검문',crew:'방패병',unit:'명',range:215,hint:'방패병 옆으로 돌아 사선을 여세요.',guards:[
+  ['shield',-36,55],['shield',36,55],['rifle',-41,22],['rifle',41,22],['rifle',-24,-23],['rifle',24,-23]
+ ]},
+ mortar:{name:'박격포 경계',crew:'박격포',unit:'문',range:255,hint:'포격 원을 피해 뒤쪽 박격포를 먼저 끊으세요.',guards:[
+  ['rifle',-34,43],['rifle',34,43],['rifle',-32,-23],['rifle',32,-23],['mortar',-8,-136],['mortar',54,-125]
+ ]}
+};
+export const railGarrison=site=>Object.hasOwn(RAIL_GARRISONS,site?.guardPlan)?RAIL_GARRISONS[site.guardPlan]:null;
+export const railCrewLeft=(s,site)=>railGarrison(site)
+ ?s.enemies.filter(e=>!e.dead&&e.siteId===site.id&&e.type===site.guardPlan).length:0;
 const ENTRY={
  1:{arrival:{x:800,y:1040},routes:[
   {site:'rail-cache',sign:'화차 정비대',color:'#edce8e',path:[[800,1040],[665,1002],[562,947],[535,850]]},
@@ -187,19 +198,26 @@ export function portGantry(s){
 }
 export function activeEntry(s){
  const index=s.operation?.region;
- if(!index||s.stage!=='field'||s.operation.regionTime>15)return null;
+ if(!index||s.stage!=='field')return null;
  const entry=frontEntry(mapSeed(s.seed,index),index);
- if(!entry||Math.hypot(s.player.x-entry.arrival.x,s.player.y-entry.arrival.y)>525)return null;
- const routesOpen=entry.routes.every(route=>{
+ if(!entry)return null;
+ const routes=entry.routes.flatMap(route=>{
   const [x,y]=route.path.at(-1);
-  return s.sites.some(n=>n.id===route.site&&n.x===x&&n.y===y&&n.state!=='done');
+  const site=s.sites.find(n=>n.id===route.site&&n.x===x&&n.y===y&&n.state!=='done');
+  if(!site)return [];
+  return [site.id==='port-landing'&&!site.gantry?{...route,sign:'하역장 보급'}:route];
  });
- if(!routesOpen)return null;
- if(index===2&&!s.sites.some(site=>site.id==='port-landing'&&site.gantry)){
-  const [landing,control]=entry.routes;
-  return {...entry,routes:[{...landing,sign:'하역장 보급'},control]};
+ return routes.length?{...entry,routes}:null;
+}
+export function entryWaypoint(path,p){
+ let best=Infinity,next=path.at(-1);
+ for(let i=1;i<path.length;i++){
+  const [x,y]=path[i-1],[tx,ty]=path[i],dx=tx-x,dy=ty-y;
+  const fraction=Math.max(0,Math.min(1,((p.x-x)*dx+(p.y-y)*dy)/(dx*dx+dy*dy)));
+  const gap=Math.hypot(p.x-x-fraction*dx,p.y-y-fraction*dy);
+  if(gap<=best){best=gap;next=fraction>.85?path[Math.min(i+1,path.length-1)]:path[i];}
  }
- return entry;
+ return best<=145?next:path.at(-1);
 }
 export function regionLayout(seed,index=0,order=null){
  const map=layout(seed);
@@ -214,9 +232,10 @@ export function regionLayout(seed,index=0,order=null){
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});
  const entry=frontEntry(seed,index),landing=i=>{const [x,y]=entry.routes[i].path.at(-1);return {x,y};};
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});
+ const mortarAtWorkshop=(seed>>>1&1)!==0;
  if(index===1)return {...map,sites:[
-  {id:'rail-cache',kind:'supply',name:'화차 정비대',...landing(0),state:'waiting'},
-  {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),state:'waiting',progress:0},
+  {id:'rail-cache',kind:'supply',name:'화차 정비대',...landing(0),guardPlan:mortarAtWorkshop?'mortar':'shield',state:'waiting'},
+  {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),guardPlan:mortarAtWorkshop?'shield':'mortar',state:'waiting',progress:0},
   {id:'arsenal',kind:'armory',name:'선로 정비창',...p(350,430),state:'waiting'},
   {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1160,300),state:'waiting'}
  ],blocks:[block('r1',640,730,100,185),block('r2',640,385,100,180),block('r3',950,600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};

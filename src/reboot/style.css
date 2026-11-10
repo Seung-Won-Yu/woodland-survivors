@@ -120,7 +120,8 @@
 .front-intel span{font-size:10px;line-height:1.35;color:#c4cfb5}
 .front-intel strong,.front-intel b{font-size:13px;line-height:1.4}
 .front-intel strong{color:#f7cf80}
-#field-intel{color:#fae1a3;line-height:1.5}
+#field-intel{color:#fae1a3;line-height:1.5;white-space:pre-line}
+.objective #field-direct{color:#c2d6bf;border-top:1px solid #a5b3a55c;padding-top:4px}
 #boss-tactic:not([hidden]){display:block;padding-top:5px;margin-top:5px;border-top:1px solid #afba8f58;color:#f6d897;line-height:1.45}
 #boss-support:not([hidden]){display:block;margin-top:4px;color:#fff0bf;line-height:1.45}
 #boss-support[data-part="breach"]{color:#c6e6f3}#boss-support[data-part="overrun"]{color:#ffc9a0}#boss-support[data-part="recovery"]{color:#c7f1bd}
