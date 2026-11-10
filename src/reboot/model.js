@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -755,8 +755,23 @@ function updateEnemies(s,dt){
   updateBurn(s,e,dt);if(e.dead)continue;
   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1,desired=Math.atan2(dy,dx);
   if(e.type==='shield'){const delta=Math.atan2(Math.sin(desired-e.aim),Math.cos(desired-e.aim)),turn=RULES.enemies.shield.turnRadiansPerSecond*dt;e.aim+=clamp(delta,-turn,turn);}else e.aim=desired;
-  if(e.type==='mortar'&&d<400){if(e.timer<=0){e.timer=2.8;s.hazards.push({x:p.x,y:p.y,r:48,timer:.9,age:0});emit(s,'warning',p.x,p.y,{r:48,life:.9});}}
-  else{const before={x:e.x,y:e.y},speed=e.speed*(e.hurt>0&&e.type!=='officer'?RULES.combatFeel.hurtMoveMultiplier:1);move(s,e,dx/d*speed*dt,dy/d*speed*dt,e.r);if(e.x===before.x&&e.y===before.y)move(s,e,-dy/d*speed*dt,dx/d*speed*dt,e.r);}
+  if(e.type==='mortar'&&d<COAST_MORTAR.range){
+   if(e.timer<=0&&coastMortarWait(s,e)<=0){
+    e.timer=2.8;
+    const coast=e.cohort==='coast-guard';
+    const duration=COAST_MORTAR.warning;
+    s.hazards.push({x:p.x,y:p.y,r:48,timer:duration,age:0,...(coast?{coastMortar:e.siteId,fromX:e.x,fromY:e.y}:null)});
+    emit(s,'warning',p.x,p.y,{r:48,life:duration});
+    if(coast)emit(s,'mortar-fire',e.x,e.y,{life:.21});
+   }
+  }else{
+   const before={x:e.x,y:e.y},speed=e.speed*(e.hurt>0&&e.type!=='officer'?RULES.combatFeel.hurtMoveMultiplier:1);
+   const wing=e.coastWing===-1||e.coastWing===1?e.coastWing:0;
+   const spread=wing*COAST_WING.offset*clamp((COAST_WING.release-e.spawnAge)/(COAST_WING.release-COAST_WING.hold),0,1);
+   const x=dx+spread,len=spread?Math.hypot(x,dy)||1:d;
+   move(s,e,x/len*speed*dt,dy/len*speed*dt,e.r);
+   if(e.x===before.x&&e.y===before.y)move(s,e,-dy/len*speed*dt,x/len*speed*dt,e.r);
+  }
   if(e.type==='officer'&&d<420&&e.timer<=0){e.timer=2.4;for(let i=-2;i<=2;i++)enemyShot(s,e,e.aim+i*.18);emit(s,'enemy-fire',e.x,e.y,{life:.2});}
  }
  separateEnemies(s,dt);
@@ -929,7 +944,13 @@ function updateSites(s,dt){
     const angle=i*TAU/6;
     const guard=site.kind==='armory'&&i===0?'officer':i===1&&!site.opening?'shield':'rifle';
     const [type,x,y]=approach?approach.guards[i]:[guard,Math.cos(angle)*85,Math.sin(angle)*65];
-    spawnEnemy(s,type,site.x+(mirrored?-x:x),site.y+y,site.id,cohort?{cohort}:{});
+    const extra=cohort?{cohort}:{};
+    if(site.coastPlan==='split'&&site.coastApproach==='f')extra.coastWing=Math.sign(x);
+    if(site.coastApproach==='r'&&approach.firstSalvo){
+     const near=(s.player.x<=site.x)===(x<0);
+     extra.timer=approach.firstSalvo[near?0:1];
+    }
+    spawnEnemy(s,type,site.x+(mirrored?-x:x),site.y+y,site.id,extra);
    }
    emit(s,'engage',site.x,site.y);
   }

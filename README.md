@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.62.0" src="https://img.shields.io/badge/RIFT-0.62.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.63.0" src="https://img.shields.io/badge/RIFT-0.63.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.63은 양갈래 호위가 좌우를 유지하며 접근하고, 분산 박격포가 시간차로 조준하게 바꿉니다. 실제 포대와 포탄 낙하지점을 구분하고, 시드 26의 모바일 화면에서 스틱으로 첫 포격을 피한 뒤 전도 합체로 귀환했습니다. [해안 교전 검증](docs/RIFT-GAMEPLAY-V1.md#063-해안-호위와-교대-포격).
 
 0.62는 첫 전용 보급에 장갑 수송차 공략을 추가합니다. 화염은 돌진 뒤 후면 엔진을 태우고, 로켓은 원거리에서 돌진 예고를 끊습니다. 발동해 수송차를 격파하면 철도 진입 보급을 받습니다. [해안 직행과 성장 비교](docs/RIFT-GAMEPLAY-V1.md#062-해안-보급과-수송차-직행).
 

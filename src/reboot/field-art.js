@@ -181,6 +181,15 @@ export function paintSiteGround(c,n,near,active){
    const x=side*(width/2-13);
    c.fillRect(x-5,12,10,3);c.fillRect(x-1,1,3,12);
   }
+  if(!truck&&active){
+   c.fillStyle='#3a453760';c.fillRect(-36,-11,72,16);
+   for(let i=0;i<6;i++){
+    const x=-38+i*13,y=i%2===0?-9:-12;
+    c.fillStyle='#74684b';c.fillRect(x,y,14,11);
+    c.fillStyle='#ae9d74';c.fillRect(x+2,y+1,10,4);
+    c.fillStyle='#584f3c';c.fillRect(x+6,y+7,2,4);
+   }
+  }
   c.restore();
  }
  c.translate(n.x,n.y);
@@ -306,6 +315,7 @@ export function paintFrontEntry(c,x,y,index,age,reduced){
 }
 export function paintSite(c,n,s,art,collectedAge=99){
  const kind=sitePresentation(n).icon,ready=n.state==='ready';if(n.state==='done'){if(art&&kind==='rescue'&&collectedAge<2.2)prop(c,art,2,2,n.x+Math.min(35,collectedAge*25),n.y,32,1-collectedAge/2.2);return;}
+ if(kind==='battery'&&n.state==='active')return;
  if(kind==='workshop'){
   const {x,y}=n;
   if(art)environmentProp(c,art,1,3,x-31,y+3,54);

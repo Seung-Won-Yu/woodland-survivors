@@ -181,9 +181,22 @@ const SPLIT_COAST={
  f:{...COAST_APPROACHES.f,formation:'양갈래 호위',hint:'두 호위 사이를 피하고 바깥쪽에서 한 줄씩 태우세요.',
   guards:[['shield',-64,54],['rifle',-70,18],['rifle',-38,19],['rifle',64,54],['rifle',70,18],['rifle',38,19]]},
  r:{...COAST_APPROACHES.r,formation:'분산 포대',hint:'박격포 한 문을 끊고, 남은 쪽으로 사선을 옮기세요.',
-  guards:[['mortar',-78,-42],['mortar',78,-42]]}
+  guards:[['mortar',-78,-42],['mortar',78,-42]],firstSalvo:[.6,1.45]}
 };
 export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_APPROACHES)[site?.coastApproach];
+export const COAST_WING={offset:64,hold:1.25,release:1.6};
+export const COAST_MORTAR={range:400,tell:.36,warning:.9,spacing:.85};
+export function coastMortarWait(s,e){
+ if(e.cohort!=='coast-guard'||!s.sites.some(n=>n.id===e.siteId&&n.coastPlan==='split'))return 0;
+ // The far gun can rejoin after a retreat, but not lock the same position in the same frame.
+ const overlap=COAST_MORTAR.warning-COAST_MORTAR.spacing;
+ return s.hazards.reduce((wait,h)=>h.coastMortar===e.siteId&&!h.hit?Math.max(wait,h.timer-overlap):wait,0);
+}
+export const coastMortarAiming=(s,e)=>e.cohort==='coast-guard'&&e.type==='mortar'&&!e.dead
+ &&e.timer<=COAST_MORTAR.tell&&coastMortarWait(s,e)<=COAST_MORTAR.tell
+ &&Math.hypot(e.x-s.player.x,e.y-s.player.y)<COAST_MORTAR.range;
+export const coastMortarThreatens=(s,site)=>s.hazards.some(h=>h.coastMortar===site.id&&!h.hit
+ &&Math.hypot(h.x-s.player.x,h.y-s.player.y)<h.r+16);
 export const COAST_STRIKES={
  f:{name:'연료관 점화',impact:'후면 엔진 점화 · 추가 피해 560',hint:'돌진을 피한 뒤 후면 엔진에 불을 맞히세요.',detail:'재장전 2초 연장. 장갑 수송차에 한 번 적용됩니다.',damage:560,delay:2},
  r:{name:'신호탄 포착',impact:'원거리 로켓으로 돌진 차단 · 차체 피해 +780',hint:'돌진 예고 중 떨어져 차체에 로켓을 맞히세요.',detail:'폭발에 맞으면 돌진이 멈추고 바로 재장전합니다. 한 번 적용됩니다.',damage:780,range:160}
@@ -210,9 +223,14 @@ export function coastEncounterCue(s,site){
  if(!approach)return null;
  if(site.state==='ready')return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
  if(site.state!=='active')return null;
- const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id).length;
- if(site.coastApproach==='f')return `${site.coastPlan==='split'?'한쪽부터 분사':'붙어서 분사'} · 경비 ${guards}명`;
- return `${site.coastPlan==='split'?'한 문씩 제압':'사선 열기'} · 박격포 ${guards}문`;
+ const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id);
+ if(site.coastApproach==='f'){
+  const wings=new Set(guards.map(e=>e.coastWing).filter(Boolean)).size;
+  const move=site.coastPlan!=='split'?'붙어서 분사':wings===1?'남은 호위 추격':'바깥에서 한쪽부터';
+  return `${move} · 경비 ${guards.length}명`;
+ }
+ const aim=coastMortarThreatens(s,site)?'포격 원 밖으로':guards.some(e=>coastMortarAiming(s,e))?'박격포 조준 중':guards.length===1?'남은 포대를 노려라':site.coastPlan==='split'?'교대 포격 · 한 문씩':'폭발에 두 문을 넣어라';
+ return `${aim} · ${guards.length}문`;
 }
 export const mapSeed=(seed,index)=>seed+index*7919;
 export const RAIL_GARRISONS={

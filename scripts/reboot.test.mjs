@@ -1308,6 +1308,52 @@ test('spaced garrisons survive an opening shot that hits all guards in the packe
   assert.deepEqual([shot(17),shot(splitSeed),shot(splitSeed,true)],[...affected,affected[0]]);
  }
 });
+test('split escorts keep both wings visible in motion before converging on the pilot',()=>{
+ const s=quietOperation(),site=s.sites.find(n=>n.coastApproach==='f');
+ Object.assign(site,{state:'waiting',coastPlan:'split'});
+ Object.assign(s.player,{x:site.x,y:site.y+206,invuln:9});
+ step(s,dt);
+ const sides=new Map(s.enemies.map(e=>[e.id,e.coastWing]));
+ assert.deepEqual([...sides.values()],[-1,-1,-1,1,1,1]);
+ const legacy=restore(snapshot(s));
+ for(const e of legacy.enemies)delete e.coastWing;
+ const gap=state=>[-1,1].map(side=>state.enemies.filter(e=>sides.get(e.id)===side)
+  .reduce((sum,e)=>sum+e.x/3,0)).reduce((a,b)=>b-a);
+ tick(s,1);tick(legacy,1);
+ const spread=gap(s);
+ assert.ok(spread>100);
+ assert.ok(spread>gap(legacy)+35);
+ const saved=restore(snapshot(s));
+ tick(saved,1);tick(s,1);
+ assert.deepEqual(saved.enemies,s.enemies);
+ assert.ok(gap(s)<spread-25);
+});
+test('split mortars stagger locks even after re-entry and preserve shots from a defeated gun',()=>{
+ const s=quietOperation(),site=s.sites.find(n=>n.coastApproach==='r');
+ Object.assign(site,{state:'waiting',coastPlan:'split'});
+ Object.assign(s.player,{x:site.x-80,y:site.y+180,invuln:9});
+ step(s,dt);
+ const [near,far]=s.enemies;
+ assert.equal(near.timer,.6);
+ assert.equal(far.timer,1.45);
+ Object.assign(s.player,{x:site.x-400,y:site.y+300});
+ tick(s,1.6);
+ assert.equal(s.hazards.length,0);
+ Object.assign(s.player,{x:site.x,y:site.y+190});
+ step(s,dt);
+ const first=s.hazards.find(h=>h.coastMortar===site.id);
+ assert.ok(first);assert.equal(first.fromX,near.x);assert.equal(s.hazards.length,1);
+ const resumed=restore(snapshot(s));
+ resumed.shots=[bullet(resumed,resumed.enemies[0],2000)];step(resumed,dt);
+ assert.ok(resumed.enemies[0].dead);
+ assert.ok(resumed.hazards.some(h=>h.fromX===first.fromX&&!h.hit));
+ Object.assign(resumed.player,{x:site.x+90,y:site.y+190});
+ tick(resumed,.7);
+ assert.equal(resumed.hazards.length,1);
+ tick(resumed,.18);
+ const second=resumed.hazards.find(h=>h.fromX!==first.fromX);
+ assert.ok(second);assert.equal(second.x,resumed.player.x);
+});
 test('opening combat reserves earned upgrades through the rescue and a short weapon window',()=>{
  const run=quietOperation();
  const rescue=run.sites.find(site=>site.opening);
