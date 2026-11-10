@@ -256,6 +256,7 @@ async function selectCard(id,args={}){const c=run.choices.find(c=>c.id===id);if(
  if(c.kind==='module'&&!moduleRank(run,c.module)&&run.modules.length>=4&&args.slot===undefined){showSlots(c);return;}
  const before=run.stats.choices.length,hadHeat=heatSynergyReady(run);
  const openingGun=!!(run.choice.opening&&c.kind==='gun'&&COAST_APPROACHES[c.weapon]);
+ unlockSound();
  await mutate(d=>choose(d,id,{...args,doctrine:selectedDoctrine}));
  if(run.stats.choices.length>before&&!pending)equippedFeedback(c,details,openingGun,!hadHeat&&heatSynergyReady(run));
 }
@@ -312,7 +313,7 @@ ui.addEventListener('click',async e=>{
  if(a==='reload-latest'){location.reload();return;}
  if(a==='choice-back'){nextPanelFocus=choiceOrigin;subpanel=null;present(true);return;}if(a==='raid-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="raid-menu"]'};showRaid();return;}
  if(a==='banish-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="banish-menu"]'};subpanel={type:'banish'};const options=banishOptions(run);panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="banish-title"><span class="eyebrow">BANISH / 이번 판에서 제외</span><h2 id="banish-title">보급 후보 하나를 바꾼다</h2><div class="branch-list">${options.map(c=>`<button data-exclude="${esc(c.id)}">${esc(c.title)}${c.module&&moduleRank(run,c.module)?' · 이 상자만 교체':' · 이번 판 후보 제외'}</button>`).join('')}</div><small>${options.length?'미보유 후보는 이번 판에서 제외합니다. 보유 모듈은 이 상자의 후보만 교체하고 기존 투자를 유지합니다.':'현재 제외할 후보가 없습니다. 첫 두 보급의 새 총 기회는 보호됩니다.'}</small><button data-action="choice-back">돌아가기</button></section>`);return;}
- if(['continue','withdraw','challenge'].includes(a))unlockSound();
+ if(['continue','withdraw','challenge','skip'].includes(a))unlockSound();
  await mutate(d=>{if(a==='continue'){resume(d);return true;}if(a==='reroll')return reroll(d);if(a==='skip')return skip(d);if(a==='gate-assemble'||a==='gate-upgrade')return action(d,a);if(a==='withdraw'){const ok=action(d,'withdraw');if(ok)resume(d);return ok;}if(a==='challenge'){resume(d);return action(d,'challenge');}if(a?.startsWith('raid:'))return action(d,a);return false;});
 });
 async function pauseButton(){if(!run||mode!=='battle'||pending)return;if(busy){if(committingPlay||run.phase==='playing')pauseQueued=true;return;}if(run.phase==='paused')unlockSound();await mutate(d=>{if(d.phase==='paused')resume(d);else pause(d);return true;});}

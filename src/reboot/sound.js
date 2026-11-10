@@ -4,7 +4,7 @@ const fieldCues={
  shot:'swarm-shot','rocket-shot':'scatter-shot','focus-shot':'focus-shot',flame:'flame-loop',
  heat:'heat-break','fire-spread':'fire-spread','payload-impact':'conduit-impact','payload-relay':'conduit-hop',
  kill:'wood-kill',impact:'rifle-hit',explosion:'power-kill','charge-impact':'slam','salvo-impact':'power-kill','armor-impact':'guard-block',
- complete:'forge-evolve',skill:'burst',choose:'choose','boss-arrival':'boss-arrival','boss-down':'armor-collapse',
+ complete:'forge-evolve',skill:'burst',choose:'choose','boss-arrival':'boss-arrival',
  'port-hatch':'front-entry','region-entry':'front-entry','challenge-clear':'rampage','raid-success':'forge-evolve',
  heal:'heal',break:'crowd-break','xp-pickup':'xp'
 };
@@ -13,6 +13,7 @@ export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  const warning=events.has('boss-charge')?'coast-charge':RIFT_BOSS_CUES.find(cue=>events.has(cue))||(events.has('warning')?'mortar-lock':null);
  let foreground=null;
  if(events.has('hurt'))foreground='hurt';
+ else if(events.has('boss-down'))foreground='armor-collapse';
  else if(events.has('aid-counter')||events.has('barrage-cancel'))foreground='battery-suppress';
  else if(showcase==='flame')foreground='inferno-ready';
  else if(showcase==='fusion')foreground='conduit-ready';

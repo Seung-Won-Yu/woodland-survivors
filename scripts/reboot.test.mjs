@@ -335,6 +335,7 @@ test('heat audio stays distinct while hurt keeps foreground priority',async()=>{
 test('RIFT keeps boss warnings over hit and pickup cues and distinguishes capstone contacts',()=>{
  const mix=(events,options)=>selectRiftAudioEvents(new Set(events),options);
  assert.deepEqual(mix(['harbor-vertical-lock','hurt','shell-land','xp-pickup']),['harbor-vertical-lock','hurt']);
+ assert.deepEqual(mix(['boss-down','shell-land','xp-pickup']),['armor-collapse']);
  assert.deepEqual(mix(['boss-charge','warning','armor-impact','xp-pickup']),['coast-charge','guard-block']);
  assert.deepEqual(mix(['warning','shell-land','explosion']),['mortar-lock','shell-land']);
  assert.deepEqual(mix(['payload-impact','payload-relay','shot','xp-pickup']),['swarm-shot','conduit-transfer']);
