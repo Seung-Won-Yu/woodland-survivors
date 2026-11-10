@@ -89,7 +89,7 @@ function paintCoastCue(c,site,size,cx,cy,scale){
  c.moveTo(5,0);c.lineTo(-4,-4);c.lineTo(-2,0);c.lineTo(-4,4);c.closePath();c.fill();
  c.restore();
 }
-function paintAidBearing(c,crate,size,cx,cy,scale){
+function paintAidBearing(c,crate,size,cx,cy,scale,preview){
  const tx=size.w/2+(crate.x-cx)*scale,ty=size.h/2+(crate.y-cy)*scale;
  const left=tx<26;
  if(!left&&tx<=size.w-26)return;
@@ -97,7 +97,8 @@ function paintAidBearing(c,crate,size,cx,cy,scale){
  c.fillStyle='#182c27';c.fillRect(x,y-12,60,24);
  c.strokeStyle='#b6d79a';c.lineWidth=1;c.strokeRect(x+.5,y-11.5,59,23);
  c.fillStyle='#d7f0b8';c.font='bold 11px Galmuri, sans-serif';c.textAlign='center';
- c.fillText(left?'‹ 구급':'구급 ›',x+30,y+4);
+ const name=preview?'투하 예정':'구급 화물';
+ c.fillText(left?`‹ ${name}`:`${name} ›`,x+30,y+4);
 }
 function paintPortCue(c,s){
  const b=s.boss;
@@ -459,6 +460,9 @@ export function createRenderer(canvas,art){
     c.fillStyle=q.rocket?'#f69145':'#ffdd87';c.shadowColor=q.rocket?'#ff984a':'#ffdf9e';c.shadowBlur=reduced?0:7;
     c.fillRect(-q.r*2,-q.r*.7,q.r*3,q.r*1.4);c.fillStyle='#fff3c8';c.fillRect(0,-1,q.r+3,2);
    }
+   if(q.breachLane&&q.target===s.boss.parts[0]?.id){
+    c.fillStyle='#d6f5ff';c.fillRect(0,-2,q.r+4,4);
+   }
    c.restore();
   }
   for(const f of s.effects){const t=f.age/f.life;c.save();c.globalAlpha=1-t;
@@ -537,7 +541,10 @@ export function createRenderer(canvas,art){
   }
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   if(lead)paintCoastCue(c,lead,size,cx,cy,scale);
-  if(mobile&&s.boss.active&&s.boss.harborSupply)paintAidBearing(c,s.boss.harborSupply,size,cx,cy,scale);
+  if(mobile&&s.boss.active){
+   const crate=s.boss.harborSupply,aid=crate||portAidPreview(s);
+   if(aid)paintAidBearing(c,aid,size,cx,cy,scale,!crate);
+  }
  }
  return{draw,view:()=>view,resize};
 }

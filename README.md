@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.48.0" src="https://img.shields.io/badge/RIFT-0.48.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.49.0" src="https://img.shields.io/badge/RIFT-0.49.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -96,7 +96,7 @@ npm run test:pages
 
 0.31은 390px와 360px 인앱 화면에서 조이스틱을 직접 움직여 포로를 구출하고 화염과 로켓을 각각 장착했습니다. 두 화면 모두 출격 버튼이 첫 화면에 들어오고, 장착 직후 선택한 무장의 다음 표적이 전장과 작전도에 표시됩니다. [해안 첫 출격 검증](docs/RIFT-GAMEPLAY-V1.md#031-포로-구출과-첫-무장).
 
-0.30은 390px 인앱 브라우저에서 시드 25·71로 화염과 전도를 출격시켜 철도 잔류 부품을 바꿔가며 여덟 번 귀환했습니다. 항구에서 포탑 제압, 코어 돌격, 구급 화물 회수의 세 경로가 각각 작동했습니다. [항구 부품 비교](docs/RIFT-GAMEPLAY-V1.md#030-철도-잔류-부품과-항구-공략).
+0.49에서는 시드 17·22의 화염과 전도로 모바일 화면에서 여섯 판을 귀환했습니다. 철갑은 발사 후 회피해도 포탑탄을 끊고, 구급은 다음 투하 위치를 보고 포격을 유도할 수 있습니다. [항구 부품 비교](docs/RIFT-GAMEPLAY-V1.md#049-철갑-발사-판정과-구급-투하-예고).
 
 0.29는 화염과 전도의 저체력·완성 빌드에서 같은 게이트를 전진과 잔류로 갈라, 인앱 브라우저에서 여덟 경로의 귀환을 확인했습니다. 저체력 즉시 전진은 다음 전선에서 체력 60%를 보장하고, 잔류는 전투를 더 치르는 대신 보급과 크레딧을 줍니다. [저체력·완성 빌드 비교](docs/RIFT-GAMEPLAY-V1.md#029-저체력과-완성-빌드의-게이트-비교).
 

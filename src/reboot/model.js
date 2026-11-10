@@ -334,7 +334,7 @@ function buildCompleted(s,kind,weapon){
  }
 }
 export function partPosition(s,part){const b=s.boss;if(s.operation?.region===1)return{x:b.x+part.ox,y:b.y};return{x:b.x+Math.cos(b.body-Math.PI/2)*part.ox,y:b.y+Math.sin(b.body-Math.PI/2)*part.ox};}
-function targets(s){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){const breach=s.operation?.region===2?portBreachFlank(s):s.operation?.support==='breach';if(!breach)list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}if(breach)list.push(s.boss);}return list;}
+function targets(s,breachLane){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){const breach=s.operation?.region===2?(breachLane??portBreachFlank(s)):s.operation?.support==='breach';if(!breach)list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}if(breach)list.push(s.boss);}return list;}
 const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
 function clearCoastOverlap(s,entity,r,fallback){
  const {x,y}=entity;
@@ -445,16 +445,16 @@ function activateFrontTactic(s,e,kind,source,owner){
  s.stats.frontTactics??={};
  s.stats.frontTactics[index]=(s.stats.frontTactics[index]||0)+1;
 }
-function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
+function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,breachLane){
  if(e.hp<=0||e.dead)return;
  const catalyst=moduleRank(s,'catalyst');if(kind==='blast'&&e.burn>0&&catalyst)amount*=1+RULES.modules.catalyst.blastBonusOnBurn[catalyst-1];
  amount*=1+s.boosts.power*.01;
  const breach=s.operation?.support==='breach';
  if(e===s.boss.parts[0]&&s.operation?.region===2){
-  if(portBreachFlank(s)&&source!=='front-relay'&&!lineBlocked(s,s.player,e)){
+  if((source==='native'||source==='payload')&&(breachLane??(portBreachFlank(s)&&!lineBlocked(s,s.player,e)))){
    amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
    if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
-   else if(['native','payload'].includes(source)&&clearPortTurretRounds(s)){
+   else if(clearPortTurretRounds(s)){
     s.boss.turretSuppressedCycle=s.boss.cycle;
     emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:'철갑 명중 · 포탑 포격 취소'});
    }
@@ -486,7 +486,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
   s.thermalCd=.25;s.player.charge+=gain;s.stats.thermalRecovered=(s.stats.thermalRecovered||0)+gain;
  }
  if(source==='native'){
-  if(weight>0)feed(s,owner,weight,e);
+  if(weight>0)feed(s,owner,weight,e,breachLane);
   if(kind==='blast'&&e.burn>0&&catalyst&&s.heatCd<=0){
    const chained=heatSynergyReady(s),config=RULES.modules.catalyst;
    s.heatCd=config.heatBurstCooldown;s.stats.heatBursts++;
@@ -509,7 +509,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  }
  e.dead=true;e.death=.3;scoreKill(s,e,source,kind);
 }
-function feed(s,owner,weight,target){
+function feed(s,owner,weight,target,breachLane){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}
  const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){const cfg=RULES.fusion;w.payload=Math.min(cfg.hitsPerPayload,w.payload+weight);if(w.payload>=cfg.hitsPerPayload&&w.payloadCd<=0){w.payload-=cfg.hitsPerPayload;w.payloadCd=cfg.payloadCooldown;
   const near=payloadTargets(s,target,42);
@@ -517,20 +517,20 @@ function feed(s,owner,weight,target){
   const next=opposite||near.find(e=>distance(e,target)>=100)||near[0];
   s.stats.payloadBursts=(s.stats.payloadBursts||0)+1;
   emit(s,'payload',target.x,target.y,{life:.25});
-  if(!next||!launchPayload(s,w,target,next,cfg.payloadDamage))blast(s,target.x,target.y,cfg.payloadRadius,cfg.payloadDamage,'payload',w.uid,w.fusion.branch==='incendiary');
+  if(!next||!launchPayload(s,w,target,next,cfg.payloadDamage,false,breachLane))blast(s,target.x,target.y,cfg.payloadRadius,cfg.payloadDamage,'payload',w.uid,w.fusion.branch==='incendiary',undefined,breachLane);
  }}
 }
 function payloadTargets(s,origin,min){return targets(s).filter(e=>e.hp>0&&distance(e,origin)>=min&&distance(e,origin)<300&&!lineBlocked(s,origin,e)).sort((a,b)=>distance(a,origin)-distance(b,origin));}
-function launchPayload(s,w,origin,target,amount,relay=false){
+function launchPayload(s,w,origin,target,amount,relay,breachLane){
  const angle=Math.atan2(target.y-origin.y,target.x-origin.x);
- return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:w.fusion.branch==='homing',incendiary:w.fusion.branch==='incendiary',origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay});
+ return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:w.fusion.branch==='homing',incendiary:w.fusion.branch==='incendiary',origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane});
 }
-function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion'){
+function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane){
  emit(s,effect,x,y,{r,life:.4});let budget=2;
- for(const e of (source==='support'?alive(s):targets(s))){
+ for(const e of (source==='support'?alive(s):targets(s,breachLane))){
   if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;
   const w=source==='native'?Math.min(.5,budget):0,before=e.hp;
-  budget-=w;damage(s,e,amount,'blast',source,owner,w);
+  budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane);
   if(effect==='shrapnel'&&e.hp<before){
    s.stats.shrapnelHits=(s.stats.shrapnelHits||0)+1;
    if(e.dead&&Object.hasOwn(RULES.enemies,e.type))s.stats.shrapnelKills=(s.stats.shrapnelKills||0)+1;
@@ -544,7 +544,10 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=sou
 function fire(s,w,target,a,amount,opts={}){
  if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin,source=opts.source||'native',evolved=w.evolved&&!w.fusion;
  const speed=rocket?source==='payload'?RULES.fusion.payloadSpeed:300:700;
- s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
+ const breachLane=s.operation?.region===2&&s.operation.support==='breach'?(opts.breachLane??(
+  portBreachFlank(s)&&!lineBlocked(s,s.player,partPosition(s,s.boss.parts[0]))
+ )):undefined;
+ s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(breachLane!==undefined?{breachLane}:{}),...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
 }
 export function activeManeuver(p){
  if(p.maneuver==='assault'&&p.moving&&p.assaultTime>0)return 'assault';
@@ -579,10 +582,10 @@ function segmentDistance(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,t=clamp(((px
 function detonate(s,q){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
- blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect);q.life=0;
+ blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane);q.life=0;
  if(q.source!=='payload'||q.relay||(s.stats.payloadKills||0)-before<2)return;
  const owner=s.weapons.find(w=>w.uid===q.owner&&w.fusion),next=payloadTargets(s,q,q.radius+22)[0];
- if(owner&&next&&launchPayload(s,owner,q,next,RULES.fusion.payloadDamage*.8,true)){
+ if(owner&&next&&launchPayload(s,owner,q,next,RULES.fusion.payloadDamage*.8,true,q.breachLane)){
   s.stats.payloadRelays=(s.stats.payloadRelays||0)+1;
   emit(s,'payload-relay',q.x,q.y,{x2:next.x,y2:next.y,life:.32});
  }
@@ -592,13 +595,13 @@ function updateShots(s,dt){
   if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)&&(q.avoidGroup==null||e.waveGroup!==q.avoidGroup)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8),speed=q.source==='payload'?(q.speed??Math.hypot(q.vx,q.vy)):300;q.vx=Math.cos(angle)*speed;q.vy=Math.sin(angle)*speed;}}
   q.x+=q.vx*dt;q.y+=q.vy*dt;
   const wall=blocked(s,q.x,q.y,q.r);if(wall){if(q.rocket)detonate(s,q);else if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);q.life=0;emit(s,'impact',q.x,q.y);continue;}
-  for(const e of targets(s)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
+  for(const e of targets(s,q.breachLane)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
    if(q.arming>0&&q.target!==e.id||q.avoidGroup!=null&&q.avoidGroup===e.waveGroup)continue;
    q.hitIds.push(e.id);if(q.rocket){detonate(s,q);break;}
    const wasBounce=q.pierce===undefined?q.hitIds.length>1:!!q.reflected;
   const angle=e===s.raid?.target?Math.atan2(-q.vy,-q.vx):null,screened=angle!=null&&raidOnNose(s,angle);
    const amount=screened?q.damage*RULES.raidContracts.armored.bulletFrontMultiplier:q.damage;
-   damage(s,e,amount,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1);
+   damage(s,e,amount,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1,q.breachLane);
    if(wasBounce)s.stats.ricochetHits++;
    emit(s,screened?'armor-impact':'impact',screened?q.x:e.x,screened?q.y:e.y,{life:.12,angle});
    if(q.pierce>0){q.pierce--;q.damage*=.72;emit(s,'pierce',e.x,e.y,{angle:Math.atan2(q.vy,q.vx),life:.18});break;}
@@ -705,12 +708,13 @@ function updateOperationBoss(s,dt){
    b.timer+=warning;
    if(index===1)startRailBarrage(s,warning);
    else startPortBarrage(s,warning);
-   if(index===2&&b.cycle===1)dropHarborAid(s);
+   if(index===2)dropHarborAid(s);
   }else if(b.mode==='salvo'){
    b.mode='recover';b.timer=index===1?RAIL_BARRAGE.recover:2.6;
    if(index===1&&s.operation.tactic==='signal'&&b.tacticCycle===b.cycle)b.timer+=FRONT_TACTICS[1].signal.delay;
    if(index===2&&b.parts[0].hp>0){for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);b.kick=1;b.flash=.12;}
    emit(s,'weakpoint',b.x,b.y,{text:disarmed?'양쪽 포대 파괴 · 차체 노출':index===1?'포격 재장전 · 포대를 노려라':'노출 코어 · 집중 공격',life:1.4});
+   // An older mid-salvo save or a crate carried into this salvo can still supply the reload.
    if(index===2)dropHarborAid(s);
    else if(s.operation.support==='recovery'&&b.cycle<=PORT_SUPPORT.recovery.limit){
     const x=b.cycle%2?625:975,y=470;

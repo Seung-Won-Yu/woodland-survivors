@@ -49,9 +49,9 @@ export const PORT_LANDING={range:215,guards:[
  ['mortar',-45,-180],['mortar',-83,-130]
 ]};
 export const PORT_SUPPORT={
- breach:{impact:'측면 사격으로 포탑 포격 저지 · 피해 +65%',detail:'포탑을 먼저 조준합니다. 포격 예고 중 측면에서 적중시키면 포탑 포탄 두 발이 취소됩니다.',hint:'포탑 쪽 사선을 잡으세요. 발밑 집중 포격은 계속됩니다.',flank:105,boost:1.65},
+ breach:{impact:'측면 발사로 포탑 포격 저지 · 피해 +65%',detail:'측면에서 쏜 탄이 포격 예고 중 명중하면 포탑탄 두 발을 취소합니다. 발사 후 바로 회피해도 됩니다.',hint:'포탑 쪽 사선을 잡으세요. 발밑 집중 포격은 계속됩니다.',flank:105,boost:1.65},
  overrun:{impact:'회피 돌입으로 코어 직격 320 · 장갑 해제',detail:'재장전 중 표시된 경계를 회피로 넘으세요. 남은 노출 동안 코어가 피해를 더 받고, 노출이 0.9초 늘어납니다.',hint:'포격을 피한 뒤 코어 경계 밖에서 안으로 회피하세요.',reach:100,damage:320,delay:.9},
- recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'집중 포격을 유도한 뒤, 붉은 원 밖 화물을 경고가 끝나기 전에 회수하면 전탄 +45.',hint:'첫 화물은 포탑 반대편. 경고 중 측면에서 회수하고 재장전에 반격하세요.',heal:12,charge:20,warningCharge:45,reach:36,limit:3,lanes:[625,975],y:335}
+ recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 세 포격에 좌우 교대로 투하합니다. 붉은 원 밖에서 경고 중 회수하면 전탄 +45.',hint:'표시된 화물에서 떨어져 포격을 유도한 뒤 경고 중 회수하세요.',heal:12,charge:20,warningCharge:45,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
@@ -68,7 +68,13 @@ export function portAidPoint(boss,cycle){
  const kit=PORT_SUPPORT.recovery,side=(cycle%2?-1:1)*portTurretSide(boss);
  return {x:kit.lanes[side<0?0:1],y:kit.y};
 }
-export const portAidPreview=s=>s.operation?.support==='recovery'&&s.boss.cycle===0?portAidPoint(s.boss,1):null;
+export function portAidPreview(s){
+ const {boss:b}=s;
+ if(s.operation?.region!==2||s.operation.support!=='recovery'||!b.active||b.dead||b.harborSupply)return null;
+ const duringWarning=b.mode==='salvo'&&b.harborSupplyCycle!==b.cycle;
+ const cycle=duringWarning?b.cycle:b.cycle+1;
+ return cycle>0&&cycle<=PORT_SUPPORT.recovery.limit?portAidPoint(b,cycle):null;
+}
 export function portAidWindow(s,position){
  const crate=s.boss.harborSupply;
  if(!crate||s.boss.mode!=='salvo')return false;

@@ -269,7 +269,7 @@ function updateMap(lead,entry,gantry,dispatch){
   if(portCoreWindow(run))map+=`<circle cx="${boss.x}" cy="${boss.y}" r="${portCoreReach(boss)}" fill="none" stroke="#ffd0a1" stroke-width="12" stroke-dasharray="24 20" aria-label="회피로 넘을 코어 경계"/>`;
   const aid=portAidPreview(run);
   if(boss.harborSupply)map+=dot('map-crate',boss.harborSupply.x,boss.harborSupply.y,42,portAidWindow(run)?'#f8d698':'#d7f0b8','구급 화물');
-  else if(aid)map+=`<circle cx="${aid.x}" cy="${aid.y}" r="42" fill="none" stroke="#d7f0b8" stroke-width="9" stroke-dasharray="14 10" aria-label="첫 구급 화물 투하 지점"/>`;
+  else if(aid)map+=`<circle cx="${aid.x}" cy="${aid.y}" r="42" fill="none" stroke="#d7f0b8" stroke-width="9" stroke-dasharray="14 10" aria-label="다음 구급 화물 투하 지점"/>`;
  }
  if(gantry){
   map+=entryRouteSvg({routes:[gantry]});
@@ -466,14 +466,29 @@ function updateHud(){
   if(harborPart){
    line.dataset.part=supportId;
    if(supportId==='breach'){
-    line.textContent=boss.parts[0].hp<=0?'철갑 · 포탑 정지':boss.mode==='salvo'&&boss.turretSuppressedCycle===boss.cycle?'철갑 · 포탑탄 취소 · 발밑 포격 주의':portTurretInSight(run)?'철갑 · 포탑 집중 사격':portBreachFlank(run)?'철갑 · 포탑 사거리까지 접근':`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
+    const turret=boss.parts[0],incoming=run.shots.some(q=>q.breachLane&&q.target===turret.id);
+    if(turret.hp<=0)line.textContent='철갑 · 포탑 정지';
+    else if(boss.mode==='salvo'&&boss.turretSuppressedCycle===boss.cycle)line.textContent='철갑 · 포탑탄 취소 · 발밑 포격 주의';
+    else if(boss.mode==='salvo'&&incoming)line.textContent='철갑탄 비행 중 · 발밑 포격을 피하세요';
+    else if(portTurretInSight(run))line.textContent='철갑 · 포탑 사선 확보';
+    else if(portBreachFlank(run))line.textContent='철갑 · 포탑 사거리까지 접근';
+    else line.textContent=`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
    }else if(supportId==='overrun'){
     const gap=distance(p,boss)-portCoreReach(boss);
     line.textContent=portCoreDisrupted(run)?'돌격 · 코어 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 코어 경계까지 이동':p.dashCd>0?'돌격 · 회피 재사용 대기':gap<=0?'돌격 · 경계 밖으로 이동':gap>110?'돌격 · 코어 경계까지 접근':'돌격 · 지금 경계 안으로 회피';
    }else{
-    const crate=boss.harborSupply,aid=portAidPreview(run),limit=PORT_SUPPORT.recovery.limit;
-    const complete=boss.cycle>limit||boss.cycle===limit&&boss.mode!=='salvo';
-    line.textContent=crate?`구급 · ${bearing(p,crate.x,crate.y)} 화물 · ${portAidWindow(run)?`경고 중 전탄 +${PORT_SUPPORT.recovery.warningCharge}`:`전탄 +${PORT_SUPPORT.recovery.charge}`}`:aid?`구급 · ${bearing(p,aid.x,aid.y)} 첫 투하 지점 · 포격 고정 뒤 이동`:complete?'구급 · 화물 투하 완료':'구급 · 포격을 피해 다음 화물 대기';
+    const crate=boss.harborSupply,aid=portAidPreview(run),kit=PORT_SUPPORT.recovery;
+    if(crate){
+     const direction=bearing(p,crate.x,crate.y);
+     const warning=run.hazards.some(h=>h.portRound&&!h.hit);
+     const status=portAidWindow(run,p)?`지금 회수 · 전탄 +${kit.warningCharge}`
+      :portAidWindow(run)?'붉은 원 밖으로 회피'
+      :warning?'화물 쪽 포격 · 폭발 뒤 회수':`회수 · 전탄 +${kit.charge}`;
+     line.textContent=`구급 · ${direction} 화물 · ${status}`;
+    }else if(aid){
+     const next=boss.mode==='salvo'?'포격 뒤 투하 예정':'다음 투하 · 이 자리에서 떨어져 포격 유도';
+     line.textContent=`구급 · ${bearing(p,aid.x,aid.y)} ${next}`;
+    }else line.textContent='구급 · 화물 투하 완료';
    }
   }
  }

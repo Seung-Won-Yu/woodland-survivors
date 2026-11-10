@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter,portAidPreview,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -821,6 +821,31 @@ test('a live turret loses only its pending flank rounds after a breach hit from 
  assert.equal(s.boss.turretSuppressedCycle,s.boss.cycle);
  assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','battery','battery']);
 });
+test('a harbor rocket keeps the flank it was fired from when the player sidesteps',()=>{
+ const launch=(x,direction)=>{
+  const s=supportArena(2,'breach','aim');
+  Object.assign(s.boss,{cycle:0,timer:0,parts:regionBoss(2,19).parts});
+  s.sites=regionLayout(mapSeed(s.seed,2),2).sites;
+  Object.assign(s.player,{x,y:440});
+  step(s,dt);
+  const rocket={...makeWeapon('r'),uid:'rocket',cd:0};
+  s.weapons=[rocket];
+  step(s,dt);
+  const shot=s.shots[0],turret=s.boss.parts[0];
+  assert.equal(shot.target,turret.id);
+  assert.equal(shot.breachLane,x<695);
+  const loaded=restore(snapshot(s));
+  tick(loaded,.1,{x:direction,y:0});
+  assert.equal(loaded.player.x<695,x>=695);
+  tick(loaded,.7);
+  return loaded;
+ };
+ const flank=launch(690,1),center=launch(700,-1);
+ assert.equal(flank.boss.parts[0].hp,flank.boss.parts[0].maxHp-weaponStats(flank.weapons[0]).damage*1.65);
+ assert.ok(center.boss.parts[0].hp>flank.boss.parts[0].hp);
+ assert.deepEqual(flank.hazards.map(h=>h.portRound),['lock','battery','battery']);
+ assert.equal(center.hazards.filter(h=>h.portRound==='turret').length,2);
+});
 test('harbor dash must enter the exposed core range and strikes once per recovery window',()=>{
  const aim=supportArena(2,'overrun','aim'),opening=supportArena(2,'overrun','recover');
  const rush=(s,y,input)=>{
@@ -864,12 +889,33 @@ test('harbor medical crates alternate flanks, survive saving and require a physi
  Object.assign(s.boss,{mode:'salvo',cycle:2,timer:0});step(s,dt);assert.deepEqual(s.boss.harborSupply,{x:625,y:335});
  delete loaded.boss.harborSupply;Object.assign(loaded.boss,{mode:'salvo',cycle:4,timer:0});step(loaded,dt);assert.equal(loaded.boss.harborSupply,undefined);
 });
+test('every harbor medical drop is previewed and can be claimed during its salvo',()=>{
+ const s=supportArena(2,'recovery','aim');
+ s.boss.cycle=0;
+ for(const [i,x] of [975,625,975].entries()){
+  Object.assign(s.boss,{mode:'aim',timer:0});
+  Object.assign(s.player,{x:800,y:335,hp:80,charge:10});
+  assert.deepEqual(portAidPreview(s),{x,y:335});
+  step(s,dt);
+  assert.equal(s.boss.mode,'salvo');
+  assert.deepEqual(s.boss.harborSupply,{x,y:335});
+  assert.equal(portAidPreview(s),null);
+  Object.assign(s.player,s.boss.harborSupply);
+  step(s,dt);
+  assert.equal(s.player.hp,92);
+  assert.equal(Math.floor(s.player.charge),55);
+  assert.equal(s.stats.supportUses[2],i+1);
+ }
+ assert.equal(portAidPreview(s),null);
+ assert.equal(portAidPreview(supportArena(1,'recovery','aim')),null);
+});
 test('a b23 harbor recovery checkpoint still gets its first crate at the end of the salvo',()=>{
  const s=supportArena(2,'recovery','salvo');
  s.balanceRevision='b23-front-approaches';
  Object.assign(s,regionLayout(mapSeed(s.seed,2),2));
  s.boss.timer=0;
  const loaded=restore(snapshot(s));
+ assert.deepEqual(portAidPreview(loaded),{x:975,y:335});
  step(loaded,dt);
  assert.deepEqual(loaded.boss.harborSupply,{x:975,y:335});
  assert.equal(loaded.boss.harborSupplyCycle,1);
