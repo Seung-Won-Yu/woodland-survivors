@@ -1,4 +1,5 @@
 import {FIELD,clamp,layout} from './content.js';
+import {routeCursor} from './raid.js';
 
 export const REGIONS=[
  {id:'beach',name:'해안 침투',mission:'장갑 수송차를 격파하고 철도로 진입하라',boss:'장갑 수송차',hp:4200,partHp:450,theme:{ground:'#a49874',tile:'#c0ae88',road:'#59584a',edge:'#415d69'},hint:'해변에서 무기를 확보하고 분화를 정하세요.'},
@@ -10,7 +11,7 @@ export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6,rareKills:8};
 export const HOLDOUT_CONTRACTS=[
  {id:'hunt',name:'지휘부 소탕',goal:'지휘관 2명 제압',risk:'양쪽에서 오는 장교의 부채꼴 사격'},
  {id:'defend',name:'중계기 방어',goal:'중계기 반경 안에서 8초 버티기',risk:'범위 안에 포격이 떨어집니다.'},
- {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'차량이 북쪽 검문선을 넘으면 실패합니다.'}
+ {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'하역장 바깥 굽이에서 차량의 진로를 끊으세요.'}
 ];
 export const FRONT_SUPPORTS={
  breach:{name:'철갑 급탄',role:'부위 조준',art:'ammo',impact:'보스 부위 우선 조준 · 피해 +55%',detail:'측면에서 부위가 사거리에 들어오면 차체보다 먼저 조준합니다.',tactics:['조준 중인 포대를 부수면 해당 포격이 멈춥니다.','포탑을 먼저 파괴하면 재장전 직전 부채꼴 사격이 멈춥니다.']},
@@ -38,9 +39,9 @@ export const PORT_LANDING={range:215,guards:[
  ['mortar',-45,-180],['mortar',-83,-130]
 ]};
 export const PORT_SUPPORT={
- breach:{impact:'포탑 쪽 사선에서 장갑 관통 · 피해 +65%',detail:'측면에서 포탑을 먼저 조준합니다. 포탑을 부수면 조준 중인 측면 포격과 부채꼴 사격이 멈춥니다.',hint:'작전도에 표시된 포탑 쪽 측면으로 이동하세요.',flank:105,boost:1.65},
+ breach:{impact:'측면 사격으로 포탑 포격 저지 · 피해 +65%',detail:'포탑을 먼저 조준합니다. 포격 예고 중 측면에서 적중시키면 포탑 포탄 두 발이 취소됩니다.',hint:'포탑 쪽 사선을 잡으세요. 발밑 집중 포격은 계속됩니다.',flank:105,boost:1.65},
  overrun:{impact:'회피 돌입으로 코어 직격 320 · 장갑 해제',detail:'재장전 중 표시된 경계를 회피로 넘으세요. 남은 노출 동안 코어가 피해를 더 받고, 노출이 0.9초 늘어납니다.',hint:'포격을 피한 뒤 코어 경계 밖에서 안으로 회피하세요.',reach:100,damage:320,delay:.9},
- recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 포격 예고에 포탑 반대편으로 화물이 옵니다. 이후 재장전 때 좌우로 투하하며, 남은 화물은 그 자리에 있습니다.',hint:'집중 포격을 피해 측면 화물을 밟고 전탄을 충전하세요.',heal:12,charge:20,reach:36,limit:3,lanes:[625,975],y:335}
+ recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'집중 포격을 유도한 뒤, 붉은 원 밖 화물을 경고가 끝나기 전에 회수하면 전탄 +45.',hint:'첫 화물은 포탑 반대편. 경고 중 측면에서 회수하고 재장전에 반격하세요.',heal:12,charge:20,warningCharge:45,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
@@ -53,6 +54,17 @@ export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='
 export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
 export const portCoreDisrupted=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle===s.boss.cycle;
 export const portCoreReach=boss=>boss.r+PORT_SUPPORT.overrun.reach;
+export function portAidPoint(boss,cycle){
+ const kit=PORT_SUPPORT.recovery,side=(cycle%2?-1:1)*portTurretSide(boss);
+ return {x:kit.lanes[side<0?0:1],y:kit.y};
+}
+export const portAidPreview=s=>s.operation?.support==='recovery'&&s.boss.cycle===0?portAidPoint(s.boss,1):null;
+export function portAidWindow(s,position){
+ const crate=s.boss.harborSupply;
+ if(!crate||s.boss.mode!=='salvo')return false;
+ const pending=s.hazards.filter(h=>h.portRound&&!h.hit);
+ return pending.length>0&&pending.every(h=>Math.hypot(crate.x-h.x,crate.y-h.y)>=h.r+16&&(!position||Math.hypot(position.x-h.x,position.y-h.y)>=h.r+16));
+}
 export const RAIL_BARRAGE={width:180,depth:900,y:600,outerOffset:300,warning:1.25,recover:2.2};
 export const railDisarmed=boss=>boss.parts.every(part=>part.hp<=0);
 // Fixed outer lanes in old checkpoints also belong to a gun.
@@ -72,7 +84,26 @@ export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
 export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'?s.challenge.target:null;
 export const DEFENSE_ZONE={x:800,y:560,r:108,seconds:8};
 export const defenseSeconds=tier=>DEFENSE_ZONE.seconds+Math.min(8,(tier-1)*2);
-export const SIGNAL_ROUTE={x:800,start:920,end:95,seconds:18};
+export const SIGNAL_SECONDS=18;
+export const SIGNAL_COLOR='#e6bcf6';
+const YARD_ROUTE=[[420,940],[425,804],[435,640],[410,540],[200,510],[200,325],[325,235],[330,105]];
+const signalPath=(points,flip=false)=>points.map(([x,y])=>({x:flip?1600-x:x,y}));
+const SIGNAL_PATHS={west:signalPath(YARD_ROUTE),east:signalPath(YARD_ROUTE,true),center:signalPath([[800,920],[800,95]])};
+export const signalLane=seed=>mapSeed(seed,2)%2?'west':'east';
+export const signalLaneLabel={west:'서쪽 하역로',east:'동쪽 하역로',center:'중앙 통로'};
+export function signalPosition(lane,timeLeft){
+ const path=SIGNAL_PATHS[lane||'center'];
+ const {segment,fraction}=routeCursor(path,clamp(1-timeLeft/SIGNAL_SECONDS,0,1));
+ const a=path[segment],b=path[segment+1];
+ return {x:a.x+(b.x-a.x)*fraction,y:a.y+(b.y-a.y)*fraction,aim:Math.atan2(b.y-a.y,b.x-a.x)};
+}
+export function signalRoute(s){
+ const target=signalCourier(s);
+ if(!target)return SIGNAL_PATHS[signalLane(s.seed)];
+ const {lane,timeLeft}=s.challenge,path=SIGNAL_PATHS[lane||'center'];
+ const {segment}=routeCursor(path,clamp(1-timeLeft/SIGNAL_SECONDS,0,1));
+ return [target,...path.slice(segment+1)];
+}
 export const MANEUVERS={
  assault:{name:'돌파 격발',impact:'회피 시 1.25초간 이동 사격 가속',detail:'이동 중 기본 발사 간격 −22%. 달려서 포위망에 틈을 냅니다.'},
  brace:{name:'거치 사격',impact:'0.45초 정지하면 기본 사격 피해 +25%',detail:'움직이는 즉시 해제. 포격 사이의 빈틈에 화력을 집중합니다.'}

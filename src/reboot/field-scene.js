@@ -70,11 +70,13 @@ export function gateSymbol({x,y,name}){
 export function entryRouteSvg(entry){
  return entry?.routes.map(route=>`<polyline data-approach="${route.site}" points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="22 18" aria-label="${route.sign} 경로"/>`).join('')||'';
 }
-export function raidRouteSvg(route,contract){
- const {color,name}=RAID_MARKS[contract],start=route[0],end=route.at(-1);
+export function escapeRouteSvg(route,marker,color,name,dash='12 16'){
+ const start=route[0],end=route.at(-1),previous=route.at(-2);
+ const rotation=Math.atan2(end.y-previous.y,end.x-previous.x)*180/Math.PI+90;
  const points=route.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
- return `<g data-raid-route="${contract}" aria-label="${name} 탈출 경로" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="${points}" stroke="#233634" stroke-width="27"/><polyline points="${points}" stroke="${color}" stroke-width="15" stroke-dasharray="${contract==='light'?'30 16':'12 16'}"/><circle cx="${start.x}" cy="${start.y}" r="26" fill="#263735" stroke="${color}" stroke-width="11"/><path transform="translate(${end.x} ${end.y})" d="M-27 -22h54v44h-54z M-10 -22v44 M10 -22v44" fill="#263735" stroke="${color}" stroke-width="9"/></g>`;
+ return `<g ${marker} aria-label="${name} 탈출 경로" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="${points}" stroke="#233634" stroke-width="27"/><polyline points="${points}" stroke="${color}" stroke-width="15" stroke-dasharray="${dash}"/><circle cx="${start.x}" cy="${start.y}" r="26" fill="#263735" stroke="${color}" stroke-width="11"/><path transform="translate(${end.x} ${end.y}) rotate(${rotation})" d="M-27 -22h54v44h-54z M-10 -22v44 M10 -22v44" fill="#263735" stroke="${color}" stroke-width="9"/></g>`;
 }
+export const raidRouteSvg=(route,contract)=>escapeRouteSvg(route,`data-raid-route="${contract}"`,RAID_MARKS[contract].color,RAID_MARKS[contract].name,contract==='light'?'30 16':undefined);
 export function raidPreview(s){
  const ground=terrainSvg(s.operation?.region||0,s.seed);
  const cover=s.blocks.filter(b=>b.hp!==0).map(b=>`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#2a403d" stroke="#798a7f" stroke-width="8"/>`).join('');

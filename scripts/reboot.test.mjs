@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,portTurretInSight} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
@@ -734,7 +734,7 @@ test('a legacy harbor checkpoint preserves its earned but uncollected landing su
   if(state==='done')assert.equal(s.phase,'playing');
  }
  const early=harborLanding(18),earlyDock=early.sites[0];
- delete earlyDock.gantry;earlyDock.state='ready';
+ early.balanceRevision='b30-port-gantry';delete earlyDock.gantry;earlyDock.state='ready';
  const resumed=restore(snapshot(early));
  Object.assign(resumed.player,earlyDock);step(resumed,dt);
  assert.equal(resumed.operation.portDock,true);
@@ -790,6 +790,22 @@ test('harbor flank only confirms a clear shot and puts the turret ahead of a nea
  step(s,dt);
  assert.equal(s.shots[0].target,s.boss.parts[0].id);
 });
+test('a live turret loses only its pending flank rounds after a breach hit from the marked side',()=>{
+ const s=supportArena(2,'breach','aim');
+ s.boss.cycle=0;s.boss.timer=0;step(s,dt);
+ assert.equal(s.hazards.length,5);
+ const hit=x=>{
+  Object.assign(s.player,{x,y:370});
+  const turret=partPosition(s,s.boss.parts[0]);
+  s.shots=[bullet(s,turret,15)];step(s,dt);
+ };
+ hit(975);
+ assert.equal(s.hazards.length,5);
+ hit(625);
+ assert.ok(s.boss.parts[0].hp>0);
+ assert.equal(s.boss.turretSuppressedCycle,s.boss.cycle);
+ assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','battery','battery']);
+});
 test('harbor dash must enter the exposed core range and strikes once per recovery window',()=>{
  const aim=supportArena(2,'overrun','aim'),opening=supportArena(2,'overrun','recover');
  const rush=(s,y,input)=>{
@@ -843,6 +859,24 @@ test('a b23 harbor recovery checkpoint still gets its first crate at the end of 
  assert.deepEqual(loaded.boss.harborSupply,{x:975,y:335});
  assert.equal(loaded.boss.harborSupplyCycle,1);
 });
+test('harbor recovery grants bonus charge only for a safe pickup during an armed warning',()=>{
+ function claim(lockX,afterWarning=false){
+  const s=supportArena(2,'recovery','aim');
+  Object.assign(s.boss,{cycle:0,timer:0});
+  Object.assign(s.player,{x:lockX,y:335,hp:80,charge:10});
+  step(s,dt);
+  if(afterWarning)tick(s,1);
+  s.player.charge=10;
+  Object.assign(s.player,s.boss.harborSupply);
+  step(s,dt);
+  assert.equal(s.boss.harborSupply,undefined);
+  assert.equal(s.stats.supportUses[2],1);
+  return Math.floor(s.player.charge);
+ }
+ assert.equal(claim(800),55);
+ assert.equal(claim(920),30);
+ assert.equal(claim(800,true),30);
+});
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};
  assert.ok(Math.abs(warning('done')-warning('waiting')-.4)<1e-9);
@@ -862,6 +896,36 @@ test('rail defense pauses outside the zone and harbor interception can fail and 
  port.shots=[bullet(port,port.challenge.target,1200)];step(port,dt);
  assert.equal(port.choice.type,'pursuit-reward');const before=operationCredits(port);
  assert.ok(choose(port,'pursuit:cargo'));assert.equal(operationCredits(port),before+CARGO_CREDITS);
+});
+test('new harbor vehicles take mirrored cover-free paths while older interceptions resume in place',()=>{
+ const routes=[];
+ for(const seed of [19,22]){
+  const s=createOperation(seed);clearRegion(s);assert.ok(choose(s,'advance'));
+  clearRegion(s);assert.ok(choose(s,'advance'));
+  downBoss(s);
+  const path=signalRoute(s);routes.push(path);
+  for(let i=1;i<path.length;i++){
+   const a=path[i-1],b=path[i];
+   for(let j=0;j<=20;j++){
+    const x=a.x+(b.x-a.x)*j/20,y=a.y+(b.y-a.y)*j/20,r=34;
+    assert.ok(!s.blocks.some(w=>w.hp!==0&&x+r>w.x&&x-r<w.x+w.w&&y+r>w.y&&y-r<w.y+w.h));
+   }
+  }
+  assert.ok(action(s,'challenge'));
+  assert.equal(s.challenge.target.x,path[0].x);
+  tick(s,5);
+  assert.ok(Math.abs(s.challenge.target.x-path[0].x)>4);
+  const resumed=restore(snapshot(s));
+  assert.deepEqual(signalRoute(resumed),signalRoute(s));
+  step(resumed,dt);step(s,dt);assert.deepEqual(resumed.challenge,s.challenge);
+  const old=snapshot(s);old.balanceRevision='b30-port-gantry';delete old.challenge.lane;
+  old.challenge.target.x=800;old.challenge.target.y=95+825*old.challenge.timeLeft/SIGNAL_SECONDS;
+  const legacy=restore(old),previousY=legacy.challenge.target.y;
+  assert.deepEqual(signalRoute(legacy).at(-1),{x:800,y:95});
+  step(legacy,dt);
+  assert.equal(legacy.challenge.target.x,800);assert.ok(legacy.challenge.target.y<previousY);
+ }
+ assert.deepEqual(routes[0].map(({x,y})=>({x:1600-x,y})),routes[1]);
 });
 test('starting a fresh sortie settles a previous run once and survives a failed write',async()=>{
  const mem=memory(),store=createStore(mem),p=store.get(),old=quietOperation();

@@ -43,10 +43,11 @@ export function raidOnNose(s,heading){
  const target=raid.target;
  return Math.cos((heading??Math.atan2(s.player.y-target.y,s.player.x-target.x))-target.aim)>.5;
 }
-export function raidCursor(raid){
- const legs=raid.route.slice(1).map((p,i)=>distance(p,raid.route[i]));
- let remaining=raid.progress/raid.maxProgress*legs.reduce((sum,n)=>sum+n,0),segment=0;
+export function routeCursor(route,progress){
+ const legs=route.slice(1).map((p,i)=>distance(p,route[i]));
+ let remaining=progress*legs.reduce((sum,n)=>sum+n,0),segment=0;
  while(segment<legs.length-1&&remaining>legs[segment])remaining-=legs[segment++];
  return {segment,fraction:Math.min(1,remaining/legs[segment])};
 }
+export const raidCursor=raid=>routeCursor(raid.route,raid.progress/raid.maxProgress);
 export const raidAhead=raid=>[raid.target,...raid.route.slice(raid.segment+1)];

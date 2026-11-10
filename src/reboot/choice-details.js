@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts,railCalibration} from './content.js';
-import {REGIONS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
+import {REGIONS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel} from './campaign.js';
 import {choose,snapshot} from './model.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 
@@ -110,9 +110,12 @@ export function choiceDetails(s,c){
  }
  else if(c.kind==='stay'){
   const rare=s.operation?.region<2&&!s.operation.challengeTier;
+  const port=s.operation?.region===2,active=s.challenge?.state==='active';
   out.impact=rare?'다음 전선 희귀 부품':'바닥 XP와 증원군을 노린다';
   out.detail=rare?`Q · ${holdoutContract(s).name} + 증원 ${HOLDOUT.rareKills}명 제압`:'공세 단계가 오를수록 물량과 내구가 증가합니다.';
-  out.link=rare?holdoutParts(s.seed,s.operation.region).map(id=>FRONT_SUPPORTS[id].name).join(' / '):`${holdoutContract(s).name} · ${s.operation?.challengeTier?'기록 점수':'노획 보급'}`;
+  const reward=s.operation?.challengeTier?'기록 점수':port?`화물 ${CARGO_CREDITS}C 또는 후송 보급`:'노획 보급';
+  const target=port?`${signalLaneLabel[active?s.challenge.lane||'center':signalLane(s.seed)]} 차량 저지`:holdoutContract(s).name;
+  out.link=rare?holdoutParts(s.seed,s.operation.region).map(id=>FRONT_SUPPORTS[id].name).join(' / '):`${target} · ${reward}`;
   out.cost=rare&&canAdvanceWithVanguard(s)?'도전 호출 시 선발 지원 포기':'열린 게이트에서 다시 선택';
  }
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}

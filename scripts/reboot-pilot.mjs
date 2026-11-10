@@ -1,7 +1,7 @@
 // Normal-input model pilot. It never edits HP, gear, XP, world time or RNG.
 import {pathToFileURL} from 'node:url';
 import {createRun,createOperation,step,choose,action,assemblyOptions,interaction,reroll,banish,banishOptions} from '../src/reboot/model.js';
-import {exitGate,DEFENSE_ZONE,signalCourier} from '../src/reboot/campaign.js';
+import {exitGate,DEFENSE_ZONE,signalCourier,signalPosition} from '../src/reboot/campaign.js';
 import {moduleRank,distance,compatible} from '../src/reboot/content.js';
 function free(s,x,y){return x>=60&&x<=1540&&y>=60&&y<=1140&&(!s.boss.active||Math.hypot(x-s.boss.x,y-s.boss.y)>s.boss.r+38)&&!s.blocks.some(b=>b.hp!==0&&x+22>b.x&&x-22<b.x+b.w&&y+22>b.y&&y-22<b.y+b.h);}
 function path(s,goal){
@@ -85,7 +85,8 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
     }
     const signal=signalCourier(s);
     if(signal){
-     step(s,1/60,movement(s,{x:signal.x,y:Math.max(70,signal.y-140)},ctx));continue;
+     const {lane,timeLeft}=s.challenge;
+     step(s,1/60,movement(s,signalPosition(lane,timeLeft-2.2),ctx));continue;
     }
     const target=s.enemies.filter(e=>!e.dead&&s.challenge.targets.includes(e.id)).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];
     const angle=target?Math.atan2(s.player.y-target.y,s.player.x-target.x)+.6:0;

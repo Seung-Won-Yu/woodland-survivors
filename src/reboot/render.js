@@ -1,9 +1,9 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,railGunOf,coastLead,coastLeadColor,activeEntry} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,railGunOf,coastLead,coastLeadColor,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
-import {DEFENSE_ZONE,SIGNAL_ROUTE,signalCourier} from './campaign.js';
+import {DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalCourier} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
 const TAU=Math.PI*2;
@@ -41,19 +41,20 @@ function paintCoastRear(c,s){
  for(const sy of [-10,5])c.fillRect(-5,sy,10,5);
  c.restore();
 }
-function paintRaidLane(c,raid,visible){
- const path=raidAhead(raid),end=path.at(-1),prior=path.at(-2),{color}=RAID_MARKS[raid.contract];
+function paintEscapeLane(c,path,color,dashes,visible){
+ const end=path.at(-1),prior=path.at(-2);
  c.save();c.lineCap='round';c.lineJoin='round';c.beginPath();
  path.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));
  c.strokeStyle='#233634';c.lineWidth=6;c.stroke();
- c.strokeStyle=color;c.lineWidth=2.5;c.setLineDash(raid.contract==='light'?[14,9]:[5,9]);c.stroke();c.setLineDash([]);
+ c.strokeStyle=color;c.lineWidth=2.5;c.setLineDash(dashes);c.stroke();c.setLineDash([]);
  if(visible(end.x,end.y,75)){
   c.save();c.translate(end.x,end.y);c.rotate(Math.atan2(end.y-prior.y,end.x-prior.x));
   c.fillStyle='#253635';c.fillRect(-9,-51,18,102);
   c.fillStyle=color;for(let i=-45;i<=36;i+=18)c.fillRect(-6,i,12,9);
   c.restore();
-  c.font='bold 12px Galmuri';c.textAlign='center';c.fillStyle='#263635';c.fillRect(end.x-47,end.y-70,94,22);
-  c.fillStyle=color;c.fillText('탈출 검문선',end.x,end.y-55);
+  const labelY=end.y<130?end.y+20:end.y-70;
+  c.font='bold 12px Galmuri';c.textAlign='center';c.fillStyle='#263635';c.fillRect(end.x-47,labelY,94,22);
+  c.fillStyle=color;c.fillText('탈출 검문선',end.x,labelY+15);
  }
  c.restore();
 }
@@ -126,11 +127,15 @@ function paintPortCue(c,s){
  }else if(portCoreDisrupted(s)){
   circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
  }
+ const aid=portAidPreview(s);
  if(b.harborSupply){
-  const {x,y}=b.harborSupply;
-  circle(c,x,y,32,'#12292375','#c8f0ae',2);
+  const {x,y}=b.harborSupply,early=portAidWindow(s);
+  circle(c,x,y,32,'#12292375',early?'#f8d698':'#c8f0ae',early?3:2);
   c.fillStyle='#253d32';c.fillRect(x-19,y-24,38,25);c.strokeStyle='#d7f0b8';c.lineWidth=2;c.strokeRect(x-19,y-24,38,25);
   c.fillStyle='#e0f4b9';c.fillRect(x-3,y-20,6,17);c.fillRect(x-8,y-15,16,6);
+ }else if(aid){
+  c.setLineDash([6,5]);circle(c,aid.x,aid.y,32,'#12292345','#c8f0aeb8',2);c.setLineDash([]);
+  c.fillStyle='#d7f0b8';c.font='bold 11px Galmuri';c.textAlign='center';c.fillText('투하 예정',aid.x,aid.y+4);
  }
  c.restore();
 }
@@ -333,7 +338,7 @@ export function createRenderer(canvas,art){
   }
   const raid=s.raid?.state==='active'?s.raid:null;
   const approach=activeEntry(s),gantry=portGantry(s);
-  if(raid)paintRaidLane(c,raid,visible);else if(approach)paintEntryRoutes(c,approach);
+  if(raid)paintEscapeLane(c,raidAhead(raid),RAID_MARKS[raid.contract].color,raid.contract==='light'?[14,9]:[5,9],visible);else if(approach)paintEntryRoutes(c,approach);
   if(gantry){if(!raid)paintEntryRoutes(c,{routes:[gantry]});if(visible(gantry.x,gantry.y))paintPortGantry(c,gantry);}
   const chargeLane=coastChargeLane(s);if(chargeLane)paintChargeLane(c,s.boss,chargeLane);
   const entry=s.effects.find(f=>f.type==='region-entry');
@@ -350,9 +355,7 @@ export function createRenderer(canvas,art){
    c.strokeStyle='#f4d1ff';c.lineWidth=4;c.beginPath();c.arc(x,y,r,-Math.PI/2,-Math.PI/2+TAU*s.challenge.progress/s.challenge.duration);c.stroke();
    c.fillStyle='#34263b';c.fillRect(x-53,y-11,106,22);c.fillStyle='#f4d1ff';c.font='11px Galmuri';c.textAlign='center';c.fillText('중계기 방어',x,y+4);
   }
-  if(signal){
-   c.strokeStyle='#d7a3e692';c.lineWidth=2;c.setLineDash([8,12]);c.beginPath();c.moveTo(SIGNAL_ROUTE.x,SIGNAL_ROUTE.end);c.lineTo(signal.x,signal.y);c.stroke();c.setLineDash([]);
-  }
+  if(signal)paintEscapeLane(c,signalRoute(s),SIGNAL_COLOR,[9,12],visible);
   for(const g of s.gems)if(!g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   if(s.stage==='field'){c.fillStyle='#293c34';c.fillRect(718,326,42,16);c.fillRect(840,326,42,16);c.fillStyle='#d8b471';for(let i=0;i<3;i++){c.fillRect(720+i*13,326,6,16);c.fillRect(842+i*13,326,6,16);}if(distance(s.player,{x:800,y:350})<190){c.fillStyle='#1c302de8';c.fillRect(727,363,146,24);c.fillStyle='#efcf90';c.font='11px Galmuri';c.textAlign='center';c.fillText('보스전 진입',800,379);}}
   const entities=[...s.sites.map(e=>({y:e.y,kind:'site',e})),...s.blocks.filter(e=>e.hp!==0).map(e=>({y:e.y+e.h,kind:'block',e})),...s.enemies.map(e=>({y:e.y,kind:'enemy',e})),{y:s.player.y,kind:'player',e:s.player}];
@@ -381,7 +384,7 @@ export function createRenderer(canvas,art){
     if(e.overdrive>0){c.strokeStyle='#ffce72aa';c.lineWidth=2;c.beginPath();c.arc(e.x,e.y-24,35,s.t*3,s.t*3+4.6);c.stroke();}
     const maneuver=activeManeuver(e);if(maneuver){c.fillStyle=maneuver==='brace'?'#f8cf7e':'#9becbe';for(const side of [-1,1])c.fillRect(e.x+side*22-3,e.y+6,6,2);}
    }else if(item.kind==='courier'){
-    const armored=e===raid?.target&&raid.contract==='armored',color=e===raid?.target?RAID_MARKS[raid.contract].color:'#ddadff';
+    const armored=e===raid?.target&&raid.contract==='armored',color=e===raid?.target?RAID_MARKS[raid.contract].color:SIGNAL_COLOR;
     if(art&&armored)vehicle(c,art,{x:e.x,y:e.y,width:108,enemy:true,body:e.aim,turret:e.aim,tread:raid.progress,moving:true,damaged:e.hp<e.maxHp*.5,reduced});
     else if(art){c.save();c.translate(e.x,e.y);c.rotate(e.aim);prop(c,art,2,3,0,15,115);c.restore();}
     else{c.fillStyle='#81927c';c.fillRect(e.x-40,e.y-25,80,45);}
