@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
@@ -1618,6 +1618,32 @@ test('rail workshop protects a weak build from a random new weapon and provides 
  assert.equal(reroll(s),false);
  assert.ok(choose(s,'module:catalyst'));assert.equal(s.tuning,ready);
  assert.ok(assemblyOptions(s).some(c=>c.id==='evolve:f'));
+});
+test('rail workshop previews and offers the missing H branch for a rocket-first fusion',()=>{
+ const s=quietRailWorkshop();s.firstNew='r';
+ Object.assign(s.weapons[0],{level:3});
+ s.weapons.push({...makeWeapon('r'),uid:'rocket',level:4,branch:'homing',cd:999});
+ s.modules=[{id:'coil',rank:2}];
+ const before=snapshot(s),plan=railWorkshopPlan(s);
+ assert.deepEqual(s,before);
+ assert.deepEqual(plan.cards.map(c=>c.id),['module:ricochet','rank:h','resupply:rail-workshop']);
+ assert.equal(plan.finish.recipe.id,'fusion:h:r');
+ assert.equal(plan.finish.needsPermit,false);
+ assert.deepEqual(supply(s,'rail-cache'),plan.cards);
+ assert.equal(choose(s,'rank:r'),false);
+ assert.ok(choose(s,'rank:h',{branch:'ricochet'}));
+ assert.ok(assemblyOptions(s).some(c=>c.id==='fusion:h:r'));
+
+ const noPermit=restore(before);
+ noPermit.tuning=0;noPermit.research=['thermal'];noPermit.operation.requisition='thermal';
+ const reservation=railWorkshopPlan(noPermit);
+ assert.equal(reservation.finish.needsPermit,true);
+ assert.deepEqual(reservation.cards.map(c=>c.id),['requisition:thermal','rank:h','resupply:rail-workshop']);
+ assert.deepEqual(supply(noPermit,'rail-cache'),reservation.cards);
+ assert.ok(choose(noPermit,'rank:h',{branch:'grenade'}));
+ assert.equal(assemblyOptions(noPermit).some(c=>c.id==='fusion:h:r'),false);
+ clearRegion(noPermit);
+ assert.ok(gatePreparation(noPermit).capstones.some(c=>c.id==='fusion:h:r'));
 });
 test('a paid rail reservation competes with workshop supplies and survives checkpoint and settlement',()=>{
  const base=emptyProfile();Object.assign(base,{credits:500,research:['thermal'],trials:['thermal']});base.records.wins=1;

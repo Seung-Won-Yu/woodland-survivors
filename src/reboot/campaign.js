@@ -291,7 +291,7 @@ export function activeEntry(s){
   const [x,y]=route.path.at(-1);
   const site=s.sites.find(n=>n.id===route.site&&n.x===x&&n.y===y&&n.state!=='done');
   if(!site)return [];
-  if(site.id==='rail-cache'&&s.operation.requisition)return [{...route,sign:'정비대 · 예약품',color:'#b6e1c5'}];
+  if(site.id==='rail-cache'&&s.operation.requisition)return [{...route,sign:'정비대 · 예약품'}];
   return [site.id==='port-landing'&&!site.gantry?{...route,sign:'하역장 보급'}:route];
  });
  return routes.length?{...entry,routes}:null;

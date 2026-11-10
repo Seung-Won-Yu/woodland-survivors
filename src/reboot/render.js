@@ -506,7 +506,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
  const conduitTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
- function draw(s,reduced=false){
+ function draw(s,reduced=false,approach=activeEntry(s)){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
   const gate=exitGate(s),lead=coastLead(s),aid=portAidCue(s);
   const guns=lead?.coastApproach==='r'&&lead.state==='active'?s.enemies.filter(e=>!e.dead&&e.siteId===lead.id):[];
@@ -578,7 +578,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    if(visible(gate.x,gate.y,80))paintGateApproach(c,gate,gateNear);
   }
   const raid=s.raid?.state==='active'?s.raid:null;
-  const approach=activeEntry(s),gantry=portGantry(s);
+  const gantry=portGantry(s);
   if(raid)paintEscapeLane(c,raidAhead(raid),RAID_MARKS[raid.contract].color,raid.contract==='light'?[14,9]:[5,9],visible);else if(approach)paintEntryRoutes(c,approach);
   if(gantry){if(!raid)paintEntryRoutes(c,{routes:[gantry]});if(visible(gantry.x,gantry.y))paintPortGantry(c,gantry,art);}
   const chargeLane=coastChargeLane(s);if(chargeLane)paintChargeLane(c,s.boss,chargeLane);

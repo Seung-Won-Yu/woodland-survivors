@@ -331,6 +331,8 @@
 .upgrade-card[data-trial="true"] .upgrade-category{color:#bde5cb}
 .research-page .paper-tag{white-space:nowrap}
 .rail-workshop .upgrade-card[data-choice^="calibrate:"]{--accent:#99c6c8;border-color:#7ea9ad;background:linear-gradient(125deg,#354948,#263839)}
+.rail-workshop .upgrade-card[data-finish]{--accent:#efd498;border-color:#ccad78;background:linear-gradient(125deg,#494b36,#283d31)}
+.rail-workshop .upgrade-card[data-finish] .upgrade-category{color:#f1d599}
 .rail-workshop-record{display:flex;gap:8px 14px;flex-wrap:wrap;margin:12px 0;color:#d7dfc4;font-size:11px;line-height:1.5}
 .rail-workshop-record b{color:#b9e4e1}
 .sortie-orders{padding:14px 22px 16px;background:#293e37;color:#f1e5bd;border-top:1px solid #98a086}
@@ -494,15 +496,16 @@
  .coast-options .upgrade-card[data-choice^="coast:"] .upgrade-illustration .kit-sprite{width:103px;height:103px}
 }
 @media(max-width:700px){
- .coast-options .upgrade-deck{gap:7px}
- .coast-options .upgrade-card{min-height:0;padding:8px 25px 8px 63px;gap:3px}
- .coast-options .upgrade-card kbd{right:8px;top:8px}
- .coast-options .upgrade-copy{gap:3px}
- .coast-options .upgrade-illustration{top:12px;left:1px;width:60px;height:64px}
- .coast-options .upgrade-illustration .kit-sprite{width:70px;height:70px}
- .coast-options .upgrade-card h3,.coast-options .upgrade-impact{line-height:1.25}
- .coast-options :is(.upgrade-detail,.upgrade-link,.upgrade-cost){line-height:1.3;word-break:keep-all}
- .coast-options .upgrade-cost{padding-top:0;border:0}
+ :is(.coast-options,.rail-workshop) .upgrade-deck{gap:7px}
+ :is(.coast-options,.rail-workshop) .upgrade-card{min-height:0;padding:8px 25px 8px 63px;gap:3px}
+ :is(.coast-options,.rail-workshop) .upgrade-card kbd{right:8px;top:8px}
+ :is(.coast-options,.rail-workshop) .upgrade-copy{gap:3px}
+ :is(.coast-options,.rail-workshop) .upgrade-illustration{top:12px;left:1px;width:60px;height:64px}
+ :is(.coast-options,.rail-workshop) .upgrade-illustration .kit-sprite{width:70px;height:70px}
+ :is(.coast-options,.rail-workshop) :is(.upgrade-card h3,.upgrade-impact){line-height:1.25}
+ :is(.coast-options,.rail-workshop) :is(.upgrade-detail,.upgrade-link,.upgrade-cost){line-height:1.3;word-break:keep-all}
+ :is(.coast-options,.rail-workshop) .upgrade-cost{padding-top:0;border:0}
+ .rail-workshop .choice-footer{margin-top:10px}
  .coast-options .upgrade-levels{display:none}
 }
 .coast-options .choice-tools{margin-top:12px;margin-bottom:0}

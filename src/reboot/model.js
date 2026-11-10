@@ -231,40 +231,68 @@ function supplyCards(s,site){
  if(pool.length)cards.push(trial?trialCard(trial):signature||moduleCard(pick(s,'supply',favored)));
  return addStrike(fillCards(s,cards));
 }
-function railWorkshopCards(s){
+export function railWorkshopPlan(s){
  const focus=s.firstNew||'h';
  const parts=completionModules(s),preferred=({f:'catalyst',r:'coil',h:'ricochet'})[focus];
  const part=parts.includes(preferred)?preferred:parts[0];
  const upgrades=upgradeable(s),gun=upgrades.find(w=>w.id===focus)||upgrades[0];
  const installed=s.weapons.map(w=>({w,change:railCalibration(s,w)})).filter(x=>x.change);
  const pivot=installed.find(x=>x.change.gun===focus)||installed[0];
+ const reserved=s.operation.requisitionClaimed?null:s.operation.requisition;
  const cards=[];
  if(pivot)cards.push({id:`calibrate:${pivot.w.uid}`,kind:'calibrate',weapon:pivot.w.id,uid:pivot.w.uid,title:'완성 병기 재개장',label:'전선 공방'});
- if(part)cards.push({...moduleCard(part),label:'완성 병기 조립 재료'});
+ if(part)cards.push({...moduleCard(part),label:'모듈 투자'});
  if(gun&&cards.length<2)cards.push(gunCard(gun));
- const reserved=s.operation.requisition;
- if(reserved&&!s.operation.requisitionClaimed){
-  cards.splice(1);
-  cards.unshift({...moduleCard(reserved),id:`requisition:${reserved}`,label:'예약품 · 이번 작전 장착'});
+ if(reserved)cards.splice(1);
+
+ // The railway boss can supply the permit. Preview the actual material gap independently.
+ const stock=s.tuning>0?s:{...s,tuning:1},known=new Set(capstoneOptions(stock).map(c=>c.id));
+ const target=focus==='r'?'fusion:h:r':`evolve:${focus}`;
+ const investments=[...upgrades.map(gunCard),...parts.filter(id=>id!==reserved).map(id=>moduleCard(id))];
+ const finishes=investments.flatMap(card=>{
+  const recipes=investmentCapstones(stock,card,known);
+  const recipe=recipes.find(c=>c.id===target)||recipes[0];
+  return recipe?[{card,recipe,needsPermit:s.tuning<=0}]:[];
+ });
+ const isOffered=finish=>cards.some(c=>c.id===finish.card.id);
+ const finish=finishes.find(f=>f.recipe.id===target&&isOffered(f))||finishes.find(f=>f.recipe.id===target)
+  ||finishes.find(isOffered)||finishes[0];
+ if(finish){
+  const card={...finish.card,label:'마지막 조립 재료',workshopFinish:true};
+  const offered=cards.findIndex(c=>c.id===card.id);
+  const replacement=offered>=0?offered:cards.findIndex(c=>c.kind===card.kind),limit=reserved?1:2;
+  if(replacement>=0)cards[replacement]=card;
+  else if(cards.length<limit)cards.push(card);
+  else cards[limit-1]=card;
  }
- return [...cards,{id:'resupply:rail-workshop',kind:'resupply',title:'차내 응급 보급',heal:20,charge:15,label:'생존 투자'}];
+ if(reserved)cards.unshift({...moduleCard(reserved),id:`requisition:${reserved}`,label:'예약품 · 이번 작전 장착'});
+ cards.push({id:'resupply:rail-workshop',kind:'resupply',title:'차내 응급 보급',heal:20,charge:15,label:'생존 투자'});
+ return {cards,finish:finish||null};
 }
 function fillCards(s,cards){const unique=[...new Map(cards.filter(Boolean).map(c=>[c.id,c])).values()];for(const key of ['health','charge','power'])if(unique.length<3&&!unique.some(c=>c.id===`utility:${key}`))unique.push(utility(key));return unique.slice(0,3);}
+function investmentCapstones(s,c,known){
+ const opened=new Map(),record=draft=>{
+  for(const recipe of capstoneOptions(draft))if(!known.has(recipe.id))opened.set(recipe.id,recipe);
+ };
+ if(c?.kind==='module'){
+  const rank=moduleRank(s,c.module);
+  if(rank&&rank<3&&compatible(s,c.module)){
+   const {next}=moduleGain(s,c.module,c.rank);
+   record({...s,modules:s.modules.map(m=>m.id===c.module?{...m,rank:next}:m)});
+  }
+ }else if(c?.kind==='rank'){
+  const w=upgradeable(s).find(w=>w.id===c.weapon);
+  if(w&&w.level>=3){
+   const branches=w.level===3?Object.keys(GUNS[w.id].branches):[w.branch];
+   for(const branch of branches)record({...s,weapons:s.weapons.map(other=>other===w?{...w,level:w.level+1,branch}:other)});
+  }
+ }
+ return [...opened.values()];
+}
 function closingInvestment(s,offered,rest){
  if(!s.operation||s.tuning<=0||!s.weapons.some(w=>w.level>=3&&!w.evolved&&!w.fusion))return null;
- const already=new Set(assemblyOptions(s).map(c=>c.id));
- const opens=draft=>assemblyOptions(draft).some(c=>(c.kind==='evolve'||c.kind==='fusion')&&!already.has(c.id));
- const closes=c=>{
-  if(c?.kind==='module'){
-   if(!moduleRank(s,c.module))return false;
-   return opens({...s,modules:s.modules.map(m=>m.id===c.module?{...m,rank:m.rank+1}:m)});
-  }
-  if(c?.kind!=='rank')return false;
-  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion);
-  if(!w||w.level<3)return false;
-  const branches=w.level===3?Object.keys(GUNS[w.id].branches):[w.branch];
-  return branches.some(branch=>opens({...s,weapons:s.weapons.map(other=>other===w?{...w,level:w.level+1,branch}:other)}));
- };
+ const already=new Set(capstoneOptions(s).map(c=>c.id));
+ const closes=c=>investmentCapstones(s,c,already).length>0;
  if(offered.some(closes))return null;
  const card=rest.find(closes);
  return card?{...card,label:'조립 직전'}:null;
@@ -1009,7 +1037,7 @@ function updateSites(s,dt){
    }
    if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s.operation.region),site.name);
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality,siteId:site.id});}
-   else if(site.id==='rail-cache'&&s.operation?.region===1)openChoice(s,'rail-workshop',railWorkshopCards(s),site.name);
+   else if(site.id==='rail-cache'&&s.operation?.region===1)openChoice(s,'rail-workshop',railWorkshopPlan(s).cards,site.name);
    else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:site.coastApproach?{siteId:site.id}:{});
    return;
   }
