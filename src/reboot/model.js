@@ -36,7 +36,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -133,7 +133,22 @@ function crateCards(s,quality,contract=null){
  return fillCrate([...reserved,...(special?[special]:[]),...base.filter(c=>c.module!=='overcharger'&&c.id!==special?.id)],quality);
 }
 function openChoice(s,type,cards,source='',extra={}){s.phase='choice';s.choice={type,source,...extra};s.choices=cards;}
-function nextChoice(s){if(s.phase!=='playing')return;if(s.queue.length){const item=s.queue.shift();openChoice(s,item.type,item.cards,item.source,item.extra);return;}if(s.pendingLevels>0){s.pendingLevels--;openChoice(s,'level',levelCards(s),`LEVEL ${s.level}`);}}
+const RESCUE_FOCUS_SECONDS=15;
+const OPENING_WEAPON_SECONDS=2.5;
+function deferOpeningUpgrade(s){
+ if(s.operation?.region!==0||s.stage!=='field'||s.player.hp<s.player.maxHp*.45)return false;
+ if(s.t<(s.openingFireUntil||0))return true;
+ if(s.t>=RESCUE_FOCUS_SECONDS)return false;
+ return s.sites.some(site=>site.opening&&['active','ready'].includes(site.state)&&distance(site,s.player)<300);
+}
+function nextChoice(s){
+ if(s.phase!=='playing')return;
+ if(s.queue.length){const item=s.queue.shift();openChoice(s,item.type,item.cards,item.source,item.extra);return;}
+ if(s.pendingLevels>0&&!deferOpeningUpgrade(s)){
+  s.pendingLevels--;
+  openChoice(s,'level',levelCards(s),`LEVEL ${s.level}`);
+ }
+}
 export function assemblyOptions(s){
  const options=s.operation&&s.stats.challengeWins>0&&!s.player.maneuver?Object.entries(MANEUVERS).map(([key,m])=>({id:`maneuver:${key}`,kind:'maneuver',key,title:m.name,desc:m.impact,label:'노획 교범 · 한 판에 하나'})):[];
  if(s.tuning<=0)return options;
@@ -158,6 +173,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
   if(s.weapons.some(w=>w.id===c.weapon&&!w.fusion))return false;let w=makeWeapon(c.weapon);const base=1+(s.operation?.region||0);w.level=base;
   if(s.weapons.length>=3||Number.isInteger(slot)&&slot>=0){const old=s.weapons[slot];if(!old||old.evolved||old.fusion)return false;w.level=s.refits>0&&s.stage==='field'?Math.min(5,old.level):Math.min(5,base+Math.floor(Math.max(0,old.level-base)/2));if(w.level>=4){if(!GUNS[w.id].branches[branch])return false;w.branch=branch;}if(s.refits>0&&s.stage==='field')s.refits--;w.uid=`w-${++s.id}`;s.weapons[slot]=w;}else{w.uid=`w-${++s.id}`;s.weapons.push(w);}
   if(!s.firstNew)s.firstNew=w.id;
+  if(s.operation?.region===0&&s.choice.opening)s.openingFireUntil=s.t+OPENING_WEAPON_SECONDS;
  }
  else if(c.kind==='evolve'){if(!assemblyOptions(s).some(o=>o.id===id))return false;const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion&&!w.evolved);w.evolved=true;s.tuning--;buildCompleted(s,'single',w.id);}
  else if(c.kind==='fusion'){
@@ -518,7 +534,8 @@ function updateSites(s,dt){
    site.state='active';
    for(let i=0;i<count;i++){
     const angle=i*TAU/6;
-    const [type,x,y]=approach?approach.guards[i]:[site.kind==='armory'&&i===0?'officer':i===1?'shield':'rifle',Math.cos(angle)*85,Math.sin(angle)*65];
+    const guard=site.kind==='armory'&&i===0?'officer':i===1&&!site.opening?'shield':'rifle';
+    const [type,x,y]=approach?approach.guards[i]:[guard,Math.cos(angle)*85,Math.sin(angle)*65];
     spawnEnemy(s,type,site.x+x,site.y+y,site.id,approach?{cohort:'coast-guard'}:{});
    }
    emit(s,'engage',site.x,site.y);

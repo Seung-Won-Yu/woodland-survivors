@@ -439,6 +439,32 @@ test('every beach offers both opening guns and the matching approach has safe gu
   assert.ok(supply(s,site.id).some(c=>c.id===`module:${COAST_APPROACHES[weapon].module}`));
  }
 });
+test('opening combat reserves earned upgrades through the rescue and a short weapon window',()=>{
+ const run=quietOperation();
+ const rescue=run.sites.find(site=>site.opening);
+ rescue.state='waiting';
+ Object.assign(run.player,{x:rescue.x,y:rescue.y+140});
+ Object.assign(run,{level:2,pendingLevels:1});
+ step(run,dt);
+ assert.equal(rescue.state,'active');
+ assert.ok(run.enemies.length>0&&run.enemies.every(guard=>guard.type==='rifle'));
+ assert.equal(run.phase,'playing');
+ assert.equal(run.pendingLevels,1);
+ const urgent=restore(snapshot(run));urgent.player.hp=44;step(urgent,dt);
+ assert.equal(urgent.choice.type,'level');
+ const late=restore(snapshot(run));late.t=15;step(late,dt);
+ assert.equal(late.choice.type,'level');
+ run.enemies=[];Object.assign(run.player,{x:rescue.x,y:rescue.y});step(run,dt);
+ assert.equal(run.choice.opening,true);
+ assert.ok(choose(run,'gun:f'));
+ assert.equal(run.phase,'playing');
+ assert.equal(run.pendingLevels,1);
+ const resumed=restore(snapshot(run));tick(resumed,2.4);
+ assert.equal(resumed.phase,'playing');
+ tick(resumed,.2);
+ assert.equal(resumed.choice.type,'level');
+ assert.equal(resumed.pendingLevels,0);
+});
 test('coast rockets interrupt the battery at range and address enemies that close the gap',()=>{
  for(const gap of [75,140]){
   const s=quietOperation(),rocket={...makeWeapon('r'),uid:'r',cd:0};

@@ -84,11 +84,19 @@ const BEACH_ROUTES=[
 ];
 export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
 export const COAST_APPROACHES={
- f:{name:'이동 보급차',label:'화염 · 근접 돌파',hint:'차량 쪽으로 붙어 밀집 보병을 태운다',module:'catalyst',range:215,
+ f:{name:'이동 보급차',label:'화염 · 근접 돌파',hint:'보급차에 붙어 방패병과 보병을 함께 태우세요.',module:'catalyst',range:215,
   guards:[['shield',0,54],['rifle',-33,26],['rifle',33,26],['rifle',-40,-13],['rifle',40,-13],['rifle',0,-30]]},
- r:{name:'박격포 진지',label:'전도 · 원거리 제압',hint:'거리를 두고 박격포부터 끊는다',module:'coil',range:300,
+ r:{name:'박격포 진지',label:'로켓 · 원거리 제압',hint:'열린 사선에서 박격포를 먼저 끊으세요.',module:'coil',range:300,
   guards:[['mortar',-47,-42],['mortar',47,-42]]}
 };
+export function coastLead(s){
+ if(s.operation?.region!==0||s.stage!=='field')return null;
+ const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
+ if(rescue)return rescue;
+ if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
+ return s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done')||null;
+}
+export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
 export function regionLayout(seed,index=0){
  const map=layout(seed);
  if(index===0){
