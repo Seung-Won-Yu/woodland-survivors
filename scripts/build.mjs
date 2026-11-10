@@ -4,7 +4,8 @@ await mkdir('dist',{recursive:true});
 for(const name of ['index.html','reboot.html','favicon.svg','mission-icon.svg','src'])await cp(name,`dist/${name}`,{recursive:true});
 for(const folder of ['v2','mission']){
  await mkdir(`dist/art/${folder}`,{recursive:true});
- for(const name of await readdir(`public/art/${folder}`))if(name.endsWith('.png'))await cp(`public/art/${folder}/${name}`,`dist/art/${folder}/${name}`);
+ const extension=folder==='mission'?'.webp':'.png';
+ for(const name of await readdir(`public/art/${folder}`))if(name.endsWith(extension))await cp(`public/art/${folder}/${name}`,`dist/art/${folder}/${name}`);
 }
 await cp('public/fonts','dist/fonts',{recursive:true});
 await mkdir('dist/docs',{recursive:true});

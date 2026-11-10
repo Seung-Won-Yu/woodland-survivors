@@ -3,7 +3,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2','.txt':'text/plain; charset=utf-8'};
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2','.txt':'text/plain; charset=utf-8'};
 
 // Serve the built files under the same project prefix as GitHub Pages, without dev asset aliases.
 export function createPreviewServer({root=resolve('dist'),basePath='/woodland-survivors/'}={}){

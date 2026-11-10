@@ -1,6 +1,6 @@
 :root{--paper:#f5ebd1;--muted:#bec7ca;--ink:#14202b;--panel:#182331f2;--border:#8793a34f;--gold:#ffc45c;--green:#9cd4b6;--orange:#f39648}
 body{background:#141c28}button{border-radius:0}p{color:var(--muted)}
-#hangar-backdrop{position:fixed;inset:0;background:#1c2737 url('../../art/mission/hangar-v014.png') center center/cover no-repeat;opacity:0;pointer-events:none}
+#hangar-backdrop{position:fixed;inset:0;background:#1c2737 url('../../art/mission/hangar-v014.webp') center center/cover no-repeat;opacity:0;pointer-events:none}
 #hangar-backdrop:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#111a2b77,transparent 65%),linear-gradient(0deg,#101825d9,transparent 45%)}
 .lobby-mode #hangar-backdrop{opacity:1}.lobby-mode #mission-world{opacity:0}.lobby-mode .screen-shade{display:none}
 .lobby{max-width:1500px;padding:22px 38px 20px;gap:15px}.lobby-header{padding:0 0 14px;border-bottom:2px solid #d58a3c99;align-items:center}.brand-symbol{width:43px;height:43px;background:#db7c35;color:#111e2a;border:3px solid #ffd078;font-weight:700;font-style:italic;transform:skew(-7deg);font-size:22px;box-shadow:4px 4px #07111a}
