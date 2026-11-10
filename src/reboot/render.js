@@ -1,8 +1,8 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes} from './field-art.js';
-import {exitGate,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,coastLead,coastLeadColor,activeEntry} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portTurretSide,coastLead,coastLeadColor,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
-import {activeManeuver,partPosition,pickupReach} from './model.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_ROUTE,signalCourier} from './campaign.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
@@ -42,13 +42,13 @@ function paintPortCue(c,s){
  const b=s.boss;
  if(s.operation?.region!==2||!b.active||b.dead)return;
  c.save();
- const turret=b.parts[0],flank=portBreachFlank(s);
+ const turret=b.parts[0],flank=portTurretInSight(s);
  if(portTurretShutter(s)&&!flank){
   const p=partPosition(s,turret);
   circle(c,p.x,p.y,27,'#b580453d','#edb272',3);
  }
  if(s.operation.support==='breach'&&turret?.hp>0){
-  const side=portTurretSide(b),x=b.x+side*142,y=b.y+58;
+  const side=portTurretSide(b),{x,y}=portFlankPoint(b);
   c.strokeStyle=flank?'#c8f4ff':'#a9d6e9b0';c.lineWidth=3;
   c.beginPath();c.moveTo(x+side*12,y-12);c.lineTo(x,y);c.lineTo(x+side*12,y+12);c.stroke();
   if(flank){
@@ -56,8 +56,11 @@ function paintPortCue(c,s){
    circle(c,p.x,p.y,25,null,'#c8f4ff',3);c.fillStyle='#c8f4ff';c.fillRect(p.x-2,p.y-30,4,10);
   }
  }else if(portCoreWindow(s)){
+  c.setLineDash([9,7]);circle(c,b.x,b.y,portCoreReach(b),null,'#ffc889b8',2);c.setLineDash([]);
   circle(c,b.x,b.y-21,22,'#432820aa','#ffd0a1',3);
   c.fillStyle='#ffe6bb';c.beginPath();c.moveTo(b.x-9,b.y-22);c.lineTo(b.x+9,b.y-22);c.lineTo(b.x,b.y-33);c.closePath();c.fill();c.fillRect(b.x-3,b.y-22,6,12);
+ }else if(portCoreDisrupted(s)){
+  circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
  }
  if(b.harborSupply){
   const {x,y}=b.harborSupply;

@@ -33,15 +33,18 @@ export function vanguardAid(player){
 }
 export const PORT_TURRET={shutterDamage:.16};
 export const PORT_SUPPORT={
- breach:{impact:'포탑 쪽에서 첫 포격 장갑 관통 · 피해 +65%',detail:'포탑 쪽 사선을 잡아 첫 부채꼴 사격을 끊을 수 있습니다.',hint:'항구 작전도에서 포탑 쪽 측면을 확인하세요.',flank:105,boost:1.65},
- overrun:{impact:'재장전 중 회피로 코어에 기본 피해 320',detail:'범위 밖에서 코어 쪽으로 돌입하면 장갑을 건너뛰고 노출을 0.55초 연장합니다. 재장전당 1회.',hint:'붉은 원을 피한 뒤 코어 쪽으로 회피하세요.',reach:100,damage:320,delay:.55},
- recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 화물은 포탑 반대편에, 이후 재장전마다 반대쪽에 투하합니다. 최대 3개.',hint:'포격이 끝나면 측면 구급 화물을 회수하세요.',heal:12,charge:20,reach:36,limit:3,lanes:[625,975],y:335}
+ breach:{impact:'포탑 쪽 사선에서 장갑 관통 · 피해 +65%',detail:'측면에서 포탑이 사거리에 들어오면 자동 사격을 집중합니다. 포탑 파괴 시 부채꼴 사격이 멈춥니다.',hint:'작전도에 표시된 포탑 쪽 측면으로 이동하세요.',flank:105,boost:1.65},
+ overrun:{impact:'회피 돌입으로 코어 직격 320 · 장갑 해제',detail:'재장전 중 표시된 경계를 회피로 넘으세요. 남은 노출 동안 코어가 피해를 더 받고, 노출이 0.9초 늘어납니다.',hint:'포격을 피한 뒤 코어 경계 밖에서 안으로 회피하세요.',reach:100,damage:320,delay:.9},
+ recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 포격 예고에 포탑 반대편으로 화물이 옵니다. 이후 재장전 때 좌우로 투하하며, 남은 화물은 그 자리에 있습니다.',hint:'집중 포격을 피해 측면 화물을 밟고 전탄을 충전하세요.',heal:12,charge:20,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
+export const portFlankPoint=boss=>({x:boss.x+portTurretSide(boss)*142,y:boss.y+95});
 export const portTurretShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
 export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.player.x-s.boss.x)*portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
 export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
+export const portCoreDisrupted=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle===s.boss.cycle;
+export const portCoreReach=boss=>boss.r+PORT_SUPPORT.overrun.reach;
 export const FRONT_TACTICS={
  1:{
   heat:{name:'냉각 밸브 차단',role:'화염 · 측면 진입',impact:'재장전 중 측면에 붙어 분사하면 포대와 차체 피해 +45%',hint:'차선 포격 뒤 열차 옆에 붙어 불을 쏘세요.',range:176,side:55,boost:1.45},

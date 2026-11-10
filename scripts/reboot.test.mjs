@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry} from '../src/reboot/campaign.js';
 import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
@@ -439,6 +439,20 @@ test('harbor opening shutter resists normal damage and armor only pierces from t
   assert.ok(pierce.boss.parts[0].hp<open.boss.parts[0].hp);
  }
 });
+test('harbor flank only confirms a clear shot and puts the turret ahead of a nearby rifleman',()=>{
+ const s=supportArena(2,'breach','salvo');
+ Object.assign(s.player,{x:650,y:900});
+ assert.equal(portTurretInSight(s),false);
+ s.player.y=380;
+ s.blocks=[{x:670,y:285,w:68,h:35,hp:-1}];
+ assert.equal(portTurretInSight(s),false);
+ s.blocks=[];
+ s.enemies=[enemy('closer',645,338)];
+ Object.assign(s.weapons[0],{cd:0,targetId:'closer',targetUntil:1});
+ assert.equal(portTurretInSight(s),true);
+ step(s,dt);
+ assert.equal(s.shots[0].target,s.boss.parts[0].id);
+});
 test('harbor dash must enter the exposed core range and strikes once per recovery window',()=>{
  const aim=supportArena(2,'overrun','aim'),opening=supportArena(2,'overrun','recover');
  const rush=(s,y,input)=>{
@@ -453,13 +467,44 @@ test('harbor dash must enter the exposed core range and strikes once per recover
  rush(opening,470,{x:0,y:-1});assert.equal(opening.stats.supportUses[2],1);
  opening.boss.cycle++;rush(opening,470,{x:0,y:-1});assert.equal(opening.stats.supportUses[2],2);
 });
+test('late harbor dash registers on entry and core exposure expires with the extended reload',()=>{
+ const s=supportArena(2,'overrun','recover');
+ Object.assign(s.player,{x:800,y:447});
+ s.boss.timer=.08;
+ assert.ok(action(s,'dash'));tick(s,.067,{x:0,y:-1});
+ assert.ok(s.player.dash>0);
+ assert.equal(s.boss.hp,s.boss.maxHp-320);
+ assert.ok(s.boss.timer>.9&&s.boss.timer<1);
+ assert.ok(s.boss.parts.every(p=>p.hp>0));
+ s.shots=[bullet(s,s.boss)];step(s,dt);
+ assert.equal(s.boss.hp,s.boss.maxHp-320-160);
+ s.boss.timer=0;step(s,dt);
+ assert.equal(s.boss.mode,'aim');
+ s.shots=[bullet(s,s.boss)];step(s,dt);
+ assert.equal(s.boss.hp,s.boss.maxHp-320-160-65);
+});
 test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
- const s=supportArena(2,'recovery','salvo');s.boss.timer=0;Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
- step(s,dt);assert.deepEqual(s.boss.harborSupply,{x:975,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);
- const loaded=restore(snapshot(s));Object.assign(loaded.player,loaded.boss.harborSupply);step(loaded,dt);
+ const s=supportArena(2,'recovery','aim');Object.assign(s.boss,{cycle:0,timer:0});Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
+ step(s,dt);assert.equal(s.boss.mode,'salvo');assert.deepEqual(s.boss.harborSupply,{x:975,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);
+ const loaded=restore(snapshot(s));
+ Object.assign(loaded.boss,{mode:'salvo',cycle:2,timer:0});step(loaded,dt);
+ assert.deepEqual(loaded.boss.harborSupply,{x:975,y:335});
+ Object.assign(loaded.player,loaded.boss.harborSupply);step(loaded,dt);
  assert.equal(loaded.player.hp,92);assert.equal(Math.floor(loaded.player.charge),60);assert.equal(loaded.stats.supportUses[2],1);assert.equal(loaded.boss.harborSupply,undefined);
- Object.assign(loaded.boss,{mode:'salvo',cycle:2,timer:0});step(loaded,dt);assert.deepEqual(loaded.boss.harborSupply,{x:625,y:335});
+ Object.assign(s.player,s.boss.harborSupply);step(s,dt);
+ s.boss.timer=0;step(s,dt);assert.equal(s.boss.harborSupply,undefined);
+ Object.assign(s.boss,{mode:'salvo',cycle:2,timer:0});step(s,dt);assert.deepEqual(s.boss.harborSupply,{x:625,y:335});
  delete loaded.boss.harborSupply;Object.assign(loaded.boss,{mode:'salvo',cycle:4,timer:0});step(loaded,dt);assert.equal(loaded.boss.harborSupply,undefined);
+});
+test('a b23 harbor recovery checkpoint still gets its first crate at the end of the salvo',()=>{
+ const s=supportArena(2,'recovery','salvo');
+ s.balanceRevision='b23-front-approaches';
+ Object.assign(s,regionLayout(mapSeed(s.seed,2),2));
+ s.boss.timer=0;
+ const loaded=restore(snapshot(s));
+ step(loaded,dt);
+ assert.deepEqual(loaded.boss.harborSupply,{x:975,y:335});
+ assert.equal(loaded.boss.harborSupplyCycle,1);
 });
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};

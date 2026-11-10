@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
@@ -37,7 +37,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -63,6 +63,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
   const supply=s.boss.harborSupply;
   if(supply!=null&&(s.operation.region!==2||s.operation.support!=='recovery'||!PORT_SUPPORT.recovery.lanes.includes(supply.x)||supply.y!==PORT_SUPPORT.recovery.y))fail();
+  if(s.boss.harborSupplyCycle!=null&&(!Number.isInteger(s.boss.harborSupplyCycle)||s.boss.harborSupplyCycle<1||s.boss.harborSupplyCycle>PORT_SUPPORT.recovery.limit))fail();
   if(s.operation.holdoutKills!=null&&(!Number.isSafeInteger(s.operation.holdoutKills)||s.operation.holdoutKills<0))fail();
   if(s.operation.tactic!=null&&!Object.hasOwn(FRONT_TACTICS[s.operation.region]||{},s.operation.tactic))fail();
  }
@@ -263,11 +264,17 @@ const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>
 function move(s,e,dx,dy,r){const x=clamp(e.x+dx,FIELD.left+r,FIELD.right-r),y=clamp(e.y+dy,FIELD.top+r,FIELD.bottom-r);if(!blocked(s,x,e.y,r))e.x=x;if(!blocked(s,e.x,y,r))e.y=y;}
 function lineBlocked(s,a,b){const n=Math.ceil(distance(a,b)/20);for(let i=1;i<=n;i++)if(blocked(s,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return true;return false;}
 function attackTargets(s,range){return targets(s).filter(e=>e.hp>0&&distance(e,s.player)<range+e.r&&!lineBlocked(s,s.player,e)).sort((a,b)=>distance(a,s.player)-distance(b,s.player));}
+export function portTurretInSight(s){
+ if(!portBreachFlank(s))return false;
+ const turret=s.boss.parts[0],point=partPosition(s,turret);
+ return s.weapons.some(w=>distance(s.player,point)<weaponStats(w).range+turret.r)&&!lineBlocked(s,s.player,point);
+}
 function targetFor(s,w,d,candidates){
- const turret=portBreachFlank(s)&&candidates.find(e=>e===s.boss.parts[0]);
- const locked=candidates.find(e=>e.id===w.targetId);if(locked&&s.t<(w.targetUntil||0)&&!(turret&&locked!==turret&&(locked.type==='boss'||locked.type==='part')))return locked;
+ const priority=portBreachFlank(s)?s.boss.parts[0]:portCoreDisrupted(s)?s.boss:null;
+ if(priority&&candidates.includes(priority))return priority;
+ const locked=candidates.find(e=>e.id===w.targetId);if(locked&&s.t<(w.targetUntil||0))return locked;
  let selected=candidates[0];
- const part=s.operation?.region===2?turret:s.operation?.support==='breach'&&candidates.find(e=>e.type==='part');
+ const part=s.operation?.region!==2&&s.operation?.support==='breach'&&candidates.find(e=>e.type==='part');
  if(part&&selected?.type==='boss')selected=part;
  if(w.id==='f'){
   let best=-1;for(const candidate of candidates.slice(0,24)){const a=Math.atan2(candidate.y-s.player.y,candidate.x-s.player.x);let score=0;
@@ -278,7 +285,7 @@ function targetFor(s,w,d,candidates){
   const mortar=selected&&distance(s.player,selected)>90&&candidates.find(e=>e.type==='mortar'&&e.siteId==='supply-c'&&e.cohort==='coast-guard');
   selected=mortar||markedBlastTarget(s,candidates,selected,d.radius);
  }
- if(part&&(selected?.type==='boss'||turret&&selected?.type==='part'))selected=part;
+ if(part&&selected?.type==='boss')selected=part;
  w.targetId=selected?.id||null;w.targetUntil=s.t+RULES.player.targetHoldSeconds;return selected;
 }
 function markedBlastTarget(s,candidates,fallback,radius=100){
@@ -354,14 +361,22 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  amount*=1+s.boosts.power*.01;
  const breach=s.operation?.support==='breach';
  if(e===s.boss.parts[0]&&s.operation?.region===2){
-  if(portBreachFlank(s)&&source!=='front-relay'){
+  if(portBreachFlank(s)&&source!=='front-relay'&&!lineBlocked(s,s.player,e)){
    amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
    if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
   }else if(portTurretShutter(s))amount*=PORT_TURRET.shutterDamage;
  }else if(e.type==='part'&&breach&&s.operation.region!==2){
   amount*=1.55;recordSupportUse(s);
  }
- if(e.type==='boss'){const b=s.boss,a=Math.atan2(s.player.y-b.y,s.player.x-b.x),rear=Math.cos(a-b.body)<-.35;amount*=s.operation?.region===1?(b.parts.some(p=>p.hp>0)?.5:b.mode==='recover'?1.5:1):s.operation?.region===2?(b.parts.some(p=>p.hp>0)?b.mode==='recover'?1:.65:b.mode==='recover'?1.6:1.15):b.mode==='recover'&&rear?1.5:Math.cos(a-b.body)>.35?.65:1;}
+ if(e.type==='boss'){
+  const b=s.boss,a=Math.atan2(s.player.y-b.y,s.player.x-b.x),rear=Math.cos(a-b.body)<-.35;
+  const recover=b.mode==='recover',armored=b.parts.some(p=>p.hp>0);
+  if(s.operation?.region===2){
+   if(!recover)amount*=armored?.65:1.15;
+   else if(source!=='support'&&(!armored||portCoreDisrupted(s)))amount*=1.6;
+  }else if(s.operation?.region===1)amount*=armored?.5:recover?1.5:1;
+  else amount*=recover&&rear?1.5:Math.cos(a-b.body)>.35?.65:1;
+ }
  const railSignal=s.operation?.region===1&&s.operation.tactic==='signal';
  if(s.boss.active&&(s.boss.mode==='recover'||railSignal)&&(e.type==='boss'||e.type==='part')){
   activateFrontTactic(s,e,kind,source,owner);
@@ -500,6 +515,14 @@ function updateEnemies(s,dt){
  if(incoming&&(!s.hitCandidate||incoming.amount>s.hitCandidate.amount))s.hitCandidate=incoming;
 }
 
+function dropHarborAid(s){
+ const b=s.boss,kit=PORT_SUPPORT.recovery;
+ if(s.operation.support!=='recovery'||b.harborSupply||b.cycle>kit.limit||b.harborSupplyCycle===b.cycle)return;
+ const side=(b.cycle%2?-1:1)*portTurretSide(b);
+ const x=kit.lanes[side<0?0:1],y=kit.y;
+ b.harborSupply={x,y};b.harborSupplyCycle=b.cycle;
+ emit(s,'supply-ready',x,y,{life:1.1,text:`${side<0?'좌측':'우측'} 구급 화물 투하`});
+}
 function updateOperationBoss(s,dt){
  const b=s.boss,p=s.player,index=s.operation.region;b.timer-=dt;b.spawnClock-=dt;b.kick=Math.max(0,b.kick-dt*3);b.flash=Math.max(0,b.flash-dt);updateBurn(s,b,dt);for(const part of b.parts)updateBurn(s,part,dt);if(b.dead)return;
  if(index===2&&b.mode!=='recover'&&b.parts[1].hp>0)b.x=clamp(b.x+Math.sin(s.operation.regionTime*.7)*35*dt,330,1270);
@@ -512,17 +535,17 @@ function updateOperationBoss(s,dt){
    b.timer+=warning;
    if(index===1){const safe=b.cycle%3,early=s.sites.some(site=>site.kind==='relay'&&site.state==='done')?.4:0;b.timer+=early;for(let lane=0;lane<3;lane++){if(lane===safe||lane===0&&b.parts[0].hp<=0||lane===2&&b.parts[1].hp<=0)continue;s.hazards.push({x:500+lane*300,y:600,w:220,h:900,lane:true,r:0,timer:1.25+early+warning});}emit(s,'boss-warning',b.x,b.y,{text:warning?'선발 지원 · 첫 차선 경고 +1초':'포격 차선 예고 · 표시 밖으로 이동',life:1});}
    else{const duration=.95+warning;for(let i=0;i<(b.parts[0].hp>0?5:3);i++){const a=i*TAU/5;s.hazards.push({x:clamp(p.x+Math.cos(a)*95,90,1510),y:clamp(p.y+Math.sin(a)*95,90,1110),r:58,timer:duration,duration});}emit(s,'boss-warning',p.x,p.y,{text:warning?'선발 지원 · 첫 집중 포격 경고 +1초':'집중 포격 · 포탑 사격',life:1});}
+   if(index===2&&b.cycle===1)dropHarborAid(s);
   }else if(b.mode==='salvo'){
    b.mode='recover';b.timer=index===1?2.2:2.6;
    if(index===1&&s.operation.tactic==='signal'&&b.tacticCycle===b.cycle)b.timer+=FRONT_TACTICS[1].signal.delay;
    if(index===2&&b.parts[0].hp>0){for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);b.kick=1;b.flash=.12;}
    emit(s,'weakpoint',b.x,b.y,{text:index===1?'포격 재장전 · 포대를 노려라':'노출 코어 · 집중 공격',life:1.4});
-   const kit=PORT_SUPPORT.recovery;
-   if(s.operation.support==='recovery'&&b.cycle<=kit.limit){
-    const side=(b.cycle%2?-1:1)*(index===2?portTurretSide(b):1);
-    const x=index===1?800+side*175:kit.lanes[side<0?0:1],y=index===1?470:kit.y;
-    if(index===1)dropXp(s,x,y,18,true);else b.harborSupply={x,y};
-    emit(s,'supply-ready',x,y,{life:1.1,...(index===2?{text:`${side<0?'좌측':'우측'} 구급 화물 투하`}:null)});
+   if(index===2)dropHarborAid(s);
+   else if(s.operation.support==='recovery'&&b.cycle<=PORT_SUPPORT.recovery.limit){
+    const x=b.cycle%2?625:975,y=470;
+    dropXp(s,x,y,18,true);
+    emit(s,'supply-ready',x,y,{life:1.1});
    }
   }else{b.mode='aim';b.timer=index===1?1.4:1.7;}
  }
@@ -726,7 +749,7 @@ export function action(s,kind){
  if(kind==='dash'){
   if(p.dashCd>0)return false;
   const b=s.boss;
-  if(s.operation?.region===2&&s.operation.support==='overrun'&&b.active&&distance(p,b)>PORT_SUPPORT.overrun.reach+b.r)p.portRush=true;
+  if(s.operation?.region===2&&s.operation.support==='overrun'&&b.active&&distance(p,b)>portCoreReach(b))p.portRush=true;
   else delete p.portRush;
   p.dash=.18;p.dashCd=2;p.invuln=Math.max(p.invuln,.30);
   if(p.maneuver==='assault')p.assaultTime=1.25;
@@ -790,16 +813,17 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const previousOverdrive=p.overdrive;p.overdrive=Math.max(0,p.overdrive-dt);if(previousOverdrive>0&&p.overdrive===0&&moduleRank(s,'overcharger'))blast(s,p.x,p.y,180,140,'module');
  p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
  const ix=Number.isFinite(input.x)?input.x:0,iy=Number.isFinite(input.y)?input.y:0,len=Math.max(1,Math.hypot(ix,iy)),moving=Math.hypot(ix,iy)>.07;p.moving=moving;
+ const b=s.boss,coreEntry=p.dash>0&&p.portRush&&portCoreWindow(s)&&distance(p,b)>portCoreReach(b);
  if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;}
+ if(coreEntry&&distance(p,b)<=portCoreReach(b)&&!lineBlocked(s,p,b)){
+  const kit=PORT_SUPPORT.overrun;
+  delete p.portRush;b.harborStrikeCycle=b.cycle;b.timer+=kit.delay;recordSupportUse(s);
+  damage(s,b,kit.damage,'blast','support');emit(s,'break',b.x,b.y,{text:'돌격 신관 · 코어 장갑 해제'});
+ }
  if(wasDashing&&p.dash<=0&&s.operation?.support==='overrun'){
-  const portRush=p.portRush;delete p.portRush;
+  delete p.portRush;
   blast(s,p.x,p.y,100,85,'support');
-  const b=s.boss;
-  if(portRush&&portCoreWindow(s)&&distance(p,b)<=PORT_SUPPORT.overrun.reach+b.r&&!lineBlocked(s,p,b)){
-   const kit=PORT_SUPPORT.overrun;
-   b.harborStrikeCycle=b.cycle;b.timer+=kit.delay;recordSupportUse(s);
-   damage(s,b,kit.damage,'blast','support');emit(s,'break',b.x,b.y,{text:'돌격 신관 · 코어 직격'});
-  }else if(s.operation.region!==2&&b.active&&!b.dead&&b.mode==='recover'&&distance(p,b)<=100+b.r&&!lineBlocked(s,p,b)){
+  if(s.operation.region!==2&&b.active&&!b.dead&&b.mode==='recover'&&distance(p,b)<=100+b.r&&!lineBlocked(s,p,b)){
    const target=b.parts.filter(part=>part.hp>0).map(part=>Object.assign(part,partPosition(s,part))).sort((a,b)=>distance(p,a)-distance(p,b))[0]||b;
    recordSupportUse(s);
    damage(s,target,260,'blast','support');emit(s,'break',target.x,target.y,{text:target===b?'돌격 신관 · 코어 직격':'돌격 신관 · 부위 직격'});
