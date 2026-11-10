@@ -1,4 +1,4 @@
-import {FIELD,MODULES,blastContactRadius,clamp,distance,layout} from './content.js';
+import {FIELD,MODULES,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
 import {routeCursor} from './raid.js';
 
 export const REGIONS=[
@@ -65,6 +65,43 @@ export function portBarrageRounds(s,cycle){
   if(b.parts[0].hp>0&&b.emberCycle!==cycle)push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
  }
  return rounds;
+}
+const PORT_ESCAPE_X=[{dx:-1,dy:0,label:'왼쪽'},{dx:1,dy:0,label:'오른쪽'}];
+const PORT_ESCAPE_Y=[{dx:0,dy:-1,label:'위'},{dx:0,dy:1,label:'아래'}];
+const portDiagonals=angles=>PORT_ESCAPE_X.flatMap(x=>PORT_ESCAPE_Y.flatMap(y=>angles.map(angle=>({
+ dx:x.dx*Math.cos(angle*Math.PI/180),dy:y.dy*Math.sin(angle*Math.PI/180),label:`${x.label} ${y.label}`
+}))));
+const PORT_ESCAPE_DIAGONAL=portDiagonals([45]),PORT_ESCAPE_ANALOG=portDiagonals([30,45,60]);
+export function portEscapeLanes(s,rounds,analog=false){
+ const p=s.player,lock=rounds.find(h=>h.portRound==='lock');
+ if(!lock||distance(p,lock)>=blastContactRadius(lock))return [];
+ const axes=rounds.some(h=>h.portRound==='rake')?PORT_ESCAPE_Y
+  :rounds.some(h=>h.portRound==='battery')?PORT_ESCAPE_X:[];
+ if(!axes.length)return [];
+ const boss=s.boss?.active&&!s.boss.dead?s.boss:null;
+ function open({dx,dy}){
+  const depth=(lock.x-p.x)*dx+(lock.y-p.y)*dy;
+  const reach=depth+Math.sqrt(blastContactRadius(lock)**2-distance(p,lock)**2+depth**2)+10;
+  const x=p.x+dx*reach,y=p.y+dy*reach;
+  if(x<FIELD.left+16||x>FIELD.right-16||y<FIELD.top+16||y>FIELD.bottom-16)return false;
+  if(s.blocks.some(b=>b.hp!==0&&rayBoxDistance(p,dx,dy,b,16)<reach))return false;
+  function clears(h,r){
+   // A straight path may leave a circle the player already occupies.
+   const at=distance(p,h)<r?reach:clamp((h.x-p.x)*dx+(h.y-p.y)*dy,0,reach);
+   return Math.hypot(p.x+dx*at-h.x,p.y+dy*at-h.y)>=r;
+  }
+  // Give the drifting hull extra room. A pilot already within that margin must head away.
+  if(boss){
+   const margin=boss.r+32;
+   const closing=(boss.x-p.x)*dx+(boss.y-p.y)*dy>0;
+   if((distance(p,boss)<margin&&closing)||!clears(boss,margin))return false;
+  }
+  return rounds.every(h=>h===lock||clears(h,blastContactRadius(h)));
+ }
+ const cardinal=axes.filter(open);
+ if(cardinal.length)return cardinal;
+ const diagonal=(analog?PORT_ESCAPE_ANALOG:PORT_ESCAPE_DIAGONAL).find(open);
+ return diagonal?[diagonal]:[];
 }
 export const PORT_LANDING={range:215,guards:[
  ['shield',52,30],['shield',98,8],['rifle',-25,25],['rifle',15,-29],

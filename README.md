@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.71.0" src="https://img.shields.io/badge/RIFT-0.71.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.72.0" src="https://img.shields.io/badge/RIFT-0.72.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.72에서는 항구 포격 때 탄착점과 차체를 피해 나갈 방향이 대원 발밑에 표시됩니다. 피격 범위 안에서는 회피가 우선이고, 재장전 때는 장비와 위치에 맞는 반격을 안내합니다. [모바일 포격 회피 검증](docs/RIFT-GAMEPLAY-V1.md#072-항구-포격을-읽고-반격하기).
 
 0.71에서는 항구 정면과 측면 해치의 진입 위치가 갈리고, 철도 잔류 부품에 맞춰 포탑 사선·코어 돌입·측면 화물의 방향을 안내합니다. 관제소는 압축 인페르노의 재장전 지연과 점화 격발망의 포탑탄 차단을 지원합니다. [항구 진입로와 관제소 검증](docs/RIFT-GAMEPLAY-V1.md#071-항구-진입로와-관제소-전술).
 

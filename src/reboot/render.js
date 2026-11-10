@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidCue,portAidCounterReady,railGunOf,COAST_MORTAR,coastLead,coastLeadColor,coastEncounterCue,coastMortarAiming,coastMortarThreatens,activeEntry} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidCue,portAidCounterReady,portEscapeLanes,railGunOf,COAST_MORTAR,coastLead,coastLeadColor,coastEncounterCue,coastMortarAiming,coastMortarThreatens,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
@@ -520,6 +520,21 @@ function paintPortPerimeter(c,rounds){
  c.strokeStyle='#39272a';c.lineWidth=6;c.stroke();
  c.strokeStyle='#ffb78c';c.lineWidth=3;c.stroke();
 }
+function paintPortEscape(c,s,rounds,analog){
+ const lanes=portEscapeLanes(s,rounds,analog);
+ if(!lanes.length)return;
+ c.save();c.translate(s.player.x,s.player.y);c.beginPath();
+ for(const {dx,dy} of lanes){
+  const start=dy<0?Math.max(31,Math.min(66/-dy,24/Math.abs(dx))):31;
+  for(const depth of [start,start+11]){
+   c.moveTo(depth*dx+7*dy,depth*dy-7*dx);
+   c.lineTo((depth+7)*dx,(depth+7)*dy);
+   c.lineTo(depth*dx-7*dy,depth*dy+7*dx);
+  }
+ }
+ c.lineJoin='miter';c.strokeStyle='#242525';c.lineWidth=8;c.stroke();
+ c.strokeStyle='#fff1d4';c.lineWidth=3.5;c.stroke();c.restore();
+}
 export function createRenderer(canvas,art,combatHud={rects:[]}){
  const c=canvas.getContext('2d');let size={w:0,h:0,dpr:1},view={w:960,h:540},terrainCache=null,terrainKey='',siteStates=new Map();
  const conduitTrails=new WeakMap();
@@ -778,8 +793,8 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   if(chargeLane)paintChargeLane(c,s.boss,chargeLane,true);
   for(const q of s.enemyShots)if(visible(q.x,q.y))circle(c,q.x,q.y-18,6,'#b0422c','#ffe1a1',2);
-  const portRounds=s.hazards.filter(h=>h.portRound&&!h.hit&&visible(h.x,h.y,blastContactRadius(h)));
-  if(portRounds.length)paintPortPerimeter(c,portRounds);
+  const portRounds=s.hazards.filter(h=>h.portRound&&!h.hit);
+  if(portRounds.length)paintPortPerimeter(c,portRounds.filter(h=>visible(h.x,h.y,blastContactRadius(h))));
   for(const h of s.hazards){
    const wide=h.portRound||h.coastMortar;
    if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:wide?blastContactRadius(h):h.r))continue;
@@ -817,6 +832,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    c.strokeStyle='#d8e9b8';c.lineWidth=3;
    c.beginPath();c.moveTo(x-6,y-27);c.lineTo(x,y-21);c.lineTo(x+6,y-27);c.stroke();
   }
+  if(portRounds.length)paintPortEscape(c,s,portRounds,combatHud.analog);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   if(lead)paintCoastCue(c,s,lead,guns,size,cx,cy,scale);
   if(mobile&&aid)paintAidBearing(c,s,aid,size,cx,cy,scale,combatHud.rects);

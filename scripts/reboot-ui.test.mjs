@@ -4,6 +4,43 @@ import {lobbyView,reportView} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition} from '../src/reboot/render.js';
+import {portEscapeLanes} from '../src/reboot/campaign.js';
+
+test('harbor escape chevrons follow live rounds and omit paths through cover',()=>{
+ const s={player:{x:800,y:450},blocks:[],boss:null};
+ const round=(portRound,dx,dy)=>({portRound,x:800+dx,y:450+dy,r:58});
+ const lock=round('lock',0,0);
+ const vertical=[lock,round('battery',0,-114),round('battery',0,114)];
+ const turrets=[round('turret',116,-54),round('turret',116,54)];
+ const horizontal=[lock,round('rake',-114,0),round('rake',114,0)];
+ const labels=rounds=>portEscapeLanes(s,rounds).map(lane=>lane.label);
+ assert.deepEqual(labels([...vertical,...turrets]),['왼쪽']);
+ assert.deepEqual(labels(vertical),['왼쪽','오른쪽']);
+ assert.deepEqual(labels([...horizontal,...turrets]),['위','아래']);
+ assert.deepEqual(labels(vertical.slice(1)),[]);
+ assert.deepEqual(labels([lock]),[]);
+ s.boss={active:true,x:690,y:498,r:65};
+ assert.deepEqual(labels([...vertical,...turrets]),['왼쪽 위']);
+ s.boss=null;
+ s.blocks=[{x:740,y:405,w:22,h:90,hp:-1}];
+ assert.deepEqual(labels([...vertical,...turrets]),[]);
+ assert.deepEqual(labels(vertical),['오른쪽']);
+ s.player.x=885;
+ assert.deepEqual(labels(vertical),[]);
+});
+
+test('harbor escape chevrons never point deeper into the drifting hull and respect stick or keys',()=>{
+ const round=(portRound,x,y)=>({portRound,x,y,r:58});
+ const s={player:{x:752,y:250},blocks:[],boss:{active:true,x:800,y:180,r:65}};
+ const vertical=[round('lock',792,250),round('battery',792,136),round('battery',792,364),round('turret',676,196),round('turret',676,304)];
+ assert.ok(!portEscapeLanes(s,vertical).some(lane=>lane.label==='오른쪽'));
+
+ Object.assign(s.player,{x:630.36,y:132.72});
+ s.boss.x=777.88;
+ const hatch=[round('lock',630.36,132.72),round('battery',630.36,40),round('battery',630.36,246.72),round('turret',514.36,78.72),round('turret',514.36,186.72)];
+ assert.deepEqual(portEscapeLanes(s,hatch),[]);
+ assert.deepEqual(portEscapeLanes(s,hatch,true).map(lane=>lane.label),['오른쪽 위']);
+});
 
 test('mobile harbor cues move around HUD masks and live warning boxes',()=>{
  const size={w:360,h:640};
