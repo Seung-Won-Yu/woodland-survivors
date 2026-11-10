@@ -111,7 +111,7 @@ export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastA
 export const mapSeed=(seed,index)=>seed+index*7919;
 const ENTRY={
  1:{arrival:{x:800,y:1040},routes:[
-  {site:'rail-cache',sign:'화차 보급',color:'#edce8e',path:[[800,1040],[665,1002],[562,947],[535,850]]},
+  {site:'rail-cache',sign:'화차 정비대',color:'#edce8e',path:[[800,1040],[665,1002],[562,947],[535,850]]},
   {site:'rail-relay',sign:'중계기 해킹',color:'#b1dfcb',path:[[800,1040],[936,980],[1120,835],[1120,580]]}
  ]},
  2:{arrival:{x:720,y:1040},routes:[
@@ -147,7 +147,7 @@ export function regionLayout(seed,index=0){
  const entry=frontEntry(seed,index),landing=i=>{const [x,y]=entry.routes[i].path.at(-1);return {x,y};};
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});
  if(index===1)return {...map,sites:[
-  {id:'rail-cache',kind:'supply',name:'화차 보급',...landing(0),state:'waiting'},
+  {id:'rail-cache',kind:'supply',name:'화차 정비대',...landing(0),state:'waiting'},
   {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),state:'waiting',progress:0},
   {id:'arsenal',kind:'armory',name:'선로 정비창',...p(350,430),state:'waiting'},
   {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1160,300),state:'waiting'}

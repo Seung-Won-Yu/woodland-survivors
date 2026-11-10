@@ -300,3 +300,6 @@
 .upgrade-card[data-trial="true"]{--accent:#97cfaf;border-color:#80a88f;background:linear-gradient(125deg,#31493f,#1d322b)}
 .upgrade-card[data-trial="true"] .upgrade-category{color:#bde5cb}
 .research-page .paper-tag{white-space:nowrap}
+.rail-workshop .upgrade-card[data-choice^="calibrate:"]{--accent:#99c6c8;border-color:#7ea9ad;background:linear-gradient(125deg,#354948,#263839)}
+.rail-workshop-record{display:flex;gap:8px 14px;flex-wrap:wrap;margin:12px 0;color:#d7dfc4;font-size:11px;line-height:1.5}
+.rail-workshop-record b{color:#b9e4e1}

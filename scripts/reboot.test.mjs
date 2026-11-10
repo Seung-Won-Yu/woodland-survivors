@@ -982,6 +982,55 @@ test('rail tactics are chosen at the relay and heat rewards a close flank during
  assert.equal(hit(800,325,'recover').count,0);
  assert.equal(hit(685,267,'salvo').count,0);
 });
+function quietRailWorkshop(){
+ const s=quietOperation();s.operation.region=1;
+ Object.assign(s,regionLayout(mapSeed(s.seed,1),1));s.blocks=[];s.boss=regionBoss(1,s.seed);
+ s.sites.forEach(site=>site.state='done');
+ return s;
+}
+test('rail workshop protects a weak build from a random new weapon and provides the needed part',()=>{
+ const s=quietRailWorkshop();s.firstNew='f';
+ s.weapons.push({...makeWeapon('f'),uid:'fire',level:6,branch:'trail',cd:999});
+ s.modules=[{id:'catalyst',rank:1}];const ready=s.tuning;
+ assert.deepEqual(supply(s,'rail-cache').map(c=>c.id),['module:catalyst','rank:h','resupply:rail-workshop']);
+ assert.equal(s.choice.type,'rail-workshop');
+ assert.equal(reroll(s),false);
+ assert.ok(choose(s,'module:catalyst'));assert.equal(s.tuning,ready);
+ assert.ok(assemblyOptions(s).some(c=>c.id==='evolve:f'));
+});
+test('rail refit retains fire evolution and changes the actual reach of the next shot',()=>{
+ const s=quietRailWorkshop();s.firstNew='f';
+ s.weapons.push({...makeWeapon('f'),uid:'fire',level:6,branch:'trail',evolved:true,cd:999});
+ const oldRange=weaponStats(s.weapons[1]).range;
+ const c=supply(s,'rail-cache').find(c=>c.kind==='calibrate');
+ const kept=restore(snapshot(s)),swapped=restore(snapshot(s)),tuning=swapped.tuning;
+ assert.match(choiceDetails(swapped,c).impact,/연료 살포 → 압축 분사/);
+ assert.ok(choose(kept,'resupply:rail-workshop'));
+ assert.ok(choose(swapped,c.id));assert.equal(swapped.tuning,tuning);
+ assert.equal(swapped.weapons[1].evolved,true);
+ assert.equal(swapped.weapons[1].branch,'focused');
+ assert.equal(weaponStats(swapped.weapons[1]).range,oldRange+70);
+ for(const state of [kept,swapped]){
+  const p=state.player;
+  state.weapons[1].cd=0;state.enemies=[enemy('far',p.x+oldRange+45,p.y,'rifle',500)];
+  step(state,dt);
+ }
+ assert.ok(!kept.effects.some(f=>f.type==='flame'));
+ assert.ok(swapped.effects.some(f=>f.type==='flame'&&f.r===oldRange+70));
+});
+test('rail refit converts the inherited rocket, while guarding against duplicate fusion',()=>{
+ const s=quietRailWorkshop();s.firstNew='r';
+ Object.assign(s.weapons[0],{level:6,evolved:true,branch:'ricochet',fusion:{secondary:'r',branch:'homing',overflow:2},payload:10});
+ const duplicate=restore(snapshot(s));
+ duplicate.weapons.push({...duplicate.weapons[0],uid:'other-fusion',fusion:{...duplicate.weapons[0].fusion,branch:'incendiary'}});
+ assert.ok(supply(duplicate,'rail-cache').every(c=>c.kind!=='calibrate'));
+ const c=supply(s,'rail-cache').find(c=>c.kind==='calibrate');
+ assert.ok(choose(s,c.id));assert.equal(s.weapons[0].fusion.overflow,2);assert.equal(s.weapons[0].branch,'ricochet');
+ assert.equal(s.weapons[0].fusion.branch,'incendiary');
+ const p=s.player,a=enemy('hit',p.x,p.y-110,'rifle',500),b=enemy('relay',p.x,p.y-230,'rifle',500);
+ s.enemies=[a,b];s.shots=[bullet(s,a,1)];step(s,dt);
+ assert.ok(s.shots.some(q=>q.source==='payload'&&q.incendiary&&!q.homing));
+});
 test('a ranged signal arcs once to the other part and changes the next boss action',()=>{
  for(const index of [1,2]){
   const s=quietOperation();s.operation.region=index;s.operation.tactic='signal';s.stage='boss';

@@ -1,4 +1,4 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts} from './content.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts,railCalibration} from './content.js';
 import {REGIONS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
 import {choose,snapshot} from './model.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -26,7 +26,7 @@ function projectedGrowth(s,c,args,before){
 }
 
 export function growthForecast(s,c,args={}){
- if(!['rank','module','tune','repair','gun','refit'].includes(c.kind)||s.phase!=='choice'||!s.choices.some(card=>card.id===c.id))return null;
+ if(!['rank','module','tune','repair','gun','refit','calibrate'].includes(c.kind)||s.phase!=='choice'||!s.choices.some(card=>card.id===c.id))return null;
  if(c.kind==='gun'&&!Number.isInteger(args.slot)||c.kind==='refit'&&!args.weapon)return null;
  if(c.kind==='rank'&&s.weapons.length===1&&!s.modules.length)return null;
  const before=new Map(buildPaths(s).map(path=>[path.id,path]));
@@ -64,6 +64,21 @@ export function choiceDetails(s,c){
  }else if(c.id==='utility:charge'||c.kind==='resupply'){
   const amount=c.charge??10,before=Math.floor(s.player.charge),after=Math.min(100,before+amount),hpBefore=s.player.hp,hpAfter=Math.min(s.player.maxHp,hpBefore+(c.heal||0)),healed=Math.ceil(hpAfter)-Math.ceil(hpBefore);
   out.art='ammo';out.impact=healed?`체력 +${healed}${after>before?` · 충전 +${after-before}`:''}`:after>before?`전탄 충전 +${after-before}`:'전탄 충전 최대';out.detail=`${c.heal?`체력 ${Math.ceil(hpBefore)}/${s.player.maxHp} → ${Math.ceil(hpAfter)}/${s.player.maxHp} · `:''}충전 ${before} → ${after} / 100`;out.link='';out.cost='';
+ }else if(c.kind==='calibrate'){
+  const installed=s.weapons.find(weapon=>weapon.uid===c.uid);
+  const change=installed&&railCalibration(s,installed);
+  if(change){
+   const branches=GUNS[change.gun].branches;
+   out.title=installed.fusion?'전도 격발망':GUNS[installed.id].evolution;
+   out.impact=`${branches[change.from][0]} → ${branches[change.to][0]}`;
+   if(installed.fusion)out.detail=change.to==='incendiary'?'연쇄탄이 터진 자리에 연소 지대를 남깁니다.':'연쇄탄이 움직이는 표적을 추적합니다.';
+   else if(installed.id==='f'){
+    const before=weaponStats(installed),after=weaponStats({...installed,branch:change.to});
+    out.detail=`사거리 ${before.range} → ${after.range} · 분사각 ${num(before.cone)}° → ${num(after.cone)}°`;
+    out.link=change.to==='focused'?'먼 표적에 강한 잔불':'이동하며 분사하면 화염 장판';
+   }else out.detail=branches[change.to][1];
+   out.cost='완성·투자 유지 · 귀환까지 적용';
+  }
  }else if(c.kind==='evolve'){
   out.impact=c.weapon==='f'?w.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
   out.link=c.weapon==='f'?w.branch==='focused'?'직격 표적에 강한 잔불을 남깁니다.':'이동 중 화염을 뿌리면 앞쪽에 불길이 남습니다.':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';

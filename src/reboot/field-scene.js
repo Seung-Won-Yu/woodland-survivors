@@ -53,12 +53,14 @@ export function sitePresentation(n){
  if(n.kind==='armory')return{icon:'armory',name:n.name,verb:'경비를 제압하라'};
  if(n.id==='supply-a')return{icon:'rescue',name:'포로 구출',verb:'경비를 제압하라'};
  if(n.id==='supply-b')return{icon:'truck',name:'이동 보급차',verb:'경비를 제압하라'};
+ if(n.id==='rail-cache')return{icon:'workshop',name:'화차 정비대',verb:'경비를 제압하라'};
  if(n.coastApproach==='r')return{icon:'battery',name:n.name,verb:'박격포를 제압하라'};
  return{icon:'crate',name:n.name,verb:'경비를 제압하라'};
 }
 export function siteSymbol(n,x=n.x,y=n.y,size=23){
  const t=sitePresentation(n).icon,r=size,stroke=n.state==='done'?'#899b82':n.state==='ready'?'#f7d17c':n.state==='active'?'#ef9a62':'#d4cc9c',body=t==='rescue'?`<path d="M-13 11v-22h26v22m-17-22v22m8-22v22M-13 1h26"/>`:t==='relay'||t==='control'?'<path d="M0 13V-8m-10 5a14 14 0 0 1 20 0m-25-7a22 22 0 0 1 30 0"/><circle cy="-9" r="3"/>':t==='truck'?'<path d="M-16 7v-17H5v5h10v12Z"/><circle cx="-9" cy="9" r="3"/><circle cx="10" cy="9" r="3"/>':t==='battery'?'<path d="M-14 12h28M-8 12l5-9 8 9M-3 4l10-17 5 3-10 17Z"/>':'<path d="M-13-11h26v24h-26Zm0 7h26M-5-11v24m10-24v24"/>';
- return `<g transform="translate(${x} ${y}) scale(${r/18})" fill="#263d35" stroke="${stroke}" stroke-width="3" stroke-linejoin="round">${body}</g>`;
+ const symbol=t==='workshop'?'<path d="m-12 8 13-13-1-7 7-3-1 7 6 1 4-5 1 8-5 6-7-1-12 13Z"/>':body;
+ return `<g transform="translate(${x} ${y}) scale(${r/18})" fill="#263d35" stroke="${stroke}" stroke-width="3" stroke-linejoin="round">${symbol}</g>`;
 }
 export function terrainSvg(index,seed){const scene=fieldScene(index,seed);return `<rect width="1600" height="1200" fill="${scene.ground}"/>${scene.shapes.map(s=>s.type==='rect'?`<rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" fill="${s.fill}"/>`:`<${s.type==='line'?'polyline':'polygon'} points="${s.points.map(p=>p.join(',')).join(' ')}" fill="${s.fill||'none'}" ${s.stroke?`stroke="${s.stroke}" stroke-width="${s.width}" stroke-dasharray="${s.dash?.join(' ')||''}"`:''}/>`).join('')}${(scene.rails||[]).map(points=>`<polyline points="${points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#adb7a5" stroke-width="16"/><polyline points="${points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#303e39" stroke-width="8"/>`).join('')}`;}
 export function gateSymbol({x,y,name}){

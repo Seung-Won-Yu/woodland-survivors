@@ -231,7 +231,17 @@ export function paintFrontEntry(c,x,y,index,age,reduced){
 }
 export function paintSite(c,n,s,art,collectedAge=99){
  const kind=sitePresentation(n).icon,ready=n.state==='ready';if(n.state==='done'){if(art&&kind==='rescue'&&collectedAge<2.2)prop(c,art,2,2,n.x+Math.min(35,collectedAge*25),n.y,32,1-collectedAge/2.2);return;}
- if(art){if(kind==='rescue'){prop(c,art,2,1,n.x,n.y,65);prop(c,art,2,0,n.x+39,n.y+7,32);}else if(kind==='truck')prop(c,art,2,3,n.x,n.y,104);else if(kind==='armory'){environmentProp(c,art,3,3,n.x,n.y,112);prop(c,art,2,0,n.x+9,n.y+5,40);}else if(kind==='relay'||kind==='control'){prop(c,art,3,3,n.x,n.y,kind==='control'?90:70);}else{environmentProp(c,art,1,3,n.x-9,n.y,72);prop(c,art,2,0,n.x+16,n.y+4,48);}}
+ if(kind==='workshop'){
+  const {x,y}=n;
+  if(art)environmentProp(c,art,1,3,x-31,y+3,54);
+  c.fillStyle='#282f2b';c.fillRect(x-29,y-33,69,32);
+  c.fillStyle='#687e72';c.fillRect(x-26,y-31,63,20);
+  c.fillStyle='#989b79';c.fillRect(x-30,y-36,72,6);
+  c.fillStyle='#bea574';c.fillRect(x-16,y-27,38,12);
+  c.fillStyle='#40463a';c.fillRect(x-13,y-23,29,4);
+  c.fillStyle='#8aa995';c.fillRect(x+28,y-49,7,13);
+  c.fillStyle='#d8cf9d';c.fillRect(x+22,y-53,19,5);
+ }else if(art){if(kind==='rescue'){prop(c,art,2,1,n.x,n.y,65);prop(c,art,2,0,n.x+39,n.y+7,32);}else if(kind==='truck')prop(c,art,2,3,n.x,n.y,104);else if(kind==='armory'){environmentProp(c,art,3,3,n.x,n.y,112);prop(c,art,2,0,n.x+9,n.y+5,40);}else if(kind==='relay'||kind==='control'){prop(c,art,3,3,n.x,n.y,kind==='control'?90:70);}else{environmentProp(c,art,1,3,n.x-9,n.y,72);prop(c,art,2,0,n.x+16,n.y+4,48);}}
  else{c.fillStyle='#7d8966';c.fillRect(n.x-25,n.y-30,50,30);}
  if(ready){c.fillStyle='#f4d386';c.fillRect(n.x-4,n.y-76,8,8);c.fillStyle='#273d34';c.fillRect(n.x-1,n.y-75,2,4);}
 }

@@ -108,6 +108,15 @@ export function canReplaceModule(s,id,slot){
 }
 export function moduleGain(s,id,amount){const current=moduleRank(s,id),next=Math.min(3,current+amount),overflow=Math.max(0,current+amount-3);return{current,next,overflow,charge:overflow*RULES.crateRewards.overflowChargePerRank};}
 export const refitWeapons=s=>s.weapons.filter(w=>w.level>=4&&!w.evolved&&!w.fusion&&GUNS[w.id].branches[w.branch]);
+export function railCalibration(s,w){
+ if(!w.evolved)return null;
+ const gun=w.fusion?.secondary||w.id,from=w.fusion?.branch||w.branch;
+ const branches=GUNS[gun].branches;
+ if(!Object.hasOwn(branches,from))return null;
+ const to=Object.keys(branches).find(branch=>branch!==from);
+ if(w.fusion&&s.weapons.some(other=>other!==w&&other.id===w.id&&other.branch===w.branch&&other.fusion?.secondary===gun&&other.fusion.branch===to))return null;
+ return {gun,from,to};
+}
 export function completionModules(s){
  const needs=new Map(),add=(id,rank)=>{if(moduleRank(s,id)<rank&&!s.excluded.includes(id)&&compatible(s,id))needs.set(id,Math.max(rank,needs.get(id)||0));};
  for(const w of s.weapons)if(!w.evolved&&!w.fusion){const d=RULES.weapons[w.id].evolution.moduleByBranch;for(const id of w.branch?d[w.branch]:new Set(Object.values(d).flat()))add(id,2);}
