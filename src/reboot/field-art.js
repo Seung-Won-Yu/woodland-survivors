@@ -208,12 +208,26 @@ export function paintEntryRoutes(c,entry){
   c.strokeStyle=route.color+'a0';c.setLineDash([10,11]);c.beginPath();
   route.path.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();
   c.setLineDash([]);
-  const [x,y]=route.path[1],labelY=y-43;
+  const [x,y]=route.path.at(route.labelAt??1),labelY=y-43;
   c.font='bold 12px Galmuri';c.textAlign='center';
   const width=c.measureText(route.sign).width+20;
   c.fillStyle='#182a2ade';c.fillRect(x-width/2,labelY-14,width,23);
   c.fillStyle=route.color;c.fillRect(x-width/2,labelY+7,width,2);c.fillText(route.sign,x,labelY+2);
  }
+ c.restore();
+}
+export function paintPortGantry(c,gantry){
+ const {x,y,color}=gantry;
+ c.save();c.translate(x,y);
+ c.fillStyle='#182e30';c.fillRect(-32,-34,64,48);
+ c.fillStyle='#526f69';c.fillRect(-27,-29,54,6);
+ for(const side of [-1,1]){
+  c.fillStyle='#536963';c.fillRect(side*22-4,-26,8,39);
+  c.fillStyle=color;c.fillRect(side*22-2,-24,4,9);
+ }
+ c.strokeStyle=color;c.lineWidth=2;c.beginPath();
+ c.moveTo(-10,3);c.lineTo(0,-6);c.lineTo(10,3);
+ c.moveTo(-10,11);c.lineTo(0,2);c.lineTo(10,11);c.stroke();
  c.restore();
 }
 export function paintFrontEntry(c,x,y,index,age,reduced){

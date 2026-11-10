@@ -33,6 +33,10 @@ export function vanguardAid(player){
 }
 export const PORT_TURRET={shutterDamage:.16};
 export const PORT_BARRAGE={warning:.95,radius:58,batteryOffset:114,turretOffset:116,turretSpread:54};
+export const PORT_LANDING={range:215,guards:[
+ ['shield',52,30],['shield',98,8],['rifle',-25,25],['rifle',15,-29],
+ ['mortar',-45,-180],['mortar',-83,-130]
+]};
 export const PORT_SUPPORT={
  breach:{impact:'포탑 쪽 사선에서 장갑 관통 · 피해 +65%',detail:'측면에서 포탑을 먼저 조준합니다. 포탑을 부수면 조준 중인 측면 포격과 부채꼴 사격이 멈춥니다.',hint:'작전도에 표시된 포탑 쪽 측면으로 이동하세요.',flank:105,boost:1.65},
  overrun:{impact:'회피 돌입으로 코어 직격 320 · 장갑 해제',detail:'재장전 중 표시된 경계를 회피로 넘으세요. 남은 노출 동안 코어가 피해를 더 받고, 노출이 0.9초 늘어납니다.',hint:'포격을 피한 뒤 코어 경계 밖에서 안으로 회피하세요.',reach:100,damage:320,delay:.9},
@@ -41,8 +45,11 @@ export const PORT_SUPPORT={
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
 export const portFlankPoint=boss=>({x:boss.x+portTurretSide(boss)*142,y:boss.y+95});
-export const portTurretShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
-export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.player.x-s.boss.x)*portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
+const portOpeningShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
+const portTurretFlank=s=>(s.player.x-s.boss.x)*portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
+export const portGantryBypass=s=>s.operation?.portEntry==='gantry'&&portOpeningShutter(s)&&portTurretFlank(s);
+export const portTurretShutter=s=>portOpeningShutter(s)&&!portGantryBypass(s);
+export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&portTurretFlank(s);
 export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
 export const portCoreDisrupted=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle===s.boss.cycle;
 export const portCoreReach=boss=>boss.r+PORT_SUPPORT.overrun.reach;
@@ -115,7 +122,7 @@ const ENTRY={
   {site:'rail-relay',sign:'중계기 해킹',color:'#b1dfcb',path:[[800,1040],[936,980],[1120,835],[1120,580]]}
  ]},
  2:{arrival:{x:720,y:1040},routes:[
-  {site:'port-landing',sign:'하역장 보급',color:'#edce8e',path:[[720,1040],[620,992],[520,900]]},
+  {site:'port-landing',sign:'하역장 해치 확보',color:'#edce8e',path:[[720,1040],[620,992],[520,900]]},
   {site:'port-control',sign:'관제소 돌파',color:'#b5dce7',path:[[720,1040],[875,1010],[995,929],[1030,821],[1090,740],[1180,690],[1180,620]]}
  ]}
 };
@@ -124,6 +131,13 @@ const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry]
  routes:entry.routes.map(route=>({...route,path:route.path.map(([x,y])=>[1600-x,y])}))
 }]));
 export const frontEntry=(sectorSeed,index)=>(sectorSeed%2===0?MIRRORED_ENTRY:ENTRY)[index];
+const GANTRY_PATH=[[520,900],[510,812],[510,630],[550,520],[595,400]];
+const GANTRY_MIRRORED=GANTRY_PATH.map(([x,y])=>[1600-x,y]);
+export function portGantry(s){
+ if(s.operation?.region!==2||!s.operation.portDock||s.stage!=='field')return null;
+ const path=s.seed%2===0?GANTRY_MIRRORED:GANTRY_PATH,[x,y]=path.at(-1);
+ return {x,y,path,name:'측면 해치',sign:'측면 해치',site:'port-gantry',labelAt:-1,color:'#b6e1c5'};
+}
 export function activeEntry(s){
  const index=s.operation?.region;
  if(!index||s.stage!=='field'||s.operation.regionTime>15)return null;
@@ -153,7 +167,7 @@ export function regionLayout(seed,index=0){
   {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1160,300),state:'waiting'}
  ],blocks:[block('r1',640,730,100,185),block('r2',640,385,100,180),block('r3',950,600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};
  return {...map,sites:[
-  {id:'port-landing',kind:'supply',name:'하역장 보급',...landing(0),state:'waiting'},
+  {id:'port-landing',kind:'supply',name:'하역장 해치',...landing(0),state:'waiting'},
   {id:'port-control',kind:'control',name:'항구 관제소',...landing(1),state:'waiting'},
   {id:'arsenal',kind:'armory',name:'시험 병기 창고',...p(280,475),state:'waiting'},
   {id:'port-ammo',kind:'supply',name:'지휘부 탄약',...p(1100,320),state:'waiting'}

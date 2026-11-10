@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,portGantry,portGantryBypass,portTurretShutter} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach,portTurretInSight} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
@@ -665,6 +665,59 @@ test('harbor artillery locks the standing player and leaves an escape on the opp
   assert.equal(evade.player.hp,hp);
   assert.deepEqual([evade.hazards.find(h=>h.portRound==='lock').x,aim.y],[800,470]);
  }
+});
+function harborLanding(seed){
+ const s=createOperation(seed);s.operation.region=2;
+ Object.assign(s,regionLayout(mapSeed(seed,2),2));
+ s.boss=regionBoss(2,seed);s.enemies=[];s.spawnClock=999;s.weapons[0].cd=999;
+ for(const site of s.sites)if(site.id!=='port-landing')site.state='done';
+ return s;
+}
+test('the harbor landing opens a mirrored, traversable hatch only after its defenders are cleared',()=>{
+ for(const seed of [17,18]){
+  const s=harborLanding(seed),dock=s.sites[0];
+  Object.assign(s.player,{x:dock.x,y:dock.y+200});
+  assert.equal(portGantry(s),null);
+  step(s,dt);
+  const guards=s.enemies.filter(e=>e.siteId===dock.id);
+  assert.deepEqual(guards.map(e=>e.type),['shield','shield','rifle','rifle','mortar','mortar']);
+  assert.ok(guards.every(e=>!overlapsCover(s,e,e.r)));
+  guards.forEach(e=>e.dead=true);
+  Object.assign(s.player,dock);step(s,dt);
+  assert.equal(s.phase,'playing');
+  assert.equal(s.stats.sitesCleared,1);
+  const gantry=portGantry(s);
+  assert.ok(gantry);assert.equal(Math.sign(gantry.x-800),seed===17?-1:1);
+  for(let i=1;i<gantry.path.length;i++)for(let j=0;j<=20;j++){
+   const [ax,ay]=gantry.path[i-1],[bx,by]=gantry.path[i];
+   assert.ok(!overlapsCover(s,{x:ax+(bx-ax)*j/20,y:ay+(by-ay)*j/20},16));
+  }
+  const center=restore(snapshot(s));
+  Object.assign(center.player,{x:800,y:350});
+  assert.ok(action(center,'interact'));assert.equal(center.operation.portEntry,undefined);
+  Object.assign(s.player,{x:gantry.x,y:gantry.y});
+  assert.equal(interaction(s).gantry.x,gantry.x);
+  assert.ok(action(s,'interact'));assert.equal(s.operation.portEntry,'gantry');
+  assert.deepEqual([s.player.x,s.player.y],[gantry.x,gantry.y]);
+  assert.ok(portGantryBypass(restore(snapshot(s))));
+  assert.ok(portTurretShutter(center));
+  for(const state of [s,center]){
+   const turret=state.boss.parts[0],x=state.boss.x+turret.ox+Math.sign(turret.ox)*14;
+   state.shots=[bullet(state,{x,y:state.boss.y})];step(state,dt);
+  }
+  assert.equal(s.boss.parts[0].hp,750);
+  assert.equal(center.boss.parts[0].hp,834);
+  s.player.x=800;assert.ok(portTurretShutter(s));
+ }
+});
+test('an abandoned harbor landing cannot clear for free after the boss',()=>{
+ const s=harborLanding(17),dock=s.sites[0];
+ Object.assign(s.player,{x:dock.x,y:dock.y+200});step(s,dt);assert.equal(dock.state,'active');
+ Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));
+ assert.equal(dock.state,'waiting');assert.ok(!s.enemies.some(e=>e.siteId===dock.id));
+ s.stage='holdout';s.boss.active=false;s.boss.dead=true;s.operation.gate={x:800,y:400};
+ Object.assign(s.player,dock);step(s,dt);
+ assert.equal(dock.state,'waiting');assert.equal(s.operation.portDock,undefined);assert.equal(s.stats.sitesCleared,0);
 });
 test('breaching the harbor turret cancels only its pending rounds and opens its flank',()=>{
  const s=supportArena(2,'breach','aim');

@@ -42,17 +42,18 @@
 #maneuver-status{align-self:start;padding:4px 6px;background:#243a34;color:#d0e2c7;font-size:10px}#maneuver-status.active{background:#47654e;color:#f2edbc}
 @media(max-width:700px){.holdout-active #map-panel{top:252px}#pursuit{min-height:44px;font-size:9px}}
 
-#banner:is([data-kind="gate-open"],[data-kind="region-entry"]){
+#banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]){
  top:clamp(148px,24vh,225px);width:min(350px,calc(100% - 36px));padding:11px 17px 13px;
  background:#172d2def;border-block:1px solid #9bb899;box-shadow:0 4px 0 #12212678;
  color:#eff0d1;text-shadow:none;line-height:1.35
 }
 #banner[data-kind="gate-open"]{border-color:#c1ae72}
-#banner:is([data-kind="gate-open"],[data-kind="region-entry"]) span,
-#banner:is([data-kind="gate-open"],[data-kind="region-entry"]) small{display:block;font-size:10px;font-weight:400}
-#banner:is([data-kind="gate-open"],[data-kind="region-entry"]) span{color:#c7d5aa;letter-spacing:.13em}
-#banner:is([data-kind="gate-open"],[data-kind="region-entry"]) strong{display:block;margin:3px 0 5px;font-size:22px}
-#banner:is([data-kind="gate-open"],[data-kind="region-entry"]) small{color:#d7ddc3}
+#banner[data-kind="port-hatch"]{border-color:#9bcdb3}
+#banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]) span,
+#banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]) small{display:block;font-size:10px;font-weight:400}
+#banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]) span{color:#c7d5aa;letter-spacing:.13em}
+#banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]) strong{display:block;margin:3px 0 5px;font-size:22px}
+#banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]) small{color:#d7ddc3}
 #hud[inert] #banner{visibility:hidden}
 .gate-intel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:0 0 16px;background:#5e7061;border:1px solid #5e7061}
 .gate-intel span{display:grid;gap:5px;padding:8px 12px;background:#233c36}
@@ -65,8 +66,8 @@
 .gate-menu .module-engraving{width:52px;height:52px}
 .gate-menu .module-engraving svg{width:33px;height:33px}
 @media(max-width:700px){
- #banner:is([data-kind="gate-open"],[data-kind="region-entry"]){top:clamp(210px,34vh,310px);width:min(290px,calc(100% - 36px))}
- #banner:is([data-kind="gate-open"],[data-kind="region-entry"]) strong{font-size:19px}
+ #banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]){top:clamp(210px,34vh,310px);width:min(290px,calc(100% - 36px))}
+ #banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]) strong{font-size:19px}
  .gate-intel span{padding:7px 6px}.gate-intel b{font-size:11px}.gate-intel small{font-size:8px}
  .gate-menu .upgrade-card{min-height:0}
 }
@@ -224,7 +225,7 @@
 }
 
 @media(max-width:700px) and (orientation:portrait){
- #banner[data-kind="region-entry"] {
+ #banner:is([data-kind="region-entry"],[data-kind="port-hatch"]) {
   left:auto;
   right:12px;
   top:210px;
@@ -233,7 +234,7 @@
   padding:9px 12px;
   text-align:left;
  }
- #banner[data-kind="region-entry"] strong {font-size:17px;margin:3px 0}
+ #banner:is([data-kind="region-entry"],[data-kind="port-hatch"]) strong {font-size:17px;margin:3px 0}
 }
 .raid-brief>header{margin-bottom:8px}
 .raid-brief>p{margin:8px 0 14px}
@@ -303,3 +304,12 @@
 .rail-workshop .upgrade-card[data-choice^="calibrate:"]{--accent:#99c6c8;border-color:#7ea9ad;background:linear-gradient(125deg,#354948,#263839)}
 .rail-workshop-record{display:flex;gap:8px 14px;flex-wrap:wrap;margin:12px 0;color:#d7dfc4;font-size:11px;line-height:1.5}
 .rail-workshop-record b{color:#b9e4e1}
+@media(max-width:700px){
+ .gantry-near #field-feedback{visibility:hidden}
+ .boss-active #banner[data-kind="port-ambush"]{
+  top:auto;bottom:max(116px,calc(env(safe-area-inset-bottom) + 96px));left:auto;right:14px;
+  max-width:60%;padding:8px 10px;transform:none;background:#1d3932f2;border-left:3px solid #9bcdb3;
+  color:#cdebd1;text-align:left;font-size:11px;
+ }
+ .boss-active:has(#banner[data-kind="port-ambush"]) #field-feedback{visibility:hidden}
+}

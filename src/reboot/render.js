@@ -1,5 +1,5 @@
-import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portTurretSide,railGunOf,coastLead,coastLeadColor,activeEntry} from './campaign.js';
+import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,railGunOf,coastLead,coastLeadColor,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
@@ -106,6 +106,10 @@ function paintPortCue(c,s){
  if(portTurretShutter(s)&&!flank){
   const p=partPosition(s,turret);
   circle(c,p.x,p.y,27,'#b580453d','#edb272',3);
+ }
+ if(portGantryBypass(s)){
+  const p=partPosition(s,turret);
+  c.setLineDash([7,5]);circle(c,p.x,p.y,30,null,'#b6e1c5',2);c.setLineDash([]);
  }
  if(s.operation.support==='breach'&&turret?.hp>0){
   const side=portTurretSide(b),{x,y}=portFlankPoint(b);
@@ -305,7 +309,14 @@ export function createRenderer(canvas,art){
   // Keep northern bosses and their barrels below the portrait HUD.
   const bossMargin=mobile&&size.h>size.w&&follow>0?
    Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y))*follow:0;
-  const cx=clamp(focusX,view.w/2-edgeMargin,Math.max(view.w/2,1600-view.w/2)+edgeMargin);
+  let framedX=focusX;
+  if(mobile&&size.h>size.w&&s.boss.active&&s.operation?.portEntry==='gantry'){
+   const b=s.boss,opening=b.cycle===0||b.cycle===1&&b.mode==='salvo';
+   const blend=opening?1:b.cycle===1&&b.mode==='recover'?clamp((b.timer-1.95)/.65,0,1):0;
+   const mapClear=b.x+Math.max(0,size.w/2-143)/scale;
+   framedX-=Math.max(0,focusX-mapClear)*blend;
+  }
+  const cx=clamp(framedX,view.w/2-edgeMargin,Math.max(view.w/2,1600-view.w/2)+edgeMargin);
   const cy=clamp(focusY,view.h/2-bossMargin,Math.max(view.h/2,1200-view.h/2));
   c.setTransform(size.dpr,0,0,size.dpr,0,0);c.clearRect(0,0,size.w,size.h);c.fillStyle='#263a44';c.fillRect(0,0,size.w,size.h);c.translate(size.w/2,size.h/2);c.scale(scale,scale);c.translate(-cx,-cy);c.imageSmoothingEnabled=false;
   const shake=!reduced&&s.player.hurt>0?Math.sin(s.t*75)*3:0;c.translate(shake,0);
@@ -321,8 +332,9 @@ export function createRenderer(canvas,art){
    if(visible(gate.x,gate.y,80))paintGateApproach(c,gate,gateNear);
   }
   const raid=s.raid?.state==='active'?s.raid:null;
-  const approach=activeEntry(s);
+  const approach=activeEntry(s),gantry=portGantry(s);
   if(raid)paintRaidLane(c,raid,visible);else if(approach)paintEntryRoutes(c,approach);
+  if(gantry){if(!raid)paintEntryRoutes(c,{routes:[gantry]});if(visible(gantry.x,gantry.y))paintPortGantry(c,gantry);}
   const chargeLane=coastChargeLane(s);if(chargeLane)paintChargeLane(c,s.boss,chargeLane);
   const entry=s.effects.find(f=>f.type==='region-entry');
   if(entry)paintFrontEntry(c,entry.x,entry.y,index,entry.age,reduced);

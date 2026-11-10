@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_LANDING,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -39,7 +39,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -64,6 +64,8 @@ export function restore(raw,{allowPrevious=false}={}){
  if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
  if(s.operation){
   s.trials??=s.trial?[s.trial]:[];
+  if(s.operation.portDock!==undefined&&(s.operation.portDock!==true||s.operation.region!==2||!s.sites.some(site=>site.id==='port-landing'&&site.state==='done')))fail();
+  if(s.operation.portEntry!==undefined&&(s.operation.portEntry!=='gantry'||!s.operation.portDock||s.stage==='field'))fail();
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
   const supply=s.boss.harborSupply;
   if(supply!=null&&(s.operation.region!==2||s.operation.support!=='recovery'||!PORT_SUPPORT.recovery.lanes.includes(supply.x)||supply.y!==PORT_SUPPORT.recovery.y))fail();
@@ -749,8 +751,10 @@ function updateSites(s,dt){
  if(s.stage==='boss')return;
  for(const site of s.sites){
   if(site.id==='supply-b'&&site.state==='waiting'){site.baseX??=site.x;site.x=site.baseX+Math.sin(s.t*.35)*55;}
-  const approach=COAST_APPROACHES[site.coastApproach];
-  if(approach&&s.sites[0].state!=='done')continue;
+  const dock=s.operation?.region===2&&site.id==='port-landing';
+  if(dock&&s.stage!=='field')continue;
+  const approach=dock?PORT_LANDING:COAST_APPROACHES[site.coastApproach];
+  if(site.coastApproach&&s.sites[0].state!=='done')continue;
   if(site.state==='waiting'&&distance(site,s.player)<(approach?.range??215)){
    const count=approach?.guards.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6),reserve=alive(s).length+count-160;
    if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets?.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}
@@ -760,13 +764,19 @@ function updateSites(s,dt){
     const angle=i*TAU/6;
     const guard=site.kind==='armory'&&i===0?'officer':i===1&&!site.opening?'shield':'rifle';
     const [type,x,y]=approach?approach.guards[i]:[guard,Math.cos(angle)*85,Math.sin(angle)*65];
-    spawnEnemy(s,type,site.x+x,site.y+y,site.id,approach?{cohort:'coast-guard'}:{});
+    const dx=dock&&site.x>800?-x:x;
+    spawnEnemy(s,type,site.x+dx,site.y+y,site.id,site.coastApproach?{cohort:'coast-guard'}:{});
    }
    emit(s,'engage',site.x,site.y);
   }
   if(site.kind==='relay'&&site.state==='active'&&distance(site,s.player)<125)site.progress=Math.min(5,site.progress+dt);
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
   if(site.state==='ready'&&distance(site,s.player)<SITE_PICKUP_RANGE){site.state='done';
+   if(dock){
+    s.operation.portDock=true;
+    emit(s,'port-hatch',site.x,site.y,{text:'측면 해치 개방 · 작전도에 통로 표시',life:1.6});
+    return;
+   }
    if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s.operation.region),site.name);
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality,siteId:site.id});}
    else if(site.id==='rail-cache'&&s.operation?.region===1)openChoice(s,'rail-workshop',railWorkshopCards(s),site.name);
@@ -926,6 +936,8 @@ function startChallenge(s){
 
 export function interaction(s){
  if(s.phase!=='playing'||s.player.hp<=0)return null;
+ const gantry=portGantry(s);
+ if(gantry&&distance(s.player,gantry)<64)return{id:'boss',gantry,blocked:s.raid?.state==='active',label:'측면 해치 · 기습 진입'};
  if(s.stage==='field'&&distance(s.player,{x:800,y:350})<130)return{id:'boss',blocked:s.raid?.state==='active',label:`${s.operation?region(s).boss:'장갑 수송차'} 도전`};
  const gate=exitGate(s);
  return gate&&distance(s.player,gate)<(s.operation?92:140)?{id:'extract',label:s.operation?.region===2?'귀환 선택':'전진 · 잔류 선택'}:null;
@@ -947,7 +959,22 @@ export function action(s,kind){
  }
  if(kind==='skill'){const cfg=RULES.fio[p.doctrine];if(p.skillCd>0||p.overdrive>0||p.charge<cfg.cost)return false;p.charge-=cfg.cost;p.overdrive=cfg.duration;p.skillCd=cfg.cooldown;emit(s,'skill',p.x,p.y,{text:'전탄 보급',life:.7});return true;}
  if(kind==='challenge')return startChallenge(s);
- if(kind==='interact'){const item=interaction(s);if(!item)return false;if(item.id==='extract'){if(s.operation){openChoice(s,'clear',exitCards(s),'열린 출구');}else finish(s,true);return true;}if(s.raid?.state==='active')return false;s.stage='boss';s.refits=0;s.boss.active=true;s.boss.mode='aim';s.boss.timer=1.3;p.x=800;p.y=470;if(!(s.operation?.region>0))clearCoastOverlap(s,p,16,{x:800,y:350});p.invuln=Math.max(p.invuln,1);s.enemies=s.enemies.filter(e=>distance(e,s.boss)<400);s.enemyShots=[];s.hazards=[];emit(s,'boss-arrival',800,250,{life:1.3});return true;}
+ if(kind==='interact'){
+  const item=interaction(s);if(!item||item.blocked)return false;
+  if(item.id==='extract'){if(s.operation)openChoice(s,'clear',exitCards(s),'열린 출구');else finish(s,true);return true;}
+  if(item.gantry)s.operation.portEntry='gantry';
+  const dock=s.operation?.region===2&&s.sites.find(site=>site.id==='port-landing');
+  if(dock?.state==='active')dock.state='waiting';
+  s.stage='boss';s.refits=0;s.boss.active=true;s.boss.mode='aim';s.boss.timer=1.3;
+  p.x=item.gantry?.x??800;p.y=item.gantry?.y??470;
+  if(!(s.operation?.region>0))clearCoastOverlap(s,p,16,{x:800,y:350});
+  p.invuln=Math.max(p.invuln,1);
+  s.enemies=s.enemies.filter(e=>distance(e,s.boss)<400&&(!dock||e.siteId!==dock.id));
+  s.enemyShots=[];s.hazards=[];
+  if(item.gantry)emit(s,'port-ambush',800,250,{text:'측면 기습 · 포탑 사선 확보',life:1.3});
+  else emit(s,'boss-arrival',800,250,{life:1.3});
+  return true;
+ }
  return false;
 }
 export function finish(s,won=false,reason='retreat'){
