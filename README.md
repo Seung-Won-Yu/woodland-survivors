@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.28.0" src="https://img.shields.io/badge/RIFT-0.28.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.29.0" src="https://img.shields.io/badge/RIFT-0.29.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -77,6 +77,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.29는 화염과 전도의 저체력·완성 빌드에서 같은 게이트를 전진과 잔류로 갈라, 인앱 브라우저에서 여덟 경로의 귀환을 확인했습니다. 저체력 즉시 전진은 다음 전선에서 체력 60%를 보장하고, 잔류는 전투를 더 치르는 대신 보급과 크레딧을 줍니다. [저체력·완성 빌드 비교](docs/RIFT-GAMEPLAY-V1.md#029-저체력과-완성-빌드의-게이트-비교).
 
 0.28은 시드 16의 화염 판으로 즉시 전진과 해안 잔류를 비교했습니다. 철도에서 선발 경보와 돌격 신관이 각각 발동했고 두 판 모두 항구에서 생존 귀환했습니다. [전진·잔류 비교](docs/RIFT-GAMEPLAY-V1.md#028-즉시-전진과-잔류-보급-검증).
 

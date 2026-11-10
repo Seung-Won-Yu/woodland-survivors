@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
-import {REGIONS,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
+import {REGIONS,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
@@ -48,8 +48,8 @@ export function choiceDetails(s,c){
   out.impact=support?`${support.name} 장착 후 전진`:vanguard?'선발 지원 받고 전진':'무장과 레벨을 이어 전진';
   out.detail=vanguard?`첫 증원까지 ${Math.ceil(HOLDOUT.grace-s.holdTime)}초 · 남겨둘 XP ${groundXp(s)}`:`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
   out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':vanguard?'다음 보스 첫 포격 경고 +1초':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
-  const kit=FRONT_SUPPORTS.vanguard;
-  out.cost=vanguard?`도착 시 체력 최대 +${kit.heal} · 전탄 충전 최대 +${kit.charge}`:'현재 무장·모듈·체력·XP 유지';
+  const aid=vanguard?vanguardAid(s.player):null;
+  out.cost=aid?`도착 시 체력 ${Math.ceil(s.player.hp)} → ${Math.ceil(aid.hp)} · 전탄 ${Math.floor(s.player.charge)} → ${Math.floor(aid.charge)}`:'현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){
   const rare=s.operation?.region<2&&!s.operation.challengeTier;

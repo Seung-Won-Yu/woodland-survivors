@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
@@ -21,11 +21,7 @@ function advanceRegion(s){
  const support=s.operation.nextSupport||(canAdvanceWithVanguard(s)?'vanguard':null);
  s.operation.history.push({region:s.operation.region,time:s.operation.regionTime,pressure:s.pressure,holdTime:s.holdTime,holdoutKills:s.operation.holdoutKills||0,nextSupport:support,sites:s.sites.filter(n=>n.state==='done').length});
  s.operation.support=support;delete s.operation.nextSupport;delete s.operation.tactic;
- if(support==='vanguard'){
-  const kit=FRONT_SUPPORTS.vanguard;
-  s.player.hp=Math.min(s.player.maxHp,s.player.hp+kit.heal);
-  s.player.charge=Math.min(100,s.player.charge+kit.charge);
- }
+ if(support==='vanguard')Object.assign(s.player,vanguardAid(s.player));
  s.operation.region++;s.operation.regionTime=0;s.operation.jammed=false;s.operation.challengeTier=0;s.operation.holdoutKills=0;delete s.operation.gate;delete s.pursuitClock;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[s.operation.region]};
  Object.assign(s,regionLayout(s.seed+s.operation.region*7919,s.operation.region));s.boss=regionBoss(s.operation.region);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;s.player.x=800;s.player.y=1040;s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
  if(s.powerWave?.showcase&&s.powerWave.paired>0){
@@ -40,7 +36,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');

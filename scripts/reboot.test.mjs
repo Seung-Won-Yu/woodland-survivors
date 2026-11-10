@@ -6,6 +6,7 @@ import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js'
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
+import {choiceDetails} from '../src/reboot/choice-details.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -308,6 +309,16 @@ test('fast advance gives one longer warning, while late advance skips the early 
  };
  const early=warning(0),late=warning(HOLDOUT.grace);
  assert.equal(early.uses,1);assert.equal(late.uses,0);assert.equal(early.first-late.first,1);assert.equal(early.second,late.second);
+});
+test('advance preview matches emergency stabilization and preserves tuning',()=>{
+ for(const [hp,expected] of [[25,60],[43,63],[95,100]]){
+  const s=quietOperation();clearRegion(s);
+  Object.assign(s.player,{hp,charge:90});
+  const card=s.choices.find(c=>c.id==='advance'),tuning=s.tuning;
+  assert.equal(choiceDetails(s,card).cost,`도착 시 체력 ${hp} → ${expected} · 전탄 90 → 100`);
+  assert.ok(choose(s,'advance'));assert.equal(s.player.hp,expected);
+  assert.equal(s.player.charge,100);assert.equal(s.tuning,tuning);
+ }
 });
 test('a holdout reward carries only to the next front and survives a checkpoint',()=>{
  const s=quietOperation(),profile=beginProfile(emptyProfile(),s);
