@@ -162,7 +162,7 @@ export function createRenderer(canvas,art){
    else if(f.type==='raid-success'){const color=({common:'#ffe0a1',rare:'#90e0da',prototype:'#dcafff'})[f.quality];circle(c,f.x,f.y,25+t*110,null,color,4);for(let i=0;i<10;i++){const a=i*TAU/10;c.fillStyle=color;c.fillRect(f.x+Math.cos(a)*t*120,f.y+Math.sin(a)*t*75-20,4,8);}}
    else if(f.type==='payload'){circle(c,f.x,f.y,12+t*48,null,'#9bf2e8',3);circle(c,f.x,f.y,6+t*20,'#b7f4e444');}
    else if(f.type==='formation'){
-    const r=29+t*15;c.strokeStyle='#b3e7da';c.lineWidth=2;c.strokeRect(f.x-r,f.y-r,r*2,r*2);
+    const r=29+t*15;c.strokeStyle=f.showcase==='flame'?'#efb477':'#b3e7da';c.lineWidth=2;c.strokeRect(f.x-r,f.y-r,r*2,r*2);
    }
    else if(f.type==='payload-relay'){
     const x=f.x2-f.x,y=f.y2-f.y;

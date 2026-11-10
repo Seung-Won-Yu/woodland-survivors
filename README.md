@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.24.0" src="https://img.shields.io/badge/RIFT-0.24.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.25.0" src="https://img.shields.io/badge/RIFT-0.25.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -78,7 +78,9 @@ npm run test:pages
 
 ### 검증 범위
 
-규칙·UI와 저장소 하위 경로 배포를 자동 검사합니다. 0.24는 390px 모바일 브라우저의 화면 스틱으로 전도 격발망을 완성해 2:13에 귀환했습니다. 분열 수류탄을 연구한 뒤 새 출격에서 장착해 파쇄 폭발을 확인했습니다. 4시드 × 3빌드의 정상 입력 모델 플레이도 모두 완주했습니다. [실제 공개판 완주·연구·재출격](docs/VALIDATION-RIFT-V017.md)과 [전장·정비 흐름 검증](docs/VALIDATION-RIFT-V018.md)을 기록했습니다.
+규칙·UI와 저장소 하위 경로 배포를 자동 검사합니다. 0.25는 시드 16에서 해안 90초와 두 빌드의 완성 후 15초를 정상 입력으로 비교했습니다. 시드 18에서 합체 직후 보스에 진입했을 때 시험 편대가 1회에서 3회로 늘고, 15초간 처치가 17명에서 34명으로 늘었습니다. 시드 16의 철도 인페르노는 같은 구간에 36명에서 64명으로 늘었습니다. 브라우저에서 입력을 재생해 같은 전투 장면을 확인했습니다.
+
+0.24는 390px 모바일 브라우저에서 전도 격발망으로 2:13에 귀환하고, 분열 수류탄을 연구해 새 판에서 발동했습니다. [공개판 완주·연구·재출격](docs/VALIDATION-RIFT-V017.md)과 [전장·정비 흐름 검증](docs/VALIDATION-RIFT-V018.md)에 이전 검증도 기록했습니다.
 
 매판 해안의 기관총 H LV.1로 시작합니다. 이전 판이 남아 있으면 새 출격과 함께 확보한 성과를 정산합니다. 기록·크레딧·연구·설정은 브라우저의 `operation-rift-profile-v2`에 저장합니다. 구형 저장·크레딧을 삭제하거나 합산하지 않습니다. 활성 판의 ID·정산 중복·동시 탭 충돌을 검사합니다.
 

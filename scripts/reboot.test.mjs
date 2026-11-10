@@ -216,6 +216,22 @@ test('heat audio stays distinct while hurt keeps foreground priority',async()=>{
 function quietOperation(){const s=createOperation(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function downBoss(s){s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.shots=[bullet(s,s.boss)];step(s,dt);}
 function clearRegion(s){downBoss(s);assert.equal(s.phase,'playing');assert.equal(s.stage,'holdout');Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.equal(s.choice.type,'clear');}
+test('the fusion showcase waits for a boss opening and survives a quick gate transition',()=>{
+ const s=quietOperation();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing',cd:999});s.modules=[{id:'coil',rank:2}];
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));
+ s.boss.timer=99;s.boss.spawnClock=99;tick(s,1);
+ assert.equal(s.powerWave.paired,3);assert.ok(s.enemies.every(e=>e.waveGroup==null));
+ s.boss.mode='recover';tick(s,.72);assert.equal(s.powerWave.paired,2);
+ assert.equal(s.enemies.filter(e=>e.waveGroup!=null).length,8);
+ clearRegion(s);assert.ok(choose(s,'advance'));assert.equal(s.powerWave.showcase,'fusion');assert.equal(s.powerWave.paired,2);
+});
+test('Inferno forms a dense lane even when heat synergy was completed earlier',()=>{
+ const s=quiet();s.powerDone=true;s.stats.completedBuild={kind:'synergy',t:0};s.weapons=[{...makeWeapon('f'),uid:'inferno',level:6,branch:'trail',cd:999}];s.modules=[{id:'catalyst',rank:2}];
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'evolve:f'));assert.equal(s.powerWave.showcase,'flame');tick(s,.72);
+ const markers=s.effects.filter(e=>e.type==='formation');assert.equal(markers.length,2);assert.ok(markers.every(e=>e.showcase==='flame'));
+ assert.ok(Math.abs(Math.hypot(markers[0].x-markers[1].x,markers[0].y-markers[1].y)-74)<1e-6);
+ assert.equal(s.stats.completedBuild.kind,'synergy');assert.equal(s.enemies.length,8);
+});
 test('campaign advances real maps while retaining gear, HP, XP, tokens and earned choices',()=>{
  const s=quietOperation();s.weapons[0].level=4;s.weapons[0].branch='grenade';s.modules=[{id:'coil',rank:2}];s.player.hp=50;s.xp=4;clearRegion(s);assert.equal(s.operation.cleared,1);assert.equal(s.player.hp,65);assert.equal(s.tuning,2);const gear=snapshot(s.weapons),modules=snapshot(s.modules),hp=s.player.hp,xp=s.xp;assert.ok(choose(s,'stay'));assert.equal(s.operation.region,0);s.player.x=800;s.player.y=420;assert.equal(action(s,'interact'),false);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'advance'));assert.equal(s.operation.region,1);assert.equal(s.operation.regionTime,0);assert.equal(s.pressure,0);assert.deepEqual(s.weapons,gear);assert.deepEqual(s.modules,modules);assert.equal(s.player.hp,hp);assert.equal(s.xp,xp);assert.ok(s.sites.some(n=>n.kind==='relay'));assert.ok(s.blocks.some(b=>b.id==='r1'));assert.deepEqual(restore(snapshot(s)).operation,s.operation);
 });

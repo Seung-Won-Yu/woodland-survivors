@@ -21,7 +21,9 @@ function advanceRegion(s){
  s.operation.support=s.operation.nextSupport||null;delete s.operation.nextSupport;
  s.operation.history.push({region:s.operation.region,time:s.operation.regionTime,pressure:s.pressure,holdTime:s.holdTime,sites:s.sites.filter(n=>n.state==='done').length});s.operation.region++;s.operation.regionTime=0;s.operation.jammed=false;s.operation.challengeTier=0;delete s.operation.gate;delete s.pursuitClock;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[s.operation.region]};
  Object.assign(s,regionLayout(s.seed+s.operation.region*7919,s.operation.region));s.boss=regionBoss(s.operation.region);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;s.player.x=800;s.player.y=1040;s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
- if(s.stats.completedBuild)s.powerWave={delay:3,remaining:60,clock:0};
+ if(s.powerWave?.showcase&&s.powerWave.paired>0){
+  s.powerWave.remaining=Math.max(s.powerWave.remaining,60);s.powerWave.delay=1;
+ }else if(s.stats.completedBuild)s.powerWave={delay:3,remaining:60,clock:0};
  for(let i=0;i<10;i++)spawnAround(s,i===0?'officer':'rifle',{cohort:'ambient'},360,30);emit(s,'region-entry',800,1040,{text:`${s.operation.region+1}/3 · ${region(s).name}`,life:1.6});nextChoice(s);return true;
 }
 function exitCards(s){
@@ -30,7 +32,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -45,6 +47,7 @@ export function restore(raw,{allowPrevious=false}={}){
   s.trials??=s.trial?[s.trial]:[];
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
  }
+ if(s.powerWave?.paired>0&&!s.powerWave.showcase)s.powerWave.showcase='fusion';
  if(s.player.maneuver&&!Object.hasOwn(MANEUVERS,s.player.maneuver))fail();
  const kinds=new Set(['advance','control','rank','module','gun','evolve','fusion','tune','repair','utility','refit','resupply','back','stay','extract','maneuver','permit','front-support','cargo']);
  const cardsOk=cards=>Array.isArray(cards)&&cards.length>0&&cards.every(c=>(c.kind!=='resupply'||Number.isFinite(c.heal)&&Number.isFinite(c.charge)&&c.heal>=0&&c.charge>=0)&&typeof c.id==='string'&&kinds.has(c.kind)&&(!c.weapon||GUNS[c.weapon])&&(!c.module||MODULES[c.module])&&(!['rank','gun','evolve'].includes(c.kind)||!!GUNS[c.weapon])&&(!['module','tune'].includes(c.kind)||!!MODULES[c.module])&&(c.kind!=='module'||Number.isInteger(c.rank)&&c.rank>=1&&c.rank<=3));
@@ -141,7 +144,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
   if(s.weapons.length>=3||Number.isInteger(slot)&&slot>=0){const old=s.weapons[slot];if(!old||old.evolved||old.fusion)return false;w.level=s.refits>0&&s.stage==='field'?Math.min(5,old.level):Math.min(5,base+Math.floor(Math.max(0,old.level-base)/2));if(w.level>=4){if(!GUNS[w.id].branches[branch])return false;w.branch=branch;}if(s.refits>0&&s.stage==='field')s.refits--;w.uid=`w-${++s.id}`;s.weapons[slot]=w;}else{w.uid=`w-${++s.id}`;s.weapons.push(w);}
   if(!s.firstNew)s.firstNew=w.id;
  }
- else if(c.kind==='evolve'){if(!assemblyOptions(s).some(o=>o.id===id))return false;const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion&&!w.evolved);w.evolved=true;s.tuning--;buildCompleted(s,'single');}
+ else if(c.kind==='evolve'){if(!assemblyOptions(s).some(o=>o.id===id))return false;const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion&&!w.evolved);w.evolved=true;s.tuning--;buildCompleted(s,'single',w.id);}
  else if(c.kind==='fusion'){
   if(!assemblyOptions(s).some(o=>o.id===id))return false;const a=s.weapons.find(w=>w.id===c.primary&&!w.fusion),b=s.weapons.find(w=>w.id===c.secondary&&!w.fusion);a.fusion={secondary:b.id,branch:b.branch,overflow:Math.min(4,a.level+b.level-8)};a.level=6;a.evolved=true;a.payload=RULES.fusion.hitsPerPayload;s.weapons.splice(s.weapons.indexOf(b),1);s.tuning--;buildCompleted(s,'fusion');
  }else if(c.kind==='maneuver'){if(s.choice.type!=='assembly'||!assemblyOptions(s).some(o=>o.id===id&&o.key===c.key))return false;s.player.maneuver=c.key;s.stats.maneuver=c.key;}
@@ -180,13 +183,15 @@ export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)r
 }
 export function skip(s){if(s.phase!=='choice'||['assembly','clear','pursuit-reward'].includes(s.choice.type))return false;if(s.player.hp<s.player.maxHp)s.player.hp=Math.min(s.player.maxHp,s.player.hp+s.player.maxHp*.05);else s.player.charge=Math.min(100,s.player.charge+5);if(s.choice.type==='supply')s.supplyCount++;s.phase='playing';s.choice=null;s.choices=[];nextChoice(s);return true;}
 
-function buildCompleted(s,kind){
+function buildCompleted(s,kind,weapon){
  if(!s.stats.completedBuild)s.stats.completedBuild={kind,t:s.t};
- if(kind==='fusion'&&!s.stats.fusionReveal){
-  s.stats.fusionReveal=true;
-  s.powerWave={delay:.65,remaining:s.powerDone?Math.max(24,s.powerWave?.remaining||0):60,clock:0,paired:3};
+ const showcase=kind==='fusion'?'fusion':weapon==='f'?'flame':null;
+ const revealed=showcase==='fusion'?'fusionReveal':'flameReveal';
+ if(showcase&&!s.stats[revealed]){
+  s.stats[revealed]=true;
+  s.powerWave={delay:.65,remaining:s.powerDone?Math.max(24,s.powerWave?.remaining||0):60,clock:0,paired:3,showcase};
   s.powerDone=true;
-  emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:'전도 격발망 가동 · 첫 연쇄탄 장전'});
+  emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:showcase==='fusion'?'전도 격발망 가동 · 첫 연쇄탄 장전':'인페르노 가동 · 밀집 보병 접근'});
  }else if(!s.powerDone){
   s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};
   emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='single'?'무기 진화 완료':'발동 연계 완성'});
@@ -444,27 +449,35 @@ function withdrawRaid(s){
  if(s.raid?.state!=='active')return false;
  s.raid.state='withdrawn';s.stats.raidFailed++;return true;
 }
-function spawnPairedWave(s,pulse){
+function spawnPairedWave(s,pulse,showcase){
  const p=s.player,crowd=alive(s);
  if(crowd.length>152)return false;
  for(let i=0;i<8;i++){
   const heading=p.aim+i*TAU/8;
-  const centers=[{x:p.x+Math.cos(heading-.34)*205,y:p.y+Math.sin(heading-.34)*205},{x:p.x+Math.cos(heading+.48)*248,y:p.y+Math.sin(heading+.48)*248}];
-  const packs=centers.map(({x,y})=>[[-20,-20],[20,-20],[-20,20],[20,20]].map(([dx,dy])=>({x:x+dx,y:y+dy})));
-  if(lineBlocked(s,...centers)||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||crowd.some(e=>distance(q,e)<32)))continue;
-  for(let group=0;group<2;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',waveGroup:pulse*2+group});
-  for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75});
+  const flame=showcase==='flame',lanes=flame?[[0,190],[0,264]]:[[-.34,205],[.48,248]];
+  const centers=lanes.map(([offset,reach])=>({x:p.x+Math.cos(heading+offset)*reach,y:p.y+Math.sin(heading+offset)*reach}));
+  const cos=flame?Math.cos(heading):1,sin=flame?Math.sin(heading):0;
+  const packs=centers.map(({x,y})=>[[-18,-20],[18,-20],[-18,20],[18,20]].map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
+  if(lineBlocked(s,...centers)||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||s.boss.active&&distance(q,s.boss)<s.boss.r+28||crowd.some(e=>distance(q,e)<32)))continue;
+  for(let group=0;group<2;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',...(flame?{}:{waveGroup:pulse*2+group})});
+  for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase});
   return true;
  }
  return false;
 }
 function updatePowerWave(s,dt){
- const wave=s.powerWave;if(!wave||s.stage==='boss')return;
+ const wave=s.powerWave;if(!wave)return;
+ const showcase=wave.paired>0&&wave.showcase;
+ if(s.stage==='boss'&&(!showcase||s.boss.mode!=='recover'))return;
  if(wave.delay>0){wave.delay-=dt;return;}
  wave.clock-=dt;if(wave.clock>0)return;
  if(wave.paired>0){
-  if(wave.remaining>=8&&spawnPairedWave(s,wave.paired))wave.remaining-=8;
-  else for(let i=0;i<8&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{cohort:'ambient'},360))wave.remaining--;
+  if(wave.remaining>=8&&spawnPairedWave(s,wave.paired,wave.showcase))wave.remaining-=8;
+  else{
+   const before=wave.remaining;
+   for(let i=0;i<8&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{cohort:'ambient'},360))wave.remaining--;
+   if(wave.remaining===before){wave.clock=.25;return;}
+  }
   wave.paired--;wave.clock=.9;
  }else{
   wave.clock=.4;for(let i=0;i<4&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{},360))wave.remaining--;
@@ -588,7 +601,7 @@ function updateHoldout(s,dt){
 }
 function openGate(s){
  const gate=s.operation.gate=gatePosition(s);
- s.spawnClock=0;s.powerWave=null;
+ s.spawnClock=0;if(!s.powerWave?.showcase||s.powerWave.paired<=0)s.powerWave=null;
  const {x,y}=s.boss;
  const xp=[4,6,9][s.operation.region];
  for(let i=0;i<8;i++){
