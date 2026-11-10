@@ -237,7 +237,7 @@ function paintPortCue(c,s,aid){
  }else if(portCoreDisrupted(s)){
   circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
  }
- if(portAidCounterReady(s)){
+ if(portAidCounterReady(s)&&b.parts[1].hp>0){
   const p=partPosition(s,b.parts[1]);
   c.setLineDash([5,4]);circle(c,p.x,p.y,31,null,'#d7f0b8',2);c.setLineDash([]);
   c.fillStyle='#d7f0b8';c.fillRect(p.x-9,p.y-34,18,3);c.fillRect(p.x-2,p.y-41,4,10);

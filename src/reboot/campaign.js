@@ -72,7 +72,7 @@ export const PORT_LANDING={range:215,guards:[
 export const PORT_SUPPORT={
  breach:{impact:'포탑 측면 피해 +65% · 후속 탄막 차단',detail:'예고 중에는 포탑탄도 끊습니다. 포탄이 떨어진 뒤에는 재장전 전까지 후속 탄막을 끊을 수 있습니다.',hint:'포격 예고 중 포탑 쪽 사선 확보',flank:105,boost:1.65},
  overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,sideStep:48,damage:320,delay:.9},
- recovery:{impact:'구급 화물 회수 → 스킬로 측면 장갑 타격',detail:'화물은 체력 +12, 전탄 +20을 줍니다. 경고 중 안전 회수는 전탄 +45와 빠른 회피 재정비를 줍니다.',hint:'측면 화물 확보 → 가로 포격 때 스킬',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
+ recovery:{impact:'구급 화물 → 스킬로 조준탄 차단',detail:'가로 장갑탄이 있으면 양옆 탄을, 그 외에는 발밑탄을 끊습니다. 화물은 체력 +12, 전탄 +20. 경고 중 안전 회수 시 전탄 +45와 회피 재정비.',hint:'측면 화물 확보 → 포격 예고 때 스킬',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
@@ -85,7 +85,11 @@ export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='
 export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
 export const portCoreDisrupted=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle===s.boss.cycle;
 export const portCoreReach=boss=>boss.r+PORT_SUPPORT.overrun.reach;
-export const portAidCounterReady=s=>s.operation?.region===2&&s.operation.support==='recovery'&&s.boss.active&&!s.boss.dead&&s.boss.harborCounter===true&&s.boss.parts[1]?.hp>0;
+export const portAidCounterReady=s=>s.operation?.region===2&&s.operation.support==='recovery'&&s.boss.active&&!s.boss.dead&&s.boss.harborCounter===true;
+export function portAidCounterRound(s){
+ if(!portAidCounterReady(s))return null;
+ return s.hazards.find(h=>!h.hit&&h.portRound==='rake')||s.hazards.find(h=>!h.hit&&h.portRound==='lock')||null;
+}
 export function portAidPoint(boss,cycle){
  const kit=PORT_SUPPORT.recovery,side=(cycle%2?-1:1)*portTurretSide(boss);
  return {x:kit.lanes[side<0?0:1],y:kit.y};

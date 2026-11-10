@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.67.0" src="https://img.shields.io/badge/RIFT-0.67.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.68.0" src="https://img.shields.io/badge/RIFT-0.68.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.68에서는 철도 잔류 부품에 따라 항구에서 포탑 측면 사격, 재장전 중 코어 돌입, 화물 회수 후 조준탄 차단을 노립니다. 회수 의무 장비는 세로 포격과 측면 장갑 파괴 뒤에도 지원 포격을 쓸 수 있습니다. [부품별 항구 공략 검증](docs/RIFT-GAMEPLAY-V1.md#068-철도-부품과-항구-조준탄-차단).
 
 0.67에서는 철도 갈림길에서 지금 얻을 수 있는 정비 재료와 중계기의 포격 예고 연장을 비교합니다. 한 번의 투자로 조립 조건을 채울 수 있으면 정비대가 마지막 재료를 제시합니다. [철도 갈림길 검증](docs/RIFT-GAMEPLAY-V1.md#067-철도-갈림길과-마지막-조립-재료).
 

@@ -1186,6 +1186,40 @@ test('a recovered harbor aid charge adds one counterstrike to the next operator 
  assert.equal(loaded.boss.parts[1].hp,armor.hp-360);
  assert.equal(loaded.operation.harborPayoff.counterfire,1);
 });
+test('harbor aid intercepts the center of a vertical salvo and leaves the other rounds live',()=>{
+ const s=supportArena(2,'recovery','aim');
+ s.operation.portEntry='gantry';
+ Object.assign(s.boss,{cycle:0,timer:0});
+ Object.assign(s.player,{x:800,y:435,charge:100});
+ step(s,dt);
+ Object.assign(s.player,s.boss.harborSupply);
+ step(s,dt);
+ const before=s.hazards.find(h=>h.portRound==='lock');
+ assert.equal(before.portAxis,'vertical');
+ assert.ok(action(s,'skill'));
+ assert.deepEqual(s.hazards.map(h=>h.portRound),['battery','turret','battery','turret']);
+ assert.equal(s.operation.harborPayoff.locks,1);
+ assert.ok(s.effects.some(e=>e.type==='aid-counter'&&e.x===before.x&&e.y===before.y));
+});
+test('aid charges collected after the armor breaks survive a save and a skill between salvos',()=>{
+ const s=supportArena(2,'recovery','recover');
+ const [turret,armor]=s.boss.parts;
+ turret.hp=armor.hp=0;
+ Object.assign(s.boss,{cycle:1,harborSupply:{x:975,y:335},harborSupplyCycle:1});
+ Object.assign(s.player,s.boss.harborSupply,{charge:100});
+ step(s,dt);
+ const loaded=restore(snapshot(s));
+ assert.ok(action(loaded,'skill'));
+ assert.equal(loaded.boss.harborCounter,true);
+ assert.equal(loaded.operation.harborPayoff.counterfire,undefined);
+ Object.assign(loaded.boss,{mode:'aim',timer:0});
+ Object.assign(loaded.player,{charge:100,overdrive:0,skillCd:0});
+ step(loaded,dt);
+ assert.ok(loaded.hazards.some(h=>h.portRound==='lock'));
+ assert.ok(action(loaded,'skill'));
+ assert.equal(loaded.boss.harborCounter,undefined);
+ assert.equal(loaded.operation.harborPayoff.locks,1);
+});
 test('a dodge into a safe harbor crate clears the warning edge before auto-pickup',()=>{
  const s=supportArena(2,'recovery','aim');
  s.operation.harborPayoff={};

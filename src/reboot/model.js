@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -677,7 +677,6 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if(s.operation?.region===1)stopRailGun(s,actual);
   if(s.operation?.region===2){
    const turret=actual===s.boss.parts[0];
-   if(!turret)delete s.boss.harborCounter;
    if(clearPortRounds(s,turret?'turret':'rake'))emit(s,'barrage-cancel',e.x,e.y,{life:1.1,text:turret?'포탑 파괴 · 포탑탄 차단':'측면 장갑 파괴 · 가로 포격 차단'});
   }
   emit(s,'break',e.x,e.y,{life:.7});return;
@@ -886,14 +885,22 @@ function dropHarborAid(s){
  emit(s,'supply-ready',point.x,point.y,{life:1.1,text:`${point.x<800?'좌측':'우측'} 구급 화물 투하`});
 }
 function fireHarborAidCounter(s){
- const b=s.boss,armor=b.parts[1];
+ const b=s.boss,armor=b.parts[1],round=portAidCounterRound(s);
+ if(!round&&armor.hp<=0)return;
  delete b.harborCounter;
- const cancelled=clearPortRounds(s,'rake');
- Object.assign(armor,partPosition(s,armor));
- damage(s,armor,PORT_SUPPORT.recovery.counterDamage,'blast','support');
- recordHarborPayoff(s,'counterfire');
- if(cancelled)recordHarborPayoff(s,'rakes');
- emit(s,'aid-counter',armor.x,armor.y,{life:.72,text:cancelled?'지원 포격 · 가로 포격 차단':'지원 포격 · 측면 장갑 명중'});
+ const target=round?.portRound;
+ if(target){
+  clearPortRounds(s,target);
+  recordHarborPayoff(s,target==='rake'?'rakes':'locks');
+ }
+ if(armor.hp>0){
+  Object.assign(armor,partPosition(s,armor));
+  damage(s,armor,PORT_SUPPORT.recovery.counterDamage,'blast','support');
+  recordHarborPayoff(s,'counterfire');
+ }
+ const {x,y}=round||armor;
+ const result=target==='rake'?'가로 장갑탄 차단':target==='lock'?'발밑 조준탄 차단':'측면 장갑 명중';
+ emit(s,'aid-counter',x,y,{life:.72,text:`지원 포격 · ${result}`});
 }
 function updateOperationBoss(s,dt){
  const b=s.boss,p=s.player,index=s.operation.region;
@@ -1388,7 +1395,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
   const rearmed=early&&p.dashCd>kit.dashDelay;
   p.hp=Math.min(p.maxHp,hp+kit.heal);p.charge=Math.min(100,charge+(early?kit.warningCharge:kit.charge));
   if(rearmed)p.dashCd=kit.dashDelay;
-  if(s.boss.parts[1].hp>0){s.boss.harborCounter=true;s.operation.harborPayoff??={};}
+  s.boss.harborCounter=true;s.operation.harborPayoff??={};
   delete s.boss.harborSupply;recordSupportUse(s);
   recordHarborPayoff(s,early?'safeAid':'aid');
   const healed=Math.ceil(p.hp)-Math.ceil(hp),charged=Math.floor(p.charge)-Math.floor(charge);

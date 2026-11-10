@@ -143,7 +143,7 @@ function harborPayoff(r){
  const labels={
   breach:[['salvos','포탑탄 차단'],['fans','후속 탄막 차단']],
   overrun:[['dives','코어 돌입'],['sidesteps','측면 회피']],
-  recovery:[['counterfire','측면 장갑 타격'],['rakes','가로 포격 차단'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
+  recovery:[['locks','발밑 조준탄 차단'],['rakes','가로 포격 차단'],['counterfire','측면 장갑 타격'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
  };
  if(!log||!Object.hasOwn(labels,part))return '';
  const results=labels[part].filter(([key])=>Number.isSafeInteger(log[key])&&log[key]>0)
