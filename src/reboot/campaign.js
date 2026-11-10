@@ -6,7 +6,7 @@ export const REGIONS=[
  {id:'port',name:'항구 결전',mission:'지휘 병기를 파괴하고 살아서 귀환하라',boss:'지휘 병기',hp:9000,partHp:850,theme:{ground:'#4b606b',tile:'#8fa1a8',road:'#2e414c',edge:'#1b3a50'},hint:'관제소를 확보하면 최종전 증원을 줄일 수 있습니다.'}
 ];
 export const region=s=>REGIONS[s.operation?.region||0];
-export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6};
+export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6,rareKills:8};
 export const HOLDOUT_CONTRACTS=[
  {id:'hunt',name:'지휘부 소탕',goal:'지휘관 2명 제압',risk:'양쪽에서 오는 장교의 부채꼴 사격'},
  {id:'defend',name:'중계기 방어',goal:'중계기 반경 안에서 8초 버티기',risk:'범위 안에 포격이 떨어집니다.'},
@@ -15,8 +15,15 @@ export const HOLDOUT_CONTRACTS=[
 export const FRONT_SUPPORTS={
  breach:{name:'철갑 급탄',role:'부위 조준',art:'ammo',impact:'보스 부위 우선 조준 · 피해 +55%',detail:'측면에서 부위가 사거리에 들어오면 차체보다 먼저 조준합니다.',tactics:['양쪽 포대를 부숴 측면 포격 차선을 지우세요.','포탑을 먼저 파괴하면 재장전 직전 부채꼴 사격이 멈춥니다.']},
  overrun:{name:'돌격 신관',role:'재장전 돌입',art:'coil',impact:'회피 충격파 · 빈틈에 기본 피해 260',detail:'회피가 끝날 때 일반 적을 폭파하고, 재장전 중인 보스에도 근접 충격을 줍니다.',tactics:['포격이 끝나면 차선 밖에서 열차 쪽으로 회피하세요.','집중 포격을 벗어난 뒤 노출 코어 쪽으로 회피하세요.']},
- recovery:{name:'회수 의무 장비',role:'측면 순환',art:'medic',impact:'XP 회수 반경 +55 · 측면 구조 화물',detail:'보스의 첫 세 번 재장전 때 측면에 XP 18이 떨어집니다. XP를 회수해 체력을 회복합니다.',tactics:['재장전 때 좌우 선로 밖으로 돌아 구조 화물을 회수하세요.','포격 직후 컨테이너 앞 측면의 구조 화물을 주우세요.']}
+ recovery:{name:'회수 의무 장비',role:'측면 순환',art:'medic',impact:'XP 회수 반경 +55 · 측면 구조 화물',detail:'보스의 첫 세 번 재장전 때 측면에 XP 18이 떨어집니다. XP를 회수해 체력을 회복합니다.',tactics:['재장전 때 좌우 선로 밖으로 돌아 구조 화물을 회수하세요.','포격 직후 컨테이너 앞 측면의 구조 화물을 주우세요.']},
+ vanguard:{name:'선발 지원',role:'첫 포격 선행 경보',art:'medic',heal:20,charge:20,warning:1,tactics:['첫 차선 경고가 1초 길어집니다. 빈 차선으로 이동하세요.','첫 집중 포격 경고가 1초 길어집니다. 포격원을 보고 이동하세요.']}
 };
+const RARE_PARTS=['breach','overrun','recovery'];
+export function holdoutParts(seed,front){
+ const missing=(((seed^(seed>>>16))>>>0)+front*2+2)%RARE_PARTS.length;
+ return RARE_PARTS.filter((_,index)=>index!==missing);
+}
+export const canAdvanceWithVanguard=s=>s.operation?.region<2&&s.stage==='holdout'&&s.holdTime<HOLDOUT.grace&&!s.challenge&&!s.operation.nextSupport;
 export const supportTactic=(id,index)=>FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const FRONT_TACTICS={
  1:{

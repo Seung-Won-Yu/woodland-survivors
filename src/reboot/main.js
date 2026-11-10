@@ -2,7 +2,7 @@ import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,isQuickMod} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol} from './field-scene.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,moduleRank,refitWeapons} from './content.js';
 import {createOperation,restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,activeManeuver,interaction,xpNeeded,takeEvents} from './model.js';
 import {createStore,buyResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -174,6 +174,8 @@ function updateHud(){
   const contractTier=(run.operation.challengeTier||0)+1;
   const active=challenge?.state==='active';
   const rewardTier=active?challenge.tier:contractTier;
+  const rare=!finalFront&&rewardTier===1;
+  const kills=Math.min(run.operation.holdoutKills||0,HOLDOUT.rareKills);
   let detail=contract.risk;
   if(active&&challenge.type==='defend'){
    const inside=distance(p,DEFENSE_ZONE)<=DEFENSE_ZONE.r;
@@ -184,6 +186,7 @@ function updateHud(){
    const left=run.enemies.filter(e=>!e.dead&&challenge.targets.includes(e.id)).length;
    detail=`지휘관 ${2-left}/2명 제압`;
   }else if(challenge?.state==='failed')detail='차량 이탈 · 같은 단계 재도전 가능';
+  if(rare&&active)detail=`${challenge.secured?'목표 확보':detail} · 증원 ${kills}/${HOLDOUT.rareKills}`;
   if(run.raid?.state==='active')detail='습격 종료 후 잔류 도전 가능';
   $('objective').textContent=nearGate?finalFront?'게이트 · 귀환 또는 잔류':'게이트 · 전진 또는 잔류':`${direction} ${finalFront?'귀환':'전진'} 게이트 · ${Math.round(distance(p,gate)/10)}m`;
   $('threat').textContent=tier===0?`첫 증원까지 ${nextWave}초`:tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대 증원`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${nextWave}초`;
@@ -192,7 +195,8 @@ function updateHud(){
   $('ground-xp').textContent=groundXp(run);
   $('pursuit-goal').textContent=active?`D${challenge.tier} · ${contract.name}`:contract.id==='defend'?`중계기 반경 안에서 ${defenseSeconds(contractTier)}초 버티기`:contract.goal;
   $('pursuit-intel').textContent=detail;
-  $('pursuit-pay').textContent=rewardTier===1?(finalFront?`보상 · 화물 ${CARGO_CREDITS}C 또는 후송 보급`:'다음 전선 보급 · 철갑 / 돌격 / 회수 중 택 1'):`완료 점수 +${rewardTier*500}`;
+  const parts=rare?holdoutParts(run.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / '):'';
+  $('pursuit-pay').textContent=rare?`희귀 부품 · ${parts}${canAdvanceWithVanguard(run)?' · 지금 전진 시 선발 지원':''}`:rewardTier===1?`보상 · 화물 ${CARGO_CREDITS}C 또는 후송 보급`:`완료 점수 +${rewardTier*500}`;
   $('pursuit-label').textContent=pursuit.disabled?'도전 대기 · 적 밀집':`D${contractTier} · ${contract.name}`;
  }
  const maneuver=$('maneuver-status'),active=activeManeuver(p);
@@ -212,7 +216,24 @@ function updateHud(){
  $('interact').hidden=!interact||!!interact.blocked;$('interact-label').textContent=interact?.label||'';
  const skill=RULES.fio[p.doctrine];$('skill').disabled=p.charge<skill.cost||p.skillCd>0||p.overdrive>0;$('skill').innerHTML=`전탄 보급<small>${p.overdrive>0?`${p.overdrive.toFixed(1)}초 가동`:p.skillCd>0?`${p.skillCd.toFixed(1)}초`:`${Math.floor(p.charge)}/${skill.cost}`}</small>`;$('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비 · SPACE'}</small>`;
  const raid=run.raid?.state==='active';$('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',raid);if(raid){$('raid-progress').value=run.raid.progress/run.raid.maxProgress;$('raid-hp').textContent=`${run.raid.contract==='armored'?'장갑 수송대':'보급차'} ${Math.ceil(run.raid.target.hp)} / ${run.raid.target.maxHp}`;}
- $('boss-hud').hidden=!run.boss.active;document.body.classList.toggle('boss-active',run.boss.active);if(run.boss.active){$('boss-hp').max=run.boss.maxHp;$('boss-hp').value=run.boss.hp;$('boss-state').textContent=front===1?(run.boss.mode==='recover'?'재장전 · 반격 기회':'포격 열차 · 예고 차선 밖으로 이동'):front===2?(run.boss.mode==='recover'?'코어 노출 · 집중 공격':'지휘 병기 · 붉은 원 밖으로 회피'):run.boss.mode==='recover'?'후면 엔진 노출 · 뒤를 노려라':run.boss.mode==='windup'?'돌진 예고 · 옆으로 회피':'장갑 수송차 · 측후면을 노려라';const names=front===1?['좌측 포대','우측 포대']:front===2?['포탑','측면 장갑']:['포탑','궤도'];$('boss-parts').textContent=names.map((name,i)=>`${name} ${run.boss.parts[i].hp>0?'가동':'파괴'}`).join(' / ');const active=tactic&&run.boss.mode==='recover'&&run.boss.tacticCycle===run.boss.cycle;const hint=active?(run.operation.tactic==='heat'?'장갑 과열 · 지금 집중 공격':'전류 연결 완료 · 남은 부위 사격'):tactic?.hint||supportTactic(run.operation?.support,front);$('boss-tactic').hidden=!hint;$('boss-tactic').textContent=hint;}
+ $('boss-hud').hidden=!run.boss.active;
+ document.body.classList.toggle('boss-active',run.boss.active);
+ if(run.boss.active){
+  const boss=run.boss,recovering=boss.mode==='recover';
+  $('boss-hp').max=boss.maxHp;$('boss-hp').value=boss.hp;
+  $('boss-state').textContent=front===1?(recovering?'재장전 · 반격 기회':'포격 열차 · 예고 차선 밖으로 이동'):front===2?(recovering?'코어 노출 · 집중 공격':'지휘 병기 · 붉은 원 밖으로 회피'):recovering?'후면 엔진 노출 · 뒤를 노려라':boss.mode==='windup'?'돌진 예고 · 옆으로 회피':'장갑 수송차 · 측후면을 노려라';
+  const names=front===1?['좌측 포대','우측 포대']:front===2?['포탑','측면 장갑']:['포탑','궤도'];
+  $('boss-parts').textContent=names.map((name,i)=>`${name} ${boss.parts[i].hp>0?'가동':'파괴'}`).join(' / ');
+  const active=tactic&&recovering&&boss.tacticCycle===boss.cycle;
+  const supportId=run.operation?.support;
+  const firstWarning=supportId==='vanguard'&&(boss.cycle===0&&boss.mode==='aim'||boss.cycle===1&&boss.mode==='salvo');
+  const dashWindow=supportId==='overrun'&&recovering;
+  const supportHint=supportTactic(supportId,front);
+  let hint=tactic?.hint||(supportId==='vanguard'?'':supportHint);
+  if(active)hint=run.operation.tactic==='heat'?'장갑 과열 · 지금 집중 공격':'전류 연결 완료 · 남은 부위 사격';
+  else if(firstWarning||dashWindow)hint=supportHint;
+  $('boss-tactic').hidden=!hint;$('boss-tactic').textContent=hint;
+ }
 }
 const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill','salvo-impact':'power-kill','payload-impact':'burst',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve',heal:'heal',break:'crowd-break'};
 const bannerPriority=['region-entry','gate-open'];

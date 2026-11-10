@@ -1,10 +1,13 @@
-import {beachRoute} from './campaign.js';
+import {beachRoute,holdoutParts} from './campaign.js';
 
 // A briefing is stable until a new operation is durably accepted, including retry.
 export function createOperationPlan(randomSeed,previousSeed){
  const roll=last=>{
-  const candidate=randomSeed();
-  return last!=null&&beachRoute(last)===beachRoute(candidate)?(candidate+1+(candidate>>>2)%3)>>>0:candidate;
+  let candidate=randomSeed()>>>0;
+  if(last==null)return candidate;
+  const route=beachRoute(last),parts=holdoutParts(last,0).join();
+  while(beachRoute(candidate)===route||holdoutParts(candidate,0).join()===parts)candidate=(candidate+1)>>>0;
+  return candidate;
  };
  let seed=roll(previousSeed);
  return {get seed(){return seed;},committed(previous,next,draft){

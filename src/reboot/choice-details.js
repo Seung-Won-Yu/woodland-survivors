@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
-import {REGIONS,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
+import {REGIONS,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
@@ -44,12 +44,20 @@ export function choiceDetails(s,c){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
  }else if(c.kind==='advance'){
   const support=FRONT_SUPPORTS[s.operation?.nextSupport];
-  out.impact=support?`${support.name} 장착 후 전진`:'무장과 레벨을 이어 전진';
-  out.detail=`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
-  out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
-  out.cost='현재 무장·모듈·체력·XP 유지';
+  const vanguard=canAdvanceWithVanguard(s);
+  out.impact=support?`${support.name} 장착 후 전진`:vanguard?'선발 지원 받고 전진':'무장과 레벨을 이어 전진';
+  out.detail=vanguard?`첫 증원까지 ${Math.ceil(HOLDOUT.grace-s.holdTime)}초 · 남겨둘 XP ${groundXp(s)}`:`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
+  out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':vanguard?'다음 보스 첫 포격 경고 +1초':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
+  const kit=FRONT_SUPPORTS.vanguard;
+  out.cost=vanguard?`도착 시 체력 최대 +${kit.heal} · 전탄 충전 최대 +${kit.charge}`:'현재 무장·모듈·체력·XP 유지';
  }
- else if(c.kind==='stay'){out.impact='바닥 XP와 증원군을 노린다';out.detail='공세 단계가 오를수록 물량과 내구가 증가합니다.';out.link=`${holdoutContract(s).name} · ${s.operation?.challengeTier?'기록 점수':'노획 보급'}`;out.cost='열린 게이트에서 다시 선택';}
+ else if(c.kind==='stay'){
+  const rare=s.operation?.region<2&&!s.operation.challengeTier;
+  out.impact=rare?'다음 전선 희귀 부품':'바닥 XP와 증원군을 노린다';
+  out.detail=rare?`Q · ${holdoutContract(s).name} + 증원 ${HOLDOUT.rareKills}명 제압`:'공세 단계가 오를수록 물량과 내구가 증가합니다.';
+  out.link=rare?holdoutParts(s.seed,s.operation.region).map(id=>FRONT_SUPPORTS[id].name).join(' / '):`${holdoutContract(s).name} · ${s.operation?.challengeTier?'기록 점수':'노획 보급'}`;
+  out.cost=rare&&canAdvanceWithVanguard(s)?'도전 호출 시 선발 지원 포기':'열린 게이트에서 다시 선택';
+ }
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}
  else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':'크레딧·연구·기록 유지';out.cost='다음 판은 해안 · LV.1에서 시작';}
  return out;

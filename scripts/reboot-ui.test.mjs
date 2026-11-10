@@ -89,6 +89,7 @@ test('browser terrain caches rebuild per region and physical objects sort around
 });
 
 import {createOperationPlan} from '../src/reboot/operation-plan.js';
+import {holdoutParts} from '../src/reboot/campaign.js';
 test('a failed launch keeps its briefing, and retry success consumes the plan exactly once',async()=>{
  let value=null,fail=true,calls=0;const store=createStore({getItem:()=>value,setItem(k,v){if(fail){fail=false;throw Error('disk full');}value=v;}}),plan=createOperationPlan(()=>[17,18,19][calls++]),run=createOperation(plan.seed),previous=store.get(),next=beginProfile(previous,run);
  await assert.rejects(store.commit(next),/disk full/);assert.equal(plan.seed,17);
@@ -108,5 +109,9 @@ test('fresh launch avoids the previous beach route, including after reload and s
  const replay=createOperation(17),previous=emptyProfile(),next=beginProfile(previous,replay);
  plan.committed(previous,next,replay);
  assert.notEqual(plan.seed%4,replay.seed%4);
+ assert.notDeepEqual(holdoutParts(plan.seed,0),holdoutParts(replay.seed,0));
+ const sameDraft=createOperationPlan(()=>19,16);
+ assert.notDeepEqual(holdoutParts(sameDraft.seed,0),holdoutParts(16,0));
+ assert.notDeepEqual(holdoutParts(sameDraft.seed,1),holdoutParts(16,1));
  assert.ok(plan.seed>=0&&plan.seed<=0xffffffff);
 });
