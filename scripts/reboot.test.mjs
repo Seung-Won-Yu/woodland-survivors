@@ -1546,6 +1546,53 @@ test('opening XP levels can pick a working module ahead of a gun rank',()=>{
  }
  assert.ok(candidates.size>=2);
 });
+test('a level draft can finish an assembled recipe without taking away the ordinary rank or sustain',()=>{
+ for(const seed of [17,18,19,21]){
+  const s=quietOperation();s.rng.supply=seed;s.level=8;s.player.branchChosen=true;s.pendingLevels=1;
+  Object.assign(s.weapons[0],{level:2});
+  s.weapons.push({...makeWeapon('r'),uid:'r',level:2},{...makeWeapon('f'),uid:'f',level:5,branch:'trail'});
+  s.modules=[{id:'catalyst',rank:2},{id:'magnet',rank:1}];
+  s.offeredWeapons=[['f'],['f']];
+  assert.ok(action(s,'upgrade'));
+  assert.equal(s.choices[0].kind,'rank');
+  assert.notEqual(s.choices[0].weapon,'f');
+  assert.ok(s.choices.some(c=>c.id==='rank:f'));
+  assert.equal(s.choices[2].kind,'utility');
+  const resumed=restore(snapshot(s));
+  assert.deepEqual(resumed.choices,s.choices);
+  assert.ok(choose(resumed,'rank:f'));
+  assert.ok(assemblyOptions(resumed).some(c=>c.id==='evolve:f'));
+  assert.ok(choose(s,s.choices[0].id));
+  assert.ok(!assemblyOptions(s).some(c=>c.id==='evolve:f'));
+ }
+});
+test('a new draft replaces incompatible and padding cards while keeping a saved draft intact',()=>{
+ const s=quietOperation();s.level=7;s.player.branchChosen=true;s.pendingLevels=2;s.boosts.pickup=3;
+ s.modules=[{id:'catalyst',rank:1},{id:'magnet',rank:3}];
+ s.phase='choice';s.choice={type:'level',source:'LEVEL 7'};
+ const saved={id:'module:catalyst',kind:'module',module:'catalyst',rank:1};
+ s.choices=[saved,{id:'utility:health',kind:'utility',key:'health'}];
+ const resumed=restore(snapshot(s));
+ assert.deepEqual(resumed.choices,s.choices);
+ assert.equal(choiceDetails(resumed,saved).impact,'호환 무장 필요');
+ assert.equal(choose(resumed,saved.id),false);
+ assert.ok(choose(resumed,'utility:health'));
+ assert.ok(resumed.choices.some(c=>c.id==='rank:h'));
+ assert.ok(resumed.choices.some(c=>c.id==='module:ricochet'||c.id==='module:coil'));
+ assert.ok(!resumed.choices.some(c=>c.id===saved.id));
+ assert.equal(resumed.choices.filter(c=>c.kind==='utility').length,1);
+});
+test('a closing draft offers the installed module that completes a recipe with every slot full',()=>{
+ const s=quietOperation();s.level=8;s.player.branchChosen=true;s.pendingLevels=1;
+ s.weapons.push({...makeWeapon('f'),uid:'f',level:6,branch:'focused'});
+ s.modules=['catalyst','magnet','ricochet','coil'].map(id=>({id,rank:1}));
+ assert.ok(action(s,'upgrade'));
+ assert.ok(s.choices.some(c=>c.id==='module:catalyst'));
+ assert.ok(choose(s,'module:catalyst'));
+ assert.equal(s.modules.length,4);
+ assert.equal(s.modules[0].rank,2);
+ assert.ok(assemblyOptions(s).some(c=>c.id==='evolve:f'));
+});
 test('a cleared pursuit unlocks one free maneuver with distinct stationary and moving effects',()=>{
  const s=quietOperation();downBoss(s);s.tuning=0;
  assert.equal(assemblyOptions(s).length,0);assert.ok(action(s,'challenge'));

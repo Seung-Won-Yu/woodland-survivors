@@ -58,6 +58,9 @@ export function choiceDetails(s,c){
   if(approach){out.detail=approach.hint;out.link=`${approach.name} · ${approach.formation} → ${MODULES[approach.module].name} 후보`;}
  }else if(c.module){
   const g=moduleGain(s,c.module,c.kind==='tune'?1:c.rank),m=MODULES[c.module];out.title=m.name;out.impact=m.detail(g.next);out.detail=m.desc;out.link=MODULE_LINKS[c.module];out.art=['coil','thermal'].includes(c.module)?'coil':c.module==='medic'?'medic':c.module==='shrapnel'?'ammo':null;
+  if(c.kind==='module'&&!c.id?.startsWith('requisition:')&&!compatible(s,c.module)){
+   out.blocked=true;out.impact='호환 무장 필요';out.cost='현재 무장으로 장착할 수 없습니다.';
+  }
   if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
   out.cost=c.kind==='tune'?'조율권 1개 사용':g.current?`${g.current} → ${g.next}강화 · 같은 칸 유지${g.charge?` · 초과 충전 +${g.charge}`:''}`:`새 모듈 ${g.next}강화 · ${s.modules.length<4?'모듈 한 칸 사용':'기존 모듈 교체'}`;
   if(s.choice?.type==='rail-workshop'&&s.operation?.requisition===c.module&&!compatible(s,c.module))out.link=`장착 후 대기 · ${RESEARCH[c.module].fitting}`;

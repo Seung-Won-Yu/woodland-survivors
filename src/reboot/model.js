@@ -172,7 +172,7 @@ function modulePool(s){
  const reserved=s.operation?.region<2?s.operation.requisition:null;
  return ['ricochet','coil','catalyst','magnet',...(s.research||[])].filter(id=>id!==reserved&&!s.excluded.includes(id)&&compatible(s,id)&&moduleRank(s,id)<(RULES.modules[id].unique?1:3));
 }
-function currentInvestments(s){return[...upgradeable(s).map(gunCard),...s.modules.filter(m=>!RULES.modules[m.id].unique&&m.rank<3).map(m=>moduleCard(m.id,1))];}
+function currentInvestments(s){return[...upgradeable(s).map(gunCard),...s.modules.filter(m=>!RULES.modules[m.id].unique&&m.rank<3&&compatible(s,m.id)).map(m=>moduleCard(m.id,1))];}
 const trialModule=(s,pool,approach)=>{
  const trials=(s.trials||[s.trial]).filter(id=>pool.includes(id));
  return (approach&&trials.find(id=>RESEARCH[id].fieldGun===approach))||trials[0];
@@ -215,14 +215,34 @@ function railWorkshopCards(s){
  return [...cards,{id:'resupply:rail-workshop',kind:'resupply',title:'차내 응급 보급',heal:20,charge:15,label:'생존 투자'}];
 }
 function fillCards(s,cards){const unique=[...new Map(cards.filter(Boolean).map(c=>[c.id,c])).values()];for(const key of ['health','charge','power'])if(unique.length<3&&!unique.some(c=>c.id===`utility:${key}`))unique.push(utility(key));return unique.slice(0,3);}
+function closingInvestment(s,offered,rest){
+ if(!s.operation||s.tuning<=0||!s.weapons.some(w=>w.level>=3&&!w.evolved&&!w.fusion))return null;
+ const already=new Set(assemblyOptions(s).map(c=>c.id));
+ const opens=draft=>assemblyOptions(draft).some(c=>(c.kind==='evolve'||c.kind==='fusion')&&!already.has(c.id));
+ const closes=c=>{
+  if(c?.kind==='module'){
+   if(!moduleRank(s,c.module))return false;
+   return opens({...s,modules:s.modules.map(m=>m.id===c.module?{...m,rank:m.rank+1}:m)});
+  }
+  if(c?.kind!=='rank')return false;
+  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion);
+  if(!w||w.level<3)return false;
+  const branches=w.level===3?Object.keys(GUNS[w.id].branches):[w.branch];
+  return branches.some(branch=>opens({...s,weapons:s.weapons.map(other=>other===w?{...w,level:w.level+1,branch}:other)}));
+ };
+ if(offered.some(closes))return null;
+ const card=rest.find(closes);
+ return card?{...card,label:'조립 직전'}:null;
+}
 function levelCards(s){
  const investments=currentInvestments(s),guns=upgradeable(s),missed=guns.filter(w=>!s.offeredWeapons.slice(-2).some(ids=>ids.includes(w.id))),a=guns.length?gunCard(pick(s,'supply',missed.length?missed:guns)):investments[0];
  const rest=investments.filter(c=>c.id!==a?.id);
- const newModules=s.operation&&s.modules.length<4&&(!a||s.modules.length===0||s.level%3===0)?modulePool(s).filter(id=>!moduleRank(s,id)):[];
+ const newModules=s.operation&&s.modules.length<4&&(!rest.length||s.modules.length===0||s.offeredWeapons.length%3===2)?modulePool(s).filter(id=>!moduleRank(s,id)):[];
  const trial=trialModule(s,newModules);
  const b=trial?trialCard(trial):newModules.length?{...moduleCard(pick(s,'supply',newModules)),label:'새 발동 모듈'}:rest.length?pick(s,'supply',rest):null;
- const cards=fillCards(s,[a,b,utility(s.boosts.pickup<3&&rng(s,'supply')<.45?'pickup':'health')]);
- if(!a&&!b)return [utility('power'),utility('health'),utility('charge')];
+ const close=b?.trial?null:closingInvestment(s,[a,b],rest);
+ const support=utility(s.boosts.pickup<3&&rng(s,'supply')<.45?'pickup':'health');
+ const cards=a||b?fillCards(s,[a,close||b,support]):['power','health','charge'].map(utility);
  s.offeredWeapons.push(cards.filter(c=>c.kind==='rank').map(c=>c.weapon));return cards;
 }
 function rollQuality(s,key){const p=RULES.quality[key],r=rng(s,'loot');return r<p.common?'common':r<p.common+p.rare?'rare':'prototype';}

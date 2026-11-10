@@ -357,9 +357,19 @@
 .operator-station[data-operator="marco"] .operator-heading h2{color:#efc58b}
 .operator-record{display:flex;flex-wrap:wrap;gap:8px 16px;margin:-7px 0 16px;padding:10px 12px;background:#36493d;color:#f0e6c4;font-size:11px}
 .operator-record b{color:#f2cd97}
+.level-draft .upgrade-card:has(.forecast-ready){--accent:#ecc987;border-color:#c9ac6f}
+.level-draft .upgrade-card:has(.forecast-ready) .upgrade-category{color:#f6d18b}
 @media(max-width:700px){
  .launch-controls{width:100%}
  .operator-station[data-operator="marco"] .operator-heading h2{font-size:22px}
  .operator-selector{gap:5px}
  .operator-selector button{min-height:44px}
+ .field-menu.level-draft>header,.field-menu.level-draft .choice-tools{margin-bottom:10px}
+ .field-menu.level-draft .upgrade-deck{gap:8px}
+ .field-menu.level-draft .upgrade-card{min-height:108px;padding:10px 12px 10px 83px;gap:4px}
+ .field-menu.level-draft .upgrade-copy{gap:3px}
+ .field-menu.level-draft .upgrade-illustration{left:4px;top:22px;width:74px;height:73px}
+ .field-menu.level-draft .upgrade-illustration .kit-sprite{width:85px;height:85px}
+ .field-menu.level-draft .upgrade-cost{margin-top:0;padding-top:4px}
+ .field-menu.level-draft [data-choice^="rank:"] .upgrade-cost{display:none}
 }
