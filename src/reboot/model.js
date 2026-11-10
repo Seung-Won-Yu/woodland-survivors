@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -94,7 +94,10 @@ export function restore(raw,{allowPrevious=false}={}){
   if(s.operation.tactic!=null&&!Object.hasOwn(FRONT_TACTICS[s.operation.region]||{},s.operation.tactic))fail();
   if(s.stage==='boss'){
    if(s.operation.region===1)s.hazards=s.hazards.filter(h=>!h.lane||h.hit||!(s.boss.parts[railGunOf(h)]?.hp<=0));
-   if(s.operation.region===2&&s.boss.parts[0]?.hp<=0)s.hazards=s.hazards.filter(h=>h.portRound!=='turret'||h.hit);
+   if(s.operation.region===2){
+    if(s.boss.parts[0]?.hp<=0)clearPortRounds(s,'turret');
+    if(s.boss.parts[1]?.hp<=0)clearPortRounds(s,'rake');
+   }
   }
  }
  if(s.powerWave?.paired>0&&!s.powerWave.showcase)s.powerWave.showcase='fusion';
@@ -464,7 +467,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if((source==='native'||source==='payload'||source==='focus')&&(breachLane??(portBreachFlank(s)&&!lineBlocked(s,s.player,e)))){
    amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
    if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
-   else if(clearPortTurretRounds(s)){
+   else if(clearPortRounds(s,'turret')){
     s.boss.turretSuppressedCycle=s.boss.cycle;
     emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:'철갑 명중 · 포탑 포격 취소'});
    }
@@ -510,7 +513,10 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
  if(e.dead||e.hp>0)return;
  if(e.type==='part'){
   if(s.operation?.region===1)stopRailGun(s,actual);
-  if(s.operation?.region===2&&actual===s.boss.parts[0])stopPortTurret(s,actual);
+  if(s.operation?.region===2){
+   const turret=actual===s.boss.parts[0];
+   if(clearPortRounds(s,turret?'turret':'rake'))emit(s,'barrage-cancel',e.x,e.y,{life:1.1,text:turret?'포탑 파괴 · 포탑탄 차단':'측면 장갑 파괴 · 가로 포격 차단'});
+  }
   emit(s,'break',e.x,e.y,{life:.7});return;
  }
  if(e.type==='boss'){s.boss.dead=true;delete s.boss.chargePath;s.stats.bossKilled=true;if(s.operation){s.operation.cleared=s.operation.region+1;if(s.weapons.some(w=>w.fusion))s.stats.fusionBosses++;if(s.weapons.some(w=>w.id==='f'&&w.evolved))s.stats.flameBosses++;}s.stats.score+=1000;emit(s,'boss-down',e.x,e.y,{r:e.r,life:1.2});return;}
@@ -673,27 +679,22 @@ function startRailBarrage(s,warning){
  emit(s,'boss-warning',b.x,b.y,warning?{text:'선발 지원 · 첫 조준 경고 +1초',life:1}:{life:1});
 }
 function startPortBarrage(s,warning){
- const {boss:b,player:p}=s,plan=PORT_BARRAGE;
- const duration=plan.warning+warning;
- const push=(dx,dy,portRound)=>s.hazards.push({
-  x:clamp(p.x+dx,FIELD.left,FIELD.right),
-  y:clamp(p.y+dy,FIELD.top,FIELD.bottom),
-  r:plan.radius,timer:duration,duration,portRound
+ const {boss:b,player:p}=s,plan=PORT_BARRAGE,axis=portBarrageAxis(s,b.cycle);
+ const duration=plan.warning+warning,horizontal=axis==='horizontal';
+ const jammed=horizontal&&b.parts[1].hp>0&&portJamsSweep(s,b.cycle);
+ const rounds=portBarrageRounds(s,b.cycle);
+ for(const round of rounds)s.hazards.push({
+  ...round,timer:duration,duration,
+  ...(round.portRound==='lock'?{portAxis:axis,...(jammed?{jammed:true}:{})}:{})
  });
- push(0,0,'lock');
- for(const side of [-1,1]){
-  push(0,side*plan.batteryOffset,'battery');
-  if(b.parts[0].hp>0)push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
- }
- emit(s,'boss-warning',p.x,p.y,{text:warning?'선발 지원 · 첫 집중 포격 경고 +1초':'발밑 조준 고정 · 측면으로 회피',life:1});
+ const mark=portBarrageMark(axis,b.parts[0].hp>0?portTurretSide(b):0);
+ const message=jammed?'관제소 교란 · 장갑탄 차단':rounds.some(h=>h.portRound==='rake')?`가로 포격 ${mark}`:horizontal?'장갑탄 차단 · 발밑 포격':`세로 포격 ${mark}`;
+ emit(s,'boss-warning',p.x,p.y,{text:warning?`${message} · 선행 경보 +1초`:message,life:1});
 }
-function clearPortTurretRounds(s){
+function clearPortRounds(s,round){
  const before=s.hazards.length;
- s.hazards=s.hazards.filter(h=>h.portRound!=='turret'||h.hit);
+ s.hazards=s.hazards.filter(h=>h.portRound!==round||h.hit);
  return s.hazards.length!==before;
-}
-function stopPortTurret(s,part){
- if(clearPortTurretRounds(s))emit(s,'barrage-cancel',part.x,part.y,{life:1.1,text:'포탑 파괴 · 측면 포격 차단'});
 }
 function dropHarborAid(s){
  const b=s.boss,kit=PORT_SUPPORT.recovery;
@@ -789,7 +790,7 @@ function frontControlCards(index){
  const orders=Object.entries(FRONT_TACTICS[index]).map(([key,t])=>({id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role}));
  if(index===1)return [...orders,{id:'control:supply',kind:'control',key:'supply',title:'중계기 보급 회수',desc:'보유 병기를 개조하거나 새 무장과 모듈을 확보합니다.',label:'일반 보급'}];
  return [...orders,
-  {id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'이번 항구 보스전의 증원을 절반으로, 포격병 투입을 절반 빈도로 줄입니다.',label:'최종전 안전'},
+  {id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'첫 가로 포격의 장갑탄을 차단하고, 보스 증원과 포격병 투입을 절반으로 줄입니다.',label:'최종전 안전'},
   {id:'control:loot',kind:'control',key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈·재보급 3후보 중 하나를 받습니다.',label:'추가 화력'}];
 }
 function updateSites(s,dt){

@@ -48,7 +48,7 @@ function operationMap(selected,seed,order){const map=previewLayout(seed,selected
 function frontIntel(index,seed){
  if(index===0){const route=beachRoute(seed);return `<div class="front-intel"><div class="front-intel-heading"><span>01 · 포로 구출 후 F / R 선택</span><strong>${route.name}</strong></div>${Object.entries(COAST_APPROACHES).map(([id,approach])=>`<div class="front-intel-stop"><span>${id.toUpperCase()} · ${approach.name}</span><b>${MODULES[approach.module].name}</b></div>`).join('')}</div>`;}
  const rail=index===1?previewLayout(seed,index).sites.slice(0,2).map(railGarrison):null;
- const [cache,order,task]=rail?[`화차 정비대 · ${rail[0].name}`,`통신 중계기 · ${rail[1].name}`,`${rail[1].crew} 제압 후 해킹 · 포대 공략`]:['하역장 해치','항구 관제소','경비 제압 · 최종전 교란 또는 시험 탄약'];
+ const [cache,order,task]=rail?[`화차 정비대 · ${rail[0].name}`,`통신 중계기 · ${rail[1].name}`,`${rail[1].crew} 제압 후 해킹 · 포대 공략`]:['해치 · 측면 기습','관제소 · 전술 선택','첫 장갑탄 교란 또는 화력 전술'];
  return `<div class="front-intel"><div class="front-intel-heading"><span>투입 지점의 두 갈래</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>${cache}</span><b>${index===1?'장착 무장 강화 · 완성 병기 개장':'방패와 박격포 제압 · 포탑 측면 진입'}</b></div><div class="front-intel-stop"><span>${order}</span><b>${task}</b></div></div>`;
 }
 

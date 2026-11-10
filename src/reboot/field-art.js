@@ -217,15 +217,18 @@ export function paintEntryRoutes(c,entry){
  }
  c.restore();
 }
-export function paintPortGantry(c,gantry){
+export function paintPortGantry(c,gantry,art){
  const {x,y,color}=gantry;
  c.save();c.translate(x,y);
- c.fillStyle='#182e30';c.fillRect(-32,-34,64,48);
- c.fillStyle='#526f69';c.fillRect(-27,-29,54,6);
- for(const side of [-1,1]){
-  c.fillStyle='#536963';c.fillRect(side*22-4,-26,8,39);
-  c.fillStyle=color;c.fillRect(side*22-2,-24,4,9);
+ c.fillStyle='#182e309c';c.fillRect(-42,-5,84,18);
+ if(art)environmentProp(c,art,3,3,0,6,94);
+ else{
+  c.fillStyle='#526f69';c.fillRect(-32,-33,64,7);
+  for(const side of [-1,1]){
+   c.fillStyle='#536963';c.fillRect(side*26-4,-26,8,37);
+  }
  }
+ c.fillStyle=color;c.fillRect(-41,8,82,3);
  c.strokeStyle=color;c.lineWidth=2;c.beginPath();
  c.moveTo(-10,3);c.lineTo(0,-6);c.lineTo(10,3);
  c.moveTo(-10,11);c.lineTo(0,2);c.lineTo(10,11);c.stroke();

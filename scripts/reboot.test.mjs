@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portAidPreview,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -665,21 +665,51 @@ test('harbor armor support rewards a flank and disables the turret fan',()=>{
  assert.equal(front.boss.parts[0].hp,450);assert.equal(front.enemyShots.length,9);
  assert.equal(flank.boss.parts[0].hp,0);assert.equal(flank.enemyShots.length,0);assert.equal(flank.stats.supportUses[2],1);
 });
-test('harbor artillery locks the standing player and leaves an escape on the opposite flank',()=>{
- for(const seed of [17,18]){
+test('harbor artillery fixes its opening axis by entry and leaves a perpendicular escape',()=>{
+ for(const seed of [17,18])for(const hatch of [false,true]){
   const s=supportArena(2,null,'aim');
   s.boss={...regionBoss(2,seed),active:true,timer:0,spawnClock:999};
-  Object.assign(s.player,{x:800,y:470});
-  step(s,dt);
+  if(hatch){s.operation.portEntry='gantry';s.operation.portDock=true;s.sites=[{id:'port-landing',state:'done'}];}
+  Object.assign(s.player,{x:800,y:470});step(s,dt);
   const aim=s.hazards.find(h=>h.portRound==='lock'),side=Math.sign(s.boss.parts[0].ox);
   assert.deepEqual([aim.x,aim.y],[800,470]);
+  assert.equal(aim.portAxis,hatch?'vertical':'horizontal');
+  assert.equal(portBarrageMark(aim.portAxis,side),hatch?(side>0?'←':'→'):'↑↓');
   assert.equal(s.hazards.filter(h=>h.portRound==='turret'&&(h.x-aim.x)*side>0).length,2);
-  const evade=restore(snapshot(s)),hp=s.player.hp;
-  tick(s,1);tick(evade,1,{x:-side,y:0});
-  assert.equal(s.player.hp,hp-14);
-  assert.equal(evade.player.hp,hp);
-  assert.deepEqual([evade.hazards.find(h=>h.portRound==='lock').x,aim.y],[800,470]);
+  const cross=hatch?{x:-side,y:0}:{x:0,y:1},parallel=hatch?{x:0,y:1}:{x:-side,y:0};
+  const escape=restore(snapshot(s)),bad=restore(snapshot(s)),hp=s.player.hp;
+  tick(s,1);tick(escape,1,cross);tick(bad,1,parallel);
+  assert.equal(s.player.hp,hp-14);assert.equal(escape.player.hp,hp);assert.equal(bad.player.hp,hp-14);
+  assert.deepEqual([escape.hazards.find(h=>h.portRound==='lock').x,aim.y],[800,470]);
  }
+});
+test('harbor jamming cancels the first rake and breaking the plate clears only unfired rake rounds',()=>{
+ for(const hatch of [false,true]){
+  const s=supportArena(2,null,'aim');
+  s.boss={...regionBoss(2,17),active:true,timer:0,spawnClock:999};
+  s.operation.jammed=true;
+  if(hatch)s.operation.portEntry='gantry';
+  s.boss.cycle=hatch?1:0;step(s,dt);
+  const lock=s.hazards.find(h=>h.portRound==='lock');
+  assert.equal(lock.jammed,true);assert.equal(lock.portAxis,'horizontal');
+  assert.equal(s.hazards.filter(h=>h.portRound==='rake').length,0);
+  assert.equal(s.hazards.filter(h=>h.portRound==='turret').length,2);
+  s.hazards=[];Object.assign(s.boss,{mode:'aim',timer:0,cycle:hatch?3:2});step(s,dt);
+  assert.equal(s.hazards.filter(h=>h.portRound==='rake').length,2);
+  const plate=partPosition(s,s.boss.parts[1]);
+  s.shots=[bullet(s,{x:plate.x+22,y:plate.y},10000)];step(s,dt);
+  assert.equal(s.boss.parts[1].hp,0);
+  assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','turret','turret']);
+  assert.ok(s.effects.some(f=>f.type==='barrage-cancel'&&f.text.includes('측면 장갑')));
+ }
+});
+test('existing harbor warnings keep their stored geometry across restore',()=>{
+ const s=supportArena(2,null,'salvo');
+ s.hazards=[{x:800,y:470,r:58,timer:.45,duration:.95,portRound:'lock'},
+  {x:800,y:584,r:58,timer:.45,duration:.95,portRound:'battery'}];
+ const loaded=restore(snapshot(s));
+ assert.deepEqual(loaded.hazards,s.hazards);
+ step(loaded,dt);assert.deepEqual(loaded.hazards.map(h=>h.portRound),['lock','battery']);
 });
 function harborLanding(seed){
  const s=createOperation(seed);s.operation.region=2;
@@ -819,7 +849,7 @@ test('a live turret loses only its pending flank rounds after a breach hit from 
  hit(625);
  assert.ok(s.boss.parts[0].hp>0);
  assert.equal(s.boss.turretSuppressedCycle,s.boss.cycle);
- assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','battery','battery']);
+ assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','rake','rake']);
 });
 test('a harbor rocket keeps the flank it was fired from when the player sidesteps',()=>{
  const launch=(x,direction)=>{
@@ -843,7 +873,7 @@ test('a harbor rocket keeps the flank it was fired from when the player sidestep
  const flank=launch(690,1),center=launch(700,-1);
  assert.equal(flank.boss.parts[0].hp,flank.boss.parts[0].maxHp-weaponStats(flank.weapons[0]).damage*1.65);
  assert.ok(center.boss.parts[0].hp>flank.boss.parts[0].hp);
- assert.deepEqual(flank.hazards.map(h=>h.portRound),['lock','battery','battery']);
+ assert.deepEqual(flank.hazards.map(h=>h.portRound),['lock','rake','rake']);
  assert.equal(center.hazards.filter(h=>h.portRound==='turret').length,2);
 });
 test('harbor dash must enter the exposed core range and strikes once per recovery window',()=>{
@@ -894,7 +924,7 @@ test('every harbor medical drop is previewed and can be claimed during its salvo
  s.boss.cycle=0;
  for(const [i,x] of [975,625,975].entries()){
   Object.assign(s.boss,{mode:'aim',timer:0});
-  Object.assign(s.player,{x:800,y:335,hp:80,charge:10});
+  Object.assign(s.player,{x:800,y:i%2===0?435:335,hp:80,charge:10});
   assert.deepEqual(portAidPreview(s),{x,y:335});
   step(s,dt);
   assert.equal(s.boss.mode,'salvo');
@@ -921,10 +951,12 @@ test('a b23 harbor recovery checkpoint still gets its first crate at the end of 
  assert.equal(loaded.boss.harborSupplyCycle,1);
 });
 test('harbor recovery grants bonus charge only for a safe pickup during an armed warning',()=>{
- function claim(lockX,afterWarning=false){
+ function claim(lockX,lockY,afterWarning=false){
   const s=supportArena(2,'recovery','aim');
   Object.assign(s.boss,{cycle:0,timer:0});
-  Object.assign(s.player,{x:lockX,y:335,hp:80,charge:10});
+  Object.assign(s.player,{x:lockX,y:lockY,hp:80,charge:10});
+  const risk=portAidBaitRisk(s,portAidPreview(s));
+  assert.equal(risk,lockY===335);
   step(s,dt);
   if(afterWarning)tick(s,1);
   s.player.charge=10;
@@ -934,9 +966,9 @@ test('harbor recovery grants bonus charge only for a safe pickup during an armed
   assert.equal(s.stats.supportUses[2],1);
   return Math.floor(s.player.charge);
  }
- assert.equal(claim(800),55);
- assert.equal(claim(920),30);
- assert.equal(claim(800,true),30);
+ assert.equal(claim(800,435),55);
+ assert.equal(claim(920,335),30);
+ assert.equal(claim(800,435,true),30);
 });
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};

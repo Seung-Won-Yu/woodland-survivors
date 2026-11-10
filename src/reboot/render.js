@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,railGunOf,coastLead,coastLeadColor,activeEntry} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,portAidBaitRisk,railGunOf,coastLead,coastLeadColor,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
@@ -151,8 +151,9 @@ function paintPortCue(c,s){
   c.fillStyle='#253d32';c.fillRect(x-19,y-24,38,25);c.strokeStyle='#d7f0b8';c.lineWidth=2;c.strokeRect(x-19,y-24,38,25);
   c.fillStyle='#e0f4b9';c.fillRect(x-3,y-20,6,17);c.fillRect(x-8,y-15,16,6);
  }else if(aid){
-  c.setLineDash([6,5]);circle(c,aid.x,aid.y,32,'#12292345','#c8f0aeb8',2);c.setLineDash([]);
-  c.fillStyle='#d7f0b8';c.font='bold 11px Galmuri';c.textAlign='center';c.fillText('투하 예정',aid.x,aid.y+4);
+  const risk=portAidBaitRisk(s,aid),color=risk?'#f9c184':'#d7f0b8';
+  c.setLineDash([6,5]);circle(c,aid.x,aid.y,32,'#12292345',color,2);c.setLineDash([]);
+  c.fillStyle=color;c.font='bold 11px Galmuri';c.textAlign='center';c.fillText(risk?'포격 위험':'투하 예정',aid.x,aid.y+4);
  }
  c.restore();
 }
@@ -386,7 +387,7 @@ export function createRenderer(canvas,art){
   const raid=s.raid?.state==='active'?s.raid:null;
   const approach=activeEntry(s),gantry=portGantry(s);
   if(raid)paintEscapeLane(c,raidAhead(raid),RAID_MARKS[raid.contract].color,raid.contract==='light'?[14,9]:[5,9],visible);else if(approach)paintEntryRoutes(c,approach);
-  if(gantry){if(!raid)paintEntryRoutes(c,{routes:[gantry]});if(visible(gantry.x,gantry.y))paintPortGantry(c,gantry);}
+  if(gantry){if(!raid)paintEntryRoutes(c,{routes:[gantry]});if(visible(gantry.x,gantry.y))paintPortGantry(c,gantry,art);}
   const chargeLane=coastChargeLane(s);if(chargeLane)paintChargeLane(c,s.boss,chargeLane);
   const entry=s.effects.find(f=>f.type==='region-entry');
   if(entry)paintFrontEntry(c,entry.x,entry.y,index,entry.age,reduced);
@@ -550,8 +551,16 @@ export function createRenderer(canvas,art){
    if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:h.r))continue;
    if(h.lane){paintRailWarning(c,h,s.player.y);continue;}
    circle(c,h.x,h.y,h.r,'#d83d4120','#321e25',6);
-   circle(c,h.x,h.y,h.r,null,h.portRound==='turret'?'#f9bf83':'#ffada0',3);
+   circle(c,h.x,h.y,h.r,null,h.portRound==='rake'?'#ffad69':h.portRound==='turret'?'#f9bf83':'#ffada0',3);
    circle(c,h.x,h.y,h.r*clamp(1-h.timer/(h.duration||.9),0,1),null,'#fff0bb',h.timer<.25?3:1);
+   if(h.portRound==='rake'){
+    c.strokeStyle='#ffd1a4';c.lineWidth=2;c.beginPath();
+    for(const side of [-1,1]){
+     const x=h.x+side*(h.r-10);
+     c.moveTo(x,h.y-9);c.lineTo(x+side*5,h.y);c.lineTo(x,h.y+9);
+    }
+    c.stroke();
+   }
    if(h.portRound==='lock'){
     c.strokeStyle='#ffe1bc';c.lineWidth=3;c.beginPath();
     for(let i=0;i<4;i++){

@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portBarrageAxis,portBarrageMark,portRakeReady,portAidPreview,portAidBaitRisk,portAidWindow,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynergyReady,moduleRank,refitWeapons} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,portTurretInSight,showcaseWindow} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -261,7 +261,7 @@ function updateMap(lead,entry,gantry,dispatch){
  const lanes=run.hazards.filter(h=>h.lane&&!h.hit).map(h=>h.x).join();
  const key=`${run.seed}:${Math.floor(run.t*5)}:${run.stage}:${run.boss.active?run.boss.mode:''}:${run.operation?.region}:${run.operation?.order}:${run.raid?.state}:${run.challenge?.state}:${lead?.id}:${!!dispatch}:${!!entry}:${!!gantry}:${lanes}:${run.sites.map(n=>n.state).join()}`;if(key===mapStamp)return;mapStamp=key;
  const dot=(cls,x,y,r,color,label='')=>`<circle class="${cls}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}"${label?` aria-label="${esc(label)}"`:''}/>`;
- let map=terrainSvg(run.operation?.region||0,run.seed)+entryRouteSvg(entry)+run.hazards.filter(h=>!h.hit).map(h=>h.lane?`<rect class="map-danger-lane" x="${h.x-h.w/2}" y="${h.y-h.h/2}" width="${h.w}" height="${h.h}" fill="${h.tracked?'#ef9a6799':'#ee975e66'}" stroke="#ffda99" stroke-width="8"/>`:dot('map-danger',h.x,h.y,h.r,h.portRound==='turret'?'#f9bf83b0':'#f77e778c',h.portRound==='lock'?'집중 포격 조준점':h.portRound==='turret'?'포탑 측면 포격':'')).join('');
+ let map=terrainSvg(run.operation?.region||0,run.seed)+entryRouteSvg(entry)+run.hazards.filter(h=>!h.hit).map(h=>h.lane?`<rect class="map-danger-lane" x="${h.x-h.w/2}" y="${h.y-h.h/2}" width="${h.w}" height="${h.h}" fill="${h.tracked?'#ef9a6799':'#ee975e66'}" stroke="#ffda99" stroke-width="8"/>`:dot('map-danger',h.x,h.y,h.r,h.portRound==='rake'?'#f99354bb':h.portRound==='turret'?'#f9bf83b0':'#f77e778c',h.portRound==='lock'?'집중 포격 조준점':h.portRound==='rake'?'측면 장갑 가로 포격':h.portRound==='turret'?'포탑 측면 포격':'')).join('');
  map+=run.blocks.filter(b=>b.hp!==0).map(b=>`<rect class="map-block" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#71837e"/>`).join('');
  map+=run.gems.map(g=>dot('map-xp',g.x,g.y,g.salvage?14:9,g.salvage?'#f5d487':'#a5ddcc')).join('');
  map+=run.enemies.filter(e=>!e.dead).map(e=>dot('map-enemy',e.x,e.y,e.cohort==='challenge'?24:e.type==='officer'?19:13,e.cohort==='challenge'?'#efb6ff':e.type==='officer'?'#f7b58d':'#d28257')).join('');
@@ -467,7 +467,12 @@ function updateHud(){
   }else if(front===2){
    const lock=run.hazards.find(h=>!h.hit&&h.portRound==='lock');
    const countdown=lock&&(Math.ceil(lock.timer*10)/10).toFixed(1);
-   $('boss-state').textContent=recovering?'코어 노출 · 집중 공격':countdown?`발밑 조준 고정 · ${countdown}초 뒤 포격`:boss.mode==='salvo'?'포격 종료 · 반격 준비':'지휘 병기 · 포격 준비';
+   const rake=run.hazards.some(h=>h.portRound==='rake'&&!h.hit);
+   const turret=run.hazards.some(h=>h.portRound==='turret'&&!h.hit)?portTurretSide(boss):0;
+   const warning=rake?'가로 포격 ↑↓':lock?.portAxis==='vertical'?`세로 포격 ${portBarrageMark(lock.portAxis,turret)}`:lock?.jammed?'교란 성공 · 발밑 포격':lock?.portAxis==='horizontal'?'장갑탄 차단 · 발밑 포격':'발밑 조준 고정';
+   const nextCycle=boss.cycle+1,axis=portBarrageAxis(run,nextCycle);
+   const ready=axis==='vertical'?'세로 포격 준비':portRakeReady(run,nextCycle)?'측면 장갑 · 가로 포격 준비':'발밑 포격 준비';
+   $('boss-state').textContent=recovering?'코어 노출 · 집중 공격':countdown?`${warning} · ${countdown}초`:boss.mode==='salvo'?'포격 종료 · 반격 준비':ready;
   }
   else $('boss-state').textContent=recovering?'후면 엔진 노출 · 주황 표식으로':boss.mode==='windup'?`돌진 방향 고정 · ${(Math.ceil(boss.timer*10)/10).toFixed(1)}초`:boss.mode==='charge'?'돌진 중 · 진행선 밖으로':'장갑 수송차 · 측후면을 노려라';
   const names=front===1?['좌측 포대','우측 포대']:front===2?['포탑','측면 장갑']:['포탑','궤도'];
@@ -513,7 +518,9 @@ function updateHud(){
       :warning?'화물 쪽 포격 · 폭발 뒤 회수':`회수 · ${chargeLabel(run)} +${kit.charge}`;
      line.textContent=`구급 · ${direction} 화물 · ${status}`;
     }else if(aid){
-     const next=boss.mode==='salvo'?'포격 뒤 투하 예정':'다음 투하 · 이 자리에서 떨어져 포격 유도';
+     const risk=portAidBaitRisk(run,aid);
+     const bait=risk?(portRakeReady(run,boss.cycle+1)?'화물 위·아래에서 포격 유도':'화물에 포격 위험 · 더 떨어지세요'):'현재 위치에서 포격 유도 가능';
+     const next=boss.mode==='salvo'?'포격 뒤 투하 예정':`다음 투하 · ${bait}`;
      line.textContent=`구급 · ${bearing(p,aid.x,aid.y)} ${next}`;
     }else line.textContent='구급 · 화물 투하 완료';
    }

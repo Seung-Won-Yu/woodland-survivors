@@ -44,6 +44,27 @@ export function vanguardAid(player){
 }
 export const PORT_TURRET={shutterDamage:.16};
 export const PORT_BARRAGE={warning:.95,radius:58,batteryOffset:114,turretOffset:116,turretSpread:54};
+export function portBarrageAxis(s,cycle){
+ const gantry=s.operation.portEntry==='gantry';
+ return (cycle%2===0)===gantry?'horizontal':'vertical';
+}
+export const portJamsSweep=(s,cycle)=>s.operation.jammed&&cycle===(s.operation.portEntry==='gantry'?2:1);
+export const portRakeReady=(s,cycle)=>s.boss.parts[1].hp>0&&portBarrageAxis(s,cycle)==='horizontal'&&!portJamsSweep(s,cycle);
+export const portBarrageMark=(axis,side)=>axis==='horizontal'?'↑↓':side>0?'←':side<0?'→':'←→';
+export function portBarrageRounds(s,cycle){
+ const {boss:b,player:p}=s,plan=PORT_BARRAGE,axis=portBarrageAxis(s,cycle);
+ const rake=portRakeReady(s,cycle),rounds=[];
+ const push=(dx,dy,portRound)=>rounds.push({
+  x:clamp(p.x+dx,FIELD.left,FIELD.right),y:clamp(p.y+dy,FIELD.top,FIELD.bottom),r:plan.radius,portRound
+ });
+ push(0,0,'lock');
+ for(const side of [-1,1]){
+  if(rake)push(side*plan.batteryOffset,0,'rake');
+  else if(axis==='vertical')push(0,side*plan.batteryOffset,'battery');
+  if(b.parts[0].hp>0)push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
+ }
+ return rounds;
+}
 export const PORT_LANDING={range:215,guards:[
  ['shield',52,30],['shield',98,8],['rifle',-25,25],['rifle',15,-29],
  ['mortar',-45,-180],['mortar',-83,-130]
@@ -79,8 +100,10 @@ export function portAidWindow(s,position){
  const crate=s.boss.harborSupply;
  if(!crate||s.boss.mode!=='salvo')return false;
  const pending=s.hazards.filter(h=>h.portRound&&!h.hit);
- return pending.length>0&&pending.every(h=>Math.hypot(crate.x-h.x,crate.y-h.y)>=h.r+16&&(!position||Math.hypot(position.x-h.x,position.y-h.y)>=h.r+16));
+ return pending.length>0&&pending.every(h=>!roundThreatens(h,crate)&&(!position||!roundThreatens(h,position)));
 }
+const roundThreatens=(round,point)=>Math.hypot(point.x-round.x,point.y-round.y)<round.r+16;
+export const portAidBaitRisk=(s,point)=>s.boss.mode!=='salvo'&&portBarrageRounds(s,s.boss.cycle+1).some(round=>roundThreatens(round,point));
 export const RAIL_BARRAGE={width:180,depth:900,y:600,outerOffset:300,warning:1.25,recover:2.2};
 export const railDisarmed=boss=>boss.parts.every(part=>part.hp<=0);
 // Fixed outer lanes in old checkpoints also belong to a gun.
@@ -180,8 +203,8 @@ const ENTRY={
   {site:'rail-relay',sign:'중계기 해킹',color:'#b1dfcb',path:[[800,1040],[936,980],[1120,835],[1120,580]]}
  ]},
  2:{arrival:{x:720,y:1040},routes:[
-  {site:'port-landing',sign:'하역장 해치 확보',color:'#edce8e',path:[[720,1040],[620,992],[520,900]]},
-  {site:'port-control',sign:'관제소 돌파',color:'#b5dce7',path:[[720,1040],[875,1010],[995,929],[1030,821],[1090,740],[1180,690],[1180,620]]}
+  {site:'port-landing',sign:'해치 · 측면 기습',color:'#edce8e',path:[[720,1040],[620,992],[520,900]]},
+  {site:'port-control',sign:'관제소 · 전술 선택',color:'#b5dce7',path:[[720,1040],[875,1010],[995,929],[1030,821],[1090,740],[1180,690],[1180,620]]}
  ]}
 };
 const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry])=>[index,{
