@@ -1575,6 +1575,7 @@ test('a new draft replaces incompatible and padding cards while keeping a saved 
  const resumed=restore(snapshot(s));
  assert.deepEqual(resumed.choices,s.choices);
  assert.equal(choiceDetails(resumed,saved).impact,'호환 무장 필요');
+ assert.equal(choiceDetails(resumed,saved).cost,'');
  assert.equal(choose(resumed,saved.id),false);
  assert.ok(choose(resumed,'utility:health'));
  assert.ok(resumed.choices.some(c=>c.id==='rank:h'));
