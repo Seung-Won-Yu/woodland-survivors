@@ -1,5 +1,6 @@
 import {REGIONS,regionLayout,mapSeed,frontEntry,exitGate} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
+import {FIELD} from './content.js';
 
 // One geography for canvas terrain, tactical maps and operation briefings.
 const rect=(x,y,w,h,fill)=>({type:'rect',x,y,w,h,fill});
@@ -12,24 +13,39 @@ const scenes=[
   line([[865,1200],[850,700],[915,0]],'#bdb28a',3,[22,24]),
   rect(120,60,1360,190,'#8b8265'),line([[120,260],[1480,260]],'#c6b17b',3,[12,16])
  ],landmarks:[[0,0,22,800,110],[0,0,28,420,95],[0,3,1538,180,125],[0,2,1540,1100,100]]},
- {ground:'#59615a',grain:['#919080','#3d4844'],water:null,shapes:[
-  rect(110,90,1380,230,'#414a48'),rect(655,300,100,890,'#444c47'),rect(925,270,155,920,'#414b47'),
-  rect(130,620,1330,105,'#4c5550'),line([[160,1010],[1450,1010]],'#a7a084',3,[16,20])
- ],rails:[[[40,180],[1560,180]],[[40,270],[1560,270]],[[700,1190],[700,440],[890,270]],[[1000,1190],[1000,330]]],landmarks:[[2,1,24,780,100],[2,1,1572,500,110],[1,2,1534,240,160]]},
- {ground:'#61716e',grain:['#9caaa0','#3d504e'],water:'#234b5e',shapes:[
-  rect(0,0,38,1200,'#234b5e'),rect(1562,0,38,1200,'#234b5e'),rect(38,0,76,1200,'#465b58'),rect(1486,0,76,1200,'#465b58'),
-  rect(114,150,1372,60,'#465b59'),rect(114,830,1372,70,'#52635c'),
-  line([[120,60],[120,1160]],'#d1bd7c',5,[20,16]),line([[1480,60],[1480,1160]],'#d1bd7c',5,[20,16]),
-  line([[220,570],[1420,570]],'#b9b493',3,[14,12]),line([[220,1015],[1420,1015]],'#b9b493',3,[14,12])
- ],landmarks:[[2,0,15,410,165],[2,0,1590,850,160],[2,3,1570,190,105]]}
+ {ground:'#4b4840',grain:['#a99873','#282c2a'],water:null,shapes:[
+  rect(80,122,1440,206,'#3c3c33'),rect(642,300,116,900,'#403a2e'),rect(941,270,120,930,'#403a2e'),
+  path([[763,1190],[933,1190],[930,478],[804,505]],'#504b3e'),
+  rect(429,787,179,160,'#6a6551'),rect(439,795,158,142,'#575546'),
+  rect(1080,528,120,130,'#53564c'),line([[1090,650],[1189,650]],'#9a9272',3),
+  rect(135,599,495,25,'#59513f'),rect(1070,598,393,25,'#59513f'),
+  line([[429,947],[608,947]],'#b8a56b',4),line([[617,810],[617,927]],'#a99461',3,[17,12]),
+  line([[770,1156],[940,1156]],'#827759',3,[19,16])
+ ],rails:[[[40,180],[1560,180]],[[40,270],[1560,270]],[[700,1190],[700,440],[890,270]],[[1000,1190],[1000,330]]],
+ marks:[[510,926,'02'],[1135,634,'04']],landmarks:[[2,1,24,780,100],[2,1,1572,500,110],[1,2,1534,240,160]]},
+ {ground:'#43575f',grain:['#a0b4af','#293c45'],water:'#234b5e',shapes:[
+  rect(38,0,81,1160,'#3a5059'),rect(1481,0,81,1160,'#3a5059'),
+  rect(38,943,1524,217,'#4d6468'),rect(570,103,460,305,'#4e6164'),
+  rect(440,855,180,117,'#546b6e'),rect(1115,572,144,156,'#536a6b'),
+  rect(763,210,79,950,'#354951'),
+  line([[768,421],[768,1152]],'#8a987e',3,[22,25]),line([[837,432],[837,1152]],'#82947d',3,[22,25]),
+  line([[573,407],[766,407]],'#95a08a',3),line([[840,407],[1027,407]],'#95a08a',3),
+  line([[438,854],[619,854],[619,959]],'#a8a787',4),line([[1115,729],[1259,729],[1259,578]],'#a8a787',4),
+  line([[129,1008],[430,1008]],'#7e9290',2),line([[885,1030],[1465,1030]],'#7e9290',2),
+  line([[229,698],[518,698],[518,803]],'#738883',2),line([[1070,416],[1450,416]],'#738883',2),
+  rect(0,0,38,1200,'#234b5e'),rect(1562,0,38,1200,'#234b5e'),rect(0,FIELD.bottom,1600,1200-FIELD.bottom,'#234b5e'),
+  rect(38,FIELD.bottom-14,1524,14,'#768d8b'),rect(38,FIELD.bottom-3,1524,3,'#20383f')
+ ],marks:[[530,950,'01'],[1187,713,'02'],[971,394,'03']],
+ landmarks:[[2,0,15,410,165],[2,0,1590,850,160],[2,3,1570,190,105]]}
 ];
 const mirrorPoints=points=>points.map(([x,y])=>[1600-x,y]);
-const mirroredRail={...scenes[1],
- shapes:scenes[1].shapes.map(shape=>shape.type==='rect'?{...shape,x:1600-shape.x-shape.w}:{...shape,points:mirrorPoints(shape.points)}),
- rails:scenes[1].rails.map(mirrorPoints),
- landmarks:scenes[1].landmarks.map(([row,col,x,y,w])=>[row,col,1600-x,y,w])
-};
-export const fieldScene=(index,seed=17)=>index===1&&mapSeed(seed,index)%2===0?mirroredRail:scenes[index]||scenes[0];
+const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
+ shapes:scene.shapes.map(shape=>shape.type==='rect'?{...shape,x:1600-shape.x-shape.w}:{...shape,points:mirrorPoints(shape.points)}),
+ rails:scene.rails?.map(mirrorPoints),
+ marks:scene.marks.map(([x,y,text])=>[1600-x,y,text]),
+ landmarks:scene.landmarks.map(([row,col,x,y,w])=>[row,col,1600-x,y,w])
+});
+export const fieldScene=(index,seed=17)=>(mapSeed(seed,index)%2===0?mirrored:scenes)[index]||scenes[0];
 export function previewLayout(seed,index){return regionLayout(mapSeed(seed,index),index);}
 export function sitePresentation(n){
  if(n.kind==='relay')return{icon:'relay',name:'통신 중계기',verb:'범위 안에서 해킹'};

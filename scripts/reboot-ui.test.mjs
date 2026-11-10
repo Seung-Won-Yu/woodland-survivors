@@ -39,7 +39,9 @@ test('unreadable historical reports cannot crash archive or report navigation',(
 });
 
 import {choiceDetails,isQuickMod} from '../src/reboot/choice-details.js';
-import {fieldScene,sitePresentation,regionPreview} from '../src/reboot/field-scene.js';
+import {fieldScene,sitePresentation,regionPreview,previewLayout} from '../src/reboot/field-scene.js';
+import {paintBlock} from '../src/reboot/field-art.js';
+import {FIELD} from '../src/reboot/content.js';
 import {snapshot} from '../src/reboot/model.js';
 
 test('upgrade previews expose the opening rifle breakpoint without mutating the run',()=>{
@@ -77,6 +79,24 @@ test('briefings share distinct field terrain and recognizable site symbols',()=>
  const run=createOperation(17),html=regionPreview(0,17);for(const site of run.sites)assert.ok(html.includes(`translate(${site.x} ${site.y})`));
  assert.equal(sitePresentation(run.sites[0]).name,'포로 구출');assert.equal(sitePresentation(run.sites[1]).icon,'truck');
 });
+test('the harbor quay follows the field boundary and bay marks follow mirrored loading sites',()=>{
+ const port=fieldScene(2,19),mirror=fieldScene(2,18);
+ for(const scene of [port,mirror])assert.ok(scene.shapes.some(s=>s.type==='rect'&&s.y===FIELD.bottom&&s.fill===scene.water&&s.w===1600));
+ assert.deepEqual(mirror.marks,port.marks.map(([x,y,label])=>[1600-x,y,label]));
+ const landing=previewLayout(19,2).sites.find(s=>s.id==='port-landing'),bay=port.marks.find(m=>m[2]==='01');
+ assert.ok(Math.abs(bay[0]-landing.x)<25&&Math.abs(bay[1]-landing.y)<70);
+});
+test('the same harbor container uses the same art and depth limit on both mirrors',()=>{
+ const calls=[],context=new Proxy({scale(x,y){calls.push({scale:y});},drawImage(...args){calls.push({sprite:args[1],height:args.at(-1)});}},{get:(o,k)=>o[k]||(()=>{})});
+ const cell={sx:0,sy:0,w:100,h:90},art={environment:{image:{},rows:[null,{cells:[cell,{...cell,sx:100}]}]}};
+ for(const seed of [19,18]){
+  const b=previewLayout(seed,2).blocks.find(block=>block.id==='p2');
+  paintBlock(context,b,2,art);
+  const [scale,draw]=calls.splice(0);
+  assert.equal(draw.sprite,100);
+  assert.ok(Math.abs(draw.height*scale.scale-(b.h+40))<1e-9);
+ }
+});
 
 test('all weapon level previews describe the changed firing property and branch-specific evolution',()=>{
  const run=createOperation(17);
@@ -94,7 +114,10 @@ test('browser terrain caches rebuild per region and physical objects sort around
  const {createRenderer}=await import('../src/reboot/render.js'),saved={innerWidth:globalThis.innerWidth,innerHeight:globalThis.innerHeight,devicePixelRatio:globalThis.devicePixelRatio},fills=[];let caches=0;
  const context=record=>new Proxy({fillRect(...args){if(record)fills.push(args);},measureText:t=>({width:t.length*6}),createRadialGradient:()=>({addColorStop(){}})},{get:(o,k)=>k in o?o[k]:()=>{}}),main=context(true),canvas={getContext:()=>main,ownerDocument:{createElement:()=>{caches++;return{getContext:()=>context(false)};}}};
  try{Object.assign(globalThis,{innerWidth:960,innerHeight:540,devicePixelRatio:1});const renderer=createRenderer(canvas,null),run=createOperation(17);renderer.draw(run);renderer.draw(run);assert.equal(caches,1);
-  run.operation.region=1;run.player.x=800;run.player.y=650;run.enemies=[];run.sites=[{id:'test',kind:'supply',x:1100,y:700,state:'waiting'}];run.blocks=[{x:1000,y:580,w:100,h:80,hp:-1}];fills.length=0;renderer.draw(run);assert.equal(caches,2);const index=(x,y)=>fills.findIndex(a=>a[0]===x&&a[1]===y);assert.ok(index(787,606)>=0);assert.ok(index(787,606)<index(1000,562));assert.ok(index(1000,562)<index(1075,670));renderer.draw(run);assert.equal(caches,2);
+  run.operation.region=1;run.player.x=800;run.player.y=650;run.enemies=[];run.sites=[{id:'test',kind:'supply',x:1100,y:700,state:'waiting'}];run.blocks=[{x:1000,y:580,w:100,h:80,hp:-1},{x:760,y:620,w:100,h:70,hp:0}];fills.length=0;renderer.draw(run);assert.equal(caches,2);
+  const index=(x,y)=>fills.findIndex(a=>a[0]===x&&a[1]===y);
+  assert.ok(index(764,625)>=0);assert.ok(index(764,625)<index(787,606));assert.ok(index(787,606)<index(1000,562));assert.ok(index(1000,562)<index(1075,670));
+  renderer.draw(run);assert.equal(caches,2);
  }finally{for(const[k,v]of Object.entries(saved))if(v===undefined)delete globalThis[k];else globalThis[k]=v;}
 });
 

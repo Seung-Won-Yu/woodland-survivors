@@ -162,10 +162,11 @@
 @media(max-width:700px) and (orientation:portrait){
  .boss-active #combo{top:auto;bottom:130px;right:16px}
  .boss-active #banner:is([data-kind="weakpoint"],[data-kind="break"],[data-kind="heal"],[data-kind="supply-ready"]){top:244px;font-size:13px}
-}
-@media(max-width:700px) and (max-height:700px) and (orientation:portrait){
  .boss-active #field-feedback{left:auto;right:14px;bottom:max(102px,calc(env(safe-area-inset-bottom) + 80px));transform:none;min-width:0;max-width:60%;padding-right:10px}
  .boss-active:has(#field-feedback:not([hidden])) #combo{visibility:hidden}
+}
+@media(max-width:700px) and (max-height:700px) and (orientation:portrait){
+ .arsenal{bottom:max(135px,calc(env(safe-area-inset-bottom) + 108px));gap:3px}
 }
 @media(max-width:700px){
  .front-intel{grid-template-columns:1fr 1fr}
