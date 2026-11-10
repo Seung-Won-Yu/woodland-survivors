@@ -1,6 +1,6 @@
 const IMPORTANT = ['hurt', 'armor-collapse', 'front-entry', 'forge-union', 'forge-evolve', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
 const IMPACTS = ['heat-break', 'conduit-hop', 'conduit-impact', 'power-kill', 'wood-impact', 'wood-kill', 'blade-impact', 'ember-impact'];
-const CASTS = ['inferno-jet', 'flame-loop', 'scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
+const CASTS = ['focus-shot', 'inferno-jet', 'flame-loop', 'scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
 
 export function selectAudioEvents(events) {
   const has = event => events.has(event);
@@ -80,6 +80,7 @@ export function createAudio() {
     else if(event==='heat-break'){transient(now,.12,.055,540);note(98,28,'triangle',now,.22,.045);note(540,170,'sine',now,.13,.016);}
     else if(event==='conduit-impact'){transient(now,.046,.035,1900);note(290,110,'triangle',now,.11,.035);note(980,430,'sine',now+.014,.066,.019);}
     else if(event==='conduit-hop'){transient(now,.04,.035,1900);note(320,760,'triangle',now,.065,.023);note(950,1300,'sine',now+.022,.044,.012);}
+    else if(event==='focus-shot'){transient(now,.07,.06,2150);note(170,46,'triangle',now,.14,.046);note(610,210,'sine',now+.021,.08,.02);}
     else if(event==='inferno-jet'){transient(now,.12,.042,730);note(100,53,'triangle',now,.14,.022);}
     else if(event==='flame-loop'){transient(now,.13,.035,1250);note(82,64,'triangle',now,.14,.012);}
     else if(event==='power-kill'){transient(now,.04,.05,1100);note(140,42,'triangle',now,.1,.038);note(790,1200,'sine',now+.01,.06,.013);}

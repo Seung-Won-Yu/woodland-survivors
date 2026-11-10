@@ -22,11 +22,17 @@ function sheet(im,rowCount=4){
  }const feet=cells.map(b=>b.footX).sort((a,b)=>a-b);rows.push({cells,ground:Math.max(...cells.map(b=>b.bottom)),anchor:feet[2],height:Math.max(...cells.map(b=>b.h))});}
  return {image:im,rows,cell};
 }
+let operatorAtlas=null;
+function loadOperators(priority){
+ if(!operatorAtlas)operatorAtlas=image('operators',priority).then(im=>sheet(im)).catch(error=>{operatorAtlas=null;throw error;});
+ return operatorAtlas;
+}
+export async function loadOperatorPortrait(){return {operators:await loadOperators('high')};}
 export async function loadMissionArt({priority='auto',onProgress}={}){
  let ready=0;
  const [operators,enemies,vehicles,environment,vehicleLayers]=await Promise.all(artNames.map(async(name,index)=>{
-  const im=await image(name,priority);
-  const asset=index===artNames.length-1?im:sheet(im);
+  const im=index===0?await loadOperators(priority):await image(name,priority);
+  const asset=index===0||index===artNames.length-1?im:sheet(im);
   onProgress?.(++ready);
   return asset;
  }));

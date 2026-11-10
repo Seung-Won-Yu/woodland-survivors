@@ -131,6 +131,30 @@ export const RULES = {
       "intervalMultiplier": 0.65
     }
   },
+  "marco": {
+    "initialCharge": 40,
+    "directCharge": 5,
+    "chargeReach": 215,
+    "chargeInterval": 0.32,
+    "focus": {
+      "cost": 60,
+      "cooldown": 5.2,
+      "range": 385,
+      "halfWidth": 19,
+      "targets": 4,
+      "damage": 110,
+      "weakMultiplier": 2.7
+    },
+    "sweep": {
+      "cost": 60,
+      "cooldown": 5.2,
+      "range": 275,
+      "halfWidth": 48,
+      "targets": 8,
+      "damage": 104,
+      "weakMultiplier": 1.45
+    }
+  },
   "weapons": {
     "p": {
       "tags": [

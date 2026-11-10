@@ -8,7 +8,7 @@ import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,sett
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
-import {COAST_CHARGE,coastChargeLane} from '../src/reboot/coast-charge.js';
+import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -332,7 +332,7 @@ test('capstone contacts use the same bounded sound lanes as other weapons',async
 });
 test('heat audio stays distinct while hurt keeps foreground priority',async()=>{const {selectAudioEvents}=await import('../src/game/audio.js');assert.deepEqual(selectAudioEvents(new Set(['heat-break','power-kill'])),['heat-break']);assert.deepEqual(selectAudioEvents(new Set(['heat-break','flame-loop','hurt'])),['hurt']);});
 
-function quietOperation(){const s=createOperation(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
+function quietOperation(operator='fio'){const s=createOperation(17,[],null,null,operator);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function downBoss(s){s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.shots=[bullet(s,s.boss)];step(s,dt);}
 function clearRegion(s){downBoss(s);assert.equal(s.phase,'playing');assert.equal(s.stage,'holdout');Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.equal(s.choice.type,'clear');}
 test('the fusion showcase waits through the boss attack and survives a quick gate transition',()=>{
@@ -1428,4 +1428,84 @@ test('missing the coast objective still permits standard extraction without an o
  const settled=settleProfile(next,s);
  assert.equal(settled.recent[0].orderBonus,0);assert.equal(settled.orderRecords,undefined);
  assert.equal(settled.records.wins,2);assert.equal(settled.records.time,null);
+});
+
+test('Marco earns a single bounded charge from nearby direct hits and keeps that charge through saving',()=>{
+ const s=quietOperation('marco'),p=s.player;
+ assert.equal(p.charge,RULES.marco.initialCharge);assert.equal(p.doctrine,'focus');
+ tick(s,.5);assert.equal(p.charge,40);
+ const close=enemy('close',900,800,'rifle',1000),second=enemy('second',920,810,'rifle',1000),far=enemy('far',1200,800,'rifle',1000);
+ s.enemies=[close,second,far];s.shots=[bullet(s,close,1),bullet(s,second,1)];step(s,dt);
+ assert.equal(p.charge,45);
+ const saved=restore(snapshot(s));saved.shots=[bullet(saved,close,1)];step(saved,dt);
+ assert.equal(saved.player.charge,45);
+ tick(s,.35);s.shots=[bullet(s,far,1)];step(s,dt);assert.equal(p.charge,45);
+ s.blocks=[{x:850,y:780,w:15,h:45,hp:-1}];s.shots=[bullet(s,close,1)];step(s,dt);assert.equal(p.charge,45);
+ s.blocks=[];s.shots=[{...bullet(s,close,1),source:'payload'}];step(s,dt);assert.equal(p.charge,45);
+ s.shots=[bullet(s,close,1)];step(s,dt);assert.equal(p.charge,50);
+});
+
+test('Marco shoots along movement, clips the first cover and pays charge even on a missed shot',()=>{
+ const s=quietOperation('marco'),p=s.player;
+ const front=enemy('front',925,800),side=enemy('side',925,860),behind=enemy('behind',1060,800),rear=enemy('rear',700,800);
+ s.enemies=[front,side,behind,rear];
+ s.blocks=[{id:'cover',x:985,y:770,w:40,h:60,hp:-1}];
+ step(s,dt,{x:1,y:0});p.aim=Math.PI;p.charge=60;
+ assert.ok(action(s,'skill'));assert.equal(p.charge,0);assert.equal(p.overdrive,0);
+ assert.equal(front.hp,0);assert.equal(side.hp,100);assert.equal(behind.hp,100);assert.equal(rear.hp,100);
+ const shot=s.effects.find(f=>f.type==='focus-shot');assert.equal(shot.angle,0);assert.ok(Math.abs(shot.x+shot.length-985)<1e-9);
+ assert.equal(s.stats.focusHits,1);assert.equal(s.stats.focusKills,1);assert.equal(s.stats.focusGained,undefined);
+ assert.equal(action(s,'skill'),false);
+ p.charge=60;p.skillCd=0;p.moveAim=Math.PI/2;assert.ok(action(s,'skill'));assert.equal(p.charge,0);assert.equal(s.stats.focusHits,1);
+});
+
+test('Marco uses current input before the first movement tick and can save a charge interrupt',()=>{
+ const s=quietOperation('marco');
+ Object.assign(s.player,{x:600,y:800,charge:60});
+ Object.assign(s.boss,{x:800,y:800,hp:1,active:true,mode:'windup',body:0});
+ s.stage='boss';
+ s.boss.chargePath=planCoastCharge(s);
+ assert.equal(s.player.moveAim,-Math.PI/2);
+ assert.ok(action(s,'skill',{x:1,y:0}));
+ assert.equal(s.player.moveAim,0);
+ assert.equal(s.boss.dead,true);
+ assert.equal(s.boss.chargePath,undefined);
+ const loaded=restore(snapshot(s));
+ step(loaded,dt);
+ assert.equal(loaded.stage,'holdout');
+ assert.ok(exitGate(loaded));
+});
+test('focused aim hits one exposed boss plate and sweep covers a wider infantry line',()=>{
+ const railShot=(x,mode,doctrine='focus')=>{
+  const s=quietOperation('marco');s.operation.region=1;s.stage='boss';
+  Object.assign(s.boss,regionBoss(1,19),{active:true,mode,x:800,y:620});
+  Object.assign(s.player,{x,y:800,charge:60,doctrine});
+  const before=s.boss.hp,gun=s.boss.parts[0],gunHp=gun.hp;
+  assert.ok(action(s,'skill',{x:0,y:-1}));
+  return [before-s.boss.hp,gunHp-gun.hp,s.stats.focusWeakHits];
+ };
+ assert.deepEqual(railShot(800,'recover'),[55,0,0]);
+ assert.deepEqual(railShot(740,'aim'),[0,110,0]);
+ assert.deepEqual(railShot(740,'recover'),[0,297,1]);
+ const sweep=railShot(740,'recover','sweep');
+ assert.ok(Math.abs(sweep[1]-150.8)<1e-6);assert.equal(sweep[2],1);
+ const wider=quietOperation('marco'),e=enemy('side',852,680);
+ wider.enemies=[e];wider.player.doctrine='sweep';wider.player.charge=60;
+ assert.ok(action(wider,'skill'));assert.equal(e.hp,0);
+});
+
+test('Marco wins keep a separate standard and order record and preserve Fio marks',()=>{
+ const base=emptyProfile();base.records.score=1111;base.records.time=88;base.records.wins=1;base.credits=500;base.milestones.medic=true;
+ function played(p,order){
+  const {run:s,next}=freshSortie(p,17,order,'marco');
+  if(order){s.sites.find(site=>site.id==='arsenal').state='done';s.operation.orderDone=true;}
+  for(let i=0;i<3;i++){clearRegion(s);if(i<2)assert.ok(choose(s,'advance'));}
+  assert.ok(choose(s,'extract'));
+  return settleProfile(next,s);
+ }
+ const standard=played(base,null),ordered=played(standard,'convoy');
+ assert.equal(ordered.records.score,1111);assert.equal(ordered.records.time,88);assert.equal(ordered.records.wins,3);
+ assert.equal(ordered.marcoRecords.wins,1);assert.equal(ordered.marcoRecords.orders.convoy.wins,1);assert.equal(ordered.orderRecords,undefined);
+ assert.equal(ordered.recent[0].operator,'marco');assert.equal(parseProfile(JSON.stringify(ordered)).lastOperator,'marco');
+ assert.equal(freshSortie(ordered,17).run.operator,undefined);
 });

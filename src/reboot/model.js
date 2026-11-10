@@ -2,6 +2,7 @@ import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
+import {OPERATORS,operatorOf,skillRules,canUseSkill,focusLane,aimFromInput,chargeLabel} from './operator.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
 const pick=(s,key,items)=>items[Math.floor(rng(s,key)*items.length)];
@@ -14,9 +15,15 @@ export function createRun(seed=17){
  for(let i=0;i<RULES.spawn.initialCount;i++)spawnAround(s,'rifle',{},340,RULES.spawn.openingGap);
  return s;
 }
-export function createOperation(seed=17,research=[],trial=null,order=null){
+export function createOperation(seed=17,research=[],trial=null,order=null,operator='fio'){
  if(order!==null&&!sortieOrder(order))throw Error('작전 지령을 확인할 수 없습니다.');
- const s=createRun(seed);s.operation={region:0,cleared:0,regionTime:0,history:[],jammed:false,...(order?{order,orderDone:false}:{})};s.research=[...research];s.trials=(Array.isArray(trial)?[...trial]:[trial]).filter(Boolean);s.trial=s.trials[0]||null;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[0]};for(const e of s.enemies)e.cohort='ambient';s.stats.sitesCleared=0;s.stats.fusionBosses=0;s.stats.flameBosses=0;Object.assign(s,regionLayout(seed,0,order));s.boss=regionBoss(0);return s;
+ if(!Object.hasOwn(OPERATORS,operator))throw Error('출전 대원을 확인할 수 없습니다.');
+ const s=createRun(seed);s.operation={region:0,cleared:0,regionTime:0,history:[],jammed:false,...(order?{order,orderDone:false}:{})};s.research=[...research];s.trials=(Array.isArray(trial)?[...trial]:[trial]).filter(Boolean);s.trial=s.trials[0]||null;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[0]};for(const e of s.enemies)e.cohort='ambient';s.stats.sitesCleared=0;s.stats.fusionBosses=0;s.stats.flameBosses=0;Object.assign(s,regionLayout(seed,0,order));s.boss=regionBoss(0);
+ if(operator==='marco'){
+  s.operator=operator;
+  Object.assign(s.player,{charge:RULES.marco.initialCharge,doctrine:OPERATORS.marco.start,moveAim:-Math.PI/2,focusChargeAt:0});
+ }
+ return s;
 }
 function advanceRegion(s){
  if(!s.operation||s.stage!=='holdout'||!s.boss.dead||s.operation.region>=2)return false;
@@ -56,6 +63,7 @@ export function restore(raw,{allowPrevious=false}={}){
  for(const m of s.modules)if(!MODULES[m.id]||!Number.isInteger(m.rank)||m.rank<1||m.rank>3)throw Error('모듈 저장이 손상됐습니다.');
  if(!Number.isFinite(s.player.hp)||s.player.hp<0||!Number.isFinite(s.player.maxHp)||s.player.maxHp<=0||s.player.hp>s.player.maxHp||!Number.isFinite(s.t)||s.t<0||s.tuning<0||s.rerolls<0||s.banishes<0)throw Error('작전 저장이 손상됐습니다.');
  const fail=()=>{throw Error('전투 체크포인트가 손상됐습니다.');};
+ if(s.operator!==undefined&&(s.operator!=='marco'||!s.operation||!Object.hasOwn(OPERATORS.marco.stances,s.player.doctrine)||![s.player.moveAim,s.player.focusChargeAt].every(Number.isFinite)))fail();
  if(s.levelReadyAt!=null&&(!Number.isFinite(s.levelReadyAt)||s.levelReadyAt<0))fail();
  if(!['field','boss','holdout'].includes(s.stage)||!Array.isArray(s.boss?.parts)||!Array.isArray(s.queue)||!Array.isArray(s.choices)||!['map','supply','combat','loot'].every(k=>Number.isInteger(s.rng[k])))fail();
  const chargePath=s.boss.chargePath;
@@ -91,7 +99,7 @@ export function restore(raw,{allowPrevious=false}={}){
  }
  if(s.powerWave?.paired>0&&!s.powerWave.showcase)s.powerWave.showcase='fusion';
  if(s.player.maneuver&&!Object.hasOwn(MANEUVERS,s.player.maneuver))fail();
- if(s.stage==='boss'&&s.boss.active&&!(s.operation?.region>0)){
+ if(s.stage==='boss'&&s.boss.active&&!s.boss.dead&&!(s.operation?.region>0)){
   const b=s.boss;
   if(![s.player.x,s.player.y,b.x,b.y,b.r,b.body,b.timer].every(Number.isFinite)||b.r<=0)fail();
   clearCoastOverlap(s,s.player,16,{x:800,y:350});
@@ -200,7 +208,7 @@ function levelCards(s){
 function rollQuality(s,key){const p=RULES.quality[key],r=rng(s,'loot');return r<p.common?'common':r<p.common+p.rare?'rare':'prototype';}
 function armoryCards(s,quality){
  const cards=[],pool=modulePool(s),amount=quality==='common'?1:quality==='rare'?2:3;
- if(quality==='prototype'&&!moduleRank(s,'overcharger'))cards.push(moduleCard('overcharger',1));
+ if(quality==='prototype'&&s.operator!=='marco'&&!moduleRank(s,'overcharger'))cards.push(moduleCard('overcharger',1));
  const trial=trialModule(s,pool);if(trial){cards.push(trialCard(trial,amount));pool.splice(pool.indexOf(trial),1);}
  while(cards.length<3&&pool.length){const full=pool.filter(id=>moduleRank(s,id)+amount<=3),id=pick(s,'loot',full.length?full:pool);pool.splice(pool.indexOf(id),1);cards.push(moduleCard(id,amount));}
  return fillCrate(cards,quality);
@@ -252,7 +260,7 @@ export function assemblyOptions(s){
 export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  if(s.phase!=='choice')return false;const c=s.choices.find(c=>c.id===id);if(!c)return false;
  if(c.kind==='advance'){if(!s.operation||s.stage!=='holdout'||!s.boss.dead||s.operation.region>=2)return false;s.stats.choices.push({id:'advance',region:s.operation.region,t:s.t});return advanceRegion(s);}
- if(s.choice.type==='level'&&s.level>=6&&!s.player.branchChosen&&!['reserve','quick'].includes(doctrine))return false;
+ if(s.choice.type==='level'&&s.level>=6&&!s.player.branchChosen&&!Object.hasOwn(operatorOf(s).stances,doctrine))return false;
  if(c.kind==='rank'){const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion);if(!w||w.level>=6||w.evolved)return false;if(w.level===3&&!GUNS[w.id].branches[branch])return false;w.level++;if(w.level===4)w.branch=branch;}
  else if(c.kind==='module'){
   if(!MODULES[c.module]||!compatible(s,c.module))return false;let m=s.modules.find(m=>m.id===c.module);
@@ -303,7 +311,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  else if(c.kind==='extract'){if(s.operation&&s.operation.cleared===3)s.operation.extracted=true;finish(s,true);return true;}
  else if(c.kind==='stay'){s.phase='playing';s.choice=null;s.choices=[];return true;}
  else return false;
- if(s.choice.type==='level'&&s.level>=6&&!s.player.branchChosen){if(!['reserve','quick'].includes(doctrine))return false;s.player.doctrine=doctrine;s.player.branchChosen=true;}
+ if(s.choice.type==='level'&&s.level>=6&&!s.player.branchChosen){if(!Object.hasOwn(operatorOf(s).stances,doctrine))return false;s.player.doctrine=doctrine;s.player.branchChosen=true;}
  s.stats.choices.push({t:Math.round(s.t*10)/10,id,branch:branch||null,weapon:weapon||null,source:s.choice.type,contract:s.choice.contract||null,quality:s.choice.quality||null});if(s.choice.type==='supply')s.supplyCount++;s.phase='playing';s.choice=null;s.choices=[];
  if(heatSynergyReady(s))buildCompleted(s,'synergy');
  emit(s,'choose');nextChoice(s);return true;
@@ -413,7 +421,9 @@ function scoreKill(s,e,source,kind){
   }
   s.stats.elites++;if(s.stats.elites<=8)s.stats.score+=100;
  }else{s.stats.kills++;if(s.stats.kills<=(s.operation?900:300))s.stats.score+=10;}
- s.player.charge=Math.min(100,s.player.charge+1*(1+Math.min(.2,s.level*.01)));s.combo++;s.comboTime=2;s.stats.bestCombo=Math.max(s.combo,s.stats.bestCombo);
+ if(s.operator!=='marco')s.player.charge=Math.min(100,s.player.charge+1*(1+Math.min(.2,s.level*.01)));
+ if(source==='focus')s.stats.focusKills=(s.stats.focusKills||0)+1;
+ s.combo++;s.comboTime=2;s.stats.bestCombo=Math.max(s.combo,s.stats.bestCombo);
  const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);
  const flavor=source==='payload'?'arc':kind==='fire'?'fire':null;
  if(flavor)e.deathFlavor=flavor;
@@ -451,7 +461,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
  amount*=1+s.boosts.power*.01;
  const breach=s.operation?.support==='breach';
  if(e===s.boss.parts[0]&&s.operation?.region===2){
-  if((source==='native'||source==='payload')&&(breachLane??(portBreachFlank(s)&&!lineBlocked(s,s.player,e)))){
+  if((source==='native'||source==='payload'||source==='focus')&&(breachLane??(portBreachFlank(s)&&!lineBlocked(s,s.player,e)))){
    amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
    if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
    else if(clearPortTurretRounds(s)){
@@ -478,7 +488,11 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if(s.operation?.tactic==='heat'&&s.boss.tacticCycle===s.boss.cycle)amount*=frontTactic(s).boost;
  }
  if(e.type==='shield'&&kind==='bullet'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.45)amount*=breach?.65:.45;
- const actual=e.part||e;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
+ const actual=e.part||e,before=actual.hp;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
+ if(s.operator==='marco'&&source==='native'&&actual.hp<before&&s.player.focusChargeAt<=s.t&&s.player.charge<100&&distance(s.player,e)<=RULES.marco.chargeReach+e.r&&!lineBlocked(s,s.player,e)){
+  const p=s.player,gain=Math.min(100-p.charge,RULES.marco.directCharge);
+  p.charge+=gain;p.focusChargeAt=s.t+RULES.marco.chargeInterval;s.stats.focusGained=(s.stats.focusGained||0)+gain;
+ }
  if(['rifle','shield','mortar','officer'].includes(e.type)){const dx=e.x-s.player.x,dy=e.y-s.player.y,d=Math.hypot(dx,dy)||1,push=(kind==='blast'?RULES.combatFeel.blastPush:RULES.combatFeel.bulletPush)*(e.type==='shield'?RULES.combatFeel.shieldPushMultiplier:1);move(s,e,dx/d*push,dy/d*push,e.r);}
  if(source==='module')s.stats.moduleDamage+=amount;
  if(kind==='electric'&&e.burn>0&&moduleRank(s,'thermal')&&moduleRank(s,'coil')&&!(s.thermalCd>0)){
@@ -499,7 +513,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if(s.operation?.region===2&&actual===s.boss.parts[0])stopPortTurret(s,actual);
   emit(s,'break',e.x,e.y,{life:.7});return;
  }
- if(e.type==='boss'){s.boss.dead=true;s.stats.bossKilled=true;if(s.operation){s.operation.cleared=s.operation.region+1;if(s.weapons.some(w=>w.fusion))s.stats.fusionBosses++;if(s.weapons.some(w=>w.id==='f'&&w.evolved))s.stats.flameBosses++;}s.stats.score+=1000;emit(s,'boss-down',e.x,e.y,{r:e.r,life:1.2});return;}
+ if(e.type==='boss'){s.boss.dead=true;delete s.boss.chargePath;s.stats.bossKilled=true;if(s.operation){s.operation.cleared=s.operation.region+1;if(s.weapons.some(w=>w.fusion))s.stats.fusionBosses++;if(s.weapons.some(w=>w.id==='f'&&w.evolved))s.stats.flameBosses++;}s.stats.score+=1000;emit(s,'boss-down',e.x,e.y,{r:e.r,life:1.2});return;}
  if(e===signalCourier(s)){e.dead=true;dropXp(s,e.x,e.y,24,true);emit(s,'break',e.x,e.y);return;}
  if(e.type==='courier'){
   e.dead=true;s.raid.state='success';s.stats.raidSuccess++;s.stats.score+=300;gainXp(s,12);emit(s,'break',e.x,e.y);
@@ -985,7 +999,36 @@ export function interaction(s){
  const gate=exitGate(s);
  return gate&&distance(s.player,gate)<(s.operation?92:140)?{id:'extract',label:s.operation?.region===2?'귀환 선택':'전진 · 잔류 선택'}:null;
 }
-export function action(s,kind){
+function focusWeakPoint(s,target){
+ const b=s.boss,front=s.operation.region;
+ if(b.mode!=='recover')return false;
+ if(target.type==='part')return true;
+ if(target!==b)return false;
+ if(front>0)return b.parts.every(p=>p.hp<=0)||portCoreDisrupted(s);
+ const angle=Math.atan2(s.player.y-b.y,s.player.x-b.x);
+ return Math.cos(angle-b.body)<COAST_CHARGE.rearDot;
+}
+function fireFocus(s,cfg){
+ const p=s.player,lane=focusLane(s),hits=[];
+ for(const enemy of targets(s)){
+  const x=enemy.x-p.x,y=enemy.y-p.y,depth=x*lane.dx+y*lane.dy,side=Math.abs(x*lane.dy-y*lane.dx);
+  if(enemy.hp>0&&depth>0&&depth<=lane.length&&side<=lane.width+enemy.r&&!lineBlocked(s,p,enemy))hits.push({enemy,depth,side,weak:focusWeakPoint(s,enemy)});
+ }
+ const isArmor=hit=>hit.enemy.type==='boss'||hit.enemy.type==='part';
+ const armor=hits.filter(isArmor).sort((a,b)=>Number(b.weak)-Number(a.weak)||a.side-b.side||a.depth-b.depth)[0];
+ const impacts=hits.filter(hit=>!isArmor(hit)||hit===armor).sort((a,b)=>a.depth-b.depth).slice(0,cfg.targets);
+ s.stats.focusUses=(s.stats.focusUses||0)+1;
+ s.stats.focusHits=(s.stats.focusHits||0)+impacts.length;
+ s.stats.focusWeakHits=(s.stats.focusWeakHits||0)+impacts.filter(hit=>hit.weak).length;
+ p.attack=.14;p.aim=lane.angle;
+ for(const {enemy,weak} of impacts){
+  const screened=enemy===s.raid?.target&&raidOnNose(s,Math.atan2(-lane.dy,-lane.dx));
+  damage(s,enemy,cfg.damage*(weak?cfg.weakMultiplier:1)*(screened?RULES.raidContracts.armored.bulletFrontMultiplier:1),'bullet','focus');
+  emit(s,'pierce',enemy.x,enemy.y,{angle:lane.angle,life:.17});
+ }
+ emit(s,'focus-shot',p.x,p.y,{angle:lane.angle,length:lane.length,width:lane.width,life:.22,text:impacts.some(hit=>hit.weak)?'관통 사격 · 약점 직격':undefined});
+}
+export function action(s,kind,input){
  if(kind.startsWith('raid:'))return startRaid(s,kind.split(':')[1]);
  if(kind==='withdraw'){if(!withdrawRaid(s))return false;emit(s,'raid-failed',s.player.x,s.player.y,{text:'습격 철수 · 상자 소실',life:1.2});return true;}
  if(s.phase!=='playing')return false;const p=s.player;
@@ -1000,7 +1043,13 @@ export function action(s,kind){
   if(p.maneuver==='assault')p.assaultTime=1.25;
   emit(s,'dash',p.x,p.y,{angle:p.aim,life:.2});return true;
  }
- if(kind==='skill'){const cfg=RULES.fio[p.doctrine];if(p.skillCd>0||p.overdrive>0||p.charge<cfg.cost)return false;p.charge-=cfg.cost;p.overdrive=cfg.duration;p.skillCd=cfg.cooldown;emit(s,'skill',p.x,p.y,{text:'전탄 보급',life:.7});return true;}
+ if(kind==='skill'){
+  if(!canUseSkill(s))return false;
+  const cfg=skillRules(s);p.charge-=cfg.cost;p.skillCd=cfg.cooldown;
+  if(s.operator==='marco'){p.moveAim=aimFromInput(input,p.moveAim);fireFocus(s,cfg);}
+  else{p.overdrive=cfg.duration;emit(s,'skill',p.x,p.y,{text:'전탄 보급',life:.7});}
+  return true;
+ }
  if(kind==='challenge')return startChallenge(s);
  if(kind==='interact'){
   const item=interaction(s);if(!item||item.blocked)return false;
@@ -1023,7 +1072,7 @@ export function action(s,kind){
 export function finish(s,won=false,reason='retreat'){
  if(s.phase==='result')return false;won=!!won&&s.stats.bossKilled&&(!s.operation||s.operation.cleared===3&&s.operation.extracted===true)&&s.player.hp>0;if(won&&!s.stats.extractionPaid){s.stats.score+=3000;s.stats.extractionPaid=true;}
  withdrawRaid(s);if(s.challenge?.state==='active')s.challenge.state='withdrawn';
- s.phase='result';s.result={runId:s.runId||null,balanceRevision:s.balanceRevision||'b05-campaign',won,reason:won?'prototype-complete':s.player.hp<=0?'prototype-failed':reason,seed:s.seed,seconds:s.t,score:s.stats.score,level:s.level,weapons:clone(s.weapons),modules:clone(s.modules),stats:clone(s.stats),...(s.operation?{operation:clone(s.operation)}:{})};s.choice=null;s.choices=[];return true;
+ s.phase='result';s.result={runId:s.runId||null,...(s.operator?{operator:s.operator}:{}),balanceRevision:s.balanceRevision||'b05-campaign',won,reason:won?'prototype-complete':s.player.hp<=0?'prototype-failed':reason,seed:s.seed,seconds:s.t,score:s.stats.score,level:s.level,weapons:clone(s.weapons),modules:clone(s.modules),stats:clone(s.stats),...(s.operation?{operation:clone(s.operation)}:{})};s.choice=null;s.choices=[];return true;
 }
 function updateCampaignAmbient(s,dt){
  const cfg=RULES.campaignDirector,index=s.operation.region;s.director??={pack:0,officerClock:cfg.officerInterval[index]};const director=s.director;
@@ -1071,10 +1120,11 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const wasDashing=p.dash>0;
  for(const key of ['invuln','hurt','attack','dash','dashCd','skillCd','pickupTime'])p[key]=Math.max(0,p[key]-dt);
  const previousOverdrive=p.overdrive;p.overdrive=Math.max(0,p.overdrive-dt);if(previousOverdrive>0&&p.overdrive===0&&moduleRank(s,'overcharger'))blast(s,p.x,p.y,180,140,'module');
- p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
+ if(s.operator!=='marco')p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);
+ s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
  const ix=Number.isFinite(input.x)?input.x:0,iy=Number.isFinite(input.y)?input.y:0,len=Math.max(1,Math.hypot(ix,iy)),moving=Math.hypot(ix,iy)>.07;p.moving=moving;
  const b=s.boss,coreEntry=p.dash>0&&p.portRush&&portCoreWindow(s)&&distance(p,b)>portCoreReach(b);
- if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;}
+ if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;if(s.operator==='marco')p.moveAim=Math.atan2(iy,ix);}
  if(coreEntry&&distance(p,b)<=portCoreReach(b)&&!lineBlocked(s,p,b)){
   const kit=PORT_SUPPORT.overrun;
   delete p.portRush;b.harborStrikeCycle=b.cycle;b.timer+=kit.delay;recordSupportUse(s);
@@ -1112,7 +1162,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
   const early=portAidWindow(s,p);
   p.hp=Math.min(p.maxHp,hp+kit.heal);p.charge=Math.min(100,charge+(early?kit.warningCharge:kit.charge));
   delete s.boss.harborSupply;recordSupportUse(s);
-  emit(s,'heal',crate.x,crate.y,{life:.8,text:`${early?'포격 회피 보급':'구급 화물 회수'} · 체력 +${Math.ceil(p.hp)-Math.ceil(hp)} / 전탄 +${Math.floor(p.charge)-Math.floor(charge)}`});
+  emit(s,'heal',crate.x,crate.y,{life:.8,text:`${early?'포격 회피 보급':'구급 화물 회수'} · 체력 +${Math.ceil(p.hp)-Math.ceil(hp)} / ${chargeLabel(s)} +${Math.floor(p.charge)-Math.floor(charge)}`});
  }
  let pickedXp=0,salvage=false;
  const reach=pickupReach(s);
@@ -1132,7 +1182,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
    p.hp=Math.min(p.maxHp,p.hp+gained);
    if(s.stage==='boss'&&salvage)recordSupportUse(s);
   }
-  p.pickupBudget-=gained;p.charge=Math.min(100,p.charge+gained*(1+Math.min(.2,s.level*.01)));
+  p.pickupBudget-=gained;if(s.operator!=='marco')p.charge=Math.min(100,p.charge+gained*(1+Math.min(.2,s.level*.01)));
   const receipt=s.effects.find(f=>f.type==='xp-pickup');
   if(receipt){receipt.value+=pickedXp;receipt.salvage||=salvage;receipt.age=0;}
   else emit(s,'xp-pickup',p.x,p.y,{value:pickedXp,salvage,life:.65});

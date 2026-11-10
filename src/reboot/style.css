@@ -341,3 +341,22 @@
  }
  .boss-active:has(#banner[data-kind="port-ambush"]) #field-feedback{visibility:hidden}
 }
+
+.launch-controls{display:grid;gap:8px;flex:none;width:min(100%,230px);min-width:0}
+.launch-controls>.launch-button{width:100%;justify-content:space-between}
+.operator-selector{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.operator-selector button{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 8px;min-width:0;min-height:47px;padding:7px 10px;background:#263d36;color:#e4dec0;border:1px solid #809182;box-shadow:none;text-align:left}
+.operator-selector button[aria-pressed="true"]{background:#435247;border-color:#e8c78c;box-shadow:inset 3px 0 #e8c78c}
+.operator-selector button:focus-visible{outline:2px solid #fff0bd;outline-offset:2px}
+.operator-selector span{font-size:9px;letter-spacing:.05em;color:#d9c488}
+.launch-dock .operator-selector b{font-size:13px}
+.launch-dock .operator-selector small{grid-column:1/-1;color:#cbd9bf;font-size:10px;margin:0}
+.operator-station[data-operator="marco"] .operator-heading h2{color:#efc58b}
+.operator-record{display:flex;flex-wrap:wrap;gap:8px 16px;margin:-7px 0 16px;padding:10px 12px;background:#36493d;color:#f0e6c4;font-size:11px}
+.operator-record b{color:#f2cd97}
+@media(max-width:700px){
+ .launch-controls{width:100%}
+ .operator-station[data-operator="marco"] .operator-heading h2{font-size:22px}
+ .operator-selector{gap:5px}
+ .operator-selector button{min-height:44px}
+}

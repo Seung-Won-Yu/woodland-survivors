@@ -1,11 +1,12 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts,railCalibration} from './content.js';
 import {REGIONS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel} from './campaign.js';
 import {choose,snapshot} from './model.js';
+import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 
 function projectedGrowth(s,c,args,before){
  const draft=snapshot(s);
- if(!choose(draft,c.id,{doctrine:'reserve',...args}))return null;
+ if(!choose(draft,c.id,{doctrine:draft.player.doctrine,...args}))return null;
  const paths=buildPaths(draft);
  const delayed=paths.filter(p=>before.get(p.id)?.ready&&!p.ready&&!p.complete);
  const lost=[delayed.length?`${delayed.map(p=>p.title).join(' · ')} 대기`:'',
@@ -63,7 +64,7 @@ export function choiceDetails(s,c){
   const extra=c.kind==='repair'?15:c.kind==='utility'?6:0,heal=c.kind==='repair'?35:c.kind==='utility'?6:c.heal;out.art='medic';out.impact=extra?`최대 체력 +${extra}`:`체력 +${Math.min(heal,s.player.maxHp-s.player.hp)}`;out.detail=`${Math.ceil(s.player.hp)}/${s.player.maxHp} → ${Math.ceil(Math.min(s.player.maxHp+extra,s.player.hp+heal))}/${s.player.maxHp+extra}`;out.link=c.kind==='repair'?'최대 체력과 체력을 함께 정비':'';out.cost=c.kind==='repair'?'조율권 1개 사용':'';
  }else if(c.id==='utility:charge'||c.kind==='resupply'){
   const amount=c.charge??10,before=Math.floor(s.player.charge),after=Math.min(100,before+amount),hpBefore=s.player.hp,hpAfter=Math.min(s.player.maxHp,hpBefore+(c.heal||0)),healed=Math.ceil(hpAfter)-Math.ceil(hpBefore);
-  out.art='ammo';out.impact=healed?`체력 +${healed}${after>before?` · 충전 +${after-before}`:''}`:after>before?`전탄 충전 +${after-before}`:'전탄 충전 최대';out.detail=`${c.heal?`체력 ${Math.ceil(hpBefore)}/${s.player.maxHp} → ${Math.ceil(hpAfter)}/${s.player.maxHp} · `:''}충전 ${before} → ${after} / 100`;out.link='';out.cost='';
+  out.art='ammo';out.impact=healed?`체력 +${healed}${after>before?` · 충전 +${after-before}`:''}`:after>before?`${chargeLabel(s)} 충전 +${after-before}`:`${chargeLabel(s)} 충전 최대`;out.detail=`${c.heal?`체력 ${Math.ceil(hpBefore)}/${s.player.maxHp} → ${Math.ceil(hpAfter)}/${s.player.maxHp} · `:''}충전 ${before} → ${after} / 100`;out.link='';out.cost='';
  }else if(c.kind==='calibrate'){
   const installed=s.weapons.find(weapon=>weapon.uid===c.uid);
   const change=installed&&railCalibration(s,installed);
@@ -96,7 +97,7 @@ export function choiceDetails(s,c){
   const kit=FRONT_SUPPORTS[c.key];
   const index=s.operation.region+1;
   const effect=index===2?PORT_SUPPORT[c.key]||kit:kit;
-  out.art=kit.art;out.impact=effect.impact;out.detail=effect.detail;out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
+  out.art=kit.art;out.impact=effect.impact.replace('전탄',chargeLabel(s));out.detail=effect.detail.replace('전탄',chargeLabel(s));out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
  }else if(c.kind==='cargo'){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
  }else if(c.kind==='advance'){
@@ -107,7 +108,7 @@ export function choiceDetails(s,c){
   out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':vanguard?'다음 보스 첫 포격 경고 +1초':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
   if(s.operation?.region===0&&s.operation.order&&!s.operation.orderDone)out.link=s.raid?.state==='active'?'습격 철수 · 상자 소실 · 지령 보너스 없음':'해안 지령 미완료 · 전진 시 추가 보상 없음';
   const aid=vanguard?vanguardAid(s.player):null;
-  out.cost=aid?`도착 시 체력 ${Math.ceil(s.player.hp)} → ${Math.ceil(aid.hp)} · 전탄 ${Math.floor(s.player.charge)} → ${Math.floor(aid.charge)}`:'현재 무장·모듈·체력·XP 유지';
+  out.cost=aid?`도착 시 체력 ${Math.ceil(s.player.hp)} → ${Math.ceil(aid.hp)} · ${chargeLabel(s)} ${Math.floor(s.player.charge)} → ${Math.floor(aid.charge)}`:'현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){
   const rare=s.operation?.region<2&&!s.operation.challengeTier;

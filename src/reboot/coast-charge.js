@@ -1,4 +1,4 @@
-import {FIELD,clamp} from './content.js';
+import {FIELD,clamp,rayBoxDistance} from './content.js';
 
 export const COAST_CHARGE={warning:.9,duration:.8,distance:300,recover:2.4,trackBonus:.6,impactBonus:.6,rearDot:-.35};
 const CLEARANCE=.04;
@@ -9,21 +9,6 @@ export function coastTravel(elapsed,linear=false){
  if(linear)return COAST_CHARGE.distance*p;
  return COAST_CHARGE.distance*(p<ramp?p*p/(2*ramp):p-ramp/2)/(1-ramp/2);
 }
-function coverDistance(b,dx,dy,block){
- let enter=-Infinity,exit=Infinity;
- for(const [origin,velocity,min,max] of [
-  [b.x,dx,block.x-b.r,block.x+block.w+b.r],
-  [b.y,dy,block.y-b.r,block.y+block.h+b.r]
- ]){
-  if(Math.abs(velocity)<1e-9){
-   if(origin<=min||origin>=max)return Infinity;
-   continue;
-  }
-  const a=(min-origin)/velocity,c=(max-origin)/velocity;
-  enter=Math.max(enter,Math.min(a,c));exit=Math.min(exit,Math.max(a,c));
- }
- return exit<=0||exit<=enter?Infinity:Math.max(0,enter);
-}
 export function planCoastCharge(s,offset=0,origin=s.boss){
  const b={x:origin.x,y:origin.y,r:s.boss.r},dx=Math.cos(s.boss.body),dy=Math.sin(s.boss.body),inset=b.r+25;
  const xEnd=dx>=0?FIELD.right-inset:FIELD.left+inset;
@@ -33,7 +18,7 @@ export function planCoastCharge(s,offset=0,origin=s.boss){
  let length=Math.max(0,Math.min(COAST_CHARGE.distance-offset,xLimit,yLimit)),blockId=null;
  for(const cover of s.blocks){
   if(cover.hp===0)continue;
-  const hit=coverDistance(b,dx,dy,cover);
+  const hit=rayBoxDistance(b,dx,dy,cover,b.r);
   if(hit<length||hit===length&&blockId===null){length=hit;blockId=cover.id;}
  }
  return {x:b.x,y:b.y,length:blockId===null?length:Math.max(0,length-CLEARANCE),offset,blockId};

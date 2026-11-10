@@ -172,3 +172,14 @@ test('the post-clear order dock previews the correct field site and never silent
  assert.match(convoy,/data-order-pin="convoy"/);assert.match(convoy,/경량 보급차 저지/);
  p.credits=69;const poor=lobbyView(p,{order:'wire'});assert.doesNotMatch(poor,/data-sortie=/);assert.match(poor,/1C 부족/);
 });
+
+test('the sortie board exposes both operators and the selected specialist and avoids resetting order records',()=>{
+ const p=emptyProfile();
+ const fio=lobbyView(p);assert.match(fio,/data-pilot="fio" aria-pressed="true"/);assert.match(fio,/피오 · 새 출격/);
+ p.records.wins=1;p.credits=100;
+ const marco=lobbyView(p,{operator:'marco',order:'wire'});
+ assert.match(marco,/data-pilot="marco" aria-pressed="true"/);
+ assert.ok(marco.indexOf('data-pilot=')<marco.indexOf('data-action="launch"'));
+ assert.match(marco,/마르코 · 지령 출격/);assert.match(marco,/마지막 방향을 유지/);
+ assert.match(marco,/관통 사격 E/);assert.match(marco,/마르코 출격 준비 모습/);
+});

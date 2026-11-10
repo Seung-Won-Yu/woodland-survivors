@@ -6,8 +6,24 @@ import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model
 import {DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalCourier} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
+import {operatorOf,focusLane,canUseSkill} from './operator.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
+function paintFocusSight(c,s){
+ const p=s.player,lane=focusLane(s),end=Math.min(118,lane.length);
+ if(end<24)return;
+ c.save();c.translate(p.x,p.y);c.rotate(lane.angle);
+ c.strokeStyle='#efd09b';c.lineWidth=2;c.setLineDash([7,7]);c.beginPath();c.moveTo(22,0);c.lineTo(end-3,0);c.stroke();c.setLineDash([]);
+ c.beginPath();c.moveTo(end-12,-6);c.lineTo(end,0);c.lineTo(end-12,6);c.stroke();c.restore();
+}
+function paintFocusShot(c,f,t,reduced){
+ c.save();c.translate(f.x,f.y);c.rotate(f.angle);
+ c.fillStyle='#edaa5f3d';c.fillRect(0,-f.width,f.length,f.width*2);
+ c.restore();c.translate(f.x,f.y-13);c.rotate(f.angle);
+ c.fillStyle='#d38f51';c.fillRect(0,-(reduced?2:5*(1-t)+2),f.length,reduced?4:10*(1-t)+4);
+ c.fillStyle='#fff0be';c.fillRect(0,-1,f.length,2);
+ if(!reduced&&f.length>8){c.fillRect(4,-6,Math.min(22,f.length-4),12);c.fillRect(f.length-6,-3,6,6);}
+}
 function bar(c,x,y,width,ratio,color){c.fillStyle='#101d26';c.fillRect(x-width/2,y,width,5);c.fillStyle=color;c.fillRect(x-width/2,y,width*clamp(ratio,0,1),5);}
 function paintChargeLane(c,b,lane){
  const {endX,endY,r}=lane,warning=b.mode==='windup';
@@ -340,8 +356,11 @@ export function createRenderer(canvas,art){
   // A gate near a boundary needs room beside the objective rail and tactical map.
   const edgeMargin=gate&&s.operation?112*(1-follow):0;
   // Keep northern bosses and their barrels below the portrait HUD.
-  const bossMargin=mobile&&size.h>size.w&&follow>0?
-   Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y))*follow:0;
+  const portraitBoss=mobile&&size.h>size.w&&follow>0;
+  const bossMargin=portraitBoss?Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y))*follow:0;
+  // The coast weak point can draw the pilot north of the tank, under the boss HUD.
+  const pilotMargin=portraitBoss&&s.boss.active&&!(s.operation?.region>0)
+   ?Math.max(0,Math.min(260,size.h*.39)/scale-s.player.y):0;
   let framedX=focusX;
   if(mobile&&size.h>size.w&&s.boss.active&&s.operation?.portEntry==='gantry'){
    const b=s.boss,opening=b.cycle===0||b.cycle===1&&b.mode==='salvo';
@@ -350,7 +369,7 @@ export function createRenderer(canvas,art){
    framedX-=Math.max(0,focusX-mapClear)*blend;
   }
   const cx=clamp(framedX,view.w/2-edgeMargin,Math.max(view.w/2,1600-view.w/2)+edgeMargin);
-  const cy=clamp(focusY,view.h/2-bossMargin,Math.max(view.h/2,1200-view.h/2));
+  const cy=clamp(focusY,view.h/2-Math.max(bossMargin,pilotMargin),Math.max(view.h/2,1200-view.h/2));
   c.setTransform(size.dpr,0,0,size.dpr,0,0);c.clearRect(0,0,size.w,size.h);c.fillStyle='#263a44';c.fillRect(0,0,size.w,size.h);c.translate(size.w/2,size.h/2);c.scale(scale,scale);c.translate(-cx,-cy);c.imageSmoothingEnabled=false;
   const shake=!reduced&&s.player.hurt>0?Math.sin(s.t*75)*3:0;c.translate(shake,0);
   const index=s.operation?.region||0,key=`${index}:${s.seed}`;
@@ -377,6 +396,7 @@ export function createRenderer(canvas,art){
   for(const z of s.zones){const wake=z.source==='wake';circle(c,z.x,z.y,z.r,wake?'#8d3e293a':'#552f282d',wake?'#f0815099':'#cb753769',wake?2:1);circle(c,z.x,z.y,z.r*.75,'#e7a05a30');for(let i=0;i<(wake?7:5);i++){const a=i*2.4+z.x,r=z.r*(.25+(i%3)*.22);flame(c,z.x+Math.cos(a)*r,z.y+Math.sin(a)*r,(wake?23:14)+(reduced?0:Math.sin(s.t*12+i)*4),s.t*9+i);}}
   const reach=pickupReach(s);
   const signal=signalCourier(s);
+  if(s.operator==='marco'&&canUseSkill(s))paintFocusSight(c,s);
   for(const f of s.effects)if(f.type==='formation'&&visible(f.x,f.y,48))paintFormationEntry(c,f,reduced);
   if(s.challenge?.state==='active'&&s.challenge.type==='defend'){
    const {x,y,r}=DEFENSE_ZONE,inside=distance(s.player,DEFENSE_ZONE)<=r;
@@ -410,7 +430,8 @@ export function createRenderer(canvas,art){
     }
    }else if(item.kind==='player'){
     circle(c,e.x,e.y,19,'#283d3549',e.overdrive>0?'#ffdb82':'#c3e3cd',1);if(e.hurt>0)c.filter='brightness(1.8)';const bx=e.attack>0?-Math.cos(e.aim)*2:0;
-    if(art)actor(c,art.operators,2+(Math.sin(e.aim)<-.6?1:0),e.moving?Math.floor(e.walk)%4:0,e.x+bx,e.y,64,Math.cos(e.aim)<0);else{c.fillStyle='#edb063';c.fillRect(e.x-13,e.y-44,26,44);}c.filter='none';
+    const burst=s.operator==='marco'&&s.effects.findLast(f=>f.type==='focus-shot'&&f.age<.14),aim=burst?burst.angle:e.aim;
+    if(art)actor(c,art.operators,operatorOf(s).row+(Math.sin(aim)<-.6?1:0),e.moving?Math.floor(e.walk)%4:0,e.x+bx,e.y,64,Math.cos(aim)<0);else{c.fillStyle='#edb063';c.fillRect(e.x-13,e.y-44,26,44);}c.filter='none';
     if(e.overdrive>0){c.strokeStyle='#ffce72aa';c.lineWidth=2;c.beginPath();c.arc(e.x,e.y-24,35,s.t*3,s.t*3+4.6);c.stroke();}
     const maneuver=activeManeuver(e);if(maneuver){c.fillStyle=maneuver==='brace'?'#f8cf7e':'#9becbe';for(const side of [-1,1])c.fillRect(e.x+side*22-3,e.y+6,6,2);}
    }else if(item.kind==='courier'){
@@ -493,6 +514,7 @@ export function createRenderer(canvas,art){
     }
     c.stroke();
    }
+   else if(f.type==='focus-shot')paintFocusShot(c,f,t,reduced);
    else if(f.type==='payload'){circle(c,f.x,f.y,12+t*48,null,'#9bf2e8',3);circle(c,f.x,f.y,6+t*20,'#b7f4e444');}
    else if(f.type==='payload-relay'||f.type==='fire-spread'){
     if(visible(f.x,f.y,100)||visible(f.x2,f.y2,60))paintTransfer(c,f,t,reduced);

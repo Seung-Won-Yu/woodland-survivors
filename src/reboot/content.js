@@ -133,6 +133,21 @@ export function weaponStats(w){
 }
 export const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+export function rayBoxDistance(origin,dx,dy,block,padding=0){
+ let enter=-Infinity,exit=Infinity;
+ for(const [position,velocity,min,max] of [
+  [origin.x,dx,block.x-padding,block.x+block.w+padding],
+  [origin.y,dy,block.y-padding,block.y+block.h+padding]
+ ]){
+  if(Math.abs(velocity)<1e-9){
+   if(position<=min||position>=max)return Infinity;
+   continue;
+  }
+  const a=(min-position)/velocity,b=(max-position)/velocity;
+  enter=Math.max(enter,Math.min(a,b));exit=Math.min(exit,Math.max(a,b));
+ }
+ return exit<=0||exit<=enter?Infinity:Math.max(0,enter);
+}
 export function layout(seed){
  const flip=seed%2===0,point=(x,y)=>({x:flip?1600-x:x,y});
  return{

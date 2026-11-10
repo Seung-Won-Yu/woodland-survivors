@@ -1,3 +1,4 @@
+import {OPERATORS,operatorOf,operatorId,skillRules,canUseSkill,chargeLabel} from './operator.js';
 import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,isQuickMod} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview} from './field-scene.js';
@@ -9,25 +10,33 @@ import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynerg
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,portTurretInSight,showcaseWindow} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
-import {loadFioPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
+import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
 import {bindTouchControls} from '../game/touch-controls.js';
 import {createAudio,selectAudioEvents} from '../game/audio.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio(),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const touchLayout=matchMedia('(max-width:700px), (pointer:coarse)');
-let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,equippedUntil=0,equippedWeapon=null;
-let battleArt=null,portraitArt=null,artWork=null,launchPreparation=null,kitPreloaded=false,firstBattleFrame=false;
+let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,selectedOperator='fio',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,equippedUntil=0,equippedWeapon=null;
+let battleArt=null,portraitArt=null,marcoArt=null,marcoArtWork=null,artWork=null,launchPreparation=null,kitPreloaded=false,firstBattleFrame=false;
 const profile=()=>store.get();
 function notice(text){$('notice').textContent=text;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',4500);}
 function setBusy(on){busy=on;document.body.classList.toggle('is-saving',on);ui.setAttribute('aria-busy',String(on));for(const b of ui.querySelectorAll('button')){if(on&&!b.disabled){b.dataset.saving='true';b.disabled=true;}else if(!on&&b.dataset.saving){b.disabled=false;delete b.dataset.saving;}}}
 function panel(html){const origin=nextPanelFocus;nextPanelFocus=null;ui.innerHTML=html;ui.scrollTop=origin?.scroll||0;keys.clear();controls?.reset();requestAnimationFrame(()=>{const target=origin?.selector&&ui.querySelector(origin.selector)||ui.querySelector('h1,h2')||ui.querySelector('button:not(:disabled)');if(target){if(!target.matches('button,a,input'))target.tabIndex=-1;target.focus({preventScroll:true});}});}
 function settings(){const p=profile();return `<div class="settings"><label><input type="checkbox" data-setting="sound" ${p.settings.sound?'checked':''}><span>전투 효과음<small>사격 · 적중 · 보급 알림</small></span></label><label><input type="checkbox" data-setting="reduced" ${p.settings.reduced?'checked':''}><span>플래시·흔들림 줄이기<small>강한 폭발 효과와 화면 반동을 줄입니다.</small></span></label></div>`;}
 function drawPortrait(){
- const canvas=$('portrait'),art=portraitArt||battleArt;
- if(canvas&&art)requestAnimationFrame(()=>{if(mode==='home'&&canvas.isConnected)operatorPortrait(canvas,art,'fio',240);});
+ const canvas=$('portrait'),id=selectedOperator;
+ if(!canvas)return;
+ const art=id==='marco'?battleArt||marcoArt:portraitArt||battleArt;
+ if(art){requestAnimationFrame(()=>{if(mode==='home'&&canvas.isConnected)operatorPortrait(canvas,art,id,240);});return;}
+ if(id==='marco'&&!marcoArtWork)marcoArtWork=loadOperatorPortrait().then(loaded=>{marcoArt=loaded;drawPortrait();}).catch(()=>{}).finally(()=>{marcoArtWork=null;});
 }
-function showHome(){mode='home';subpanel=null;stamp='home';document.body.dataset.scene='lobby';panel(lobbyView(profile(),{tab:lobbyTab,brief:briefRegion,seed:operationPlan.seed,order:sortieOrderSelection}));drawPortrait();}
-function showSettings(){if(!settingsOrigin)settingsOrigin={mode,scroll:ui.scrollTop,subpanel};subpanel={type:'settings'};panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="settings-title"><span class="eyebrow">야전 환경 설정</span><h2 id="settings-title">전투를 편하게.</h2>${settings()}<p class="stat-note">이동 WASD · 회피 SPACE<br>전탄 보급 E · 상황 행동 F<br>대기 개조 R · 진화·합체 G<br>전투는 자동 사격합니다. 메뉴에서는 정지합니다.</p><button class="primary" data-action="settings-back">설정 완료</button></section>`);}
+function showHome(){mode='home';subpanel=null;stamp='home';document.body.dataset.scene='lobby';panel(lobbyView(profile(),{tab:lobbyTab,brief:briefRegion,seed:operationPlan.seed,order:sortieOrderSelection,operator:selectedOperator}));drawPortrait();}
+function doctrineChoices(){
+ if(run.choice.type!=='level'||run.level<6||run.player.branchChosen)return '';
+ const actor=operatorOf(run);
+ return `<div class="doctrine" role="group" aria-label="${actor.name} 운용"><b>${actor.name} 운용</b>${Object.entries(actor.stances).map(([id,[name,detail]])=>`<label><input type="radio" name="doctrine" value="${id}" ${selectedDoctrine===id?'checked':''}> ${name} · ${detail}</label>`).join('')}</div>`;
+}
+function showSettings(){if(!settingsOrigin)settingsOrigin={mode,scroll:ui.scrollTop,subpanel};subpanel={type:'settings'};panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="settings-title"><span class="eyebrow">야전 환경 설정</span><h2 id="settings-title">전투를 편하게.</h2>${settings()}<p class="stat-note">이동 WASD · 회피 SPACE<br>${mode==='home'?OPERATORS[selectedOperator].skill:operatorOf(run).skill} E · 상황 행동 F<br>대기 개조 R · 진화·합체 G<br>전투는 자동 사격합니다. 메뉴에서는 정지합니다.</p><button class="primary" data-action="settings-back">설정 완료</button></section>`);}
 function closeSettings(){const origin=settingsOrigin;settingsOrigin=null;subpanel=origin?.subpanel||null;nextPanelFocus={scroll:origin?.scroll||0,selector:'[data-action="settings-menu"]'};if(mode==='home')showHome();else present(true);}
 function showRetreat(fromHome=false){subpanel={type:'retreat',fromHome};const secured=operationCredits({operation:run.operation,stats:run.stats,won:false}),cleared=run.operation?.cleared||0;panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="retreat-title"><span class="eyebrow">작전 종료</span><h2 id="retreat-title">확보한 성과로 귀환할까요?</h2><p>${cleared}/3 전선 돌파 · ${fmt(run.t)} · LV.${run.level}<br>지금 귀환하면 <strong>${secured}C</strong>를 정산합니다. 이번 무장과 레벨은 다음 판에 초기화됩니다.</p><p class="inline-note">${run.raid?.state==='active'?'진행 중인 습격과 걸었던 상자는 포기합니다. ':''}최종 보스 뒤 출구로 탈출해야 완주로 기록됩니다.</p><div class="buttons"><button class="primary" data-action="retreat-cancel">작전 유지</button><button class="danger" data-action="retreat-confirm">종료하고 ${secured}C 정산</button></div></section>`);}
 
@@ -67,7 +76,7 @@ function showChoices(){
  const quality=run.choice.quality,receipt=type==='raid-reward'?`<div class="loot-receipt"><span>걸었던 ${QUALITY[run.choice.wagerQuality]||'기존'} 상자</span><b>→ ${QUALITY[quality]} 보급 탈취</b><small>${run.choice.contract==='light'?'보급차 작업대 · 무기의 발사 방식을 바꿀 기회':'장갑 수송대 · 미완성 병기의 부품을 노린다'}</small></div>`:'',paths=type==='assembly'?workshopBlueprints():'';
  const orderArmory=type==='armory'&&run.choice.siteId==='arsenal'&&run.operation?.region===0&&run.operation.order==='convoy'&&!run.raidUsed;
  const gateIntel=atGate?`<div class="gate-intel"><span><small>돌파한 전선</small><b>${esc(region(run).name)}</b></span><span><small>게이트 목적지</small><b>${esc(REGIONS[run.operation.region+1]?.name||'작전실')}</b></span><span><small>회수 가능한 바닥 XP</small><b>${groundXp(run)}</b></span></div>`:'';
- panel(`<section class="sheet field-menu ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title"><header><div><span class="eyebrow">${type==='level'?`LV.${run.level} · 현장 정비`:type==='assembly'?'병기 조립':type==='clear'?'게이트 통과':atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2><p>${esc(type==='level'?(run.pendingLevels?`이번 개조를 골라 장착하세요. 대기 중인 개조 ${run.pendingLevels}회는 전장에 남습니다.`:'한 가지를 골라 전투에 바로 투입하세요.'):atGate?'전진하거나 현장에 남아 XP를 회수하세요.':workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':type==='assembly'?'조립과 정비에 쓸 조율권을 배분하세요.':run.choice.opening?'포로가 건넨 무장으로 해안의 첫 길을 뚫으세요.':run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차'))}</p></div><span class="paused">${atGate?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>${atGate?gateIntel:run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools"><span>공격 ${run.weapons.length}/3 · 모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</span><div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>`:''}</div></div>`}${type==='level'&&run.level>=6&&!run.player.branchChosen?`<div class="doctrine"><b>피오 운용</b><label><input type="radio" name="doctrine" value="reserve" ${selectedDoctrine==='reserve'?'checked':''}> 비축 · 6초/60충전</label><label><input type="radio" name="doctrine" value="quick" ${selectedDoctrine==='quick'?'checked':''}> 신속 · 4초/50충전</label></div>`:''}${receipt}${paths}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}<div class="upgrade-deck${run.choices.length===2?' two-options':''}">${choiceCards()}</div><footer class="choice-footer"><small>${type==='assembly'?`조율권 ${run.tuning}개 · ${run.tuning?'정비와 진화가 같은 조율권을 사용합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 1개를 확보합니다.':'중간 보스의 조율권을 모두 사용했습니다.'}`:type==='control'?'하나를 선택하세요. 이번 전선의 보스전에 적용됩니다.':type==='clear'?(run.pendingLevels?`대기 개조 ${run.pendingLevels}회 · ${run.operation?.region===2?'사용하려면 잔류하세요.':'전진하면 이월됩니다. 여기서 사용하려면 잔류하세요.'}`:'잔류하는 동안 증원군이 강해집니다. 게이트는 계속 열려 있습니다.'):atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'화물을 정산하거나 후송 보급을 써서 더 버티세요.'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자'}</small><div class="buttons">${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer></section>`);
+ panel(`<section class="sheet field-menu ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title"><header><div><span class="eyebrow">${type==='level'?`LV.${run.level} · 현장 정비`:type==='assembly'?'병기 조립':type==='clear'?'게이트 통과':atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2><p>${esc(type==='level'?(run.pendingLevels?`이번 개조를 골라 장착하세요. 대기 중인 개조 ${run.pendingLevels}회는 전장에 남습니다.`:'한 가지를 골라 전투에 바로 투입하세요.'):atGate?'전진하거나 현장에 남아 XP를 회수하세요.':workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':type==='assembly'?'조립과 정비에 쓸 조율권을 배분하세요.':run.choice.opening?'포로가 건넨 무장으로 해안의 첫 길을 뚫으세요.':run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차'))}</p></div><span class="paused">${atGate?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>${atGate?gateIntel:run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools"><span>공격 ${run.weapons.length}/3 · 모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</span><div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>`:''}</div></div>`}${doctrineChoices()}${receipt}${paths}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}<div class="upgrade-deck${run.choices.length===2?' two-options':''}">${choiceCards()}</div><footer class="choice-footer"><small>${type==='assembly'?`조율권 ${run.tuning}개 · ${run.tuning?'정비와 진화가 같은 조율권을 사용합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 1개를 확보합니다.':'중간 보스의 조율권을 모두 사용했습니다.'}`:type==='control'?'하나를 선택하세요. 이번 전선의 보스전에 적용됩니다.':type==='clear'?(run.pendingLevels?`대기 개조 ${run.pendingLevels}회 · ${run.operation?.region===2?'사용하려면 잔류하세요.':'전진하면 이월됩니다. 여기서 사용하려면 잔류하세요.'}`:'잔류하는 동안 증원군이 강해집니다. 게이트는 계속 열려 있습니다.'):atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'화물을 정산하거나 후송 보급을 써서 더 버티세요.'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자'}</small><div class="buttons">${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer></section>`);
 }
 function showPause(){panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="pause-title"><span class="eyebrow">작전 일시정지</span><h2 id="pause-title">다음 한 수를 준비하라.</h2><p>${run.operation?`${run.operation.region+1}/3 ${region(run).name} · ${fmt(run.t)} · LV.${run.level}`:'전투 중'}<br>${run.stage==='holdout'?'게이트 개방. 남아서 XP를 회수하거나 게이트로 이동하세요.':region(run).mission}</p>${loadoutChips(run.weapons,run.modules)}<div class="pause-actions"><button class="primary" data-action="continue">전투 이어하기 ▶</button><button data-action="retreat">작전 정산</button></div><div class="pause-secondary">${run.raid?.state==='active'?'<button data-action="withdraw">습격 철수 · 건 상자 소실</button>':''}${run.stage==='holdout'&&(!run.challenge||run.operation&&['complete','failed'].includes(run.challenge.state))?`<button data-action="challenge">${holdoutContract(run).name} · D ${(run.operation?.challengeTier||0)+1}</button>`:''}<button class="text-button" data-action="settings-menu">환경 설정</button></div></section>`);}
 function showResult(r=run.result,archived=false){r=profile().recent.find(x=>isReport(x)&&(r.runId?x.runId===r.runId:x.seed===r.seed&&x.seconds===r.seconds))||r;document.body.dataset.scene=archived||!renderer?'lobby':'battle';panel(reportView(r,profile(),{archived}));}
@@ -110,7 +119,7 @@ async function commitDraft(draft,next,launchMode){
   const previous=profile();await store.commit(next);operationPlan.committed(previous,next,draft);
   run=draft;saveClock=0;pending=null;
   if(launchMode){
-   mode='battle';sortieOrderSelection=null;document.body.dataset.scene='battle';selectedDoctrine='reserve';firstBattleFrame=true;pauseQueued||=document.hidden;
+   mode='battle';sortieOrderSelection=null;document.body.dataset.scene='battle';selectedOperator=operatorId(draft);selectedDoctrine=draft.player.doctrine;$('world').setAttribute('aria-label',`${operatorOf(draft).name}의 빌드 서바이버 전투`);firstBattleFrame=true;pauseQueued||=document.hidden;
    if(launchMode==='fallback')notice('전장 원화를 불러오지 못해 기본 표시로 실행합니다.');
   }
   setBusy(false);committingPlay=false;present(true);
@@ -141,7 +150,7 @@ function prepareBattleArt(priority='low'){
   work.completed=count;updatePreparation(count);
  }}).then(art=>{
   battleArt=art;
-  if(!portraitArt)drawPortrait();
+  drawPortrait();
   return art;
  }).catch(()=>{
   artWork=null;
@@ -169,6 +178,8 @@ function closePreparation(cancelled=false){
  if(cancelled)source.focus({preventScroll:true});
 }
 async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie||null){
+ const actor=source.dataset.actor||selectedOperator;
+ if(!Object.hasOwn(OPERATORS,actor))return;
  if(busy||pending||launchPreparation)return;
  if(order&&!canLaunchOrder(profile(),order)){notice('지령 출격 조건을 확인하세요.');return;}
  audio.unlock();
@@ -179,7 +190,7 @@ async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie
   if(launchPreparation!==ticket)return;
   closePreparation();
  }
- const {run:draft,next}=freshSortie(profile(),seed,order);
+ const {run:draft,next}=freshSortie(profile(),seed,order,actor);
  renderer=createRenderer($('world'),art);
  await commitDraft(draft,next,art?'art':'fallback');
 }
@@ -200,6 +211,10 @@ ui.addEventListener('click',async e=>{
  if(launchPreparation){if(button.dataset.action==='cancel-launch')closePreparation(true);return;}
  if(button.dataset.tab){lobbyTab=button.dataset.tab;nextPanelFocus={selector:`.command-nav [data-tab="${CSS.escape(lobbyTab)}"]`};showHome();return;}
  if(button.dataset.brief!==undefined){briefRegion=Number(button.dataset.brief);nextPanelFocus={selector:`[data-brief="${briefRegion}"]`};showHome();return;}
+ if(Object.hasOwn(OPERATORS,button.dataset.pilot)){
+  selectedOperator=button.dataset.pilot;
+  nextPanelFocus={scroll:ui.scrollTop,selector:`[data-pilot="${selectedOperator}"]`};showHome();return;
+ }
  if(button.dataset.order!==undefined){
   const id=button.dataset.order;
   if(id&&!canLaunchOrder(profile(),id))return;
@@ -226,6 +241,7 @@ async function pauseButton(){if(!run||mode!=='battle'||pending)return;if(busy){i
 $('pause').addEventListener('click',pauseButton);$('gear').addEventListener('click',()=>mutate(d=>action(d,'gear')));
 $('field-upgrade').addEventListener('click',()=>mutate(d=>action(d,'upgrade')));
 $('pursuit').addEventListener('click',()=>mutate(d=>action(d,'challenge')));
+const movementInput=()=>({x:(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0)+touch.x,y:(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0)+touch.y});
 window.addEventListener('keydown',e=>{
  if(e.ctrlKey||e.metaKey||e.altKey)return;
  const k=e.key.toLowerCase(),moving=['w','a','s','d','arrowup','arrowleft','arrowdown','arrowright'].includes(k);
@@ -235,7 +251,7 @@ window.addEventListener('keydown',e=>{
  if(e.key==='Escape'){e.preventDefault();pauseButton();return;}
  if(busy)return;
  if(run.phase==='choice'&&!subpanel&&/^[1-9]$/.test(e.key)){e.preventDefault();const c=run.choices[Number(e.key)-1];if(c)selectCard(c.id);return;}
- if(run.phase!=='playing')return;if(k===' ')e.preventDefault();const a=({' ':'dash',e:'skill',f:'interact',g:'gear',r:'upgrade',q:'challenge'})[k];if(a){audio.unlock();mutate(d=>action(d,a));}
+ if(run.phase!=='playing')return;if(k===' ')e.preventDefault();const a=({' ':'dash',e:'skill',f:'interact',g:'gear',r:'upgrade',q:'challenge'})[k];if(a){audio.unlock();mutate(d=>action(d,a,a==='skill'?movementInput():undefined));}
 });
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&run&&mode==='battle'&&run.phase==='playing')mutate(d=>{pause(d);return true;});});
@@ -287,12 +303,12 @@ function updateMap(lead,entry,gantry,dispatch){
  const signal=signalCourier(run);
  if(signal)map+=escapeRouteSvg(signalRoute(run),'data-signal-route',SIGNAL_COLOR,'통신 차량')+dot('map-signal',signal.x,signal.y,34,SIGNAL_COLOR,'탈출 차량');
  else if(gate&&run.operation?.region===2&&!run.challenge)map+=`<g opacity=".65">${escapeRouteSvg(signalRoute(run),'data-signal-route',SIGNAL_COLOR,'잔류 시 통신 차량')}</g>`;
- map+=dot('map-player',run.player.x,run.player.y,30,'#fff7d9','피오');$('tactical-map').innerHTML=map;
+ map+=dot('map-player',run.player.x,run.player.y,30,'#fff7d9',operatorOf(run).name);$('tactical-map').innerHTML=map;
 }
 function updateHud(){
- const battle=mode==='battle'&&renderer&&run;$('hud').hidden=!battle;$('hud').inert=!!battle&&run.phase!=='playing';$('controls').hidden=!battle||run.phase!=='playing'||!!pending;if(!battle){$('field-feedback').hidden=true;return;}const p=run.player,coastSite=coastLead(run),entry=activeEntry(run),gantry=portGantry(run),dispatch=orderTarget(run),order=sortieOrder(run.operation?.order);updateMap(coastSite,entry,gantry,dispatch);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
+ const battle=mode==='battle'&&renderer&&run;$('hud').hidden=!battle;$('hud').inert=!!battle&&run.phase!=='playing';$('controls').hidden=!battle||run.phase!=='playing'||!!pending;if(!battle){$('field-feedback').hidden=true;return;}const p=run.player,actor=operatorOf(run),coastSite=coastLead(run),entry=activeEntry(run),gantry=portGantry(run),dispatch=orderTarget(run),order=sortieOrder(run.operation?.order);updateMap(coastSite,entry,gantry,dispatch);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
  document.body.classList.toggle('coast-lead',!!coastSite);
- $('level').textContent=`LV.${run.level}`;$('hp').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;document.body.classList.toggle('low-hp',p.hp/p.maxHp<.3);$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('charge').textContent=p.overdrive>0?`전탄 보급 ${p.overdrive.toFixed(1)}초`:`전탄 보급 ${Math.floor(p.charge)}%`;
+ $('operator-name').textContent=actor.short;$('level').textContent=`LV.${run.level}`;$('hp').textContent=`${Math.ceil(p.hp)} / ${p.maxHp}`;document.body.classList.toggle('low-hp',p.hp/p.maxHp<.3);$('hp-fill').style.width=`${p.hp/p.maxHp*100}%`;$('charge').textContent=p.overdrive>0?`전탄 보급 ${p.overdrive.toFixed(1)}초`:`${actor.meter} ${Math.floor(p.charge)}%`;
  $('kills').textContent=`${run.stats.kills} K.O.`;$('score').textContent=`${run.stats.score.toLocaleString()}점 · 확보 ${operationCredits({operation:run.operation,stats:run.stats,won:false})}C`;$('time').textContent=fmt(run.t);$('xp-fill').style.width=`${run.xp/xpNeeded(run)*100}%`;
  const front=run.operation?.region;
  const localSite=run.stage!=='boss'?run.sites.filter(n=>['active','ready'].includes(n.state)&&(distance(n,p)<260||entry?.routes.some(route=>route.site===n.id))).sort((a,b)=>distance(a,p)-distance(b,p))[0]:null;
@@ -418,7 +434,7 @@ function updateHud(){
  }
  for(const el of $('weapons').children)el.classList.toggle('just-equipped',performance.now()<equippedUntil&&el.dataset.weaponId===equippedWeapon);const feedback=$('field-feedback');feedback.hidden=!feedback.childElementCount||run.phase!=='playing'||performance.now()>equippedUntil;
  $('interact').hidden=!interact||!!interact.blocked;$('interact-label').textContent=interact?.label||'';
- const skill=RULES.fio[p.doctrine];$('skill').disabled=p.charge<skill.cost||p.skillCd>0||p.overdrive>0;$('skill').innerHTML=`전탄 보급<small>${p.overdrive>0?`${p.overdrive.toFixed(1)}초 가동`:p.skillCd>0?`${p.skillCd.toFixed(1)}초`:`${Math.floor(p.charge)}/${skill.cost}`}</small>`;$('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비<span class="key-hint"> · SPACE</span>'}</small>`;
+ const skill=skillRules(run);$('skill').disabled=!canUseSkill(run);$('skill').innerHTML=`${actor.skill}<small>${p.overdrive>0?`${p.overdrive.toFixed(1)}초 가동`:p.skillCd>0?`${p.skillCd.toFixed(1)}초`:`${Math.floor(p.charge)}/${skill.cost}`}</small>`;$('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비<span class="key-hint"> · SPACE</span>'}</small>`;
  $('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',!!raid);
  if(raid){
   const {target,contract}=raid;
@@ -481,9 +497,9 @@ function updateHud(){
     if(crate){
      const direction=bearing(p,crate.x,crate.y);
      const warning=run.hazards.some(h=>h.portRound&&!h.hit);
-     const status=portAidWindow(run,p)?`지금 회수 · 전탄 +${kit.warningCharge}`
+     const status=portAidWindow(run,p)?`지금 회수 · ${chargeLabel(run)} +${kit.warningCharge}`
       :portAidWindow(run)?'붉은 원 밖으로 회피'
-      :warning?'화물 쪽 포격 · 폭발 뒤 회수':`회수 · 전탄 +${kit.charge}`;
+      :warning?'화물 쪽 포격 · 폭발 뒤 회수':`회수 · ${chargeLabel(run)} +${kit.charge}`;
      line.textContent=`구급 · ${direction} 화물 · ${status}`;
     }else if(aid){
      const next=boss.mode==='salvo'?'포격 뒤 투하 예정':'다음 투하 · 이 자리에서 떨어져 포격 유도';
@@ -493,7 +509,7 @@ function updateHud(){
   }
  }
 }
-const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill',barrage:'slam','charge-impact':'slam','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-charge':'boss-charge','port-hatch':'front-entry','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve','armor-impact':'guard-block',heal:'heal',break:'crowd-break'};
+const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot','focus-shot':'focus-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill',barrage:'slam','charge-impact':'slam','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-charge':'boss-charge','port-hatch':'front-entry','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve','armor-impact':'guard-block',heal:'heal',break:'crowd-break'};
 const bannerPriority=['gate-open','port-hatch','region-entry'];
 function processEvents(){
  const banner=$('banner'),events=new Set(takeEvents(run));
@@ -535,15 +551,15 @@ function frame(now){
  }
  const starting=firstBattleFrame;
  if(starting){firstBattleFrame=false;accumulator=0;}
- if(!starting&&run.phase==='playing'&&!busy&&!pending){if(elapsed>.5){mutate(d=>{pause(d);return true;});accumulator=0;}else{const previousStage=run.stage;accumulator+=Math.min(.1,elapsed);const input={x:(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0)+touch.x,y:(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0)+touch.y};while(accumulator>=1/60&&run.phase==='playing'){step(run,1/60,input,renderer.view());accumulator-=1/60;saveClock+=1/60;}if(run.phase!=='playing'){persistCurrent();accumulator=0;}else if(saveClock>=5||previousStage==='boss'&&run.stage==='holdout')persistCurrent();}}
+ if(!starting&&run.phase==='playing'&&!busy&&!pending){if(elapsed>.5){mutate(d=>{pause(d);return true;});accumulator=0;}else{const previousStage=run.stage;accumulator+=Math.min(.1,elapsed);const input=movementInput();while(accumulator>=1/60&&run.phase==='playing'){step(run,1/60,input,renderer.view());accumulator-=1/60;saveClock+=1/60;}if(run.phase!=='playing'){persistCurrent();accumulator=0;}else if(saveClock>=5||previousStage==='boss'&&run.stage==='holdout')persistCurrent();}}
  renderer.draw(run,store.settings().reduced||reduceMotion.matches);updateHud();
  if(!busy&&!pending)processEvents();
  requestAnimationFrame(frame);
 }
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function boot(){
- try{const lock=navigator.locks?fn=>navigator.locks.request(`${STORAGE_KEY}:write`,fn):null;store=createStore(localStorage,lock);controls=bindTouchControls({stick:$('stick'),actions:{dash:$('dash'),skill:$('skill'),interact:$('interact')},canPlay:()=>mode==='battle'&&run?.phase==='playing'&&!busy&&!pending,onMove:v=>{touch=v;},onAction:a=>mutate(d=>action(d,a)),onUnlock:()=>{if(profile().settings.sound)audio.unlock();}});
-  const p=profile();operationPlan=createOperationPlan(()=>crypto.getRandomValues(new Uint32Array(1))[0],p.active?.run.seed??p.recent[0]?.seed);
+ try{const lock=navigator.locks?fn=>navigator.locks.request(`${STORAGE_KEY}:write`,fn):null;store=createStore(localStorage,lock);controls=bindTouchControls({stick:$('stick'),actions:{dash:$('dash'),skill:$('skill'),interact:$('interact')},canPlay:()=>mode==='battle'&&run?.phase==='playing'&&!busy&&!pending,onMove:v=>{touch=v;},onAction:a=>mutate(d=>action(d,a,a==='skill'?movementInput():undefined)),onUnlock:()=>{if(profile().settings.sound)audio.unlock();}});
+  const p=profile();selectedOperator=p.lastOperator||'fio';operationPlan=createOperationPlan(()=>crypto.getRandomValues(new Uint32Array(1))[0],p.active?.run.seed??p.recent[0]?.seed);
   showHome();requestAnimationFrame(frame);
   loadFioPortrait().then(art=>{portraitArt=art;drawPortrait();}).catch(()=>{});
   // Paint the lobby before starting the larger combat downloads.
