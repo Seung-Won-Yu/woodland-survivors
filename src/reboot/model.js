@@ -33,6 +33,7 @@ function advanceRegion(s){
  s.operation.support=support;delete s.operation.nextSupport;delete s.operation.tactic;
  if(support==='vanguard')Object.assign(s.player,vanguardAid(s.player));
  s.operation.region++;s.operation.regionTime=0;s.operation.jammed=false;s.operation.challengeTier=0;s.operation.holdoutKills=0;delete s.operation.gate;delete s.pursuitClock;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[s.operation.region]};
+ if(s.operation.region===2&&Object.hasOwn(PORT_SUPPORT,support))s.operation.harborPayoff={};
  const sectorSeed=mapSeed(s.seed,s.operation.region),arrival=frontEntry(sectorSeed,s.operation.region).arrival;
  Object.assign(s,regionLayout(sectorSeed,s.operation.region));s.boss=regionBoss(s.operation.region,s.seed);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;Object.assign(s.player,arrival);s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
  if(s.powerWave?.showcase&&s.powerWave.paired>0){
@@ -94,6 +95,8 @@ export function restore(raw,{allowPrevious=false}={}){
   if(s.operation.portDock!==undefined&&(s.operation.portDock!==true||s.operation.region!==2||!s.sites.some(site=>site.id==='port-landing'&&site.state==='done')))fail();
   if(s.operation.portEntry!==undefined&&(s.operation.portEntry!=='gantry'||!s.operation.portDock||s.stage==='field'))fail();
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
+  const payoff=s.operation.harborPayoff;
+  if(payoff!=null&&(typeof payoff!=='object'||Array.isArray(payoff)||s.operation.region!==2||!Object.hasOwn(PORT_SUPPORT,s.operation.support)||Object.values(payoff).some(n=>!Number.isSafeInteger(n)||n<0)))fail();
   const supply=s.boss.harborSupply;
   if(supply!=null&&(s.operation.region!==2||s.operation.support!=='recovery'||!PORT_SUPPORT.recovery.lanes.includes(supply.x)||supply.y!==PORT_SUPPORT.recovery.y))fail();
   if(s.boss.harborSupplyCycle!=null&&(!Number.isInteger(s.boss.harborSupplyCycle)||s.boss.harborSupplyCycle<1||s.boss.harborSupplyCycle>PORT_SUPPORT.recovery.limit))fail();
@@ -459,6 +462,10 @@ function recordSupportUse(s){
  s.stats.supportUses??={};
  s.stats.supportUses[front]=(s.stats.supportUses[front]||0)+1;
 }
+function recordHarborPayoff(s,key){
+ const payoff=s.operation.harborPayoff;
+ if(payoff)payoff[key]=(payoff[key]||0)+1;
+}
 function scoreKill(s,e,source,kind){
  if(s.operation&&s.stage==='holdout'&&e.cohort==='holdout'){
   s.operation.holdoutKills=(s.operation.holdoutKills||0)+1;
@@ -516,9 +523,11 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if((source==='native'||source==='payload'||source==='focus')&&(breachLane??(portBreachFlank(s)&&!lineBlocked(s,s.player,e)))){
    amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
    if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
-   else if(clearPortRounds(s,'turret')){
+   else if(s.boss.mode==='salvo'&&s.boss.turretSuppressedCycle!==s.boss.cycle){
+    const cancelled=clearPortRounds(s,'turret');
     s.boss.turretSuppressedCycle=s.boss.cycle;
-    emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:'철갑 명중 · 포탑 제압'});
+    if(cancelled)recordHarborPayoff(s,'salvos');
+    emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:cancelled?'철갑 명중 · 포탑탄 차단':'철갑 명중 · 후속 탄막 차단'});
    }
   }else if(portTurretShutter(s))amount*=PORT_TURRET.shutterDamage;
  }else if(e.type==='part'&&breach&&s.operation.region!==2){
@@ -780,9 +789,12 @@ function updateOperationBoss(s,dt){
   }else if(b.mode==='salvo'){
    b.mode='recover';b.timer=index===1?RAIL_BARRAGE.recover:2.6;
    if(index===1&&s.operation.tactic==='signal'&&b.tacticCycle===b.cycle)b.timer+=FRONT_TACTICS[1].signal.delay;
-   if(index===2&&b.parts[0].hp>0&&b.turretSuppressedCycle!==b.cycle){
-    for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);
-    b.kick=1;b.flash=.12;
+   if(index===2&&b.parts[0].hp>0){
+    if(b.turretSuppressedCycle===b.cycle)recordHarborPayoff(s,'fans');
+    else{
+     for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);
+     b.kick=1;b.flash=.12;
+    }
    }
    emit(s,'weakpoint',b.x,b.y,{text:disarmed?'양쪽 포대 파괴 · 차체 노출':index===1?'포격 재장전 · 포대를 노려라':'노출 코어 · 집중 공격',life:1.4});
    // An older mid-salvo save or a crate carried into this salvo can still supply the reload.
@@ -1194,6 +1206,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const coreCut=coreDash&&Number.isFinite(p.portCutX)&&Math.abs(p.x-p.portCutX)>=kit.sideStep;
  if((coreEntry||coreCut)&&distance(p,b)<=coreReach&&!lineBlocked(s,p,b)){
   delete p.portRush;delete p.portCutX;b.harborStrikeCycle=b.cycle;b.timer+=kit.delay;recordSupportUse(s);
+  recordHarborPayoff(s,coreCut?'sidesteps':'dives');
   damage(s,b,kit.damage,'blast','support');
   emit(s,'break',b.x,b.y,{text:`${coreCut?'측면 회피':'돌격 신관'} · 코어 장갑 해제`});
  }
@@ -1228,8 +1241,11 @@ export function step(s,dt,input={x:0,y:0},view=null){
   const kit=PORT_SUPPORT.recovery,hp=p.hp,charge=p.charge;
   const early=portAidWindow(s,p);
   p.hp=Math.min(p.maxHp,hp+kit.heal);p.charge=Math.min(100,charge+(early?kit.warningCharge:kit.charge));
+  if(early)p.dashCd=Math.min(p.dashCd,kit.dashDelay);
   delete s.boss.harborSupply;recordSupportUse(s);
-  emit(s,'heal',crate.x,crate.y,{life:.8,text:`${early?'포격 회피 보급':'구급 화물 회수'} · 체력 +${Math.ceil(p.hp)-Math.ceil(hp)} / ${chargeLabel(s)} +${Math.floor(p.charge)-Math.floor(charge)}`});
+  recordHarborPayoff(s,early?'safeAid':'aid');
+  const refill=chargeLabel(s)+' +'+(Math.floor(p.charge)-Math.floor(charge));
+  emit(s,'heal',crate.x,crate.y,{life:1,text:early?`포격 회피 보급 · 회피 재정비 / ${refill}`:`구급 화물 회수 · 체력 +${Math.ceil(p.hp)-Math.ceil(hp)} / ${refill}`});
  }
  let pickedXp=0,salvage=false;
  const reach=pickupReach(s);

@@ -53,6 +53,18 @@ test('settled reports lead to affordable research and preserve exact replay seed
  const withActive=beginProfile(p,createOperation(18)),archived=reportView(p.recent[0],withActive,{archived:true});
  assert.match(archived,/data-action="same-seed" data-seed="17"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
 });
+test('harbor reports show the part actions actually recorded during the sortie',()=>{
+ const run=createOperation(18),active=beginProfile(emptyProfile(),run);
+ Object.assign(run.operation,{region:2,cleared:3,extracted:true,support:'recovery',harborPayoff:{safeAid:1,aid:2}});
+ run.stats.bossKilled=true;run.stats.supportUses={2:9};finish(run,true);
+ const p=settleProfile(active,run),saved=p.recent[0];
+ const render=operation=>reportView({...saved,operation},p,{archived:true});
+ assert.match(render(saved.operation),/회수 의무 장비.*경고 중 회수 · 회피 재정비 1회 \/ 일반 회수 2회/);
+ assert.match(render({...saved.operation,support:'overrun',harborPayoff:{dives:2,sidesteps:1}}),/코어 돌입 2회 \/ 측면 회피 1회/);
+ assert.match(render({...saved.operation,support:'breach',harborPayoff:{salvos:1,fans:0}}),/포탑탄 차단 1회/);
+ assert.doesNotMatch(render({...saved.operation,harborPayoff:undefined}),/harbor-payoff/);
+ assert.doesNotMatch(render({...saved.operation,harborPayoff:{safeAid:'<img>',aid:-1}}),/harbor-payoff/);
+});
 test('history handles empty states and escapes externally readable migration notes',()=>{
  const p=emptyProfile();assert.match(lobbyView(p,{tab:'archive'}),/첫 보고서를 기다립니다/);
  p.migrationNotice='<img src=x onerror=alert(1)>';const html=lobbyView(p);assert.ok(html.includes('&lt;img'));assert.ok(!html.includes('<img src=x'));

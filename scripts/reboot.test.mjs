@@ -840,6 +840,7 @@ test('harbor flank only confirms a clear shot and puts the turret ahead of a nea
 test('harbor breach suppresses a live turret for one barrage and leaves the main guns active',()=>{
  for(const seed of [17,18]){
   const s=supportArena(2,'breach','aim');
+  s.operation.harborPayoff={};
   Object.assign(s.boss,regionBoss(2,seed),{active:true,cycle:0,timer:0,spawnClock:999});
   step(s,dt);
   const side=Math.sign(s.boss.parts[0].ox);
@@ -859,12 +860,30 @@ test('harbor breach suppresses a live turret for one barrage and leaves the main
   assert.equal(resumed.boss.mode,'recover');
   assert.equal(resumed.enemyShots.length,0);
   assert.equal(missed.enemyShots.length,9);
+  assert.deepEqual(resumed.operation.harborPayoff,{salvos:1,fans:1});
+  assert.deepEqual(missed.operation.harborPayoff,{});
   assert.ok(resumed.hazards.some(h=>h.portRound==='lock'&&h.hit));
   tick(resumed,5.5);
   assert.equal(resumed.boss.cycle,2);
   assert.equal(resumed.boss.mode,'recover');
   assert.equal(resumed.enemyShots.length,9);
+  assert.deepEqual(resumed.operation.harborPayoff,{salvos:1,fans:1});
  }
+});
+test('a flank shot after the shell impacts still stops the live turret follow-up',()=>{
+ const s=supportArena(2,'breach','aim');
+ s.operation.harborPayoff={};
+ Object.assign(s.boss,{cycle:0,timer:0});
+ step(s,dt);tick(s,1);
+ assert.equal(s.boss.mode,'salvo');
+ assert.ok(s.hazards.every(h=>h.hit));
+ Object.assign(s.player,{x:625,y:370});
+ s.shots=[bullet(s,partPosition(s,s.boss.parts[0]),15)];
+ step(s,dt);tick(s,.3);
+ assert.ok(s.boss.parts[0].hp>0);
+ assert.equal(s.boss.mode,'recover');
+ assert.equal(s.enemyShots.length,0);
+ assert.deepEqual(s.operation.harborPayoff,{fans:1});
 });
 test('a harbor rocket keeps the flank it was fired from when the player sidesteps',()=>{
  const launch=(x,direction)=>{
@@ -924,6 +943,7 @@ test('late harbor dash registers on entry and core exposure expires with the ext
 test('a harbor sidestep opens the core inside the ring but vertical or blocked dashes do not',()=>{
  const arena=()=>{
   const s=supportArena(2,'overrun','recover');
+  s.operation.harborPayoff={};
   Object.assign(s.player,{x:760,y:400});
   return s;
  };
@@ -940,10 +960,12 @@ test('a harbor sidestep opens the core inside the ring but vertical or blocked d
  const loaded=restore(snapshot(s));tick(loaded,.13,{x:1,y:0});
  assert.equal(loaded.boss.hp,loaded.boss.maxHp-320);
  assert.equal(loaded.stats.supportUses[2],1);
+ assert.deepEqual(loaded.operation.harborPayoff,{sidesteps:1});
  assert.ok(loaded.effects.some(e=>e.text==='측면 회피 · 코어 장갑 해제'));
  Object.assign(loaded.player,{x:760,y:400,dashCd:0});
  assert.ok(action(loaded,'dash'));tick(loaded,.18,{x:1,y:0});
  assert.equal(loaded.stats.supportUses[2],1);
+ assert.deepEqual(loaded.operation.harborPayoff,{sidesteps:1});
 });
 test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
  const s=supportArena(2,'recovery','aim');Object.assign(s.boss,{cycle:0,timer:0});Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
@@ -989,25 +1011,30 @@ test('a b23 harbor recovery checkpoint still gets its first crate at the end of 
  assert.deepEqual(loaded.boss.harborSupply,{x:975,y:335});
  assert.equal(loaded.boss.harborSupplyCycle,1);
 });
-test('harbor recovery grants bonus charge only for a safe pickup during an armed warning',()=>{
- function claim(lockX,lockY,afterWarning=false){
+test('only a fresh safe harbor pickup grants bonus charge and shortens the next dodge',()=>{
+ function claim(lockX,lockY,{afterWarning=false,stale=false,full=false}={}){
   const s=supportArena(2,'recovery','aim');
+  s.operation.harborPayoff={};
   Object.assign(s.boss,{cycle:0,timer:0});
   Object.assign(s.player,{x:lockX,y:lockY,hp:80,charge:10});
   const risk=portAidBaitRisk(s,portAidPreview(s));
   assert.equal(risk,lockY===335);
   step(s,dt);
   if(afterWarning)tick(s,1);
-  s.player.charge=10;
-  Object.assign(s.player,s.boss.harborSupply);
+  if(stale)s.boss.cycle++;
+  Object.assign(s.player,s.boss.harborSupply,{dashCd:1.8,charge:full?100:10});
+  const invuln=s.player.invuln;
   step(s,dt);
   assert.equal(s.boss.harborSupply,undefined);
   assert.equal(s.stats.supportUses[2],1);
-  return Math.floor(s.player.charge);
+  assert.equal(s.player.invuln,Math.max(0,invuln-dt));
+  return {charge:Math.floor(s.player.charge),dashCd:s.player.dashCd,payoff:s.operation.harborPayoff};
  }
- assert.equal(claim(800,435),55);
- assert.equal(claim(920,335),30);
- assert.equal(claim(800,435,true),30);
+ assert.deepEqual(claim(800,435),{charge:55,dashCd:.35,payoff:{safeAid:1}});
+ assert.deepEqual(claim(800,435,{full:true}),{charge:100,dashCd:.35,payoff:{safeAid:1}});
+ for(const regular of [claim(920,335),claim(800,435,{afterWarning:true}),claim(800,435,{stale:true})]){
+  assert.deepEqual(regular,{charge:30,dashCd:1.8-dt,payoff:{aid:1}});
+ }
 });
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};

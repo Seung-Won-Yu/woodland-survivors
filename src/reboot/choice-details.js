@@ -118,7 +118,7 @@ export function choiceDetails(s,c){
   const rare=s.operation?.region<2&&!s.operation.challengeTier;
   const port=s.operation?.region===2,active=s.challenge?.state==='active';
   out.impact=rare?'다음 전선 희귀 부품':'바닥 XP와 증원군을 노린다';
-  out.detail=rare?`Q · ${holdoutContract(s).name} + 증원 ${HOLDOUT.rareKills}명 제압`:'공세 단계가 오를수록 물량과 내구가 증가합니다.';
+  out.detail=rare?`${holdoutContract(s).name} 호출 → 증원 ${HOLDOUT.rareKills}명 제압`:'공세 단계가 오를수록 물량과 내구가 증가합니다.';
   const reward=s.operation?.challengeTier?'기록 점수':port?`화물 ${CARGO_CREDITS}C 또는 후송 보급`:'노획 보급';
   const target=port?`${signalLaneLabel[active?s.challenge.lane||'center':signalLane(s.seed)]} 차량 저지`:holdoutContract(s).name;
   out.link=rare?holdoutParts(s.seed,s.operation.region).map(id=>FRONT_SUPPORTS[id].name).join(' / '):`${target} · ${reward}`;

@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.59.0" src="https://img.shields.io/badge/RIFT-0.59.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.60.0" src="https://img.shields.io/badge/RIFT-0.60.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.60은 철갑으로 포격 뒤 후속 탄막을 끊고, 구급 화물을 경고 중에 회수해 다음 회피를 앞당깁니다. 시드 18·19의 화염과 전도 여섯 판을 모바일 크기의 인앱 브라우저에서 귀환까지 확인했습니다. [부품별 공략 검증](docs/RIFT-GAMEPLAY-V1.md#060-항구-부품별-반격-타이밍).
 
 0.37은 철도·항구에 보급과 전술 목표로 갈라지는 길을 표시합니다. 철도 중계기와 경비를 엄폐물 밖으로 옮겼고, 브리핑과 현장에 같은 시드의 좌우 배치를 사용합니다. [전선 진입 검증](docs/RIFT-GAMEPLAY-V1.md#037-철도와-항구-진입로).
 

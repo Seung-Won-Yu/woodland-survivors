@@ -70,9 +70,9 @@ export const PORT_LANDING={range:215,guards:[
  ['mortar',-45,-180],['mortar',-83,-130]
 ]};
 export const PORT_SUPPORT={
- breach:{impact:'측면 발사로 포탑 제압 · 피해 +65%',detail:'예고 중 측면 사격을 맞히면 포탑탄과 후속 탄막이 끊깁니다. 발밑 포격을 피한 뒤 측면 사격을 이어가세요.',hint:'포탑 쪽 사선을 잡으세요. 발밑 집중 포격은 계속됩니다.',flank:105,boost:1.65},
- overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'재장전 때 코어 원으로 돌입하거나 원 안에서 옆으로 회피하세요.',reach:100,sideStep:48,damage:320,delay:.9},
- recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 세 포격에 좌우 교대로 투하합니다. 붉은 원 밖에서 경고 중 회수하면 전탄 +45.',hint:'표시된 화물에서 떨어져 포격을 유도한 뒤 경고 중 회수하세요.',heal:12,charge:20,warningCharge:45,reach:36,limit:3,lanes:[625,975],y:335}
+ breach:{impact:'포탑 측면 피해 +65% · 후속 탄막 차단',detail:'예고 중에는 포탑탄도 끊습니다. 포탄이 떨어진 뒤에는 재장전 전까지 후속 탄막을 끊을 수 있습니다.',hint:'포격 예고 중 포탑 쪽 사선 확보',flank:105,boost:1.65},
+ overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,sideStep:48,damage:320,delay:.9},
+ recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 세 포격에 좌우 교대로 투하합니다. 새 화물을 경고 중 안전 회수하면 전탄 +45, 회피 대기 최대 0.35초.',hint:'화물 밖에 조준 유도 → 경고 중 접근',heal:12,charge:20,warningCharge:45,dashDelay:.35,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
@@ -97,8 +97,8 @@ export function portAidPreview(s){
  return cycle>0&&cycle<=PORT_SUPPORT.recovery.limit?portAidPoint(b,cycle):null;
 }
 export function portAidWindow(s,position){
- const crate=s.boss.harborSupply;
- if(!crate||s.boss.mode!=='salvo')return false;
+ const b=s.boss,crate=b.harborSupply;
+ if(!crate||b.mode!=='salvo'||b.harborSupplyCycle!==b.cycle)return false;
  const pending=s.hazards.filter(h=>h.portRound&&!h.hit);
  return pending.length>0&&pending.every(h=>!roundThreatens(h,crate)&&(!position||!roundThreatens(h,position)));
 }

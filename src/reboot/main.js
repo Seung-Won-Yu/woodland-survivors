@@ -422,7 +422,8 @@ function updateHud(){
  if(p.maneuver)maneuver.textContent=`${MANEUVERS[p.maneuver].name} · ${active?'가동':p.maneuver==='assault'?'회피하며 이동':'정지해 조준'}`;
  const support=FRONT_SUPPORTS[run.operation?.support];
  $('support-status').hidden=!support;
- if(support)$('support-status').textContent=`${support.name} · ${support.role}`;
+ if(support)$('support-status').textContent=front===2&&Object.hasOwn(PORT_SUPPORT,run.operation.support)&&!run.boss.active&&run.stage==='field'
+  ?supportTactic(run.operation.support,front):`${support.name} · ${support.role}`;
  $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
  const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion]),run.modules,run.tuning]);if(key!==inventoryStamp){inventoryStamp=key;$('weapons').innerHTML=run.weapons.map(w=>`<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}">${itemArt(w.id)}<b>${w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:GUNS[w.id].short}</b><small>${w.fusion?'전도 격발망':w.evolved?GUNS[w.id].evolution:`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`}</small></div>`).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');$('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');}
  const fusion=run.weapons.find(w=>w.fusion),synergy=$('synergy');
@@ -514,26 +515,27 @@ function updateHud(){
     if(turret.hp<=0)line.textContent='철갑 · 포탑 정지';
     else if(boss.turretSuppressedCycle===boss.cycle&&boss.mode==='salvo')line.textContent='철갑 · 포탑 제압 · 발밑 포격 회피';
     else if(boss.turretSuppressedCycle===boss.cycle&&recovering)line.textContent='철갑 · 후속 탄막 차단 · 측면 사격';
-    else if(boss.mode==='salvo'&&incoming)line.textContent='철갑탄 비행 중 · 발밑 포격을 피하세요';
-    else if(portTurretInSight(run))line.textContent='철갑 · 포탑 사선 확보';
-    else if(portBreachFlank(run))line.textContent='철갑 · 포탑 사거리까지 접근';
+    else if(boss.mode==='salvo'&&incoming)line.textContent='철갑탄 발사 · 지금 발밑 회피';
+    else if(portTurretInSight(run))line.textContent='철갑 · 포탑 사선 확보 · 자동 사격';
+    else if(portBreachFlank(run))line.textContent='철갑 · 엄폐를 돌아 포탑 사거리로';
     else line.textContent=`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
    }else if(supportId==='overrun'){
     const gap=distance(p,boss)-portCoreReach(boss);
-    line.textContent=portCoreDisrupted(run)?'돌격 · 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 경계 안으로 이동':p.dash>0&&Number.isFinite(p.portCutX)?'돌격 · 좌우 이동 유지':p.dashCd>0?'돌격 · 회피 재사용 대기':gap<=0?'돌격 · 원 안에서 좌우 회피':gap>110?'돌격 · 코어 경계까지 접근':'돌격 · 원 안으로 회피';
+    line.textContent=portCoreDisrupted(run)?'돌격 · 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 경계 안으로 이동':p.dash>0&&Number.isFinite(p.portCutX)?'돌격 · 좌우 이동 유지':p.dashCd>0?'돌격 · 회피 재사용 대기':gap<=0?'돌격 · ↔ 이동 + 회피':gap>110?'돌격 · 코어 경계까지 접근':'돌격 · 코어 쪽 이동 + 회피';
    }else{
     const crate=boss.harborSupply,aid=portAidPreview(run),kit=PORT_SUPPORT.recovery;
     if(crate){
      const direction=bearing(p,crate.x,crate.y);
-     const warning=run.hazards.some(h=>h.portRound&&!h.hit);
-     const status=portAidWindow(run,p)?`지금 회수 · ${chargeLabel(run)} +${kit.warningCharge}`
+     const warning=run.hazards.find(h=>h.portRound==='lock'&&!h.hit);
+     const fresh=boss.harborSupplyCycle===boss.cycle;
+     const status=portAidWindow(run,p)&&warning?`회수 ${(Math.ceil(warning.timer*10)/10).toFixed(1)}초 · 회피 재정비`
       :portAidWindow(run)?'붉은 원 밖으로 회피'
-      :warning?'화물 쪽 포격 · 폭발 뒤 회수':`회수 · ${chargeLabel(run)} +${kit.charge}`;
+      :warning&&fresh?'화물 쪽 포격 · 폭발 뒤 회수':`회수 · ${chargeLabel(run)} +${kit.charge}`;
      line.textContent=`구급 · ${direction} 화물 · ${status}`;
     }else if(aid){
      const risk=portAidBaitRisk(run,aid);
-     const bait=risk?(portRakeReady(run,boss.cycle+1)?'화물 위·아래에서 포격 유도':'화물에 포격 위험 · 더 떨어지세요'):'현재 위치에서 포격 유도 가능';
-     const next=boss.mode==='salvo'?'포격 뒤 투하 예정':`다음 투하 · ${bait}`;
+     const bait=risk?(portRakeReady(run,boss.cycle+1)?'화물 위·아래에서 포격 유도':'화물에서 더 떨어지세요'):'여기서 조준 고정 대기';
+     const next=boss.mode==='salvo'?'다음 포격에 투하':bait;
      line.textContent=`구급 · ${bearing(p,aid.x,aid.y)} ${next}`;
     }else line.textContent='구급 · 화물 투하 완료';
    }

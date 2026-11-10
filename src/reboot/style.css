@@ -373,3 +373,10 @@
  .field-menu.level-draft .upgrade-cost{margin-top:0;padding-top:4px}
  .field-menu.level-draft [data-choice^="rank:"] .upgrade-cost{display:none}
 }
+
+.harbor-payoff{--part-color:#c8e6f0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;margin:0 0 12px;padding:10px 12px;border-left:3px solid var(--part-color);background:#202a27}
+.harbor-payoff[data-part="overrun"]{--part-color:#ffd2a2}
+.harbor-payoff[data-part="recovery"]{--part-color:#d5edb3}
+.harbor-payoff span{color:#c8cfba;font-size:10px}
+.harbor-payoff b{color:var(--part-color);font-size:11px}
+.harbor-payoff p{grid-column:1/-1;margin:0;color:#ebeddc;font-size:12px;line-height:1.45}
