@@ -36,13 +36,14 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
  for(const m of s.modules)if(!MODULES[m.id]||!Number.isInteger(m.rank)||m.rank<1||m.rank>3)throw Error('모듈 저장이 손상됐습니다.');
  if(!Number.isFinite(s.player.hp)||s.player.hp<0||!Number.isFinite(s.player.maxHp)||s.player.maxHp<=0||s.player.hp>s.player.maxHp||!Number.isFinite(s.t)||s.t<0||s.tuning<0||s.rerolls<0||s.banishes<0)throw Error('작전 저장이 손상됐습니다.');
  const fail=()=>{throw Error('전투 체크포인트가 손상됐습니다.');};
+ if(s.levelReadyAt!=null&&(!Number.isFinite(s.levelReadyAt)||s.levelReadyAt<0))fail();
  if(!['field','boss','holdout'].includes(s.stage)||!Array.isArray(s.boss?.parts)||!Array.isArray(s.queue)||!Array.isArray(s.choices)||!['map','supply','combat','loot'].every(k=>Number.isInteger(s.rng[k])))fail();
  for(const key of ['enemies','shots','enemyShots','gems','zones','hazards','effects','excluded','seenGuns','offeredWeapons'])if(!Array.isArray(s[key]))fail();
  if(new Set(s.modules.map(m=>m.id)).size!==s.modules.length||s.modules.some(m=>RULES.modules[m.id].unique&&m.rank!==1)||new Set(s.weapons.map(w=>w.uid)).size!==s.weapons.length||s.weapons.some(w=>typeof w.uid!=='string'))fail();
@@ -132,7 +133,11 @@ function crateCards(s,quality,contract=null){
  if(contract==='armored'){const pool=completionModules(s);if(pool.length)special={...moduleCard(pick(s,'loot',pool),quality==='common'?1:quality==='rare'?2:3),support:true,label:'장갑 수송대 · 완성 부품'};}
  return fillCrate([...reserved,...(special?[special]:[]),...base.filter(c=>c.module!=='overcharger'&&c.id!==special?.id)],quality);
 }
-function openChoice(s,type,cards,source='',extra={}){s.phase='choice';s.choice={type,source,...extra};s.choices=cards;}
+function openChoice(s,type,cards,source='',extra={}){
+ if(s.operation)s.levelReadyAt=s.t+RULES.levelChoiceSpacing;
+ s.phase='choice';s.choice={type,source,...extra};s.choices=cards;
+}
+const SITE_PICKUP_RANGE=74,LEVEL_PICKUP_PRIORITY=120;
 const RESCUE_FOCUS_SECONDS=15;
 const OPENING_WEAPON_SECONDS=2.5;
 function deferOpeningUpgrade(s){
@@ -141,13 +146,21 @@ function deferOpeningUpgrade(s){
  if(s.t>=RESCUE_FOCUS_SECONDS)return false;
  return s.sites.some(site=>site.opening&&['active','ready'].includes(site.state)&&distance(site,s.player)<300);
 }
+export function canOpenLevel(s){
+ return s.phase==='playing'&&s.player.hp>0&&s.pendingLevels>0&&!s.queue.length&&!deferOpeningUpgrade(s);
+}
+function openLevel(s){
+ s.pendingLevels--;
+ openChoice(s,'level',levelCards(s),`LEVEL ${s.level}`);
+}
 function nextChoice(s){
  if(s.phase!=='playing')return;
  if(s.queue.length){const item=s.queue.shift();openChoice(s,item.type,item.cards,item.source,item.extra);return;}
- if(s.pendingLevels>0&&!deferOpeningUpgrade(s)){
-  s.pendingLevels--;
-  openChoice(s,'level',levelCards(s),`LEVEL ${s.level}`);
- }
+ if(s.t<(s.levelReadyAt||0)||!canOpenLevel(s))return;
+ // Let nearby field objectives take precedence over routine upgrades.
+ if(s.operation&&s.stage==='holdout'&&interaction(s)?.id==='extract')return;
+ if(s.operation&&s.stage!=='boss'&&s.sites.some(site=>site.state==='ready'&&distance(site,s.player)<LEVEL_PICKUP_PRIORITY))return;
+ openLevel(s);
 }
 export function assemblyOptions(s){
  const options=s.operation&&s.stats.challengeWins>0&&!s.player.maneuver?Object.entries(MANEUVERS).map(([key,m])=>({id:`maneuver:${key}`,kind:'maneuver',key,title:m.name,desc:m.impact,label:'노획 교범 · 한 판에 하나'})):[];
@@ -544,7 +557,7 @@ function updateSites(s,dt){
   }
   if(site.kind==='relay'&&site.state==='active'&&distance(site,s.player)<125)site.progress=Math.min(5,site.progress+dt);
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
-  if(site.state==='ready'&&distance(site,s.player)<74){site.state='done';
+  if(site.state==='ready'&&distance(site,s.player)<SITE_PICKUP_RANGE){site.state='done';
    if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s.operation.region),site.name);
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality});}
    else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:{});
@@ -696,6 +709,7 @@ export function action(s,kind){
  if(kind.startsWith('raid:'))return startRaid(s,kind.split(':')[1]);
  if(kind==='withdraw'){if(!withdrawRaid(s))return false;emit(s,'raid-failed',s.player.x,s.player.y,{text:'습격 철수 · 상자 소실',life:1.2});return true;}
  if(s.phase!=='playing')return false;const p=s.player;
+ if(kind==='upgrade'){if(!canOpenLevel(s))return false;openLevel(s);return true;}
  if(kind==='gear'){openChoice(s,'assembly',[...assemblyOptions(s),{id:'back',kind:'back',title:'전투로 돌아가기',desc:'조율권과 무장을 유지합니다.'}],'병기 조립');return true;}
  if(kind==='dash'){
   if(p.dashCd>0)return false;

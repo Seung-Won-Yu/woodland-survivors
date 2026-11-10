@@ -527,9 +527,66 @@ test('opening combat reserves earned upgrades through the rescue and a short wea
  assert.equal(run.pendingLevels,1);
  const resumed=restore(snapshot(run));tick(resumed,2.4);
  assert.equal(resumed.phase,'playing');
+ assert.equal(action(resumed,'upgrade'),false);
  tick(resumed,.2);
+ assert.equal(resumed.phase,'playing');
+ const immediate=restore(snapshot(resumed));
+ assert.ok(action(immediate,'upgrade'));
+ assert.equal(immediate.choice.type,'level');
+ tick(resumed,.5);
  assert.equal(resumed.choice.type,'level');
  assert.equal(resumed.pendingLevels,0);
+});
+test('campaign level drafts leave combat time between choices without consuming banked XP',()=>{
+ const s=quietOperation();s.level=4;s.pendingLevels=2;
+ step(s,dt);
+ assert.equal(s.choice.type,'level');
+ assert.equal(s.pendingLevels,1);
+ assert.ok(choose(s,'rank:h'));
+ const next=restore(snapshot(s)),x=next.player.x;
+ tick(next,1,{x:1,y:0});
+ assert.equal(next.phase,'playing');
+ assert.ok(next.player.x>x);
+ assert.equal(next.pendingLevels,1);
+ const manual=restore(snapshot(next));
+ assert.ok(action(manual,'upgrade'));
+ assert.equal(manual.choice.type,'level');
+ assert.equal(manual.pendingLevels,0);
+ assert.equal(action(manual,'upgrade'),false);
+ tick(next,RULES.levelChoiceSpacing-1+.1);
+ assert.equal(next.choice.type,'level');
+ assert.equal(next.pendingLevels,0);
+});
+test('field supplies still open while routine level drafts are banked',()=>{
+ const s=quietOperation();s.level=2;s.pendingLevels=1;
+ const site=s.sites.find(site=>site.id==='supply-b');site.state='ready';
+ Object.assign(s.player,{x:site.x,y:site.y+95});
+ step(s,dt);
+ assert.equal(s.phase,'playing');
+ assert.equal(s.pendingLevels,1);
+ supply(s,site.id);
+ assert.equal(s.choice.type,'supply');
+ assert.equal(s.pendingLevels,1);
+ assert.ok(choose(s,s.choices[0].id));
+ assert.equal(s.phase,'playing');
+ assert.equal(s.pendingLevels,1);
+});
+test('a gate carries banked upgrades into the next front',()=>{
+ const s=quietOperation();clearRegion(s);
+ assert.ok(choose(s,'stay'));
+ s.level=4;s.pendingLevels=2;s.levelReadyAt=s.t;
+ const gate=exitGate(s);
+ Object.assign(s.player,{x:gate.x,y:gate.y});
+ step(s,dt);
+ assert.equal(s.phase,'playing');
+ assert.ok(action(s,'interact'));
+ assert.ok(choose(s,'advance'));
+ const loaded=restore(snapshot(s));
+ assert.equal(loaded.operation.region,1);
+ assert.equal(loaded.pendingLevels,2);
+ assert.ok(action(loaded,'upgrade'));
+ assert.equal(loaded.choice.type,'level');
+ assert.equal(loaded.pendingLevels,1);
 });
 test('coast rockets interrupt the battery at range and address enemies that close the gap',()=>{
  for(const gap of [75,140]){
