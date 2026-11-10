@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
@@ -335,6 +335,64 @@ test('heat audio stays distinct while hurt keeps foreground priority',async()=>{
 function quietOperation(operator='fio'){const s=createOperation(17,[],null,null,operator);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function downBoss(s){s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.shots=[bullet(s,s.boss)];step(s,dt);}
 function clearRegion(s){downBoss(s);assert.equal(s.phase,'playing');assert.equal(s.stage,'holdout');Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.equal(s.choice.type,'clear');}
+test('a rail gate fits a completed weapon without advancing the clock or leaving the gate',()=>{
+ const s=quietOperation();
+ clearRegion(s);assert.ok(choose(s,'advance'));
+ s.blocks=[];s.firstNew='f';
+ s.weapons.push({...makeWeapon('f'),uid:'fire',level:6,branch:'trail',cd:999});
+ s.modules=[{id:'catalyst',rank:2}];
+ clearRegion(s);
+ const time=s.t,hold=s.holdTime,tuning=s.tuning,gate=exitGate(s);
+ s.operation.nextSupport='overrun';
+ assert.deepEqual(gatePreparation(s).capstones.map(c=>c.id),['evolve:f']);
+ assert.ok(action(s,'gate-assemble'));
+ assert.equal(action(s,'gate-assemble'),false);
+ assert.deepEqual(s.choices.map(c=>c.id),['evolve:f','back']);
+ const unordered=snapshot(s);
+ unordered.choices.reverse();
+ assert.throws(()=>restore(unordered));
+ pause(s);const loaded=restore(snapshot(s));resume(loaded);
+ assert.ok(choose(loaded,'back'));
+ assert.equal(loaded.choice.type,'clear');
+ assert.equal(loaded.tuning,tuning);
+ assert.ok(action(loaded,'gate-assemble'));
+ assert.ok(choose(loaded,'evolve:f'));
+ assert.equal(loaded.choice.type,'clear');
+ assert.equal(loaded.tuning,tuning-1);
+ assert.equal(loaded.t,time);
+ assert.equal(loaded.holdTime,hold);
+ assert.deepEqual(exitGate(loaded),gate);
+ assert.ok(loaded.weapons.some(w=>w.id==='f'&&w.evolved));
+ assert.ok(choose(loaded,'advance'));
+ assert.equal(loaded.operation.region,2);
+ assert.equal(loaded.operation.support,'overrun');
+ assert.equal(loaded.powerWave.showcase,'flame');
+ assert.equal(loaded.powerWave.paired,3);
+});
+test('gate upgrade consumes one earned draft and restores that deal until it is resolved',()=>{
+ const s=quietOperation();
+ clearRegion(s);s.pendingLevels=2;
+ assert.equal(gatePreparation(s).upgrades,2);
+ assert.ok(action(s,'gate-upgrade'));
+ assert.equal(s.pendingLevels,1);
+ assert.equal(action(s,'gate-upgrade'),false);
+ assert.ok(reroll(s));
+ const loaded=restore(snapshot(s));
+ assert.deepEqual(loaded.choices,s.choices);
+ const invalid=snapshot(s);
+ invalid.player.y+=100;
+ assert.throws(()=>restore(invalid));
+ assert.ok(choose(loaded,loaded.choices[0].id));
+ assert.equal(loaded.choice.type,'clear');
+ assert.equal(loaded.pendingLevels,1);
+ assert.ok(action(loaded,'gate-upgrade'));
+ assert.ok(skip(loaded));
+ assert.equal(loaded.choice.type,'clear');
+ assert.equal(loaded.pendingLevels,0);
+ assert.equal(loaded.t,s.t);
+ assert.equal(loaded.holdTime,s.holdTime);
+ assert.deepEqual(loaded.choices.map(c=>c.id),['advance','stay','extract']);
+});
 test('the fusion showcase waits through the boss attack and survives a quick gate transition',()=>{
  const s=quietOperation();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing',cd:999});s.modules=[{id:'coil',rank:2}];
  assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));

@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.65.0" src="https://img.shields.io/badge/RIFT-0.65.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.66.0" src="https://img.shields.io/badge/RIFT-0.66.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.66에서는 전진 게이트에서 이미 준비된 진화·합체와 대기 개조를 바로 열 수 있습니다. 장착하면 같은 게이트로 돌아오며, 전진·잔류·중도귀환의 조건을 짧은 명령 목록에서 비교할 수 있습니다. [게이트 정비와 항구 진입 검증](docs/RIFT-GAMEPLAY-V1.md#066-전진-게이트에서-마무리하는-빌드).
 
 0.65는 모바일 항구전에서 미니맵과 무장 표시를 압축하고, 겹친 포격을 실제 피격 범위의 외곽선으로 표시합니다. 가려진 화물에는 방향 표식이 나오고 포격이 겹친 화물은 착탄 뒤 회수를 안내합니다. [항구 모바일 전투 검증](docs/RIFT-GAMEPLAY-V1.md#065-모바일-항구전의-시야와-포격).
 
