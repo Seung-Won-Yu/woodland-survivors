@@ -310,6 +310,8 @@
 .sortie-orders .section-index{margin-bottom:3px;color:#c0c9aa}
 .sortie-orders h2{font-size:15px}
 .sortie-orders .text-button{min-height:44px;color:#f1d59c}
+.launch-dock .cancel-requisition{display:block;width:fit-content;min-height:44px;padding:0;color:#283e33;text-decoration:underline;text-underline-offset:4px}
+.docket-paper .research-reserve:not(:disabled){border-left:3px solid #edce8e}
 .order-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .order-slip{display:flex;align-items:center;gap:10px;min-height:68px;min-width:0;padding:8px 10px;text-align:left;background:#344b41;color:#f2e7c1;border:1px solid #829385;box-shadow:none}
 .order-slip[aria-pressed="true"]{background:#465748;border-color:#f3d18c;box-shadow:inset 3px 0 #f3d18c}

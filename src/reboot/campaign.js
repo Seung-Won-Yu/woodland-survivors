@@ -182,7 +182,10 @@ export function coastLead(s){
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
  if(rescue)return rescue;
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
- return s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done')||null;
+ const standard=s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done');
+ if(standard)return standard;
+ if(s.operation.requisition==='thermal'&&s.firstNew==='f'&&!s.modules.some(m=>m.id==='coil'))return s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done')||null;
+ return null;
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
 export const mapSeed=(seed,index)=>seed+index*7919;
@@ -228,6 +231,7 @@ export function activeEntry(s){
   const [x,y]=route.path.at(-1);
   const site=s.sites.find(n=>n.id===route.site&&n.x===x&&n.y===y&&n.state!=='done');
   if(!site)return [];
+  if(site.id==='rail-cache'&&s.operation.requisition)return [{...route,sign:'정비대 · 예약품',color:'#b6e1c5'}];
   return [site.id==='port-landing'&&!site.gantry?{...route,sign:'하역장 보급'}:route];
  });
  return routes.length?{...entry,routes}:null;
@@ -271,9 +275,14 @@ export function regionLayout(seed,index=0,order=null){
 }
 export function regionBoss(index,seed=1){const d=REGIONS[index],turretSide=index===2&&seed%2===0?1:-1;return{id:'boss',type:'boss',x:800,y:180,hp:d.hp,maxHp:d.hp,r:index===1?76:65,active:false,dead:false,body:Math.PI/2,aim:Math.PI/2,mode:'aim',timer:1.3,cycle:0,spawnClock:4,kick:0,flash:0,parts:[{id:'part-a',type:'part',ox:60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25},{id:'part-b',type:'part',ox:-60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25}]};}
 export const RESEARCH={
- medic:{name:'응급 주사기',cost:300,condition:'첫 작전 완주',detail:'정예를 잡으면 체력12 회복 · 재사용12초. 보급 후보로 추가되며 모듈 한 칸을 씁니다.',fieldBrief:'포로 구출 보상에서 장착하고, 정예를 제압해 체력을 회복하세요.'},
- shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'유탄·로켓·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.',fieldGun:'r',fieldBrief:'로켓을 확보하세요. 박격포 진지에서 분열 수류탄과 축전 코일이 함께 후보에 오릅니다.'},
- thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'화염방사기와 축전 코일을 갖춘 뒤 보급을 여세요. 연소한 적에 전기가 닿으면 전탄이 찹니다.'}
+ medic:{name:'응급 주사기',cost:300,condition:'첫 작전 완주',detail:'정예를 잡으면 체력12 회복 · 재사용12초. 보급 후보로 추가되며 모듈 한 칸을 씁니다.',fieldBrief:'포로 구출 보상에서 장착하고, 정예를 제압해 체력을 회복하세요.',fitting:'정예 제압으로 발동'},
+ shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'유탄·로켓·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.',fieldGun:'r',fieldBrief:'로켓을 확보하세요. 박격포 진지에서 분열 수류탄과 축전 코일이 함께 후보에 오릅니다.',fitting:'유탄·로켓·합체 연쇄탄에서 발동'},
+ thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'화염방사기와 축전 코일을 갖춘 뒤 보급을 여세요. 연소한 적에 전기가 닿으면 전탄이 찹니다.',fitting:'축전 코일과 연소 무장 필요'}
 };
+export const REQUISITION_FEE=120;
+export function requisitionSite(s){
+ if(s.operation?.region!==1||s.stage==='boss'||!s.operation.requisition)return null;
+ return s.sites.find(site=>site.id==='rail-cache'&&site.state!=='done')||null;
+}
 export const CARGO_CREDITS=70;
 export function operationCredits(r,firstWin=false){if(!r.operation)return 0;const s=r.stats,boss=[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0);return Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10+Math.min(s.sitesCleared||0,6)*40+boss+(r.won?120:0)+Math.min(s.raidSuccess,3)*40+Math.min(s.challengeWins||s.challenge,3)*20+(s.holdoutCargo?CARGO_CREDITS:0)+(firstWin&&r.won?200:0)+orderBonus(r);}

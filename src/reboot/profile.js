@@ -1,4 +1,4 @@
-import {RESEARCH,operationCredits,orderBonus,sortieOrder} from './campaign.js';
+import {RESEARCH,REQUISITION_FEE,operationCredits,orderBonus,sortieOrder} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,restore,snapshot,finish,canResumeRun} from './model.js';
 import {operatorId} from './operator.js';
@@ -26,7 +26,12 @@ export function parseProfile(raw){
 }
 export function beginProfile(p,run){if(p.active)throw Error('이전 판을 먼저 정산하세요.');const n=copy(p);n.sequence++;n.migrationNotice=null;if(run.operator==='marco')n.lastOperator='marco';else delete n.lastOperator;run.runId=`${n.sequence}:${run.seed}`;n.active={version:VERSION,sequence:n.sequence,runId:run.runId,run:snapshot(run)};return n;}
 export const canLaunchOrder=(p,id)=>{const order=sortieOrder(id);return !!order&&!p.active&&p.records.wins>0&&p.credits>=order.fee;};
-export function freshSortie(p,seed,order=null,operator='fio'){
+export const canReserveResearch=(p,id)=>Object.hasOwn(RESEARCH,id)&&!p.active&&p.research.includes(id)&&!p.trials.includes(id)&&p.credits>=REQUISITION_FEE;
+export function freshSortie(p,seed,order=null,operator='fio',requisition=null){
+ if(requisition!==null){
+  if(order!==null||!canReserveResearch(p,requisition))throw Error('정비대 예약 조건을 확인하세요.');
+  p={...p,credits:p.credits-REQUISITION_FEE};
+ }
  if(order!==null){
   if(!canLaunchOrder(p,order))throw Error('지령 출격 조건을 확인하세요.');
   p={...p,credits:p.credits-sortieOrder(order).fee};
@@ -37,6 +42,7 @@ export function freshSortie(p,seed,order=null,operator='fio'){
   p=settleProfile(p,prior);
  }
  const run=createOperation(seed,p.research,p.trials,order,operator);
+ if(requisition)run.operation.requisition=requisition;
  return {run,next:beginProfile(p,run)};
 }
 export function checkpointProfile(p,run){if(!p.active)throw Error('활성 전투가 없습니다.');if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');const n=copy(p);n.active.run=snapshot(run);n.trials=n.trials.filter(id=>!pickedTrials(run.stats).includes(id));return n;}
@@ -49,6 +55,7 @@ export function settleProfile(p,run){
  if(order){
   r.orderFee=order.fee;r.orderBonus=orderBonus(r);
  }
+ if(r.operation?.requisition)r.requisitionFee=REQUISITION_FEE;
  if(sameScope&&(!order||r.orderBonus)){
   const record=marco?(n.marcoRecords=marcoRecord(n)||{scope:n.recordScope,score:0,time:null,challenge:0,wins:0,orders:{}}):n.records;
   if(order){

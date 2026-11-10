@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.53.0" src="https://img.shields.io/badge/RIFT-0.53.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.54.0" src="https://img.shields.io/badge/RIFT-0.54.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -54,6 +54,8 @@
 ### 귀환한 다음에는
 
 확보 성과는 전사·중도귀환에도 크레딧으로 남습니다. 연구로 **응급 주사기 / 분열 수류탄 / 흡열 코일**을 보급 후보에 추가할 수 있습니다. 연구 모듈은 판 안에서 직접 골라 한 칸에 장착합니다. 분열 수류탄은 로켓·유탄·합체 연쇄탄의 폭발에 파쇄를 더합니다.
+
+한 번 장착해 본 연구 모듈은 **철도 화차 정비대**에 예약할 수 있습니다. 예약 출격에 120C를 쓰고, 철도에서 경비를 제압한 뒤 예약품·무장 정비·응급 보급 중 하나를 고릅니다. 흡열 코일을 노릴 때는 해안 박격포 진지에서 축전 코일부터 준비할 수 있습니다.
 
 후반 공세는 일반병의 물량을 늘리고 장교·포격병의 수와 빈도를 제한합니다. 강화한 무기로 대군을 쓸고, 특수 적의 예고를 읽는 리듬을 분리했습니다.
 

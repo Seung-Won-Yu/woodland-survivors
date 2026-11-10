@@ -47,6 +47,9 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
+const validRailReservation=(s,c)=>s.choice?.type==='rail-workshop'&&s.operation?.region===1&&s.stage!=='boss'
+ &&c.kind==='module'&&c.rank===1&&s.operation.requisition===c.module&&c.id===`requisition:${c.module}`
+ &&!s.operation.requisitionClaimed&&s.sites.some(site=>site.id==='rail-cache'&&site.state==='done');
 export const canResumeRevision=revision=>[RULES.balanceRevision,'b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
@@ -79,6 +82,10 @@ export function restore(raw,{allowPrevious=false}={}){
    if(!site||site.kind!==(order==='wire'?'relay':'armory')||s.operation.orderDone&&site.state!=='done')fail();
   }
   s.trials??=s.trial?[s.trial]:[];
+  const {requisition,requisitionClaimed}=s.operation;
+  if(requisition!==undefined&&(order!==undefined||!Object.hasOwn(RESEARCH,requisition)||!s.research.includes(requisition)||s.trials?.includes(requisition)))fail();
+  if(requisitionClaimed!==undefined&&(requisitionClaimed!==true||!requisition||s.operation.region===0))fail();
+  if(requisitionClaimed&&s.operation.region===1&&!s.sites.some(site=>site.id==='rail-cache'&&site.state==='done'))fail();
   // The first b30 release opened the hatch before the site stored its variant.
   if(s.operation.region===2&&s.balanceRevision==='b30-port-gantry'){
    const dock=s.sites.find(site=>site.id==='port-landing');
@@ -120,6 +127,8 @@ export function restore(raw,{allowPrevious=false}={}){
  const cardsOk=cards=>Array.isArray(cards)&&cards.length>0&&cards.every(c=>(c.kind!=='resupply'||Number.isFinite(c.heal)&&Number.isFinite(c.charge)&&c.heal>=0&&c.charge>=0)&&typeof c.id==='string'&&kinds.has(c.kind)&&(!c.weapon||GUNS[c.weapon])&&(!c.module||MODULES[c.module])&&(!['rank','gun','evolve'].includes(c.kind)||!!GUNS[c.weapon])&&(!['module','tune'].includes(c.kind)||!!MODULES[c.module])&&(c.kind!=='module'||Number.isInteger(c.rank)&&c.rank>=1&&c.rank<=3));
  if((s.phase==='choice'||s.resumePhase==='choice')&&(!s.choice||!['level','supply','armory','raid-reward','pursuit-reward','assembly','clear','control','rail-workshop'].includes(s.choice.type)||!cardsOk(s.choices)))fail();
  if(s.choice?.type==='rail-workshop'&&(s.operation?.region!==1||s.stage==='boss'||s.choices.some(c=>c.kind==='calibrate'&&(c.id!==`calibrate:${c.uid}`||!s.weapons.some(w=>w.uid===c.uid&&railCalibration(s,w))))))fail();
+ const reservations=s.choices.filter(c=>typeof c?.id==='string'&&c.id.startsWith('requisition:'));
+ if(reservations.length>1||reservations.some(c=>!validRailReservation(s,c)))fail();
  if(s.phase==='result'&&(!s.result||typeof s.result.won!=='boolean'||!Number.isFinite(s.result.score)||!Number.isFinite(s.result.seconds)||!s.result.stats||!Array.isArray(s.result.weapons)||!Array.isArray(s.result.modules)||s.result.weapons.some(w=>!GUNS[w.id])||s.result.modules.some(m=>!MODULES[m.id])))fail();
  if(s.choice?.type==='assembly'){const ids=new Set([...assemblyOptions(s).map(c=>c.id),'back']);if(!s.choices.some(c=>c.id==='back'&&c.kind==='back')||s.choices.some(c=>!ids.has(c.id)))fail();}
  if(s.choice?.type==='clear'&&!s.stats.bossKilled)fail();
@@ -159,7 +168,10 @@ const gunCard=(w)=>{const before=weaponStats(w),after=weaponStats({...w,level:w.
 const moduleCard=(id,rank=1)=>({id:`module:${id}`,kind:'module',module:id,rank:RULES.modules[id].unique?1:rank,title:MODULES[id].name,desc:MODULES[id].desc,label:'조건부 모듈'});
 const utility=(key)=>({id:`utility:${key}`,kind:'utility',key,title:({health:'야전 응급처치',pickup:'회수 숙련',power:'추가 화력',charge:'탄약 보급'})[key],desc:({health:'최대 HP +6 · 체력 +6',pickup:'XP 회수 반경 +10 (최대 3회)',power:'기본 화력 +1% 가산',charge:'전탄 보급 충전 +10'})[key],label:'전술 보조'});
 const upgradeable=s=>s.weapons.filter(w=>!w.evolved&&!w.fusion&&w.level<6);
-function modulePool(s){return ['ricochet','coil','catalyst','magnet',...(s.research||[])].filter(id=>!s.excluded.includes(id)&&compatible(s,id)&&moduleRank(s,id)<(RULES.modules[id].unique?1:3));}
+function modulePool(s){
+ const reserved=s.operation?.region<2?s.operation.requisition:null;
+ return ['ricochet','coil','catalyst','magnet',...(s.research||[])].filter(id=>id!==reserved&&!s.excluded.includes(id)&&compatible(s,id)&&moduleRank(s,id)<(RULES.modules[id].unique?1:3));
+}
 function currentInvestments(s){return[...upgradeable(s).map(gunCard),...s.modules.filter(m=>!RULES.modules[m.id].unique&&m.rank<3).map(m=>moduleCard(m.id,1))];}
 const trialModule=(s,pool,approach)=>{
  const trials=(s.trials||[s.trial]).filter(id=>pool.includes(id));
@@ -195,6 +207,11 @@ function railWorkshopCards(s){
  if(pivot)cards.push({id:`calibrate:${pivot.w.uid}`,kind:'calibrate',weapon:pivot.w.id,uid:pivot.w.uid,title:'완성 병기 재개장',label:'전선 공방'});
  if(part)cards.push({...moduleCard(part),label:'완성 병기 조립 재료'});
  if(gun&&cards.length<2)cards.push(gunCard(gun));
+ const reserved=s.operation.requisition;
+ if(reserved&&!s.operation.requisitionClaimed){
+  cards.splice(1);
+  cards.unshift({...moduleCard(reserved),id:`requisition:${reserved}`,label:'예약품 · 이번 작전 장착'});
+ }
  return [...cards,{id:'resupply:rail-workshop',kind:'resupply',title:'차내 응급 보급',heal:20,charge:15,label:'생존 투자'}];
 }
 function fillCards(s,cards){const unique=[...new Map(cards.filter(Boolean).map(c=>[c.id,c])).values()];for(const key of ['health','charge','power'])if(unique.length<3&&!unique.some(c=>c.id===`utility:${key}`))unique.push(utility(key));return unique.slice(0,3);}
@@ -262,13 +279,16 @@ export function assemblyOptions(s){
 }
 export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  if(s.phase!=='choice')return false;const c=s.choices.find(c=>c.id===id);if(!c)return false;
+ const reserved=c.id.startsWith('requisition:');
+ if(reserved&&!validRailReservation(s,c))return false;
  if(c.kind==='advance'){if(!s.operation||s.stage!=='holdout'||!s.boss.dead||s.operation.region>=2)return false;s.stats.choices.push({id:'advance',region:s.operation.region,t:s.t});return advanceRegion(s);}
  if(s.choice.type==='level'&&s.level>=6&&!s.player.branchChosen&&!Object.hasOwn(operatorOf(s).stances,doctrine))return false;
  if(c.kind==='rank'){const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion);if(!w||w.level>=6||w.evolved)return false;if(w.level===3&&!GUNS[w.id].branches[branch])return false;w.level++;if(w.level===4)w.branch=branch;}
  else if(c.kind==='module'){
-  if(!MODULES[c.module]||!compatible(s,c.module))return false;let m=s.modules.find(m=>m.id===c.module);
+  if(!MODULES[c.module]||!reserved&&!compatible(s,c.module))return false;let m=s.modules.find(m=>m.id===c.module);
   const gain=moduleGain(s,c.module,c.rank);
   if(m){if(m.rank>=3||RULES.modules[m.id].unique)return false;m.rank=gain.next;}else{m={id:c.module,rank:gain.next};if(s.modules.length>=4){if(!canReplaceModule(s,c.module,slot))return false;s.modules[slot]=m;}else s.modules.push(m);}
+  if(reserved)s.operation.requisitionClaimed=true;
   if((s.trials||[s.trial]).includes(c.module)){s.stats.researchTrialPicked=c.module;(s.stats.researchTrialsPicked??=[]).push(c.module);s.trials=(s.trials||[s.trial]).filter(id=>id!==c.module);s.trial=s.trials[0]||null;}
   if(gain.charge){const before=s.player.charge;s.player.charge=Math.min(100,before+gain.charge);s.stats.overflowCharge=(s.stats.overflowCharge||0)+s.player.charge-before;}
  }

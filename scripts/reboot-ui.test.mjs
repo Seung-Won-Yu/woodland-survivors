@@ -19,6 +19,20 @@ test('research makes condition, funds, active-run block and owned trial explicit
  assert.match(html,/실전 배치 지령/);assert.match(html,/data-action="launch">실전 시험 출격/);
  const active=beginProfile(emptyProfile(),createOperation(17));assert.match(lobbyView(active,{tab:'research'}),/이전 판을 정산한 뒤/);
 });
+test('field-tested equipment can be reserved on the rail briefing without adding fees to replay',()=>{
+ const p=emptyProfile();p.research=['shrapnel'];p.credits=119;
+ assert.match(lobbyView(p,{tab:'research'}),/data-reserve="shrapnel" disabled>1C 부족/);
+ p.credits=120;
+ assert.match(lobbyView(p,{tab:'research'}),/정비대 예약 · 120C/);
+ const briefing=lobbyView(p,{brief:1,requisition:'shrapnel'});
+ assert.match(briefing,/data-requisition="shrapnel"/);assert.match(briefing,/출격 시 −120C/);
+ assert.doesNotMatch(lobbyView(p),/data-requisition=/);
+ const run=createOperation(17,['shrapnel']);run.operation.requisition='shrapnel';
+ const active=beginProfile(p,run);finish(run,false);
+ const settled=settleProfile(active,run),html=reportView(settled.recent[0],settled);
+ assert.match(html,/철도 정비대 · 미회수/);assert.match(html,/다음 장비 예약/);
+ assert.match(html,/같은 전장 · 표준 작전/);assert.doesNotMatch(html,/data-requisition=/);
+});
 test('reports distinguish this sortie unlocks from prior availability and show first field results',()=>{
  const run=createOperation(17);let p=beginProfile(emptyProfile(),run);
  run.operation.cleared=1;run.stats.fusionBosses=1;finish(run,false);p=settleProfile(p,run);

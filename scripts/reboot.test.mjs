@@ -1307,6 +1307,34 @@ test('rail workshop protects a weak build from a random new weapon and provides 
  assert.ok(choose(s,'module:catalyst'));assert.equal(s.tuning,ready);
  assert.ok(assemblyOptions(s).some(c=>c.id==='evolve:f'));
 });
+test('a paid rail reservation competes with workshop supplies and survives checkpoint and settlement',()=>{
+ const base=emptyProfile();Object.assign(base,{credits:500,research:['thermal'],trials:['thermal']});base.records.wins=1;
+ assert.throws(()=>freshSortie(base,17,null,'fio','thermal'),/예약 조건/);
+ base.trials=[];
+ assert.throws(()=>freshSortie(base,17,'wire','fio','thermal'),/예약 조건/);
+ const {run,next}=freshSortie(base,17,null,'fio','thermal');
+ assert.equal(base.credits,500);assert.equal(next.credits,380);
+ assert.deepEqual(run.modules,[]);assert.equal(run.level,1);
+ assert.equal(parseProfile(JSON.stringify(next)).active.run.operation.requisition,'thermal');
+ assert.throws(()=>freshSortie(next,18,null,'fio','thermal'),/예약 조건/);
+ clearRegion(run);assert.ok(choose(run,'advance'));
+ run.enemies=[];run.spawnClock=999;run.weapons[0].cd=999;
+ const cards=supply(run,'rail-cache');
+ assert.deepEqual(cards.map(c=>c.id),['requisition:thermal','module:ricochet','resupply:rail-workshop']);
+ assert.match(choiceDetails(run,cards[0]).link,/장착 후 대기 · 축전 코일과 연소 무장 필요/);
+ const invalid=snapshot(run);invalid.choices[0].rank=3;
+ assert.throws(()=>restore(invalid),/체크포인트/);assert.equal(choose(invalid,'requisition:thermal'),false);
+ const fitted=restore(snapshot(run));assert.ok(choose(fitted,'requisition:thermal'));
+ assert.deepEqual(fitted.modules,[{id:'thermal',rank:1}]);assert.equal(fitted.operation.requisitionClaimed,true);
+ assert.ok(choose(run,'resupply:rail-workshop'));assert.equal(run.operation.requisitionClaimed,undefined);
+ for(const [s,claimed] of [[run,false],[fitted,true]]){
+  finish(s,false);
+  const settled=settleProfile(next,s);
+  assert.equal(settled.credits,380+settled.recent[0].credits);
+  assert.equal(settled.recent[0].requisitionFee,120);
+  assert.equal(!!settled.recent[0].operation.requisitionClaimed,claimed);
+ }
+});
 test('rail refit retains fire evolution and changes the actual reach of the next shot',()=>{
  const s=quietRailWorkshop();s.firstNew='f';
  s.weapons.push({...makeWeapon('f'),uid:'fire',level:6,branch:'trail',evolved:true,cd:999});
