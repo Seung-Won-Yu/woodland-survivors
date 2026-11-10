@@ -33,7 +33,12 @@ export function settleProfile(p,run){
  if(!run.result)throw Error('아직 끝나지 않은 전투입니다.');if(!p.active){if(p.settled===p.sequence)return copy(p);throw Error('정산할 전투를 찾지 못했습니다.');}
  if(run.runId!==p.active.runId||run.result.runId!==p.active.runId)throw Error('다른 작전의 정산 결과입니다.');
  const n=copy(p),r=copy(run.result);r.credits=operationCredits(r,!n.milestones.medic);const sameScope=r.balanceRevision===n.recordScope;r.newScore=sameScope&&r.score>n.records.score;r.newTime=sameScope&&r.won&&(n.records.time===null||r.seconds<n.records.time);if(n.active.sequence<=n.settled)return n;if(sameScope){n.records.score=Math.max(n.records.score,r.score);n.records.challenge=Math.max(n.records.challenge,r.stats.challenge);}
- if(r.won&&sameScope)n.records.time=n.records.time===null?r.seconds:Math.min(n.records.time,r.seconds);if(r.won){n.records.wins++;n.milestones.medic=true;}if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;if(r.stats.flameBosses>0)n.milestones.thermal=true;n.credits+=r.credits;n.trials=n.trials.filter(id=>!pickedTrials(r.stats).includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
+ if(r.won&&sameScope)n.records.time=n.records.time===null?r.seconds:Math.min(n.records.time,r.seconds);
+ if(r.won){n.records.wins++;n.milestones.medic=true;}
+ if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;
+ if(r.stats.flameBosses>0)n.milestones.thermal=true;
+ r.researchUnlocked=Object.keys(RESEARCH).filter(id=>n.milestones[id]&&!p.milestones[id]);
+ n.credits+=r.credits;n.trials=n.trials.filter(id=>!pickedTrials(r.stats).includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
 }
 export function buyResearch(p,id){const d=RESEARCH[id];if(!d||p.active||p.research.includes(id)||!p.milestones[id]||p.credits<d.cost)return null;const n=copy(p);n.credits-=d.cost;n.research.push(id);n.trials.push(id);return n;}
 export function createStore(storage,lock=null){

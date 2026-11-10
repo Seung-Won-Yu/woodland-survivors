@@ -102,6 +102,10 @@ export function tags(w){const d=RULES.weapons[w.id],b=[d.branchA,d.branchB].find
 export function heatSynergyReady(s,rank=3){return moduleRank(s,'catalyst')>=rank&&s.weapons.some(a=>a.level>=4&&tags(a).includes('burn')&&s.weapons.some(b=>b!==a&&b.level>=4&&tags(b).includes('blast')));}
 export const moduleRank=(s,id)=>s.modules.find(m=>m.id===id)?.rank||0;
 export const compatible=(s,id)=>(id!=='thermal'||moduleRank(s,'coil')>0)&&(RULES.modules[id].universal||s.weapons.some(w=>tags(w).some(t=>RULES.modules[id].compatibleAny?.includes(t))));
+export function canReplaceModule(s,id,slot){
+ if(!Number.isInteger(slot)||!s.modules[slot])return false;
+ return s.modules[slot].id!=='coil'||(id!=='thermal'&&!moduleRank(s,'thermal'));
+}
 export function moduleGain(s,id,amount){const current=moduleRank(s,id),next=Math.min(3,current+amount),overflow=Math.max(0,current+amount-3);return{current,next,overflow,charge:overflow*RULES.crateRewards.overflowChargePerRank};}
 export const refitWeapons=s=>s.weapons.filter(w=>w.level>=4&&!w.evolved&&!w.fusion&&GUNS[w.id].branches[w.branch]);
 export function completionModules(s){

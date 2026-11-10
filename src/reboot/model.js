@@ -1,5 +1,5 @@
 import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
-import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
+import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
@@ -39,7 +39,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -132,21 +132,27 @@ const utility=(key)=>({id:`utility:${key}`,kind:'utility',key,title:({health:'�
 const upgradeable=s=>s.weapons.filter(w=>!w.evolved&&!w.fusion&&w.level<6);
 function modulePool(s){return ['ricochet','coil','catalyst','magnet',...(s.research||[])].filter(id=>!s.excluded.includes(id)&&compatible(s,id)&&moduleRank(s,id)<(RULES.modules[id].unique?1:3));}
 function currentInvestments(s){return[...upgradeable(s).map(gunCard),...s.modules.filter(m=>!RULES.modules[m.id].unique&&m.rank<3).map(m=>moduleCard(m.id,1))];}
-const trialModule=(s,pool)=>(s.trials||[s.trial]).find(id=>pool.includes(id));
+const trialModule=(s,pool,approach)=>{
+ const trials=(s.trials||[s.trial]).filter(id=>pool.includes(id));
+ return (approach&&trials.find(id=>RESEARCH[id].fieldGun===approach))||trials[0];
+};
+const trialCard=(id,rank=1)=>({...moduleCard(id,rank),label:'새 연구 · 첫 실전',trial:true});
 const newGun=(id,label='새 무기')=>({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label});
 function supplyCards(s,site){
  const guns=upgradeable(s),rank=guns.length?gunCard(pick(s,'supply',guns)):currentInvestments(s)[0]||utility('health');
- const pool=modulePool(s),trial=trialModule(s,pool);
+ const pool=modulePool(s),trial=trialModule(s,pool,site?.coastApproach);
  if(site?.opening){
   const opening=[site.gun,site.gun==='r'?'f':'r'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id));
-  return fillCards(s,[...opening.map(id=>newGun(id,COAST_APPROACHES[id].label)),trial?{...moduleCard(trial),label:'새 연구 · 첫 실전'}:rank]);
+  return fillCards(s,[...opening.map(id=>newGun(id,COAST_APPROACHES[id].label)),trial?trialCard(trial):rank]);
  }
+ const signature=pool.includes(site?.module)?{...moduleCard(site.module),label:'이 동선의 특화 모듈'}:null;
+ if(site?.coastApproach&&signature&&trial)return fillCards(s,[rank,signature,trialCard(trial)]);
  const cards=[rank];
  const unseen=['h','r','f'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id)&&!(s.supplyCount<2&&s.seenGuns.includes(id)));
  if(unseen.length){const id=unseen.includes(site?.gun)?site.gun:pick(s,'supply',unseen);cards.push(newGun(id,id===site?.gun?'이 동선의 주력 무장':'새 무기'));if(!s.seenGuns.includes(id))s.seenGuns.push(id);}
  let favored=pool;
  if(s.supplyCount<2){const focus=s.weapons.find(w=>w.id===s.firstNew)||s.weapons[0],requirements=Object.values(RULES.weapons[focus.id].evolution.moduleByBranch).flat();const useful=pool.filter(id=>requirements.includes(id));if(useful.length)favored=useful;}
- if(pool.length){const id=trial||(pool.includes(site?.module)?site.module:pick(s,'supply',favored));cards.push({...moduleCard(id),...(id===trial?{label:'새 연구 · 첫 실전'}:id===site?.module?{label:'이 동선의 특화 모듈'}:{})});}
+ if(pool.length)cards.push(trial?trialCard(trial):signature||moduleCard(pick(s,'supply',favored)));
  return fillCards(s,cards);
 }
 function fillCards(s,cards){const unique=[...new Map(cards.filter(Boolean).map(c=>[c.id,c])).values()];for(const key of ['health','charge','power'])if(unique.length<3&&!unique.some(c=>c.id===`utility:${key}`))unique.push(utility(key));return unique.slice(0,3);}
@@ -155,7 +161,7 @@ function levelCards(s){
  const rest=investments.filter(c=>c.id!==a?.id);
  const newModules=s.operation&&s.modules.length<4&&(!a||s.modules.length===0||s.level%3===0)?modulePool(s).filter(id=>!moduleRank(s,id)):[];
  const trial=trialModule(s,newModules);
- const b=newModules.length?{...moduleCard(trial||pick(s,'supply',newModules)),label:trial?'새 연구 · 첫 실전':'새 발동 모듈'}:rest.length?pick(s,'supply',rest):null;
+ const b=trial?trialCard(trial):newModules.length?{...moduleCard(pick(s,'supply',newModules)),label:'새 발동 모듈'}:rest.length?pick(s,'supply',rest):null;
  const cards=fillCards(s,[a,b,utility(s.boosts.pickup<3&&rng(s,'supply')<.45?'pickup':'health')]);
  if(!a&&!b)return [utility('power'),utility('health'),utility('charge')];
  s.offeredWeapons.push(cards.filter(c=>c.kind==='rank').map(c=>c.weapon));return cards;
@@ -164,7 +170,7 @@ function rollQuality(s,key){const p=RULES.quality[key],r=rng(s,'loot');return r<
 function armoryCards(s,quality){
  const cards=[],pool=modulePool(s),amount=quality==='common'?1:quality==='rare'?2:3;
  if(quality==='prototype'&&!moduleRank(s,'overcharger'))cards.push(moduleCard('overcharger',1));
- const trial=trialModule(s,pool);if(trial){cards.push({...moduleCard(trial,amount),label:'새 연구 · 첫 실전'});pool.splice(pool.indexOf(trial),1);}
+ const trial=trialModule(s,pool);if(trial){cards.push(trialCard(trial,amount));pool.splice(pool.indexOf(trial),1);}
  while(cards.length<3&&pool.length){const full=pool.filter(id=>moduleRank(s,id)+amount<=3),id=pick(s,'loot',full.length?full:pool);pool.splice(pool.indexOf(id),1);cards.push(moduleCard(id,amount));}
  return fillCrate(cards,quality);
 }
@@ -220,7 +226,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  else if(c.kind==='module'){
   if(!MODULES[c.module]||!compatible(s,c.module))return false;let m=s.modules.find(m=>m.id===c.module);
   const gain=moduleGain(s,c.module,c.rank);
-  if(m){if(m.rank>=3||RULES.modules[m.id].unique)return false;m.rank=gain.next;}else{m={id:c.module,rank:gain.next};if(s.modules.length>=4){if(!Number.isInteger(slot)||!s.modules[slot])return false;s.modules[slot]=m;}else s.modules.push(m);}
+  if(m){if(m.rank>=3||RULES.modules[m.id].unique)return false;m.rank=gain.next;}else{m={id:c.module,rank:gain.next};if(s.modules.length>=4){if(!canReplaceModule(s,c.module,slot))return false;s.modules[slot]=m;}else s.modules.push(m);}
   if((s.trials||[s.trial]).includes(c.module)){s.stats.researchTrialPicked=c.module;(s.stats.researchTrialsPicked??=[]).push(c.module);s.trials=(s.trials||[s.trial]).filter(id=>id!==c.module);s.trial=s.trials[0]||null;}
   if(gain.charge){const before=s.player.charge;s.player.charge=Math.min(100,before+gain.charge);s.stats.overflowCharge=(s.stats.overflowCharge||0)+s.player.charge-before;}
  }
@@ -264,7 +270,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  if(heatSynergyReady(s))buildCompleted(s,'synergy');
  emit(s,'choose');nextChoice(s);return true;
 }
-export function reroll(s){if(s.phase!=='choice'||s.choice.opening||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.rerolls<=0)return false;s.rerolls--;s.choices=s.choice.type==='level'?levelCards(s):s.choice.type==='supply'?supplyCards(s):crateCards(s,s.choice.quality,s.choice.type==='raid-reward'?(s.choice.contract||s.raid?.contract):null);return true;}
+export function reroll(s){if(s.phase!=='choice'||s.choice.opening||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.rerolls<=0)return false;s.rerolls--;s.choices=s.choice.type==='level'?levelCards(s):s.choice.type==='supply'?supplyCards(s,s.sites.find(site=>site.id===s.choice.siteId)):crateCards(s,s.choice.quality,s.choice.type==='raid-reward'?(s.choice.contract||s.raid?.contract):null);return true;}
 export function banishOptions(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&(!moduleRank(s,id)||c.support)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
 export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)return false;const target=c.kind==='gun'?c.weapon:c.module,index=s.choices.indexOf(c);if(!moduleRank(s,target))s.excluded.push(target);s.banishes--;
  const used=new Set([...s.choices.filter(card=>card!==c).map(card=>card.id),c.id]);let replacement;
@@ -361,7 +367,14 @@ function scoreKill(s,e,source,kind){
   s.stats.holdoutDefeated=(s.stats.holdoutDefeated||0)+1;
  }
  if(source==='payload'||source==='wake'){const key=source==='payload'?'payloadKills':'wakeKills';s.stats[key]=(s.stats[key]||0)+1;}
- if(e.type==='officer'){if(s.player.hp>0&&moduleRank(s,'medic')&&!(s.medicCd>0)){s.player.hp=Math.min(s.player.maxHp,s.player.hp+12);s.medicCd=12;emit(s,'heal',e.x,e.y,{text:'정예 제압 · 체력 +12'});}s.stats.elites++;if(s.stats.elites<=8)s.stats.score+=100;}else{s.stats.kills++;if(s.stats.kills<=(s.operation?900:300))s.stats.score+=10;}
+ if(e.type==='officer'){
+  if(s.player.hp>0&&moduleRank(s,'medic')&&!(s.medicCd>0)){
+   const heal=Math.min(12,s.player.maxHp-s.player.hp);
+   s.player.hp+=heal;s.medicCd=12;s.stats.medicRecovered=(s.stats.medicRecovered||0)+heal;
+   if(heal>0)emit(s,'heal',e.x,e.y,{text:`정예 제압 · 체력 +${Math.round(heal*10)/10}`});
+  }
+  s.stats.elites++;if(s.stats.elites<=8)s.stats.score+=100;
+ }else{s.stats.kills++;if(s.stats.kills<=(s.operation?900:300))s.stats.score+=10;}
  s.player.charge=Math.min(100,s.player.charge+1*(1+Math.min(.2,s.level*.01)));s.combo++;s.comboTime=2;s.stats.bestCombo=Math.max(s.combo,s.stats.bestCombo);
  const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);
  const flavor=source==='payload'?'arc':kind==='fire'?'fire':null;
@@ -425,7 +438,10 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  const actual=e.part||e;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
  if(['rifle','shield','mortar','officer'].includes(e.type)){const dx=e.x-s.player.x,dy=e.y-s.player.y,d=Math.hypot(dx,dy)||1,push=(kind==='blast'?RULES.combatFeel.blastPush:RULES.combatFeel.bulletPush)*(e.type==='shield'?RULES.combatFeel.shieldPushMultiplier:1);move(s,e,dx/d*push,dy/d*push,e.r);}
  if(source==='module')s.stats.moduleDamage+=amount;
- if(kind==='electric'&&e.burn>0&&moduleRank(s,'thermal')&&!(s.thermalCd>0)){s.thermalCd=.25;s.player.charge=Math.min(100,s.player.charge+2);s.stats.thermalCharges=(s.stats.thermalCharges||0)+2;}
+ if(kind==='electric'&&e.burn>0&&moduleRank(s,'thermal')&&moduleRank(s,'coil')&&!(s.thermalCd>0)){
+  const gain=Math.min(2,100-s.player.charge);
+  s.thermalCd=.25;s.player.charge+=gain;s.stats.thermalRecovered=(s.stats.thermalRecovered||0)+gain;
+ }
  if(source==='native'){
   if(weight>0)feed(s,owner,weight,e);
   if(kind==='blast'&&e.burn>0&&catalyst&&s.heatCd<=0){
@@ -463,7 +479,16 @@ function launchPayload(s,w,origin,target,amount,relay=false){
 }
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion'){
  emit(s,effect,x,y,{r,life:.4});let budget=2;
- for(const e of (source==='support'?alive(s):targets(s))){if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;const w=source==='native'?Math.min(.5,budget):0;budget-=w;damage(s,e,amount,'blast',source,owner,w);if(ignite&&e.hp>0)burn(e);}
+ for(const e of (source==='support'?alive(s):targets(s))){
+  if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;
+  const w=source==='native'?Math.min(.5,budget):0,before=e.hp;
+  budget-=w;damage(s,e,amount,'blast',source,owner,w);
+  if(effect==='shrapnel'&&e.hp<before){
+   s.stats.shrapnelHits=(s.stats.shrapnelHits||0)+1;
+   if(e.dead&&Object.hasOwn(RULES.enemies,e.type))s.stats.shrapnelKills=(s.stats.shrapnelKills||0)+1;
+  }
+  if(ignite&&e.hp>0)burn(e);
+ }
  for(const b of s.blocks)if(b.hp>0&&Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<r+Math.max(b.w,b.h)/2)b.hp=Math.max(0,b.hp-amount);
  if((source==='native'||source==='payload')&&moduleRank(s,'shrapnel')&&!(s.shrapnelCd>0)){s.shrapnelCd=.65;s.stats.shrapnelBursts=(s.stats.shrapnelBursts||0)+1;for(let i=0;i<3;i++){const a=i*TAU/3;blast(s,x+Math.cos(a)*50,y+Math.sin(a)*50,42,20,'module',null,false,'shrapnel');}}
  if(ignite&&s.zones.length<12)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
@@ -723,7 +748,7 @@ function updateSites(s,dt){
   if(site.state==='ready'&&distance(site,s.player)<SITE_PICKUP_RANGE){site.state='done';
    if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s.operation.region),site.name);
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality,siteId:site.id});}
-   else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:{});
+   else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:site.coastApproach?{siteId:site.id}:{});
    return;
   }
  }

@@ -507,6 +507,7 @@ test('a settled fusion unlocks shrapnel in a fresh sortie and its payload uses t
  const s=quietOperation(),profile=beginProfile(emptyProfile(),s);s.weapons[0].fusion={secondary:'r',branch:'homing',overflow:0};
  for(let i=0;i<3;i++){clearRegion(s);if(i<2)choose(s,'advance');}choose(s,'extract');
  const settled=settleProfile(profile,s),researched=buyResearch(settled,'shrapnel');
+ assert.deepEqual(settled.recent[0].researchUnlocked,['medic','shrapnel']);
  assert.equal(settled.credits-researched.credits,350);
  const {run,next}=freshSortie(researched,16);run.enemies=[];run.spawnClock=999;run.sites.forEach(site=>site.state='done');
  assert.deepEqual(run.weapons.map(w=>[w.id,w.level]),[['h',1]]);assert.equal(run.modules.length,0);
@@ -518,9 +519,45 @@ test('a settled fusion unlocks shrapnel in a fresh sortie and its payload uses t
  assert.equal(run.stats.payloadBursts,1);assert.equal(run.stats.shrapnelBursts,1);assert.equal(run.effects.filter(f=>f.type==='shrapnel').length,3);
  tick(run,.3);assert.equal(run.stats.shrapnelBursts,1);
 });
+test('a pending route trial keeps the signature module and prioritizes the matching experiment',()=>{
+ for(const [gun,site,signature,experiment] of [
+  ['r','supply-c','coil','shrapnel'],['f','supply-b','catalyst','thermal']
+ ]){
+  const s=quietOperation();s.research=['medic',experiment];s.trials=[...s.research];
+  supply(s);assert.ok(choose(s,`gun:${gun}`));
+  if(gun==='f')s.modules.push({id:'coil',rank:1});
+  for(const cards of [supply(s,site),null]){
+   if(!cards)assert.ok(reroll(s));
+   assert.equal(s.choices.length,3);
+   assert.ok(s.choices.some(c=>c.module===signature&&c.label==='이 동선의 특화 모듈'));
+   assert.ok(s.choices.some(c=>c.module===experiment&&c.label==='새 연구 · 첫 실전'));
+  }
+  assert.ok(choose(s,`module:${signature}`));
+  assert.deepEqual(s.trials,['medic',experiment]);
+ }
+});
+test('the equipped thermal module retains its prerequisite coil until it is removed',()=>{
+ const s=quietOperation();s.research=['thermal','medic'];s.trials=[...s.research];
+ s.weapons.push({...makeWeapon('f'),uid:'fire'});
+ s.modules=['coil','magnet','ricochet','catalyst'].map(id=>({id,rank:1}));
+ supply(s,'supply-b');
+ assert.equal(choose(s,'module:thermal',{slot:0}),false);
+ assert.deepEqual(s.trials,['thermal','medic']);assert.equal(s.modules[0].id,'coil');
+ assert.ok(choose(s,'module:thermal',{slot:1}));
+ assert.equal(s.modules[1].id,'thermal');assert.deepEqual(s.trials,['medic']);
+ supply(s,'supply-c');
+ assert.equal(choose(s,'module:medic',{slot:0}),false);
+ assert.ok(choose(s,'module:medic',{slot:1}));
+ assert.equal(s.modules[0].id,'coil');assert.equal(s.modules[1].id,'medic');
+});
 test('researched effects are conditional, capped and cannot recursively trigger themselves',()=>{
- const s=quiet();s.modules=[{id:'shrapnel',rank:1}];s.enemies=[enemy('burst',940,800,'rifle',1000)];s.shots=[{...bullet(s,s.enemies[0],50),rocket:true,radius:100}];step(s,dt);assert.equal(s.stats.shrapnelBursts,1);assert.equal(s.effects.filter(f=>f.type==='shrapnel').length,3);
- const m=quiet();m.modules=[{id:'medic',rank:1}];m.player.hp=20;m.enemies=[enemy('elite-a',940,800,'officer',1),enemy('elite-b',960,800,'officer',1)];m.shots=m.enemies.map(e=>bullet(m,e));step(m,dt);assert.equal(m.player.hp,32);assert.ok(m.medicCd>0);
+ const s=quiet();s.modules=[{id:'shrapnel',rank:1}];s.enemies=[enemy('burst',940,800,'rifle',1000),enemy('fringe',1012,800,'rifle',5)];s.shots=[{...bullet(s,s.enemies[0],50),rocket:true,radius:50}];step(s,dt);assert.equal(s.stats.shrapnelBursts,1);assert.equal(s.effects.filter(f=>f.type==='shrapnel').length,3);assert.equal(s.stats.shrapnelKills,1);assert.ok(s.stats.shrapnelHits>1);
+ const m=quiet();m.modules=[{id:'medic',rank:1}];m.player.hp=m.player.maxHp-4;m.enemies=[enemy('elite-a',940,800,'officer',1),enemy('elite-b',960,800,'officer',1)];m.shots=m.enemies.map(e=>bullet(m,e));step(m,dt);assert.equal(m.player.hp,m.player.maxHp);assert.equal(m.stats.medicRecovered,4);assert.ok(m.medicCd>0);
+ const t=quiet();t.modules=[{id:'thermal',rank:1},{id:'coil',rank:1}];t.player.charge=100;t.coil=18;
+ const burning={...enemy('burning',940,800,'rifle',1000),burn:2,burnTick:1,burnDps:10};t.enemies=[burning];t.shots=[bullet(t,burning,1)];
+ step(t,dt);assert.equal(t.stats.thermalRecovered,0);
+ t.player.charge=99;t.coil=18;t.coilCd=t.thermalCd=0;t.shots=[bullet(t,burning,1)];
+ step(t,dt);assert.equal(t.player.charge,100);assert.ok(t.stats.thermalRecovered>.9&&t.stats.thermalRecovered<1);
 });
 test('final stay and menu retreat remain partial until the exit extraction decision',()=>{
  const s=quietOperation();s.operation.region=2;clearRegion(s);choose(s,'stay');const partial=snapshot(s);assert.ok(finish(partial,true,'retreat'));assert.equal(partial.result.won,false);assert.ok(!partial.stats.extractionPaid);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));assert.ok(s.result.won);assert.ok(s.operation.extracted);

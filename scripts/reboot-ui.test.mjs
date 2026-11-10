@@ -16,7 +16,20 @@ test('research makes condition, funds, active-run block and owned trial explicit
  p.milestones.medic=true;p.credits=299;html=lobbyView(p,{tab:'research'});assert.match(html,/1C 부족/);
  p.credits=300;html=lobbyView(p,{tab:'research'});assert.match(html,/<button  class="primary" data-research="medic">300C · 연구/);
  p.research=['medic'];p.trials=['medic'];html=lobbyView(p,{tab:'research'});assert.match(html,/새 연구 · 조건에 맞는 첫 보급에서 제시/);assert.match(html,/disabled[^>]*data-research="medic"/);
+ assert.match(html,/실전 배치 지령/);assert.match(html,/data-action="launch">실전 시험 출격/);
  const active=beginProfile(emptyProfile(),createOperation(17));assert.match(lobbyView(active,{tab:'research'}),/이전 판을 정산한 뒤/);
+});
+test('reports distinguish this sortie unlocks from prior availability and show first field results',()=>{
+ const run=createOperation(17);let p=beginProfile(emptyProfile(),run);
+ run.operation.cleared=1;run.stats.fusionBosses=1;finish(run,false);p=settleProfile(p,run);
+ const html=reportView(p.recent[0],p);
+ assert.match(html,/이 작전에서 해금/);assert.match(html,/분열 수류탄/);assert.match(html,/260C 부족/);
+ const next=createOperation(18);p=beginProfile({...p,credits:400},next);next.stats.researchTrialsPicked=['thermal','shrapnel'];
+ next.stats.shrapnelHits=11;next.stats.shrapnelKills=3;next.stats.thermalRecovered=1.25;
+ finish(next,false);p=settleProfile(p,next);
+ const report=reportView(p.recent[0],p);
+ assert.doesNotMatch(report,/이 작전에서 해금/);
+ assert.match(report,/파편 적중 11회 · 처치 3명/);assert.match(report,/전탄 충전 \+1\.3/);
 });
 test('settled reports lead to affordable research and preserve exact replay seed',()=>{
  const run=createOperation(17);let p=beginProfile(emptyProfile(),run);run.operation.cleared=3;run.operation.extracted=true;run.stats.bossKilled=true;finish(run,true);p=settleProfile(p,run);

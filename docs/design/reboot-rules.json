@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b27-boss-counterplay",
+  "balanceRevision": "b28-research-dispatch",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",
