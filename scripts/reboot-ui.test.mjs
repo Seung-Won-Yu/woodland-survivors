@@ -109,6 +109,23 @@ test('briefings share distinct field terrain and recognizable site symbols',()=>
  const run=createOperation(17),html=regionPreview(0,17);for(const site of run.sites)assert.ok(html.includes(`translate(${site.x} ${site.y})`));
  assert.equal(sitePresentation(run.sites[0]).name,'포로 구출');assert.equal(sitePresentation(run.sites[1]).icon,'truck');
 });
+test('coastal tracks connect the actual sites through clear ground and water starts at the field edge',()=>{
+ for(let seed=16;seed<20;seed++){
+  const {tracks,shapes,water}=fieldScene(0,seed),{sites,blocks}=previewLayout(seed,0),html=regionPreview(0,seed);
+  const [rescue,truck,,battery]=sites.map(({x,y})=>[x,y]);
+  assert.deepEqual(tracks,[[[800,1040],rescue],[rescue,truck],[rescue,battery]]);
+  assert.ok(shapes.some(s=>s.type==='rect'&&s.y===FIELD.bottom&&s.fill===water&&s.w===1600));
+  assert.ok(shapes.some(s=>s.type==='rect'&&s.x===0&&s.fill===water&&s.w===FIELD.left));
+  for(const track of tracks){
+   assert.ok(html.includes(`points="${track.map(p=>p.join(',')).join(' ')}"`));
+   const [[ax,ay],[bx,by]]=track,steps=Math.ceil(Math.hypot(bx-ax,by-ay)/8);
+   for(let i=0;i<=steps;i++){
+    const x=ax+(bx-ax)*i/steps,y=ay+(by-ay)*i/steps;
+    assert.ok(!blocks.some(b=>x+23>b.x&&x-23<b.x+b.w&&y+23>b.y&&y-23<b.y+b.h),`track on seed ${seed}`);
+   }
+  }
+ }
+});
 test('the harbor quay follows the field boundary and bay marks follow mirrored loading sites',()=>{
  const port=fieldScene(2,19),mirror=fieldScene(2,18);
  for(const scene of [port,mirror])assert.ok(scene.shapes.some(s=>s.type==='rect'&&s.y===FIELD.bottom&&s.fill===scene.water&&s.w===1600));

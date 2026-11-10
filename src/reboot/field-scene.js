@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,exitGate,sortieOrder} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,exitGate,sortieOrder,beachRoute} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -7,12 +7,14 @@ const rect=(x,y,w,h,fill)=>({type:'rect',x,y,w,h,fill});
 const path=(points,fill,stroke=null,width=1)=>({type:'path',points,fill,stroke,width});
 const line=(points,stroke,width=1,dash=[])=>({type:'line',points,stroke,width,dash});
 const scenes=[
- {ground:'#9b8d66',grain:['#c3b082','#665e48'],water:'#365766',shapes:[
-  rect(0,0,38,1200,'#365766'),rect(38,0,42,1200,'#b2a17a'),
-  path([[710,1200],[1030,1200],[960,700],[1040,0],[800,0],[750,650]],'#6d6b58'),
-  line([[865,1200],[850,700],[915,0]],'#bdb28a',3,[22,24]),
-  rect(120,60,1360,190,'#8b8265'),line([[120,260],[1480,260]],'#c6b17b',3,[12,16])
- ],landmarks:[[0,0,22,800,110],[0,0,28,420,95],[0,3,1538,180,125],[0,2,1540,1100,100]]},
+ {ground:'#ab966c',grain:['#c6ac7b','#6f624a'],water:'#365766',shapes:[
+  path([[0,0],[128,0],[110,245],[165,470],[113,680],[139,883],[234,1030],[415,1080],[610,1064],[833,1095],[1022,1063],[1260,1080],[1460,1040],[1600,1075],[1600,1200],[0,1200]],'#938466'),
+  path([[0,0],[74,0],[68,270],[95,509],[61,692],[90,916],[149,1044],[332,1112],[549,1103],[800,1133],[1028,1113],[1230,1116],[1473,1089],[1600,1113],[1600,1200],[0,1200]],'#a08f6e'),
+  path([[667,1091],[747,930],[738,749],[777,528],[759,319],[800,0],[1042,0],[1020,314],[975,522],[969,752],[1021,938],[1038,1106],[966,1153],[728,1151]],'#948360'),
+  path([[707,1096],[783,923],[780,753],[818,522],[800,311],[830,0],[1007,0],[986,308],[940,521],[927,747],[981,939],[1006,1098],[954,1136],[744,1134]],'#79745e'),
+  line([[855,1111],[876,931],[854,751],[879,524],[888,311],[918,0]],'#c2aa7c',3,[21,27]),
+  rect(160,62,1280,182,'#938367'),line([[160,244],[1440,244]],'#bea879',3,[18,12])
+ ],landmarks:[[0,0,18,800,96],[0,0,14,420,80],[0,3,1622,188,120],[0,0,1587,804,86]]},
  {ground:'#4b4840',grain:['#a99873','#282c2a'],water:null,shapes:[
   rect(80,122,1440,206,'#3c3c33'),rect(642,300,116,900,'#403a2e'),rect(941,270,120,930,'#403a2e'),
   path([[763,1190],[933,1190],[930,478],[804,505]],'#504b3e'),
@@ -45,7 +47,16 @@ const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
  marks:scene.marks.map(([x,y,text])=>[1600-x,y,text]),
  landmarks:scene.landmarks.map(([row,col,x,y,w])=>[row,col,1600-x,y,w])
 });
-export const fieldScene=(index,seed=17)=>(mapSeed(seed,index)%2===0?mirrored:scenes)[index]||scenes[0];
+const coastScenes=Array.from({length:4},(_,index)=>{
+ const [rescue,truck,,battery]=beachRoute(index).points,scene=scenes[0];
+ const tracks=[[[800,1040],rescue],[rescue,truck],[rescue,battery]];
+ return {...scene,tracks,shapes:[
+  ...scene.shapes,...tracks.map(points=>line(points,'#65563831',46)),
+  rect(0,0,FIELD.left,1200,scene.water),rect(0,FIELD.bottom,1600,1200-FIELD.bottom,scene.water),
+  line([[FIELD.left,0],[FIELD.left,FIELD.bottom],[1600,FIELD.bottom]],'#8faca0',3)
+ ]};
+});
+export const fieldScene=(index,seed=17)=>index===0?coastScenes[(seed>>>0)%coastScenes.length]:(mapSeed(seed,index)%2===0?mirrored:scenes)[index]||scenes[0];
 export function previewLayout(seed,index,order=null){return regionLayout(mapSeed(seed,index),index,order);}
 export function sitePresentation(n){
  if(n.kind==='relay')return{icon:'relay',name:n.name,verb:'범위 안에서 해킹'};
