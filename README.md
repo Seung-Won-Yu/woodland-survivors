@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.56.0" src="https://img.shields.io/badge/RIFT-0.56.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.57.0" src="https://img.shields.io/badge/RIFT-0.57.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -16,6 +16,8 @@
 피오와 마르코 중 한 명을 골라 적진의 시험 병기 수송을 차단하는 자동 공격 서바이버입니다. 전장에서 주운 H/R/F와 모듈에 투자해 화력을 완성하고, 세 전선의 보스를 격파한 뒤 귀환합니다. 확보 크레딧으로 연구하면 다음 판에 새로운 모듈 후보가 생깁니다.
 
 피오는 전탄 보급으로 여러 무장의 연사를 가속합니다. 마르코는 가까이서 직접 명중시켜 집중을 채우고, 이동 방향으로 관통 사격합니다. 레벨 6에서 보스용 집중 조준과 밀집 보병용 산개 관통 중 하나를 고릅니다.
+
+해안에서는 같은 무기를 골라도 경비 편성에 따라 진입 방향이 달라집니다. 화염은 밀집 호위나 양갈래 호위, 로켓은 집결 포대나 분산 포대를 상대합니다. 배치는 출격 브리핑과 첫 무장 카드에서 확인할 수 있습니다.
 
 철도에서는 시드에 따라 정비대와 중계기에 방패 검문 또는 박격포 경계가 배치됩니다. 선택 거점과 보스 직행은 전장의 목표판에서 각각 확인할 수 있습니다. 항구에서는 정면과 측면 해치의 첫 포격 방향이 다르고, 관제소 교란을 고르면 첫 가로 포격의 장갑탄을 끊습니다.
 

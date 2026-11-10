@@ -172,11 +172,18 @@ const BEACH_ROUTES=[
 ];
 export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
 export const COAST_APPROACHES={
- f:{name:'이동 보급차',label:'화염 · 근접 돌파',hint:'보급차에 붙어 방패병과 보병을 함께 태우세요.',module:'catalyst',range:215,
+ f:{name:'이동 보급차',label:'화염 · 근접 돌파',formation:'밀집 호위',hint:'보급차에 붙어 방패병과 보병을 함께 태우세요.',module:'catalyst',range:215,
   guards:[['shield',0,54],['rifle',-33,26],['rifle',33,26],['rifle',-40,-13],['rifle',40,-13],['rifle',0,-30]]},
- r:{name:'박격포 진지',label:'로켓 · 원거리 제압',hint:'열린 사선에서 박격포를 먼저 끊으세요.',module:'coil',range:300,
+ r:{name:'박격포 진지',label:'로켓 · 원거리 제압',formation:'집결 포대',hint:'열린 사선에서 박격포를 먼저 끊으세요.',module:'coil',range:300,
   guards:[['mortar',-47,-42],['mortar',47,-42]]}
 };
+const SPLIT_COAST={
+ f:{...COAST_APPROACHES.f,formation:'양갈래 호위',hint:'두 호위 사이를 피하고 바깥쪽에서 한 줄씩 태우세요.',
+  guards:[['shield',-64,54],['rifle',-70,18],['rifle',-38,19],['rifle',64,54],['rifle',70,18],['rifle',38,19]]},
+ r:{...COAST_APPROACHES.r,formation:'분산 포대',hint:'박격포 한 문을 끊고, 남은 쪽으로 사선을 옮기세요.',
+  guards:[['mortar',-78,-42],['mortar',78,-42]]}
+};
+export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_APPROACHES)[site?.coastApproach];
 export function coastLead(s){
  if(s.operation?.region!==0||s.stage!=='field')return null;
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
@@ -189,12 +196,13 @@ export function coastLead(s){
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
 export function coastEncounterCue(s,site){
- const approach=COAST_APPROACHES[site.coastApproach];
+ const approach=coastApproach(site);
  if(!approach)return null;
  if(site.state==='ready')return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
  if(site.state!=='active')return null;
  const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id).length;
- return site.coastApproach==='f'?`붙어서 분사 · 경비 ${guards}명`:`사선 열기 · 박격포 ${guards}문`;
+ if(site.coastApproach==='f')return `${site.coastPlan==='split'?'한쪽부터 분사':'붙어서 분사'} · 경비 ${guards}명`;
+ return `${site.coastPlan==='split'?'한 문씩 제압':'사선 열기'} · 박격포 ${guards}문`;
 }
 export const mapSeed=(seed,index)=>seed+index*7919;
 export const RAIL_GARRISONS={
@@ -260,8 +268,9 @@ export function regionLayout(seed,index=0,order=null){
   const route=beachRoute(seed);
   return {...map,sites:map.sites.map((site,i)=>{
    const approach=i===1?'f':i===3?'r':null;
+   const split=approach&&((seed>>>2)&(approach==='f'?1:2));
    const objective=site.id==='arsenal'&&sortieOrder(order);
-   return {...site,x:route.points[i][0],y:route.points[i][1],...(objective?{name:objective.site,...(order==='wire'?{kind:'relay',progress:0}:{})}:i===0?{gun:route.gun,opening:true}:approach?{coastApproach:approach,name:COAST_APPROACHES[approach].name,module:COAST_APPROACHES[approach].module}:{})};
+   return {...site,x:route.points[i][0],y:route.points[i][1],...(objective?{name:objective.site,...(order==='wire'?{kind:'relay',progress:0}:{})}:i===0?{gun:route.gun,opening:true}:approach?{coastApproach:approach,name:COAST_APPROACHES[approach].name,module:COAST_APPROACHES[approach].module,...(split?{coastPlan:'split'}:{})}:{})};
   })};
  }
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});

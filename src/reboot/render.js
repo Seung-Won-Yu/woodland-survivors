@@ -90,7 +90,7 @@ function paintCoastCue(c,s,site,size,cx,cy,scale){
  const left=x-width/2<165;
  const top=mobile?(size.h<590?224:left?310:124):112;
  const bottom=mobile?Math.max(top+18,size.h-(left?324:155)):Math.max(top+18,size.h-112);
- const y=Math.round(clamp(targetY-64*scale,top,bottom));
+ const y=Math.round(clamp(targetY-Math.max(56,88*scale),top,bottom));
  c.fillStyle='#152a28f2';
  c.fillRect(x-width/2,y-13,width,26);
  c.strokeStyle=color;

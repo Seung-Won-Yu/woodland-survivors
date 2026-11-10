@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -263,7 +263,7 @@ function deferContactDraft(s){
  const site=coastLead(s);
  if(!site?.coastApproach||site.coastApproach!==s.firstNew)return false;
  const gap=distance(s.player,site);
- return site.state==='waiting'?gap<=430:site.state==='active'&&gap<=COAST_APPROACHES[site.coastApproach].range+130;
+ return site.state==='waiting'?gap<=430:site.state==='active'&&gap<=coastApproach(site).range+130;
 }
 function openLevel(s){
  s.pendingLevels--;
@@ -836,7 +836,7 @@ function updateSites(s,dt){
   const dock=s.operation?.region===2&&site.id==='port-landing'&&site.gantry===true;
   if(dock&&s.stage!=='field')continue;
   const garrison=s.operation?.region===1?railGarrison(site):null;
-  const approach=dock?PORT_LANDING:garrison||COAST_APPROACHES[site.coastApproach];
+  const approach=dock?PORT_LANDING:garrison||coastApproach(site);
   if(site.coastApproach&&s.sites[0].state!=='done')continue;
   if(site.state==='waiting'&&distance(site,s.player)<(approach?.range??215)){
    const count=approach?.guards.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6),reserve=alive(s).length+count-160;

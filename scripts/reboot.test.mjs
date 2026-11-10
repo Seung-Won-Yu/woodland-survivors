@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,COAST_APPROACHES,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -1171,15 +1171,15 @@ test('previous later-front placements are settled once with earned credits',()=>
  assert.ok(migrated.credits>=90);
  assert.equal(parseProfile(JSON.stringify(migrated)).credits,migrated.credits);
 });
-test('every beach offers both opening guns and the matching approach has safe guards and its module',()=>{
- for(const seed of [16,17,18,19])for(const weapon of ['f','r']){
+test('every beach and garrison combination offers both opening guns, safe guards and the matching module',()=>{
+ for(let seed=16;seed<32;seed++)for(const weapon of ['f','r']){
   const s=createOperation(seed),route=beachRoute(seed);
   assert.deepEqual(s.sites.map(site=>[site.x,site.y]),route.points);
   const [first,truck]=s.sites;
   assert.ok(Math.abs(Math.hypot(first.x-800,first.y-1040)-245)<10);
   for(const site of s.sites){
    const drift=site===truck?55:0;
-   const formation=COAST_APPROACHES[site.coastApproach]?.guards||Array.from({length:site.kind==='armory'?5:4},(_,i)=>['rifle',Math.cos(i*Math.PI/3)*85,Math.sin(i*Math.PI/3)*65]);
+   const formation=coastApproach(site)?.guards||Array.from({length:site.kind==='armory'?5:4},(_,i)=>['rifle',Math.cos(i*Math.PI/3)*85,Math.sin(i*Math.PI/3)*65]);
    for(const [type,dx,dy] of formation){
     const x=site.x+dx,y=site.y+dy,r=type==='shield'?21:19;
     assert.ok(!s.blocks.some(b=>x+r+drift>b.x&&x-r-drift<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h),site.id);
@@ -1187,11 +1187,34 @@ test('every beach offers both opening guns and the matching approach has safe gu
   }
   s.sites.forEach(site=>site.state='done');s.enemies=[];s.spawnClock=999;
   assert.deepEqual(supply(s).filter(c=>c.kind==='gun').map(c=>c.weapon),[route.gun,route.gun==='r'?'f':'r']);
+  const site=s.sites.find(n=>n.coastApproach===weapon),approach=coastApproach(site);
+  assert.ok(choiceDetails(s,s.choices.find(c=>c.id===`gun:${weapon}`)).link.includes(approach.formation));
   assert.equal(reroll(s),false);assert.ok(choose(s,`gun:${weapon}`));
-  const site=s.sites.find(n=>n.coastApproach===weapon);
   site.state='waiting';s.player.x=site.x;s.player.y=site.y+160;step(s,dt);
-  assert.deepEqual(s.enemies.filter(e=>e.siteId===site.id).map(e=>e.type),COAST_APPROACHES[weapon].guards.map(([type])=>type));
-  assert.ok(supply(s,site.id).some(c=>c.id===`module:${COAST_APPROACHES[weapon].module}`));
+  assert.deepEqual(s.enemies.filter(e=>e.siteId===site.id).map(e=>e.type),approach.guards.map(([type])=>type));
+  assert.ok(supply(s,site.id).some(c=>c.id===`module:${approach.module}`));
+ }
+});
+test('spaced garrisons survive an opening shot that hits all guards in the packed deployment',()=>{
+ for(const [id,splitSeed,range,affected] of [['f',21,130,[6,3]],['r',25,155,[2,1]]]){
+  const shot=(seed,legacy=false)=>{
+   const s=createOperation(seed);
+   s.enemies=[];s.spawnClock=999;
+   s.sites.forEach(site=>site.state='done');
+   const site=s.sites.find(site=>site.coastApproach===id);
+   if(legacy)delete site.coastPlan;
+   site.state='waiting';
+   Object.assign(s.player,{x:site.x,y:site.y+range});
+   s.weapons=[{...makeWeapon(id),uid:id,cd:999}];
+   const loaded=restore(snapshot(s));step(loaded,dt);
+   loaded.weapons[0].cd=0;
+   step(loaded,dt);loaded.weapons[0].cd=999;
+   tick(loaded,.7);
+   assert.equal(loaded.weapons[0].shots,1);
+   return loaded.enemies.filter(e=>e.siteId===site.id&&(id==='f'?e.burn>0:e.dead)).length;
+  };
+  assert.deepEqual(beachRoute(17),beachRoute(splitSeed));
+  assert.deepEqual([shot(17),shot(splitSeed),shot(splitSeed,true)],[...affected,affected[0]]);
  }
 });
 test('opening combat reserves earned upgrades through the rescue and a short weapon window',()=>{

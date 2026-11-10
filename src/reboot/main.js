@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portBarrageAxis,portBarrageMark,portRakeReady,portAidPreview,portAidBaitRisk,portAidWindow,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portBarrageAxis,portBarrageMark,portRakeReady,portAidPreview,portAidBaitRisk,portAidWindow,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynergyReady,moduleRank,refitWeapons} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,portTurretInSight,showcaseWindow} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -369,7 +369,7 @@ function updateHud(){
    const move=touchLayout.matches?'스틱 이동':'WASD 이동';
    intel=coastSite.state==='ready'?'감옥에 가까이 가면 구출됩니다.':`${move} · 사격은 자동`;
   }else if(run.operation?.requisition==='thermal'&&coastSite.coastApproach==='r'&&!moduleRank(run,'coil'))intel='흡열 코일 준비 · 이 진지에서 축전 코일 확보';
-  else intel=coastEncounterCue(run,coastSite)||COAST_APPROACHES[coastSite.coastApproach].hint;
+  else intel=coastEncounterCue(run,coastSite)||coastApproach(coastSite).hint;
  }
  else if(front===0&&run.sites[0]?.state!=='done'){
   const rescue=run.sites[0],route=beachRoute(run.seed).name;

@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -54,8 +54,8 @@ export function choiceDetails(s,c){
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
  }else if(c.kind==='gun'){
   out.title=GUNS[c.weapon].name;out.impact=c.weapon==='r'?'무리째 날리는 광역 폭발':c.weapon==='f'?'가까운 적을 태우는 부채 화염':'끊임없이 쏟는 실탄 연사';out.detail=c.weapon==='r'?'높은 한 발 피해 · 느린 발사':c.weapon==='f'?'연소를 남겨 폭발 연계를 준비':'도탄 또는 유탄으로 분화';out.link=`L4 · ${Object.values(GUNS[c.weapon].branches).map(b=>b[0]).join(' / ')}`;out.cost=s.weapons.length<3?`새 총 L${1+(s.operation?.region||0)} · 공격 한 칸 사용`:s.refits>0&&s.stage==='field'?'기존 총 교체 · 무료 개장으로 L5까지 유지':'기존 총 교체 · 투자 일부 이전';
-  const approach=s.choice?.opening&&COAST_APPROACHES[c.weapon];
-  if(approach){out.detail=approach.hint;out.link=`다음 표적 · ${approach.name} → ${MODULES[approach.module].name} 후보`;}
+  const approach=s.choice?.opening&&coastApproach(s.sites.find(site=>site.coastApproach===c.weapon));
+  if(approach){out.detail=approach.hint;out.link=`${approach.name} · ${approach.formation} → ${MODULES[approach.module].name} 후보`;}
  }else if(c.module){
   const g=moduleGain(s,c.module,c.kind==='tune'?1:c.rank),m=MODULES[c.module];out.title=m.name;out.impact=m.detail(g.next);out.detail=m.desc;out.link=MODULE_LINKS[c.module];out.art=['coil','thermal'].includes(c.module)?'coil':c.module==='medic'?'medic':c.module==='shrapnel'?'ammo':null;
   if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
