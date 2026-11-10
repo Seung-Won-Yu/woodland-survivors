@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createJourneyExpedition} from '../src/game/expedition.js';
 import {stepGame,spawnEnemy,deriveStats} from '../src/core/game.js';
 import {normalizeJournal,recordRun,journeyUnlocked} from '../src/game/journal.js';
-import {selectAudioEvents} from '../src/game/audio.js';
+import {createAudio,selectAudioEvents} from '../src/game/audio.js';
 const fixture=(hero='pip')=>{const g=createJourneyExpedition(hero,hero==='pip'?'acorn':'bees',1437);g.enemies=[];g.terrain=null;g.spawn=g.nextElite=g.campaign.nextHordeAt=1e6;return g;};
 test('focus fire targets the boss through nearby fodder, while nearby healing flowers remain actionable',()=>{const g=fixture();g.mastery.branch='focus';g.campaign.styleChosen=true;g.level=18;g.weapons.acorn.rank=8;spawnEnemy(g,'shroom',85,0,{hp:10000,maxHp:10000,speed:0});spawnEnemy(g,'king',0,-220,{hp:1e6,maxHp:1e6,speed:0,bossRole:'midpoint',clock:1000});stepGame(g,.04);assert.ok(g.projectiles.filter(p=>p.kind==='acorn').every(p=>p.vy<0));g.projectiles=[];g.weapons.acorn.clock=0;spawnEnemy(g,'spore',160,0,{targetRole:'support-flower',hp:10000,maxHp:10000,speed:0,clock:100});stepGame(g,.04);assert.ok(g.projectiles.filter(p=>p.kind==='acorn').every(p=>p.vx>0));});
 function openingDamage(mode,source){const g=fixture('bram');g.weapons.bees.clock=10;spawnEnemy(g,'king',100,0,{hp:10000,maxHp:10000,speed:0,bossRole:'midpoint',encounterRole:'warden',mode,recover:1,clock:100});g.projectiles=[{kind:'acorn',x:100,y:0,vx:0,vy:0,damage:100,life:1,age:0,r:6,pierce:0,hits:[],context:{source,weapon:'acorn'}}];stepGame(g,.04);return g.damage;}
@@ -12,3 +12,38 @@ test('guard-core hive distributes bees among local enemies and keeps assigned ta
 test('ordinary bees unlock a finite reduced second sting at rank4; evolution restores full second sting',()=>{for(const [rank,evolved,repeatScale]of [[3,false,0],[4,false,.6],[8,true,1]]){const g=fixture('bram');g.weapons.bees={rank,evolved,clock:0};spawnEnemy(g,'shroom',200,0,{hp:10000,maxHp:10000,speed:0});stepGame(g,.04);assert.ok(g.projectiles.filter(p=>p.kind==='bee').every(p=>p.repeatScale===repeatScale));}});
 test('new balance records retain 0.9 personal best and unlock without mixing times',()=>{const old={ruleset:'expedition-v09',hero:'pip',style:'focus',difficulty:'normal',stage:3,kills:500,level:20,fastest:100},j=normalizeJournal({journeyBest:{old}});assert.ok(journeyUnlocked(j));const g=fixture();g.mastery.branch='focus';g.campaign.cleared=3;g.phase='result';g.outcome='victory';g.time=200;recordRun(j,g);const restored=normalizeJournal(j);assert.equal(Object.values(restored.journeyBest).length,2);assert.equal(Object.values(restored.journeyBest).find(r=>r.ruleset==='expedition-v09').fastest,100);assert.equal(Object.values(restored.journeyBest).find(r=>r.ruleset==='expedition-v10').fastest,200);});
 test('power kill and transformation audio stay bounded and player hurt keeps priority',()=>{assert.deepEqual(selectAudioEvents(new Set(['scatter-shot','wood-impact','kill','power-kill'])),['scatter-shot','power-kill']);assert.deepEqual(selectAudioEvents(new Set(['forge-union','power-kill','hurt'])),['hurt']);});
+
+test('boss signals bypass hurt suppression, duck active weapon tails, and survive an adjacent hit',t=>{
+ const starts=[],targets=[],destination={};
+ const node=()=>({connect:out=>out,disconnect(){},start:time=>starts.push(time),stop(){}});
+ const param=()=>({setValueAtTime(){},exponentialRampToValueAtTime(){},cancelScheduledValues(){},setTargetAtTime(...args){targets.push(args);}});
+ class Context {
+  state='running';currentTime=1;sampleRate=8000;destination=destination;
+  createGain(){return {...node(),gain:param()};}
+  createOscillator(){return {...node(),frequency:param()};}
+  createBiquadFilter(){return {...node(),frequency:{},Q:{}};}
+  createBufferSource(){return node();}
+  createBuffer(){return {getChannelData:()=>new Float32Array(1600)};}
+ }
+ const context=new Context();
+ const previous=globalThis.window;t.after(()=>{globalThis.window=previous;});
+ globalThis.window={AudioContext:class {constructor(){return context;}}};
+ const audio=createAudio({fieldMix:true});assert.ok(audio.unlock());
+ audio.play('rifle-hit');context.currentTime+=.02;audio.play('conduit-transfer');
+ assert.equal(starts.length,5);
+ audio.play('hurt');context.currentTime+=.02;
+ audio.play('harbor-rake-lock');audio.play('xp');
+ assert.equal(starts.length,11);
+ assert.deepEqual(targets,[[.34,context.currentTime,.016],[1,context.currentTime+.21,.06]]);
+});
+
+test('muting a context while unlock is pending queues a suspend',async t=>{
+ let release;const allowResume=new Promise(resolve=>{release=resolve;});
+ let queue=Promise.resolve();const context={state:'suspended',resume(){return queue=queue.then(()=>allowResume).then(()=>{this.state='running';});},suspend(){return queue=queue.then(()=>{this.state='suspended';});}};
+ const previous=globalThis.window;t.after(()=>{globalThis.window=previous;});
+ globalThis.window={AudioContext:class {constructor(){return context;}}};
+ const audio=createAudio();audio.unlock();audio.suspend();release();await queue;
+ assert.equal(audio.state(),'suspended');
+ audio.unlock();await queue;
+ assert.equal(audio.state(),'running');
+});

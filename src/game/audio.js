@@ -1,6 +1,7 @@
 const IMPORTANT = ['hurt', 'armor-collapse', 'front-entry', 'forge-union', 'forge-evolve', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
-const IMPACTS = ['heat-break', 'conduit-hop', 'conduit-impact', 'power-kill', 'wood-impact', 'wood-kill', 'blade-impact', 'ember-impact'];
-const CASTS = ['focus-shot', 'inferno-jet', 'flame-loop', 'scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
+const IMPACTS = ['heat-break', 'conduit-hop', 'conduit-impact', 'power-kill', 'wood-impact', 'wood-kill', 'blade-impact', 'ember-impact', 'rifle-hit'];
+const CASTS = ['focus-shot', 'inferno-jet', 'inferno-spread', 'flame-loop', 'scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
+export const RIFT_BOSS_CUES = ['coast-charge', 'coast-lock', 'rail-lock', 'harbor-rake-lock', 'harbor-vertical-lock', 'harbor-center-lock'];
 
 export function selectAudioEvents(events) {
   const has = event => events.has(event);
@@ -19,21 +20,26 @@ export function selectAudioEvents(events) {
 }
 
 // Short synthesized cues keep the game self-contained. No media requests or autoplay.
-export function createAudio() {
-  let context = null, noiseBuffer = null;
+export function createAudio({fieldMix = false} = {}) {
+  let context = null, noiseBuffer = null, fieldBus = null, suspended = false;
   const lastLane = new Map();
   const lastEvent = new Map();
   let dangerUntil = 0;
   function unlock() {
     try {
       context ??= new (window.AudioContext || window.webkitAudioContext)();
-      if (context.state === 'suspended') context.resume().catch(() => {});
+      if (fieldMix && !fieldBus) {
+        fieldBus = context.createGain();
+        fieldBus.connect(context.destination);
+      }
+      if (suspended || context.state !== 'running') context.resume().catch(() => {});
+      suspended = false;
       return true;
     } catch {
       return false;
     }
   }
-  function note(hz, end, type, time, duration, volume) {
+  function note(hz, end, type, time, duration, volume, output = fieldBus ?? context.destination) {
     const voice = context.createOscillator(),
       gain = context.createGain();
     voice.type = type;
@@ -42,7 +48,7 @@ export function createAudio() {
     gain.gain.setValueAtTime(.0001, time);
     gain.gain.exponentialRampToValueAtTime(volume, time + .008);
     gain.gain.exponentialRampToValueAtTime(.0001, time + duration);
-    voice.connect(gain).connect(context.destination);
+    voice.connect(gain).connect(output);
     voice.start(time);
     voice.stop(time + duration + .01);
     voice.onended = () => {
@@ -50,7 +56,7 @@ export function createAudio() {
       gain.disconnect();
     };
   }
-  function transient(time, duration, volume, frequency) {
+  function transient(time, duration, volume, frequency, output = fieldBus ?? context.destination) {
     // Reuse a small deterministic noise texture; no combat RNG or media download.
     if (!noiseBuffer) {
       noiseBuffer = context.createBuffer(1, Math.ceil(context.sampleRate * .2), context.sampleRate);
@@ -62,26 +68,84 @@ export function createAudio() {
     filter.type = 'bandpass'; filter.frequency.value = frequency; filter.Q.value = .7;
     gain.gain.setValueAtTime(volume, time);
     gain.gain.exponentialRampToValueAtTime(.0001, time + duration);
-    voice.connect(filter).connect(gain).connect(context.destination);
+    voice.connect(filter).connect(gain).connect(output);
     voice.start(time); voice.stop(time + duration);
     voice.onended = () => { voice.disconnect(); filter.disconnect(); gain.disconnect(); };
   }
   function play(event, variant, evolved = false) {
-    if (context?.state !== 'running') return;
+    if (suspended || context?.state !== 'running') return;
     const now = context.currentTime;
-    const lane = IMPACTS.includes(event) ? 'impact' : IMPORTANT.includes(event) ? 'important' : CASTS.includes(event)?'cast':'background';
+    const bossSignal = RIFT_BOSS_CUES.includes(event);
+    const mortar = event === 'mortar-lock';
+    const powerImpact = fieldMix && ['heat-break','conduit-hop','conduit-impact','conduit-transfer'].includes(event);
+    const impact = powerImpact || IMPACTS.includes(event);
+    const lane = bossSignal?'boss-signal':mortar?'mortar':powerImpact?'power-impact':impact?'impact':IMPORTANT.includes(event)?'important':CASTS.includes(event)?'cast':'background';
+    const laneGap = impact ? .085 : .045;
     // A short foreground window separates being hit from dealing damage in a crowd.
-    if (event !== 'hurt' && !['boss-warning','boss-charge'].includes(event) && now < dangerUntil) return;
-    const cooldown = event==='relic-proc'?.35:lane === 'impact' ? .085 : lane==='cast'?.11:['xp', 'kill'].includes(event) ? .16 : .06;
-    if ((event !== 'hurt' && now - (lastLane.get(lane) ?? -1) < (lane === 'impact' ? .085 : .045)) || now - (lastEvent.get(event) ?? -1) < cooldown) return;
+    if (event !== 'hurt' && !bossSignal && !mortar && !['boss-warning','boss-charge'].includes(event) && now < dangerUntil) return;
+    const cooldown = mortar ? .28 : event==='relic-proc' ? .35 : event==='rifle-hit' ? .18 : impact ? .085 : lane==='cast' ? .11 : ['xp', 'kill'].includes(event) ? .16 : .06;
+    if ((event !== 'hurt' && now - (lastLane.get(lane) ?? -1) < laneGap) || now - (lastEvent.get(event) ?? -1) < cooldown) return;
     lastLane.set(lane, now);
     lastEvent.set(event, now);
-    if(event==='forge-union'||event==='forge-evolve'){const union=event==='forge-union';transient(now,.07,.045,union?950:1400);note(110,55,'triangle',now,.16,.035);[1,1.5,2].forEach((ratio,i)=>note(330*ratio,440*ratio,'sine',now+i*.06,.15,.02));}
+    const direct = context.destination;
+    if (bossSignal) {
+      // Keep live weapon tails underneath the short attack signal, then restore them smoothly.
+      if (fieldBus) {
+        fieldBus.gain.cancelScheduledValues(now);
+        fieldBus.gain.setTargetAtTime(.34, now, .016);
+        fieldBus.gain.setTargetAtTime(1, now + .21, .06);
+      }
+      if (event === 'coast-lock') {
+        transient(now,.15,.045,860,direct);
+        note(148,330,'sawtooth',now,.21,.034,direct);
+      } else if (event === 'coast-charge') {
+        transient(now,.17,.056,580,direct);
+        note(215,82,'triangle',now,.23,.051,direct);
+      } else if (event === 'rail-lock') {
+        note(625,580,'triangle',now,.073,.053,direct);
+        note(625,580,'triangle',now+.092,.085,.048,direct);
+      } else {
+        note(865,600,'triangle',now,.11,.053,direct);
+        if (event === 'harbor-rake-lock') {
+          note(515,430,'triangle',now+.068,.073,.042,direct);
+          note(515,430,'triangle',now+.145,.073,.035,direct);
+        } else if (event === 'harbor-vertical-lock') {
+          note(1040,760,'triangle',now+.10,.088,.043,direct);
+        }
+      }
+    } else if (mortar) {
+      transient(now,.08,.026,1460,direct);
+      note(445,235,'sine',now,.12,.022,direct);
+    } else if (event === 'shell-land') {
+      transient(now,.16,.055,470);
+      note(125,42,'triangle',now,.20,.047);
+    } else if (event === 'battery-suppress') {
+      transient(now,.085,.043,2450);
+      note(690,145,'triangle',now,.125,.040);
+    } else if (event === 'inferno-ready') {
+      transient(now,.17,.05,630);
+      note(105,220,'triangle',now,.20,.042);
+      note(420,125,'sine',now+.09,.15,.024);
+    } else if (event === 'conduit-ready') {
+      transient(now,.055,.033,1800);
+      note(470,840,'triangle',now,.105,.042);
+      note(785,1270,'triangle',now+.11,.12,.032);
+    } else if (event === 'conduit-transfer') {
+      transient(now,.044,.041,1850);
+      note(290,110,'triangle',now,.095,.036);
+      note(880,1390,'sine',now+.043,.075,.025);
+    } else if (event === 'rifle-hit') {
+      transient(now,.027,.020,1680);
+      note(186,70,'triangle',now,.052,.014);
+    } else if(event==='forge-union'||event==='forge-evolve'){const union=event==='forge-union';transient(now,.07,.045,union?950:1400);note(110,55,'triangle',now,.16,.035);[1,1.5,2].forEach((ratio,i)=>note(330*ratio,440*ratio,'sine',now+i*.06,.15,.02));}
     else if(event==='heat-break'){transient(now,.12,.055,540);note(98,28,'triangle',now,.22,.045);note(540,170,'sine',now,.13,.016);}
     else if(event==='conduit-impact'){transient(now,.046,.035,1900);note(290,110,'triangle',now,.11,.035);note(980,430,'sine',now+.014,.066,.019);}
     else if(event==='conduit-hop'){transient(now,.04,.035,1900);note(320,760,'triangle',now,.065,.023);note(950,1300,'sine',now+.022,.044,.012);}
     else if(event==='focus-shot'){transient(now,.07,.06,2150);note(170,46,'triangle',now,.14,.046);note(610,210,'sine',now+.021,.08,.02);}
-    else if(event==='inferno-jet'){transient(now,.12,.042,730);note(100,53,'triangle',now,.14,.022);}
+    else if(event==='inferno-jet'||event==='inferno-spread'){
+      transient(now,.12,.042,730);note(100,53,'triangle',now,.14,.022);
+      if(event==='inferno-spread')transient(now+.058,.055,.031,1640);
+    }
     else if(event==='flame-loop'){transient(now,.13,.035,1250);note(82,64,'triangle',now,.14,.012);}
     else if(event==='power-kill'){transient(now,.04,.05,1100);note(140,42,'triangle',now,.1,.038);note(790,1200,'sine',now+.01,.06,.013);}
     else if(event==='scatter-shot'){transient(now,.035,.03,1800);note(180,65,'triangle',now,.09,.03);note(78,45,'sine',now,.1,.018);}
@@ -105,9 +169,9 @@ export function createAudio() {
       note(190,240,'triangle',now,.045,.01);
     }else if (event === 'hurt') {
       dangerUntil = now + .18;
-      transient(now, .075, .08, 950);
-      note(145, 42, 'triangle', now, .2, .06);
-      note(72, 38, 'sine', now + .015, .22, .035);
+      transient(now, .075, .08, 950, direct);
+      note(145, 42, 'triangle', now, .2, .06, direct);
+      note(72, 38, 'sine', now + .015, .22, .035, direct);
     } else if (event === 'burst') {
       transient(now,.09,.035,1400);
       note(180,420,'triangle',now,.1,.025);
@@ -177,7 +241,9 @@ export function createAudio() {
   }
   // Existing tails are brief; suspend immediately when muting or leaving the page.
   function suspend() {
-    if (context?.state === 'running') context.suspend().catch(() => {});
+    if (!context || suspended) return;
+    suspended = true;
+    context.suspend().catch(() => {});
   }
   return {
     unlock,

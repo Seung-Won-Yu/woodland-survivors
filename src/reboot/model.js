@@ -8,6 +8,10 @@ const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(
 const pick=(s,key,items)=>items[Math.floor(rng(s,key)*items.length)];
 const alive=s=>s.enemies.filter(e=>!e.dead);
 const emit=(s,type,x=s.player.x,y=s.player.y,extra={})=>{s.events.push(type);s.effects.push({type,x,y,age:0,life:.45,...extra});if(s.effects.length>180)s.effects.shift();};
+function emitBossWarning(s,signal,x,y,extra){
+ emit(s,'boss-warning',x,y,extra);
+ s.events.push(signal);
+}
 const freshStats=()=>({kills:0,elites:0,score:0,damageTaken:0,ricochetHits:0,coilBursts:0,heatBursts:0,raidSuccess:0,raidFailed:0,bestCombo:0,completedBuild:null,bossKilled:false,challenge:0,choices:[],moduleDamage:0});
 export function createRun(seed=17){
  const map=layout(seed),s={version:VERSION,balanceRevision:RULES.balanceRevision,seed:seed>>>0,rng:{map:seed>>>0,supply:(seed^0x12345678)>>>0,combat:(seed^0xa5f31021)>>>0,loot:(seed^0xdecafe11)>>>0},phase:'playing',stage:'field',t:0,level:1,xp:0,pendingLevels:0,tuning:1,rerolls:2,banishes:1,refits:1,excluded:[],seenGuns:[],offeredWeapons:[],supplyCount:0,firstNew:null,choice:null,choices:[],queue:[],id:0,
@@ -833,7 +837,7 @@ function updateEnemies(s,dt){
  separateEnemies(s,dt);
  for(const e of alive(s))if(e.spawnAge>.5&&distance(e,p)<e.r+16){const amount=RULES.enemies[e.type].contactDamage||12;if(!incoming||amount>incoming.amount)incoming={amount,x:e.x,y:e.y};}
  for(const q of s.enemyShots){q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;if(blocked(s,q.x,q.y,q.r))q.life=0;if(distance(q,p)<21){q.life=0;if(!incoming||incoming.amount<10)incoming={amount:10,x:q.x,y:q.y};}}
- for(const h of s.hazards){h.timer-=dt;if(h.timer<=0&&!h.hit){h.hit=true;emit(s,h.lane?'barrage':'explosion',h.x,h.y,{r:h.r,w:h.w,h:h.h,life:.3});if((h.lane?Math.abs(p.x-h.x)<h.w/2+16&&Math.abs(p.y-h.y)<h.h/2+16:distance(h,p)<blastContactRadius(h))&&(!incoming||incoming.amount<14))incoming={amount:14,x:h.x,y:h.y};}}
+ for(const h of s.hazards){h.timer-=dt;if(h.timer<=0&&!h.hit){h.hit=true;emit(s,h.lane?'barrage':'explosion',h.x,h.y,{r:h.r,w:h.w,h:h.h,life:.3});s.events.push('shell-land');if((h.lane?Math.abs(p.x-h.x)<h.w/2+16&&Math.abs(p.y-h.y)<h.h/2+16:distance(h,p)<blastContactRadius(h))&&(!incoming||incoming.amount<14))incoming={amount:14,x:h.x,y:h.y};}}
  s.enemyShots=s.enemyShots.filter(q=>q.life>0);s.hazards=s.hazards.filter(h=>h.timer>-.3);s.enemies=s.enemies.filter(e=>!e.dead||e.death>0);
  if(incoming&&(!s.hitCandidate||incoming.amount>s.hitCandidate.amount))s.hitCandidate=incoming;
 }
@@ -857,7 +861,7 @@ function startRailBarrage(s,warning){
  const push=(x,w,railGun,tracked)=>s.hazards.push({x,y:plan.y,w,h:plan.depth,r:0,lane:true,railGun,tracked,timer:duration,duration});
  push((left+right)/2,right-left,lead,true);
  if(b.parts[wing]?.hp>0)push(b.x+(wing===0?-1:1)*plan.outerOffset,plan.width,wing,false);
- emit(s,'boss-warning',b.x,b.y,warning?{text:'선발 지원 · 첫 조준 경고 +1초',life:1}:{life:1});
+ emitBossWarning(s,'rail-lock',b.x,b.y,warning?{text:'선발 지원 · 첫 조준 경고 +1초',life:1}:{life:1});
 }
 function startPortBarrage(s,warning){
  const {boss:b,player:p}=s,plan=PORT_BARRAGE,axis=portBarrageAxis(s,b.cycle);
@@ -869,8 +873,10 @@ function startPortBarrage(s,warning){
   ...(round.portRound==='lock'?{portAxis:axis,...(jammed?{jammed:true}:{})}:{})
  });
  const mark=portBarrageMark(axis,b.parts[0].hp>0?portTurretSide(b):0);
- const message=jammed?'관제소 교란 · 장갑탄 차단':rounds.some(h=>h.portRound==='rake')?`가로 포격 ${mark}`:horizontal?'장갑탄 차단 · 발밑 포격':`세로 포격 ${mark}`;
- emit(s,'boss-warning',p.x,p.y,{text:warning?`${message} · 선행 경보 +1초`:message,life:1});
+ const rake=rounds.some(h=>h.portRound==='rake');
+ const message=jammed?'관제소 교란 · 장갑탄 차단':rake?`가로 포격 ${mark}`:horizontal?'장갑탄 차단 · 발밑 포격':`세로 포격 ${mark}`;
+ const signal=rake?'harbor-rake-lock':horizontal?'harbor-center-lock':'harbor-vertical-lock';
+ emitBossWarning(s,signal,p.x,p.y,{text:warning?`${message} · 선행 경보 +1초`:message,life:1});
 }
 function clearPortRounds(s,round){
  const before=s.hazards.length;
@@ -984,7 +990,7 @@ function updateBoss(s,dt){
   else{
    b.mode='windup';b.timer=COAST_CHARGE.warning;b.body=Math.atan2(p.y-b.y,p.x-b.x);
    lockCoastCharge(s);
-   emit(s,'boss-warning',b.x,b.y,{angle:b.body,life:COAST_CHARGE.warning});
+   emitBossWarning(s,'coast-lock',b.x,b.y,{angle:b.body,life:COAST_CHARGE.warning});
   }
  }
  b.aim=b.mode==='charge'||b.mode==='windup'?b.body:Math.atan2(p.y-b.y,p.x-b.x);

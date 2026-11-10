@@ -12,8 +12,9 @@ import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,ch
 import {createRenderer} from './render.js';
 import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
 import {bindTouchControls} from '../game/touch-controls.js';
-import {createAudio,selectAudioEvents} from '../game/audio.js';
-const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio(),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+import {createAudio} from '../game/audio.js';
+import {selectRiftAudioEvents} from './sound.js';
+const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio({fieldMix:true}),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const touchLayout=matchMedia('(max-width:700px), (pointer:coarse)');
 const combatHud={rects:[]};
@@ -28,10 +29,11 @@ function watchCombatHud(){
 let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,requisitionSelection=null,selectedOperator='fio',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,reportOrigin=null,equippedUntil=0,equippedWeapon=null;
 let battleArt=null,portraitArt=null,marcoArt=null,marcoArtWork=null,artWork=null,launchPreparation=null,kitPreloaded=false,firstBattleFrame=false;
 const profile=()=>store.get();
+const unlockSound=()=>{if(store?.settings().sound)audio.unlock();};
 function notice(text){$('notice').textContent=text;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',4500);}
 function setBusy(on){busy=on;document.body.classList.toggle('is-saving',on);ui.setAttribute('aria-busy',String(on));for(const b of ui.querySelectorAll('button')){if(on&&!b.disabled){b.dataset.saving='true';b.disabled=true;}else if(!on&&b.dataset.saving){b.disabled=false;delete b.dataset.saving;}}}
 function panel(html){const origin=nextPanelFocus;nextPanelFocus=null;ui.innerHTML=html;ui.scrollTop=origin?.scroll||0;keys.clear();controls?.reset();requestAnimationFrame(()=>{const target=origin?.selector&&ui.querySelector(origin.selector)||ui.querySelector('h1,h2')||ui.querySelector('button:not(:disabled)');if(target){if(!target.matches('button,a,input'))target.tabIndex=-1;target.focus({preventScroll:true});}});}
-function settings(){const p=profile();return `<div class="settings"><label><input type="checkbox" data-setting="sound" ${p.settings.sound?'checked':''}><span>전투 효과음<small>사격 · 적중 · 보급 알림</small></span></label><label><input type="checkbox" data-setting="reduced" ${p.settings.reduced?'checked':''}><span>플래시·흔들림 줄이기<small>강한 폭발 효과와 화면 반동을 줄입니다.</small></span></label></div>`;}
+function settings(){const p=profile();return `<div class="settings"><label><input type="checkbox" data-setting="sound" ${p.settings.sound?'checked':''}><span>전투 효과음<small>사격 · 적중 · 보스 포격 예고</small></span></label><label><input type="checkbox" data-setting="reduced" ${p.settings.reduced?'checked':''}><span>플래시·흔들림 줄이기<small>강한 폭발 효과와 화면 반동을 줄입니다.</small></span></label></div>`;}
 function drawPortrait(){
  const canvas=$('portrait'),id=selectedOperator;
  if(!canvas)return;
@@ -235,7 +237,7 @@ async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie
  if(busy||pending||launchPreparation)return;
  if(order&&!canLaunchOrder(profile(),order)){notice('지령 출격 조건을 확인하세요.');return;}
  if(requisition&&!canReserveResearch(profile(),requisition)){notice('정비대 예약 조건을 확인하세요.');return;}
- audio.unlock();
+ unlockSound();
  let art=battleArt;
  if(!art){
   const ticket=showPreparation(source);
@@ -257,7 +259,19 @@ async function selectCard(id,args={}){const c=run.choices.find(c=>c.id===id);if(
  await mutate(d=>choose(d,id,{...args,doctrine:selectedDoctrine}));
  if(run.stats.choices.length>before&&!pending)equippedFeedback(c,details,openingGun,!hadHeat&&heatSynergyReady(run));
 }
-ui.addEventListener('change',async e=>{if(e.target.name==='doctrine'){selectedDoctrine=e.target.value;return;}const key=e.target.dataset.setting;if(!key||busy)return;const p=profile();p.settings[key]=e.target.checked;setBusy(true);try{await store.commit(p);if(!p.settings.sound)audio.suspend();}catch(error){notice(error.message);}finally{setBusy(false);nextPanelFocus={selector:`[data-setting="${key}"]`};showSettings();}});
+ui.addEventListener('change',async e=>{
+ if(e.target.name==='doctrine'){selectedDoctrine=e.target.value;return;}
+ const key=e.target.dataset.setting;
+ if(!key||busy)return;
+ const p=profile();p.settings[key]=e.target.checked;
+ if(key==='sound'){if(p.settings.sound)audio.unlock();else audio.suspend();}
+ setBusy(true);
+ try{await store.commit(p);}
+ catch(error){
+  if(key==='sound'){if(store.settings().sound)audio.unlock();else audio.suspend();}
+  notice(error.message);
+ }finally{setBusy(false);nextPanelFocus={selector:`[data-setting="${key}"]`};showSettings();}
+});
 ui.addEventListener('keydown',e=>{const dialog=ui.querySelector('[role="dialog"],[role="alertdialog"]');if(!dialog)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(launchPreparation){closePreparation(true);return;}if(busy||pending)return;if(subpanel?.type==='settings')closeSettings();else if(subpanel?.type==='retreat'){if(subpanel.fromHome)showHome();else present(true);}else if(subpanel){nextPanelFocus=choiceOrigin;subpanel=null;present(true);}else if(run?.phase==='choice'&&run.choice.gatePrep&&run.choice.type==='assembly')selectCard('back');else if(mode==='report')closeArchivedReport();else if(run?.phase==='result'){lobbyTab='mission';showHome();}else if(run?.phase==='paused')pauseButton();return;}if(e.key==='Tab'){const nodes=[...dialog.querySelectorAll('button:not(:disabled),input,a[href],summary')].filter(n=>n.getClientRects().length);if(!nodes.length){e.preventDefault();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||!nodes.includes(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!nodes.includes(document.activeElement))){e.preventDefault();first.focus();}}});
 ui.addEventListener('click',async e=>{
  const button=e.target.closest('button');if(!button||busy||pending&&!['retry','reload-latest'].includes(button.dataset.action))return;
@@ -298,9 +312,10 @@ ui.addEventListener('click',async e=>{
  if(a==='reload-latest'){location.reload();return;}
  if(a==='choice-back'){nextPanelFocus=choiceOrigin;subpanel=null;present(true);return;}if(a==='raid-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="raid-menu"]'};showRaid();return;}
  if(a==='banish-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="banish-menu"]'};subpanel={type:'banish'};const options=banishOptions(run);panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="banish-title"><span class="eyebrow">BANISH / 이번 판에서 제외</span><h2 id="banish-title">보급 후보 하나를 바꾼다</h2><div class="branch-list">${options.map(c=>`<button data-exclude="${esc(c.id)}">${esc(c.title)}${c.module&&moduleRank(run,c.module)?' · 이 상자만 교체':' · 이번 판 후보 제외'}</button>`).join('')}</div><small>${options.length?'미보유 후보는 이번 판에서 제외합니다. 보유 모듈은 이 상자의 후보만 교체하고 기존 투자를 유지합니다.':'현재 제외할 후보가 없습니다. 첫 두 보급의 새 총 기회는 보호됩니다.'}</small><button data-action="choice-back">돌아가기</button></section>`);return;}
+ if(['continue','withdraw','challenge'].includes(a))unlockSound();
  await mutate(d=>{if(a==='continue'){resume(d);return true;}if(a==='reroll')return reroll(d);if(a==='skip')return skip(d);if(a==='gate-assemble'||a==='gate-upgrade')return action(d,a);if(a==='withdraw'){const ok=action(d,'withdraw');if(ok)resume(d);return ok;}if(a==='challenge'){resume(d);return action(d,'challenge');}if(a?.startsWith('raid:'))return action(d,a);return false;});
 });
-async function pauseButton(){if(!run||mode!=='battle'||pending)return;if(busy){if(committingPlay||run.phase==='playing')pauseQueued=true;return;}await mutate(d=>{if(d.phase==='paused')resume(d);else pause(d);return true;});}
+async function pauseButton(){if(!run||mode!=='battle'||pending)return;if(busy){if(committingPlay||run.phase==='playing')pauseQueued=true;return;}if(run.phase==='paused')unlockSound();await mutate(d=>{if(d.phase==='paused')resume(d);else pause(d);return true;});}
 $('pause').addEventListener('click',pauseButton);$('gear').addEventListener('click',()=>mutate(d=>action(d,'gear')));
 $('field-upgrade').addEventListener('click',()=>mutate(d=>action(d,'upgrade')));
 $('pursuit').addEventListener('click',()=>mutate(d=>action(d,'challenge')));
@@ -315,10 +330,10 @@ window.addEventListener('keydown',e=>{
  if(busy)return;
  if(run.phase==='choice'&&!subpanel&&/^[1-9]$/.test(e.key)){e.preventDefault();const c=run.choices[Number(e.key)-1];if(c)selectCard(c.id);return;}
  if(run.phase==='choice'&&run.choice.type==='clear'&&!subpanel&&['g','r'].includes(k)){e.preventDefault();mutate(d=>action(d,k==='g'?'gate-assemble':'gate-upgrade'));return;}
- if(run.phase!=='playing')return;if(k===' ')e.preventDefault();const a=({' ':'dash',e:'skill',f:'interact',g:'gear',r:'upgrade',q:'challenge'})[k];if(a){audio.unlock();mutate(d=>action(d,a,a==='skill'?movementInput():undefined));}
+ if(run.phase!=='playing')return;if(k===' ')e.preventDefault();const a=({' ':'dash',e:'skill',f:'interact',g:'gear',r:'upgrade',q:'challenge'})[k];if(a||moving)unlockSound();if(a)mutate(d=>action(d,a,a==='skill'?movementInput():undefined));
 });
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&run&&mode==='battle'&&run.phase==='playing')mutate(d=>{pause(d);return true;});});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();if(run&&mode==='battle'&&run.phase==='playing')mutate(d=>{pause(d);return true;});}});
 window.addEventListener('blur',()=>{keys.clear();controls?.reset();if(run&&mode==='battle'&&run.phase==='playing'&&!busy)mutate(d=>{pause(d);return true;});});
 function bearing(p,x,y){return ['→','↘','↓','↙','←','↖','↑','↗'][(Math.round(Math.atan2(y-p.y,x-p.x)/(Math.PI/4))+8)%8];}
 function updateMap(lead,entry,gantry,dispatch,reserved,aid){
@@ -671,7 +686,6 @@ function updateHud(entry){
   }
  }
 }
-const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot','focus-shot':'focus-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill',barrage:'slam','charge-impact':'slam','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','mortar-fire':'warning','boss-charge':'boss-charge','port-hatch':'front-entry','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve','armor-impact':'guard-block',heal:'heal',break:'crowd-break','aid-counter':'crowd-break'};
 const bannerPriority=['gate-open','port-hatch','region-entry'];
 function processEvents(){
  const banner=$('banner'),events=new Set(takeEvents(run));
@@ -679,15 +693,13 @@ function processEvents(){
   banner.textContent='';delete banner.dataset.kind;
  }
  if(mode!=='battle'||!events.size)return;
+ const completed=events.has('complete')&&run.effects.findLast(f=>f.type==='complete');
+ const capstone=completed?.showcase?completed:null;
  if(store.settings().sound){
-  const cues=new Set([...events].map(event=>fieldCues[event]).filter(Boolean));
-  if(cues.has('flame-loop')&&run.weapons.some(w=>w.id==='f'&&w.evolved)){cues.delete('flame-loop');cues.add('inferno-jet');}
-  if(cues.has('heat-break')){cues.delete('power-kill');cues.delete('wood-kill');}
-  for(const cue of selectAudioEvents(cues))audio.play(cue,0,run.weapons.some(w=>w.evolved));
-  if(events.has('xp-pickup')&&!cues.has('hurt')&&!cues.has('armor-collapse'))audio.play('xp',0);
+  const inferno=run.weapons.some(w=>w.id==='f'&&w.evolved);
+  for(const cue of selectRiftAudioEvents(events,{inferno,showcase:capstone?.showcase}))audio.play(cue);
  }
  const priority=bannerPriority.find(type=>events.has(type));
- const capstone=events.has('complete')&&run.effects.findLast(f=>f.type==='complete'&&f.showcase);
  if(!priority&&!capstone&&bannerPriority.includes(banner.dataset.kind))return;
  const counter=!priority&&events.has('aid-counter')&&run.effects.findLast(f=>f.type==='aid-counter');
  const fx=capstone||counter||run.effects.findLast(f=>priority?f.type===priority:events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
@@ -722,7 +734,7 @@ function frame(now){
 }
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function boot(){
- try{watchCombatHud();const lock=navigator.locks?fn=>navigator.locks.request(`${STORAGE_KEY}:write`,fn):null;store=createStore(localStorage,lock);controls=bindTouchControls({stick:$('stick'),actions:{dash:$('dash'),skill:$('skill'),interact:$('interact')},canPlay:()=>mode==='battle'&&run?.phase==='playing'&&!busy&&!pending,onMove:v=>{touch=v;},onAction:a=>mutate(d=>action(d,a,a==='skill'?movementInput():undefined)),onUnlock:()=>{if(profile().settings.sound)audio.unlock();}});
+ try{watchCombatHud();const lock=navigator.locks?fn=>navigator.locks.request(`${STORAGE_KEY}:write`,fn):null;store=createStore(localStorage,lock);controls=bindTouchControls({stick:$('stick'),actions:{dash:$('dash'),skill:$('skill'),interact:$('interact')},canPlay:()=>mode==='battle'&&run?.phase==='playing'&&!busy&&!pending,onMove:v=>{touch=v;},onAction:a=>mutate(d=>action(d,a,a==='skill'?movementInput():undefined)),onUnlock:unlockSound});
   const p=profile();selectedOperator=p.lastOperator||'fio';operationPlan=createOperationPlan(()=>crypto.getRandomValues(new Uint32Array(1))[0],p.active?.run.seed??p.recent[0]?.seed);
   showHome();requestAnimationFrame(frame);
   loadFioPortrait().then(art=>{portraitArt=art;drawPortrait();}).catch(()=>{});

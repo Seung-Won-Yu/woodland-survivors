@@ -9,6 +9,7 @@ import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
+import {selectRiftAudioEvents} from '../src/reboot/sound.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -331,6 +332,16 @@ test('capstone contacts use the same bounded sound lanes as other weapons',async
  assert.deepEqual(selectAudioEvents(new Set(['conduit-impact','inferno-jet','hurt'])),['hurt']);
 });
 test('heat audio stays distinct while hurt keeps foreground priority',async()=>{const {selectAudioEvents}=await import('../src/game/audio.js');assert.deepEqual(selectAudioEvents(new Set(['heat-break','power-kill'])),['heat-break']);assert.deepEqual(selectAudioEvents(new Set(['heat-break','flame-loop','hurt'])),['hurt']);});
+test('RIFT keeps boss warnings over hit and pickup cues and distinguishes capstone contacts',()=>{
+ const mix=(events,options)=>selectRiftAudioEvents(new Set(events),options);
+ assert.deepEqual(mix(['harbor-vertical-lock','hurt','shell-land','xp-pickup']),['harbor-vertical-lock','hurt']);
+ assert.deepEqual(mix(['boss-charge','warning','armor-impact','xp-pickup']),['coast-charge','guard-block']);
+ assert.deepEqual(mix(['warning','shell-land','explosion']),['mortar-lock','shell-land']);
+ assert.deepEqual(mix(['payload-impact','payload-relay','shot','xp-pickup']),['swarm-shot','conduit-transfer']);
+ assert.deepEqual(mix(['flame','fire-spread','heat','kill'],{inferno:true}),['inferno-spread','heat-break']);
+ assert.deepEqual(mix(['complete','choose'],{showcase:'flame'}),['inferno-ready']);
+ assert.deepEqual(mix(['complete','choose'],{showcase:'fusion'}),['conduit-ready']);
+});
 
 function quietOperation(operator='fio'){const s=createOperation(17,[],null,null,operator);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function downBoss(s){s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.hp=1;s.boss.timer=999;s.boss.spawnClock=999;s.boss.parts=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.shots=[bullet(s,s.boss)];step(s,dt);}
@@ -782,6 +793,7 @@ test('harbor artillery fixes its opening axis by entry and leaves a perpendicula
   if(hatch){s.operation.portEntry='gantry';s.operation.portDock=true;s.sites=[{id:'port-landing',state:'done'}];}
   Object.assign(s.player,{x:800,y:470});step(s,dt);
   const aim=s.hazards.find(h=>h.portRound==='lock'),side=Math.sign(s.boss.parts[0].ox);
+  assert.ok(takeEvents(s).includes(hatch?'harbor-vertical-lock':'harbor-rake-lock'));
   assert.deepEqual([aim.x,aim.y],[800,470]);
   assert.equal(aim.portAxis,hatch?'vertical':'horizontal');
   assert.equal(portBarrageMark(aim.portAxis,side),hatch?(side>0?'←':'→'):'↑↓');
@@ -789,6 +801,7 @@ test('harbor artillery fixes its opening axis by entry and leaves a perpendicula
   const cross=hatch?{x:-side,y:0}:{x:0,y:1},parallel=hatch?{x:0,y:1}:{x:-side,y:0};
   const escape=restore(snapshot(s)),bad=restore(snapshot(s)),hp=s.player.hp;
   tick(s,1);tick(escape,1,cross);tick(bad,1,parallel);
+  assert.ok(takeEvents(escape).includes('shell-land'));
   assert.equal(s.player.hp,hp-14);assert.equal(escape.player.hp,hp);assert.equal(bad.player.hp,hp-14);
   assert.deepEqual([escape.hazards.find(h=>h.portRound==='lock').x,aim.y],[800,470]);
  }
@@ -800,6 +813,7 @@ test('harbor jamming cancels the first rake and breaking the plate clears only u
   s.operation.jammed=true;
   if(hatch)s.operation.portEntry='gantry';
   s.boss.cycle=hatch?1:0;step(s,dt);
+  assert.ok(takeEvents(s).includes('harbor-center-lock'));
   const lock=s.hazards.find(h=>h.portRound==='lock');
   assert.equal(lock.jammed,true);assert.equal(lock.portAxis,'horizontal');
   assert.equal(s.hazards.filter(h=>h.portRound==='rake').length,0);
