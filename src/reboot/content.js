@@ -2,11 +2,17 @@ import {RULES} from './rules.js';
 export {RULES};
 export const VERSION='reboot-0.1-b01';
 export const FIELD={left:40,top:40,right:1560,bottom:1160};
+export const INFERNO_CORE_DISTANCE=200;
+export const EMBER_CHARGE={impactScale:.65,arm:.45,life:3.2,damage:105};
 export const GUNS={
  h:{name:'기관총 H',short:'H',color:'#ffcf75',branches:{ricochet:['산개 도탄','탄이 다른 적에게 한 번 더 튕깁니다.'],grenade:['유탄 급탄','8번 발사마다 폭발 유탄을 함께 발사합니다.']},evolution:'사중 기관포'},
  r:{name:'로켓 R',short:'R',color:'#ff9567',branches:{homing:['추적 다탄두','탄두가 살아 있는 적을 추적합니다.'],incendiary:['점화 탄두','폭발한 자리에 연소 구역을 남깁니다.']},evolution:'폭풍 발사대'},
  f:{name:'화염방사기 F',short:'F',color:'#ff7148',branches:{trail:['연료 살포','움직인 자리에 화염 지대를 남깁니다.'],focused:['압축 분사','더 멀리, 좁고 강하게 분사합니다.']},evolution:'인페르노'}
 };
+export function capstoneName(w){
+ if(w.fusion)return w.fusion.branch==='incendiary'?'점화 격발망':'전도 격발망';
+ return w.id==='f'&&w.branch==='focused'?'압축 인페르노':GUNS[w.id].evolution;
+}
 export const MODULES={
  medic:{name:'응급 주사기',color:'#b9d697',desc:'정예를 처치해 생존을 회수합니다.',detail:()=> '정예 처치 체력+12 · 재사용12초'},
  shrapnel:{name:'분열 수류탄',color:'#ffca88',desc:'로켓·유탄과 합체 연쇄탄이 작은 파쇄 폭발 3개로 번집니다.',detail:()=> '파쇄 피해20×3 · 재사용0.65초 · 추가 발동 없음'},

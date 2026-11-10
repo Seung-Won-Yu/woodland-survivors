@@ -2,7 +2,7 @@ import {RIFT_BOSS_CUES,selectAudioEvents} from '../game/audio.js';
 
 const fieldCues={
  shot:'swarm-shot','rocket-shot':'scatter-shot','focus-shot':'focus-shot',flame:'flame-loop',
- heat:'heat-break','fire-spread':'fire-spread','payload-impact':'conduit-impact','payload-relay':'conduit-hop',
+ heat:'heat-break','fire-spread':'fire-spread','payload-impact':'conduit-impact','payload-relay':'conduit-hop','ember-burst':'heat-break',
  kill:'wood-kill',impact:'rifle-hit',explosion:'power-kill','charge-impact':'slam','salvo-impact':'power-kill','armor-impact':'guard-block',
  complete:'forge-evolve',skill:'burst',choose:'choose','boss-arrival':'boss-arrival',
  'port-hatch':'front-entry','region-entry':'front-entry','challenge-clear':'rampage','raid-success':'forge-evolve',

@@ -1,5 +1,5 @@
 import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
-import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout} from './content.js';
+import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
 import {OPERATORS,operatorOf,skillRules,canUseSkill,focusLane,aimFromInput,chargeLabel} from './operator.js';
@@ -88,6 +88,7 @@ export function restore(raw,{allowPrevious=false}={}){
  const chargePath=s.boss.chargePath;
  if(chargePath&&(![chargePath.x,chargePath.y,chargePath.length,chargePath.offset].every(Number.isFinite)||chargePath.length<0||chargePath.offset<0||chargePath.length+chargePath.offset>COAST_CHARGE.distance+.001||chargePath.linear!=null&&typeof chargePath.linear!=='boolean'||chargePath.blockId!=null&&typeof chargePath.blockId!=='string'))fail();
  for(const key of ['blocks','enemies','shots','enemyShots','gems','zones','hazards','effects','excluded','seenGuns','offeredWeapons'])if(!Array.isArray(s[key]))fail();
+ if(s.zones.some(z=>z?.source==='ember-charge'&&(![z.x,z.y,z.r,z.life,z.tick].every(Number.isFinite)||z.r<=0||z.life<=0||typeof z.owner!=='string')))fail();
  if(new Set(s.modules.map(m=>m.id)).size!==s.modules.length||s.modules.some(m=>RULES.modules[m.id].unique&&m.rank!==1)||new Set(s.weapons.map(w=>w.uid)).size!==s.weapons.length||s.weapons.some(w=>typeof w.uid!=='string'))fail();
  if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
  if(s.operation){
@@ -408,9 +409,9 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
   if(!s.firstNew)s.firstNew=w.id;
   if(s.operation?.region===0&&s.choice.opening)s.openingFireUntil=s.t+OPENING_WEAPON_SECONDS;
  }
- else if(c.kind==='evolve'){if(!assemblyOptions(s).some(o=>o.id===id))return false;const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion&&!w.evolved);w.evolved=true;s.tuning--;buildCompleted(s,'single',w.id);}
+ else if(c.kind==='evolve'){if(!assemblyOptions(s).some(o=>o.id===id))return false;const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion&&!w.evolved);w.evolved=true;s.tuning--;buildCompleted(s,'single',{weapon:w.id});}
  else if(c.kind==='fusion'){
-  if(!assemblyOptions(s).some(o=>o.id===id))return false;const a=s.weapons.find(w=>w.id===c.primary&&!w.fusion),b=s.weapons.find(w=>w.id===c.secondary&&!w.fusion);a.fusion={secondary:b.id,branch:b.branch,overflow:Math.min(4,a.level+b.level-8)};a.level=6;a.evolved=true;a.payload=RULES.fusion.hitsPerPayload;s.weapons.splice(s.weapons.indexOf(b),1);s.tuning--;buildCompleted(s,'fusion');
+  if(!assemblyOptions(s).some(o=>o.id===id))return false;const a=s.weapons.find(w=>w.id===c.primary&&!w.fusion),b=s.weapons.find(w=>w.id===c.secondary&&!w.fusion);a.fusion={secondary:b.id,branch:b.branch,overflow:Math.min(4,a.level+b.level-8)};a.level=6;a.evolved=true;a.payload=RULES.fusion.hitsPerPayload;s.weapons.splice(s.weapons.indexOf(b),1);s.tuning--;buildCompleted(s,'fusion',{incendiary:b.branch==='incendiary'});
  }else if(c.kind==='maneuver'){if(s.choice.type!=='assembly'||!assemblyOptions(s).some(o=>o.id===id&&o.key===c.key))return false;s.player.maneuver=c.key;s.stats.maneuver=c.key;}
  else if(c.kind==='permit'){if(s.choice.type!=='pursuit-reward'||c.id!=='pursuit:permit'||s.stage!=='holdout'||s.challenge?.state!=='complete'||s.challenge.tier!==1)return false;s.tuning++;}
  else if(c.kind==='front-support'){
@@ -464,7 +465,7 @@ export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)r
 }
 export function skip(s){if(s.phase!=='choice'||['assembly','clear','pursuit-reward'].includes(s.choice.type))return false;if(s.player.hp<s.player.maxHp)s.player.hp=Math.min(s.player.maxHp,s.player.hp+s.player.maxHp*.05);else s.player.charge=Math.min(100,s.player.charge+5);if(s.choice.type==='supply')s.supplyCount++;closeChoice(s,true);return true;}
 
-function buildCompleted(s,kind,weapon){
+function buildCompleted(s,kind,{weapon,incendiary=false}={}){
  if(!s.stats.completedBuild)s.stats.completedBuild={kind,t:s.t};
  const showcase=kind==='fusion'?'fusion':weapon==='f'?'flame':null;
  const revealed=showcase==='fusion'?'fusionReveal':'flameReveal';
@@ -472,7 +473,7 @@ function buildCompleted(s,kind,weapon){
   s.stats[revealed]=true;
   s.powerWave={delay:.65,remaining:s.powerDone?Math.max(24,s.powerWave?.remaining||0):60,clock:0,paired:3,showcase};
   s.powerDone=true;
-  emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text:showcase==='fusion'?'전도 격발망 가동 · 첫 연쇄탄 장전':'인페르노 가동 · 밀집 보병 접근'});
+  emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text:showcase==='fusion'?`전도 격발망 가동 · 첫 ${incendiary?'화약탄':'연쇄탄'} 장전`:'인페르노 가동 · 밀집 보병 접근'});
  }else if(!s.powerDone){
   s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};
   emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='single'?'무기 진화 완료':'발동 연계 완성'});
@@ -500,9 +501,22 @@ export function portTurretInSight(s){
  const turret=s.boss.parts[0],point=partPosition(s,turret);
  return s.weapons.some(w=>distance(s.player,point)<weaponStats(w).range+turret.r)&&!lineBlocked(s,s.player,point);
 }
-function targetFor(s,w,d,candidates){
+export function infernoCoreLine(s,w){
+ const {player:p,boss:b}=s;
+ if(w?.id!=='f'||!w.evolved||w.branch!=='focused'||s.operation?.region!==2||!b.active||b.dead||b.mode!=='recover'||p.moving)return false;
+ const gap=distance(p,b),range=weaponStats(w).range;
+ if(gap<INFERNO_CORE_DISTANCE||gap>=range+b.r||lineBlocked(s,p,b))return false;
+ const turret=b.parts[0];
+ if(portBreachFlank(s)){
+  const point=partPosition(s,turret);
+  if(distance(p,point)<range+turret.r&&!lineBlocked(s,p,point))return false;
+ }
+ return true;
+}
+function targetFor(s,w,d,candidates,lance){
  const priority=portBreachFlank(s)?s.boss.parts[0]:portCoreDisrupted(s)?s.boss:null;
  if(priority&&candidates.includes(priority))return priority;
+ if(lance)return s.boss;
  const strike=coastStrike(s);
  if(w.id==='r'&&strike&&s.operation.coastStrike==='r'&&!s.operation.coastStrikeUsed&&s.boss.mode==='windup'
    &&candidates.includes(s.boss)&&distance(s.player,s.boss)>=strike.range)return s.boss;
@@ -709,12 +723,15 @@ function feed(s,owner,weight,target,breachLane){
 function payloadTargets(s,origin,min){return targets(s).filter(e=>e.hp>0&&distance(e,origin)>=min&&distance(e,origin)<300&&!lineBlocked(s,origin,e)).sort((a,b)=>distance(a,origin)-distance(b,origin));}
 function launchPayload(s,w,origin,target,amount,relay,breachLane){
  const angle=Math.atan2(target.y-origin.y,target.x-origin.x);
- return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:w.fusion.branch==='homing',incendiary:w.fusion.branch==='incendiary',origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane});
+ const incendiary=!relay&&w.fusion.branch==='incendiary';
+ return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane});
 }
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane){
- emit(s,effect,x,y,{r,life:.4});let budget=2;
+ const charge=ignite&&effect==='payload-impact';
+ const reach=charge?r*EMBER_CHARGE.impactScale:r;
+ emit(s,effect,x,y,{r:reach,life:.4,...(charge?{incendiary:true}:{})});let budget=2;
  for(const e of (source==='support'?alive(s):targets(s,breachLane))){
-  if(e.hp<=0||distance(e,{x,y})>r+e.r||lineBlocked(s,{x,y},e))continue;
+  if(e.hp<=0||distance(e,{x,y})>reach+e.r||lineBlocked(s,{x,y},e))continue;
   const w=source==='native'?Math.min(.5,budget):0,before=e.hp;
   budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane);
   if(effect==='shrapnel'&&e.hp<before){
@@ -723,9 +740,38 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=sou
   }
   if(ignite&&e.hp>0)burn(e);
  }
- for(const b of s.blocks)if(b.hp>0&&Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<r+Math.max(b.w,b.h)/2)b.hp=Math.max(0,b.hp-amount);
+ for(const b of s.blocks)if(b.hp>0&&Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<reach+Math.max(b.w,b.h)/2)b.hp=Math.max(0,b.hp-amount);
  if((source==='native'||source==='payload')&&moduleRank(s,'shrapnel')&&!(s.shrapnelCd>0)){s.shrapnelCd=.65;s.stats.shrapnelBursts=(s.stats.shrapnelBursts||0)+1;for(let i=0;i<3;i++){const a=i*TAU/3;blast(s,x+Math.cos(a)*50,y+Math.sin(a)*50,42,20,'module',null,false,'shrapnel');}}
- if(ignite&&s.zones.length<12)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
+ if(charge){
+  const charges=s.zones.filter(z=>z.source==='ember-charge'&&z.owner===owner);
+  if(charges.length>=3)s.zones.splice(s.zones.indexOf(charges[0]),1);
+  if(s.zones.length<RULES.limits.zones)s.zones.push({x,y,r,life:EMBER_CHARGE.life,tick:EMBER_CHARGE.arm,source:'ember-charge',owner,breachLane});
+ }else if(ignite&&effect!=='ember-burst'&&s.zones.length<RULES.limits.zones)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
+}
+function updateZones(s,dt){
+ for(const z of s.zones){
+  z.life-=dt;z.tick-=dt;
+  if(z.source==='ember-charge'){
+   if(z.life<=0||z.tick>0)continue;
+   let hostiles=0;
+   for(const e of s.enemies){
+    if(e.dead||e.hp<=0||distance(z,e)>z.r+e.r||lineBlocked(s,z,e))continue;
+    if(++hostiles===2)break;
+   }
+   if(hostiles<2)continue;
+   z.life=0;
+   s.stats.emberBursts=(s.stats.emberBursts||0)+1;
+   const kills=s.stats.payloadKills||0;
+   blast(s,z.x,z.y,z.r,EMBER_CHARGE.damage,'payload',z.owner,true,'ember-burst',z.breachLane);
+   s.stats.emberKills=(s.stats.emberKills||0)+(s.stats.payloadKills||0)-kills;
+  }else if(z.tick<=0){
+   z.tick=.25;
+   for(const e of targets(s))if(e.hp>0&&distance(z,e)<z.r+e.r&&!lineBlocked(s,z,e)){
+    burn(e);damage(s,e,z.dps*.25,'fire',z.source==='wake'?'wake':'dot');
+   }
+  }
+ }
+ s.zones=s.zones.filter(z=>z.life>0);
 }
 function fire(s,w,target,a,amount,opts={}){
  if(s.shots.length>=320)return false;const d=weaponStats(w),rocket=opts.rocket??w.id==='r',origin=opts.origin,source=opts.source||'native',evolved=w.evolved&&!w.fusion;
@@ -741,18 +787,21 @@ export function activeManeuver(p){
  return null;
 }
 function shoot(s,w){
- const d=weaponStats(w),p=s.player,candidates=attackTargets(s,d.range),target=targetFor(s,w,d,candidates);if(!target){const b=s.blocks.find(b=>b.hp>0&&distance({x:b.x+b.w/2,y:b.y+b.h/2},p)<150);if(b){b.hp=Math.max(0,b.hp-d.damage);p.attack=.1;emit(s,'impact',b.x+b.w/2,b.y+b.h/2);return true;}return false;}if(w.id!=='f'&&s.shots.length+d.count+(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7?1:0)>320)return false;
+ const d=weaponStats(w),p=s.player,lance=infernoCoreLine(s,w),candidates=attackTargets(s,d.range),target=targetFor(s,w,d,candidates,lance);if(!target){const b=s.blocks.find(b=>b.hp>0&&distance({x:b.x+b.w/2,y:b.y+b.h/2},p)<150);if(b){b.hp=Math.max(0,b.hp-d.damage);p.attack=.1;emit(s,'impact',b.x+b.w/2,b.y+b.h/2);return true;}return false;}if(w.id!=='f'&&s.shots.length+d.count+(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7?1:0)>320)return false;
  const damageScale=activeManeuver(p)==='brace'?1.25:1;
  const a=Math.atan2(target.y-p.y,target.x-p.x);p.aim=a;p.attack=.12;
  if(w.id==='f'){
   const catalyst=moduleRank(s,'catalyst'),focused=w.branch==='focused';
-  for(const e of candidates){
+  for(const e of lance?[target]:candidates){
    const angle=Math.atan2(e.y-p.y,e.x-p.x),delta=Math.atan2(Math.sin(angle-a),Math.cos(angle-a));
    if(Math.abs(delta)>=d.cone*Math.PI/360)continue;
    burn(e,w.evolved?(focused&&e===target?36:24):RULES.modules.catalyst.burnDamagePerSecond[catalyst-1]||6,w.evolved?2:1.5);
-   damage(s,e,d.damage*damageScale,'fire','native',w.uid,0);
+   const core=lance&&e===s.boss;
+   const bypass=core&&s.boss.parts.some(part=>part.hp>0)&&!portCoreDisrupted(s);
+   if(core)s.stats.infernoCoreHits=(s.stats.infernoCoreHits||0)+1;
+   damage(s,e,d.damage*damageScale*(core?1.4:1)*(bypass?1.6:1),'fire','native',w.uid,0);
   }
-  emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14,evolved:w.evolved});
+  emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14,evolved:w.evolved,...(focused?{focused:true}:null),...(lance?{coreDistance:distance(p,target)}:null)});
   if(w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<(w.evolved?4:3)){
    const reach=w.evolved?Math.min(120,distance(p,target)*.65):0;
    s.zones.push({x:p.x+Math.cos(a)*reach,y:p.y+Math.sin(a)*reach,r:w.evolved?74:50,dps:w.evolved?56:12,life:w.evolved?2.3:2,tick:.25,source:w.evolved?'wake':'dot',owner:w.uid});
@@ -769,7 +818,7 @@ function detonate(s,q){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
  blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane);q.life=0;
- if(q.source!=='payload'||q.relay||(s.stats.payloadKills||0)-before<2)return;
+ if(q.source!=='payload'||q.incendiary||q.relay||(s.stats.payloadKills||0)-before<2)return;
  const owner=s.weapons.find(w=>w.uid===q.owner&&w.fusion),next=payloadTargets(s,q,q.radius+22)[0];
  if(owner&&next&&launchPayload(s,owner,q,next,RULES.fusion.payloadDamage*.8,true,q.breachLane)){
   s.stats.payloadRelays=(s.stats.payloadRelays||0)+1;
@@ -1388,7 +1437,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const cadence=(p.overdrive>0?.65:1)*(activeManeuver(p)==='assault'?.78:1);
  for(const w of s.weapons){w.cd-=dt;w.payloadCd=Math.max(0,w.payloadCd-dt);if(w.cd<=0){const fired=shoot(s,w);w.cd=fired?weaponStats(w).interval*cadence:0;}}
  updateShots(s,dt);
- for(const z of s.zones){z.life-=dt;z.tick-=dt;if(z.tick<=0){z.tick=.25;for(const e of targets(s))if(e.hp>0&&distance(z,e)<z.r+e.r&&!lineBlocked(s,z,e)){burn(e);damage(s,e,z.dps*.25,'fire',z.source==='wake'?'wake':'dot');}}}s.zones=s.zones.filter(z=>z.life>0);
+ updateZones(s,dt);
  // A burning gun can be destroyed on the final warning tick, before its shells land.
  if(s.operation?.region>0&&b.active&&!b.dead)for(const part of b.parts)updateBurn(s,part,dt);
  updateEnemies(s,dt);updateBoss(s,dt);if(s.hitCandidate)hurt(s,s.hitCandidate.amount,s.hitCandidate.x,s.hitCandidate.y);delete s.hitCandidate;

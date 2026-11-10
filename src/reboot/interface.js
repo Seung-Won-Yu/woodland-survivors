@@ -1,6 +1,6 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
 import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
-import {GUNS,MODULES,RULES,makeWeapon,weaponStats} from './content.js';
+import {GUNS,MODULES,RULES,makeWeapon,weaponStats,capstoneName} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -99,7 +99,7 @@ function archivePanel(p){const marco=marcoRecord(p);const reports=p.recent.map((
 export function lobbyView(p,{tab='mission',brief=null,seed=17,order=null,operator='fio',requisition=null}={}){const tabs=[['mission','출격','route'],['weapons','병기','crate'],['research','연구','gear'],['archive','기록','archive']],available=readyResearch(p).length,content=tab==='research'?researchPanel(p):tab==='weapons'?weaponsPanel():tab==='archive'?archivePanel(p):missionPanel(p,brief,seed,order,operator,requisition);
  return `<section class="hangar-shell"><header class="command-header"><a class="rift-brand" href="./index.html" aria-label="RIFT 작전실"><b>RIFT</b><span>야전 작전실</span></a><nav class="command-nav" aria-label="작전실 메뉴">${tabs.map(([id,label,icon])=>`<button data-tab="${id}" ${tab===id?'aria-current="page"':''}>${moduleIcon(icon)}<span>${label}</span>${id==='research'&&(available||p.trials.length)?'<i aria-label="새 연구 소식"></i>':''}</button>`).join('')}</nav><div class="credit-counter"><span>보급 크레딧</span><b>${n(p.credits)}<small>C</small></b></div><button class="settings-button" data-action="settings-menu" aria-label="환경 설정">${moduleIcon('gear')}</button></header><div class="command-content" id="lobby-panel">${p.migrationNotice?`<p class="inline-note">${e(p.migrationNotice)}</p>`:''}${content}</div><footer class="command-footer"><span>이동 WASD · 회피 SPACE · ${OPERATORS[operator].skill} E · 상황 행동 F</span><span>노획한 무기로 매판 새롭게</span></footer></section>`;
 }
-export function loadoutChips(weapons,modules){return `<div class="loadout-chips">${weapons.map(w=>`<span><b>${e(w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase())}</b>${e(w.fusion?'전도 격발망':w.evolved?GUNS[w.id].evolution:`L${w.level} ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`)}</span>`).join('')}${modules.map(m=>`<span class="module-chip">${e(MODULES[m.id].name)} ${m.rank}</span>`).join('')}</div>`;}
+export function loadoutChips(weapons,modules){return `<div class="loadout-chips">${weapons.map(w=>`<span><b>${e(w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase())}</b>${e(w.evolved?capstoneName(w):`L${w.level} ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`)}</span>`).join('')}${modules.map(m=>`<span class="module-chip">${e(MODULES[m.id].name)} ${m.rank}</span>`).join('')}</div>`;}
 function unlockedResearch(r,p){
  const ids=Array.isArray(r.researchUnlocked)?r.researchUnlocked.filter(id=>Object.hasOwn(RESEARCH,id)):[];
  if(!ids.length)return '';
@@ -208,7 +208,8 @@ function debriefActions(r,p,archived){
 }
 function debriefDetails(r,p,lines){
  const procs=[['도탄 적중',r.stats.ricochetHits],['전기 연쇄',r.stats.coilBursts],['열압 폭발',r.stats.heatBursts],
-  ['합체 격발',r.stats.payloadBursts],['연쇄 도약',r.stats.payloadRelays],['연쇄탄 처치',r.stats.payloadKills],
+  ['합체 격발',r.stats.payloadBursts],['연쇄 도약',r.stats.payloadRelays],['합체 탄약 처치',r.stats.payloadKills],
+  ['화약 유폭',r.stats.emberBursts],['화약 유폭 처치',r.stats.emberKills],['압축 코어 직격',r.stats.infernoCoreHits],
   ['인페르노 장판 처치',r.stats.wakeKills],['관통 사격 명중',r.stats.focusHits],['약점 직격',r.stats.focusWeakHits]].filter(([,v])=>v>0);
  const fee=r.orderFee??r.requisitionFee,paid=Number.isSafeInteger(fee)&&fee>0,net=r.credits-fee;
  const ledger=lines?`<section class="payout-ledger"><h2>보급 크레딧 지급 내역</h2><dl>

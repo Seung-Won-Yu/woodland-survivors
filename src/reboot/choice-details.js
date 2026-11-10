@@ -76,19 +76,23 @@ export function choiceDetails(s,c){
    const branches=GUNS[change.gun].branches;
    out.title=installed.fusion?'전도 격발망':GUNS[installed.id].evolution;
    out.impact=`${branches[change.from][0]} → ${branches[change.to][0]}`;
-   if(installed.fusion)out.detail=change.to==='incendiary'?'연쇄탄이 터진 자리에 연소 지대를 남깁니다.':'연쇄탄이 움직이는 표적을 추적합니다.';
+   if(installed.fusion){
+    out.detail=change.to==='incendiary'?'직선 탄착 뒤 화약을 남깁니다. 보병 둘이 모이면 지연 폭발.':'살아 있는 표적을 추적하고 한 폭발로 둘을 잡으면 도약합니다.';
+    out.link=change.to==='incendiary'?'도약 대신 보병을 화약 쪽으로 유도':'움직이는 적과 떨어진 두 무리에 유리';
+   }
    else if(installed.id==='f'){
     const before=weaponStats(installed),after=weaponStats({...installed,branch:change.to});
     out.detail=`사거리 ${before.range} → ${after.range} · 분사각 ${num(before.cone)}° → ${num(after.cone)}°`;
-    out.link=change.to==='focused'?'먼 표적에 강한 잔불':'이동하며 분사하면 화염 장판';
+    out.link=change.to==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'이동하며 분사하면 화염 장판';
    }else out.detail=branches[change.to][1];
    out.cost='완성·투자 유지 · 귀환까지 적용';
   }
  }else if(c.kind==='evolve'){
   out.impact=c.weapon==='f'?w.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
-  out.link=c.weapon==='f'?w.branch==='focused'?'직격 표적에 강한 잔불을 남깁니다.':'이동 중 화염을 뿌리면 앞쪽에 불길이 남습니다.':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
+  out.link=c.weapon==='f'?w.branch==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'이동 중 화염을 뿌리면 앞쪽에 불길이 남습니다.':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
  }else if(c.kind==='fusion'){
-  out.art=c.primary;out.impact='연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail='합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
+  const incendiary=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch==='incendiary';
+  out.art=c.primary;out.impact=incendiary?'화약 지대에 보병 둘이 모이면 폭발':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'합체 직후 첫 화약탄 장전 · 보병 두 무리씩 접근':'합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){

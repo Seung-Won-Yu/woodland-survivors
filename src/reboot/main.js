@@ -6,8 +6,8 @@ import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.j
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portBarrageAxis,portBarrageMark,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
-import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,blastContactRadius,evolutionParts,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons} from './content.js';
-import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,portTurretInSight,showcaseWindow} from './model.js';
+import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,buildPaths,distance,blastContactRadius,evolutionParts,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
+import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,showcaseWindow} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
 import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
@@ -548,10 +548,10 @@ function updateHud(entry){
  if(support)$('support-status').textContent=front===2&&Object.hasOwn(PORT_SUPPORT,run.operation.support)&&!run.boss.active&&run.stage==='field'
   ?supportTactic(run.operation.support,front):`${support.name} · ${support.role}`;
  $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
- const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion]),run.modules,run.tuning]);if(key!==inventoryStamp){inventoryStamp=key;$('weapons').innerHTML=run.weapons.map(w=>`<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}">${itemArt(w.id)}<b>${w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:GUNS[w.id].short}</b><small>${w.fusion?'전도 격발망':w.evolved?GUNS[w.id].evolution:`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`}</small></div>`).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');$('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');}
- const fusion=run.weapons.find(w=>w.fusion),synergy=$('synergy');
+ const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion]),run.modules,run.tuning]);if(key!==inventoryStamp){inventoryStamp=key;$('weapons').innerHTML=run.weapons.map(w=>`<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}">${itemArt(w.id)}<b>${w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:GUNS[w.id].short}</b><small>${w.evolved?capstoneName(w):`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`}</small></div>`).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');$('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');}
+ const fusion=run.weapons.find(w=>w.fusion),focused=run.weapons.find(w=>w.id==='f'&&w.evolved&&w.branch==='focused'),synergy=$('synergy');
  synergy.classList.toggle('conductive',!!fusion);
- synergy.textContent=fusion?`연쇄탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 도약 ${run.stats.payloadRelays||0}회`:moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
+ synergy.textContent=fusion?.fusion.branch==='incendiary'?`화약탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 유폭 ${run.stats.emberBursts||0}회`:fusion?`연쇄탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 도약 ${run.stats.payloadRelays||0}회`:moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
  if(moduleRank(run,'shrapnel'))synergy.textContent+=`${synergy.textContent?' · ':''}파쇄 ${run.stats.shrapnelBursts||0}회`;
  if(moduleRank(run,'thermal')&&run.stats.thermalRecovered>=1)synergy.textContent+=`${synergy.textContent?' · ':''}흡열 +${Math.floor(run.stats.thermalRecovered)}충전`;
  const options=assemblyOptions(run),ready=options.find(o=>['evolve','fusion'].includes(o.kind));
@@ -635,6 +635,13 @@ function updateHud(entry){
   else if(front===2&&run.operation.tactic==='signal'&&boss.parts[0].hp<=0)hint=boss.parts[1].hp>0?'측면 장갑 파괴로 장갑탄 차단':'';
   else if(active)hint='전류 연결 완료 · 남은 부위 사격';
   else if(firstWarning||dashWindow)hint=supportHint;
+  if(front===2&&recovering&&focused&&!portCoreDisrupted(run)&&!portTurretInSight(run)){
+   const gap=distance(p,boss);
+   if(infernoCoreLine(run,focused))hint='압축 분사 · 코어 직격 사선';
+   else if(gap<INFERNO_CORE_DISTANCE)hint=`압축 분사 · 코어에서 ${INFERNO_CORE_DISTANCE/10}m 이상 거리 확보`;
+   else if(gap>=weaponStats(focused).range+boss.r)hint='압축 분사 · 코어 사거리까지 접근';
+   else hint=p.moving?'압축 분사 · 사선에서 멈춰 조준':'압축 분사 · 엄폐 밖 코어 사선으로';
+  }
   if(!(front>0)&&boss.mode==='windup'){
    const blockId=boss.chargePath?.blockId;
    hint=blockId&&run.blocks.some(b=>b.id===blockId&&b.hp!==0)?'엄폐까지 돌진 · 진행선 옆으로 빠지세요.':'고정된 돌진선 밖으로 빠지세요.';

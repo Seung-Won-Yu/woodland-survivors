@@ -723,6 +723,26 @@ function supportArena(index,support,mode){
  const s=quietOperation();Object.assign(s.operation,{region:index,support});s.stage='boss';
  Object.assign(s.boss,{active:true,x:800,y:250,mode,cycle:1,timer:999,spawnClock:999});return s;
 }
+test('focused Inferno holds the clear harbor core line at midrange during reload only',()=>{
+ const setup=(branch='focused',mode='recover')=>{
+  const s=supportArena(2,null,mode);
+  s.weapons=[{...makeWeapon('f'),uid:'fire',level:6,branch,evolved:true,cd:0}];
+  s.enemies=[enemy('screen',800,410,'rifle',500)];
+  Object.assign(s.player,{x:800,y:535});
+  return s;
+ };
+ const focused=setup(),before=focused.boss.hp;
+ step(focused,dt);
+ assert.equal(focused.stats.infernoCoreHits,1);
+ assert.equal(focused.enemies[0].hp,500);
+ assert.ok(Math.abs(before-focused.boss.hp-weaponStats(focused.weapons[0]).damage*1.4*1.6)<1e-9);
+ const moving=setup(),sweep=setup('trail'),warning=setup('focused','aim'),blocked=setup();
+ blocked.blocks=[{x:775,y:290,w:50,h:70,hp:-1}];
+ step(moving,dt,{x:1,y:0});step(sweep,dt,{x:1,y:0});step(warning,dt);step(blocked,dt);
+ for(const s of [moving,sweep,warning,blocked])assert.equal(s.stats.infernoCoreHits,undefined);
+ assert.ok(sweep.enemies[0].hp<500);
+ assert.ok(sweep.zones.some(zone=>zone.source==='wake'));
+});
 test('rail parts retain the part hit, dash and XP routes',()=>{
  const opening=supportArena(1,'overrun','recover');Object.assign(opening.player,{x:800,y:400,dash:.01});step(opening,dt);
  assert.equal(opening.boss.parts[0].hp,190);
@@ -1754,6 +1774,29 @@ test('rail refit converts the inherited rocket, while guarding against duplicate
  const p=s.player,a=enemy('hit',p.x,p.y-110,'rifle',500),b=enemy('relay',p.x,p.y-230,'rifle',500);
  s.enemies=[a,b];s.shots=[bullet(s,a,1)];step(s,dt);
  assert.ok(s.shots.some(q=>q.source==='payload'&&q.incendiary&&!q.homing));
+});
+test('incendiary payload arms a saved charge and two hostiles in its clear radius trigger it once',()=>{
+ const s=quiet(),w=s.weapons[0],center={x:1000,y:800};
+ Object.assign(w,{level:6,evolved:true,branch:'ricochet',fusion:{secondary:'r',branch:'incendiary',overflow:0}});
+ s.enemies=[enemy('impact',center.x,center.y,'rifle',25),enemy('first',1112,800,'rifle',80),enemy('behind',1000,916,'rifle',80)];
+ s.shots=[{...bullet(s,s.enemies[0],80),source:'payload',rocket:true,radius:130,incendiary:true}];
+ step(s,dt);
+ assert.equal(s.enemies[0].dead,true);
+ assert.deepEqual(s.enemies.slice(1).map(e=>e.hp),[80,80]);
+ assert.equal(s.zones[0].source,'ember-charge');
+ assert.equal(s.stats.payloadRelays,undefined);
+ const loaded=restore(snapshot(s));
+ loaded.blocks=[{x:975,y:850,w:50,h:30,hp:-1}];
+ tick(loaded,.6);
+ assert.equal(loaded.stats.emberBursts,undefined);
+ assert.equal(loaded.zones.length,1);
+ loaded.blocks=[];
+ step(loaded,dt);
+ assert.equal(loaded.stats.emberBursts,1);
+ assert.equal(loaded.stats.emberKills,2);
+ assert.equal(loaded.zones.length,0);
+ tick(loaded,.6);
+ assert.equal(loaded.stats.emberBursts,1);
 });
 test('a ranged signal arcs once to the other part and changes the next boss action',()=>{
  for(const index of [1,2]){
