@@ -471,7 +471,7 @@ function activateFrontTactic(s,e,kind,source,owner){
  if(s.operation.tactic==='heat'){
   if(kind!=='fire'||!['native','wake'].includes(source)||gap>tactic.range||tactic.side&&Math.abs(p.x-b.x)<tactic.side)return;
   b.tacticCycle=cycle;
-  emit(s,'heat',e.x,e.y,{r:80,life:.4,text:'냉각 차단 · 장갑 과열'});
+  emit(s,'overheat',e.x,e.y,{life:.4,text:'냉각 차단 · 장갑 과열'});
  }else{
   const linked=source==='native'&&s.weapons.some(w=>w.uid===owner&&(w.fusion||w.id==='r'&&kind==='blast'));
   if(gap<tactic.range||!(kind==='electric'||source==='payload'||linked))return;
@@ -498,7 +498,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
    if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
    else if(clearPortRounds(s,'turret')){
     s.boss.turretSuppressedCycle=s.boss.cycle;
-    emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:'철갑 명중 · 포탑 포격 취소'});
+    emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:'철갑 명중 · 포탑 제압'});
    }
   }else if(portTurretShutter(s))amount*=PORT_TURRET.shutterDamage;
  }else if(e.type==='part'&&breach&&s.operation.region!==2){
@@ -565,8 +565,8 @@ function feed(s,owner,weight,target,breachLane){
   const opposite=target.waveGroup==null?null:near.find(e=>e.waveGroup!=null&&(e.waveGroup^1)===target.waveGroup);
   const next=opposite||near.find(e=>distance(e,target)>=100)||near[0];
   s.stats.payloadBursts=(s.stats.payloadBursts||0)+1;
-  emit(s,'payload',target.x,target.y,{life:.25});
-  if(!next||!launchPayload(s,w,target,next,cfg.payloadDamage,false,breachLane))blast(s,target.x,target.y,cfg.payloadRadius,cfg.payloadDamage,'payload',w.uid,w.fusion.branch==='incendiary',undefined,breachLane);
+  if(next&&launchPayload(s,w,target,next,cfg.payloadDamage,false,breachLane))emit(s,'payload',target.x,target.y,{life:.25});
+  else blast(s,target.x,target.y,cfg.payloadRadius,cfg.payloadDamage,'payload',w.uid,w.fusion.branch==='incendiary',undefined,breachLane);
  }}
 }
 function payloadTargets(s,origin,min){return targets(s).filter(e=>e.hp>0&&distance(e,origin)>=min&&distance(e,origin)<300&&!lineBlocked(s,origin,e)).sort((a,b)=>distance(a,origin)-distance(b,origin));}
@@ -643,7 +643,11 @@ function updateShots(s,dt){
  for(const q of s.shots){q.life-=dt;if(q.life<=0)continue;if(q.arming>0)q.arming-=dt;const old={x:q.x,y:q.y};
   if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)&&(q.avoidGroup==null||e.waveGroup!==q.avoidGroup)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8),speed=q.source==='payload'?(q.speed??Math.hypot(q.vx,q.vy)):300;q.vx=Math.cos(angle)*speed;q.vy=Math.sin(angle)*speed;}}
   q.x+=q.vx*dt;q.y+=q.vy*dt;
-  const wall=blocked(s,q.x,q.y,q.r);if(wall){if(q.rocket)detonate(s,q);else if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);q.life=0;emit(s,'impact',q.x,q.y);continue;}
+  const wall=blocked(s,q.x,q.y,q.r);if(wall){
+   if(q.rocket)detonate(s,q);
+   else{if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);emit(s,'impact',q.x,q.y);}
+   q.life=0;continue;
+  }
   for(const e of targets(s,q.breachLane)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
    if(q.arming>0&&q.target!==e.id||q.avoidGroup!=null&&q.avoidGroup===e.waveGroup)continue;
    q.hitIds.push(e.id);if(q.rocket){detonate(s,q);break;}
@@ -756,7 +760,10 @@ function updateOperationBoss(s,dt){
   }else if(b.mode==='salvo'){
    b.mode='recover';b.timer=index===1?RAIL_BARRAGE.recover:2.6;
    if(index===1&&s.operation.tactic==='signal'&&b.tacticCycle===b.cycle)b.timer+=FRONT_TACTICS[1].signal.delay;
-   if(index===2&&b.parts[0].hp>0){for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);b.kick=1;b.flash=.12;}
+   if(index===2&&b.parts[0].hp>0&&b.turretSuppressedCycle!==b.cycle){
+    for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);
+    b.kick=1;b.flash=.12;
+   }
    emit(s,'weakpoint',b.x,b.y,{text:disarmed?'양쪽 포대 파괴 · 차체 노출':index===1?'포격 재장전 · 포대를 노려라':'노출 코어 · 집중 공격',life:1.4});
    // An older mid-salvo save or a crate carried into this salvo can still supply the reload.
    if(index===2)dropHarborAid(s);

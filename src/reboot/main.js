@@ -512,7 +512,8 @@ function updateHud(){
    if(supportId==='breach'){
     const turret=boss.parts[0],incoming=run.shots.some(q=>q.breachLane&&q.target===turret.id);
     if(turret.hp<=0)line.textContent='철갑 · 포탑 정지';
-    else if(boss.mode==='salvo'&&boss.turretSuppressedCycle===boss.cycle)line.textContent='철갑 · 포탑탄 취소 · 발밑 포격 주의';
+    else if(boss.turretSuppressedCycle===boss.cycle&&boss.mode==='salvo')line.textContent='철갑 · 포탑 제압 · 발밑 포격 회피';
+    else if(boss.turretSuppressedCycle===boss.cycle&&recovering)line.textContent='철갑 · 후속 탄막 차단 · 측면 사격';
     else if(boss.mode==='salvo'&&incoming)line.textContent='철갑탄 비행 중 · 발밑 포격을 피하세요';
     else if(portTurretInSight(run))line.textContent='철갑 · 포탑 사선 확보';
     else if(portBreachFlank(run))line.textContent='철갑 · 포탑 사거리까지 접근';

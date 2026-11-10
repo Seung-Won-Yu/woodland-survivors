@@ -532,6 +532,8 @@ test('a settled fusion unlocks shrapnel in a fresh sortie and its payload uses t
  Object.assign(run.weapons[0],{level:4,branch:'ricochet',cd:999});Object.assign(run.weapons[1],{level:4,branch:'homing',cd:999});run.modules.push({id:'coil',rank:2});assert.ok(action(run,'gear'));assert.ok(choose(run,'fusion:h:r'));
  const dummy=enemy('fused-hit',run.player.x,run.player.y-100,'rifle',1000);run.enemies=[dummy];run.shots=[bullet(run,dummy,1)];step(run,dt);
  assert.equal(run.stats.payloadBursts,1);assert.equal(run.stats.shrapnelBursts,1);assert.equal(run.effects.filter(f=>f.type==='shrapnel').length,3);
+ assert.equal(run.effects.filter(f=>f.type==='payload-impact').length,1);
+ assert.ok(!run.effects.some(f=>f.type==='payload'));
  tick(run,.3);assert.equal(run.stats.shrapnelBursts,1);
 });
 test('a pending route trial keeps the signature module and prioritizes the matching experiment',()=>{
@@ -835,21 +837,34 @@ test('harbor flank only confirms a clear shot and puts the turret ahead of a nea
  step(s,dt);
  assert.equal(s.shots[0].target,s.boss.parts[0].id);
 });
-test('a live turret loses only its pending flank rounds after a breach hit from the marked side',()=>{
- const s=supportArena(2,'breach','aim');
- s.boss.cycle=0;s.boss.timer=0;step(s,dt);
- assert.equal(s.hazards.length,5);
- const hit=x=>{
-  Object.assign(s.player,{x,y:370});
-  const turret=partPosition(s,s.boss.parts[0]);
-  s.shots=[bullet(s,turret,15)];step(s,dt);
- };
- hit(975);
- assert.equal(s.hazards.length,5);
- hit(625);
- assert.ok(s.boss.parts[0].hp>0);
- assert.equal(s.boss.turretSuppressedCycle,s.boss.cycle);
- assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','rake','rake']);
+test('harbor breach suppresses a live turret for one barrage and leaves the main guns active',()=>{
+ for(const seed of [17,18]){
+  const s=supportArena(2,'breach','aim');
+  Object.assign(s.boss,regionBoss(2,seed),{active:true,cycle:0,timer:0,spawnClock:999});
+  step(s,dt);
+  const side=Math.sign(s.boss.parts[0].ox);
+  const hit=x=>{
+   Object.assign(s.player,{x,y:370});
+   s.shots=[bullet(s,partPosition(s,s.boss.parts[0]),15)];step(s,dt);
+  };
+  hit(800-side*175);
+  assert.equal(s.hazards.length,5);
+  const missed=restore(snapshot(s));
+  hit(800+side*175);
+  assert.ok(s.boss.parts[0].hp>0);
+  assert.equal(s.boss.turretSuppressedCycle,s.boss.cycle);
+  assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','rake','rake']);
+  const resumed=restore(snapshot(s));
+  tick(resumed,1.2);tick(missed,1.2);
+  assert.equal(resumed.boss.mode,'recover');
+  assert.equal(resumed.enemyShots.length,0);
+  assert.equal(missed.enemyShots.length,9);
+  assert.ok(resumed.hazards.some(h=>h.portRound==='lock'&&h.hit));
+  tick(resumed,5.5);
+  assert.equal(resumed.boss.cycle,2);
+  assert.equal(resumed.boss.mode,'recover');
+  assert.equal(resumed.enemyShots.length,9);
+ }
 });
 test('a harbor rocket keeps the flank it was fired from when the player sidesteps',()=>{
  const launch=(x,direction)=>{
@@ -1303,10 +1318,11 @@ test('rail tactics are chosen at the relay and heat rewards a close flank during
   if(!heat)delete s.operation.tactic;
   Object.assign(s.player,{x,y});Object.assign(s.boss,{active:true,mode,timer:99,spawnClock:99});
   s.weapons.push({...makeWeapon('f'),uid:'inferno',level:6,branch:'trail',evolved:true,cd:0});
-  step(s,dt);return {count:s.stats.frontTactics?.[1]||0,damage:s.boss.maxHp-s.boss.hp};
+  step(s,dt);return {count:s.stats.frontTactics?.[1]||0,damage:s.boss.maxHp-s.boss.hp,events:takeEvents(s)};
  };
  const hot=hit(685,267,'recover'),cold=hit(685,267,'recover',false);
  assert.equal(hot.count,1);
+ assert.ok(hot.events.includes('overheat')&&!hot.events.includes('heat'));
  assert.ok(cold.damage>0&&Math.abs(hot.damage-cold.damage*1.45)<1e-6);
  assert.equal(hit(800,325,'recover').count,0);
  assert.equal(hit(685,267,'salvo').count,0);
