@@ -194,9 +194,14 @@ export function createRenderer(canvas,art){
   if(!mobile||reduced||follow>0)showcaseLead=0;
   else{
    const showcase=s.powerWave?.showcase;
-   const strike=showcase&&s.effects.findLast(f=>f.type==='formation'||(showcase==='flame'?f.type==='flame'&&f.evolved:f.type==='payload-impact'||f.type==='payload-relay'));
-   const x=strike?(strike.type==='flame'?Math.cos(strike.angle)*85:clamp((strike.x-s.player.x)*.55,-85,85)):0;
-   showcaseLead+=(x-showcaseLead)*(1-Math.exp(-elapsed*8));
+   const strike=showcase&&s.effects.findLast(f=>{
+    if(f.type==='formation')return true;
+    return showcase==='flame'?f.type==='flame'&&f.evolved:f.type==='payload-impact'||f.type==='payload-relay';
+   });
+   const relay=showcase==='fusion'&&s.shots.findLast(q=>q.source==='payload'&&q.relay);
+   const targetX=relay?relay.x:strike?.type==='payload-relay'?strike.x2:strike?.x;
+   const nextLead=strike?.type==='flame'?Math.cos(strike.angle)*85:clamp(((targetX??s.player.x)-s.player.x)*.55,-85,85);
+   showcaseLead+=(nextLead-showcaseLead)*(1-Math.exp(-elapsed*8));
   }
   const focusX=s.player.x+(s.boss.x-s.player.x)*.35*follow+rescueLead+showcaseLead,focusY=s.player.y+(s.boss.y-s.player.y)*.35*follow;
   // A gate near a boundary needs room beside the objective rail and tactical map.
