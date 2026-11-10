@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -1142,6 +1142,21 @@ test('a dodge into a safe harbor crate clears the warning edge before auto-picku
  assert.equal(s.boss.harborSupply,undefined);
  assert.equal(s.player.dashCd,.35);
  assert.deepEqual(s.operation.harborPayoff,{safeAid:1});
+});
+test('harbor aid directions respect the actual blast margin even for an older crate',()=>{
+ const s=supportArena(2,'recovery','aim');
+ Object.assign(s.boss,{cycle:1,timer:0,harborSupplyCycle:1,harborSupply:{x:975,y:335}});
+ Object.assign(s.player,{x:975,y:449});
+ step(s,dt);
+ Object.assign(s.player,{x:1040,y:335});
+ assert.equal(portAidCue(s).state,'blocked');
+ assert.equal(portAidCue(s).endangered,true);
+ assert.ok(s.hazards.some(h=>h.portRound==='battery'&&h.x===975&&h.y===335));
+ Object.assign(s.player,{x:1100,y:470});
+ assert.equal(portAidCue(s).state,'blocked');
+ assert.equal(portAidCue(s).endangered,false);
+ s.hazards.forEach(h=>h.hit=true);
+ assert.equal(portAidCue(s).state,'collect');
 });
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};

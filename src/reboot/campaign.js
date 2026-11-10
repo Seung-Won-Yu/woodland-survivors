@@ -1,4 +1,4 @@
-import {FIELD,MODULES,clamp,layout} from './content.js';
+import {FIELD,MODULES,blastContactRadius,clamp,distance,layout} from './content.js';
 import {routeCursor} from './raid.js';
 
 export const REGIONS=[
@@ -103,8 +103,23 @@ export function portAidWindow(s,position){
  const pending=s.hazards.filter(h=>h.portRound&&!h.hit);
  return pending.length>0&&pending.every(h=>!roundThreatens(h,crate)&&(!position||!roundThreatens(h,position)));
 }
-const roundThreatens=(round,point)=>Math.hypot(point.x-round.x,point.y-round.y)<round.r+16;
+const roundThreatens=(round,point)=>distance(round,point)<blastContactRadius(round);
 export const portAidBaitRisk=(s,point)=>s.boss.mode!=='salvo'&&portBarrageRounds(s,s.boss.cycle+1).some(round=>roundThreatens(round,point));
+export function portAidCue(s){
+ const b=s.boss;
+ const point=b.harborSupply||portAidPreview(s);
+ if(!point||s.operation?.region!==2||!b.active||b.dead)return null;
+ const pending=s.hazards.filter(h=>h.portRound&&!h.hit);
+ const endangered=pending.some(h=>roundThreatens(h,s.player));
+ if(!b.harborSupply){
+  const risk=portAidBaitRisk(s,point);
+  return {point,preview:true,state:risk?'bait':'incoming',endangered};
+ }
+ const threatened=pending.some(h=>roundThreatens(h,point));
+ const fresh=pending.length>0&&b.mode==='salvo'&&b.harborSupplyCycle===b.cycle;
+ const state=threatened?'blocked':endangered?'evade':fresh?'safe':'collect';
+ return {point,state,endangered,timer:fresh?Math.min(...pending.map(h=>h.timer)):0};
+}
 export const RAIL_BARRAGE={width:180,depth:900,y:600,outerOffset:300,warning:1.25,recover:2.2};
 export const railDisarmed=boss=>boss.parts.every(part=>part.hp<=0);
 // Fixed outer lanes in old checkpoints also belong to a gun.

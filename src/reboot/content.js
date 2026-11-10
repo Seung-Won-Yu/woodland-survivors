@@ -132,6 +132,7 @@ export function weaponStats(w){
  return{damage,interval,count,range,cone,radius:e?.radius??d.radius?.[i]??0,speed:d.projectileSpeed||0};
 }
 export const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+export const blastContactRadius=hazard=>hazard.r+16;
 export const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 export function rayBoxDistance(origin,dx,dy,block,padding=0){
  let enter=-Infinity,exit=Infinity;

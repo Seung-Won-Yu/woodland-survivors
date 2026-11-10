@@ -1,7 +1,7 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,portAidCounterReady,portAidBaitRisk,railGunOf,COAST_MORTAR,coastLead,coastLeadColor,coastEncounterCue,coastMortarAiming,coastMortarThreatens,activeEntry} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidCue,portAidCounterReady,railGunOf,COAST_MORTAR,coastLead,coastLeadColor,coastEncounterCue,coastMortarAiming,coastMortarThreatens,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
-import {distance,clamp} from './content.js';
+import {distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalCourier} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
@@ -145,18 +145,56 @@ function paintCoastMortarFlight(c,h){
  c.fillStyle='#fff0bd';c.fillRect(1,-2,4,4);
  c.restore();
 }
-function paintAidBearing(c,crate,size,cx,cy,scale,preview){
- const tx=size.w/2+(crate.x-cx)*scale,ty=size.h/2+(crate.y-cy)*scale;
- const left=tx<26;
- if(!left&&tx<=size.w-26)return;
- const x=left?12:size.w-72,y=clamp(ty,Math.min(320,size.h*.5),size.h-152);
- c.fillStyle='#182c27';c.fillRect(x,y-12,60,24);
- c.strokeStyle='#b6d79a';c.lineWidth=1;c.strokeRect(x+.5,y-11.5,59,23);
- c.fillStyle='#d7f0b8';c.font='bold 11px Galmuri, sans-serif';c.textAlign='center';
- const name=preview?'투하 예정':'구급 화물';
- c.fillText(left?`‹ ${name}`:`${name} ›`,x+30,y+4);
+const overlapsBox=(x,y,hw,hh,box)=>x+hw>box.left&&x-hw<box.right&&y+hh>box.top&&y-hh<box.bottom;
+const aidObscured=(size,{x,y},r,hud)=>x<r||x>size.w-r||y<r||y>size.h-r||hud.some(box=>overlapsBox(x,y,r,r,box));
+export function aidBearingPosition(size,target,radius,width,hud,warnings){
+ const {x,y}=target;
+ if(!aidObscured(size,target,radius,hud))return null;
+ const hw=width/2,hh=12,margin=8;
+ const minX=hw+margin,maxX=size.w-hw-margin,minY=hh+margin,maxY=size.h-hh-margin;
+ if(minX>maxX||minY>maxY)return null;
+ const blocked=[...hud,...warnings],xs=[clamp(x,minX,maxX)],ys=[clamp(y,minY,maxY)];
+ for(const box of blocked){
+  xs.push(box.left-hw-margin,box.right+hw+margin);
+  ys.push(box.top-hh-margin,box.bottom+hh+margin);
+ }
+ let position=null,nearest=Infinity;
+ for(const px of xs)for(const py of ys){
+  if(px<minX||px>maxX||py<minY||py>maxY||blocked.some(box=>overlapsBox(px,py,hw,hh,box)))continue;
+  const gap=Math.hypot(px-x,py-y);
+  if(gap<nearest){nearest=gap;position={x:px,y:py};}
+ }
+ return position;
 }
-function paintPortCue(c,s){
+function paintAidBearing(c,s,aid,size,cx,cy,scale,hud){
+ const screen=point=>({x:size.w/2+(point.x-cx)*scale,y:size.h/2+(point.y-cy)*scale});
+ const target=screen(aid.point),radius=Math.max(14,27*scale);
+ if(!aidObscured(size,target,radius,hud))return;
+ const warnings=s.hazards.filter(h=>h.portRound&&!h.hit).map(h=>{
+  const {x,y}=screen(h),r=blastContactRadius(h)*scale;
+  return {left:x-r,right:x+r,top:y-r,bottom:y+r};
+ });
+ const labels={blocked:'착탄 뒤 회수',evade:'원 밖으로 회피',safe:'안전 회수',collect:'구급 화물',bait:'조준 유도',incoming:'투하 예정'};
+ const state=aid.endangered?'evade':aid.state;
+ const alert=['blocked','evade','bait'].includes(state),color=alert?'#ffba91':'#d7f0b8';
+ c.save();c.font='bold 11px Galmuri, sans-serif';
+ const label=labels[state],width=Math.ceil(c.measureText(label).width)+32;
+ const position=aidBearingPosition(size,target,radius,width,hud,warnings);
+ if(position){
+  const {x,y}=position,left=x-width/2;
+  c.fillStyle='#182c27';c.fillRect(left,y-12,width,24);
+  c.strokeStyle=color;c.lineWidth=1;c.strokeRect(left+.5,y-11.5,width-1,23);
+  c.fillStyle=color;c.textAlign='left';c.fillText(label,left+23,y+4);
+  c.translate(left+12,y);
+  if(alert){c.fillRect(-1,-5,2,6);c.fillRect(-1,3,2,2);}
+  else{
+   c.rotate(Math.atan2(target.y-y,target.x-x));
+   c.beginPath();c.moveTo(5,0);c.lineTo(-4,-4);c.lineTo(-2,0);c.lineTo(-4,4);c.closePath();c.fill();
+  }
+ }
+ c.restore();
+}
+function paintPortCue(c,s,aid){
  const b=s.boss;
  if(s.operation?.region!==2||!b.active||b.dead)return;
  c.save();
@@ -204,16 +242,18 @@ function paintPortCue(c,s){
   c.setLineDash([5,4]);circle(c,p.x,p.y,31,null,'#d7f0b8',2);c.setLineDash([]);
   c.fillStyle='#d7f0b8';c.fillRect(p.x-9,p.y-34,18,3);c.fillRect(p.x-2,p.y-41,4,10);
  }
- const aid=portAidPreview(s);
- if(b.harborSupply){
-  const {x,y}=b.harborSupply,early=portAidWindow(s);
-  circle(c,x,y,32,'#12292375',early?'#f8d698':'#c8f0ae',early?3:2);
-  c.fillStyle='#253d32';c.fillRect(x-19,y-24,38,25);c.strokeStyle='#d7f0b8';c.lineWidth=2;c.strokeRect(x-19,y-24,38,25);
-  c.fillStyle='#e0f4b9';c.fillRect(x-3,y-20,6,17);c.fillRect(x-8,y-15,16,6);
+ if(aid&&!aid.preview){
+  const {x,y}=aid.point,blocked=aid.state==='blocked',early=aid.state==='safe';
+  const color=blocked?'#ffba91':early?'#f8e6a6':'#c8f0ae';
+  circle(c,x,y,32,'#12292375',color,early?3:2);
+  c.fillStyle='#253d32';c.fillRect(x-19,y-24,38,25);c.strokeStyle=color;c.lineWidth=2;c.strokeRect(x-19,y-24,38,25);
+  c.fillStyle=color;
+  if(blocked){c.fillRect(x-2,y-20,4,10);c.fillRect(x-2,y-7,4,4);}
+  else{c.fillRect(x-3,y-20,6,17);c.fillRect(x-8,y-15,16,6);}
  }else if(aid){
-  const risk=portAidBaitRisk(s,aid),color=risk?'#f9c184':'#d7f0b8';
-  c.setLineDash([6,5]);circle(c,aid.x,aid.y,32,'#12292345',color,2);c.setLineDash([]);
-  c.fillStyle=color;c.font='bold 11px Galmuri';c.textAlign='center';c.fillText(risk?'포격 위험':'투하 예정',aid.x,aid.y+4);
+  const {x,y}=aid.point,risk=aid.state==='bait'||aid.endangered,color=risk?'#f9c184':'#d7f0b8';
+  c.setLineDash([6,5]);circle(c,x,y,32,'#12292345',color,2);c.setLineDash([]);
+  c.fillStyle=color;c.font='bold 11px Galmuri';c.textAlign='center';c.fillText(aid.endangered?'회피 우선':risk?'포격 위험':'투하 예정',x,y+4);
  }
  c.restore();
 }
@@ -435,14 +475,40 @@ function paintRailWarning(c,h,y){
  c.fillStyle='#ffdfac';c.font='bold 12px Galmuri';c.textAlign='center';
  c.fillText(h.tracked?'조준 고정':h.railGun!=null?'측면 포격':'포격 예고',h.x,labelY);
 }
-export function createRenderer(canvas,art){
+function paintPortPerimeter(c,rounds){
+ const circles=rounds.map(h=>({x:h.x,y:h.y,r:blastContactRadius(h)}));
+ c.beginPath();
+ for(const {x,y,r} of circles){c.moveTo(x+r,y);c.arc(x,y,r,0,TAU);}
+ c.fillStyle='#b14b372f';c.fill();
+ c.beginPath();
+ circles.forEach(({x,y,r},i)=>{
+  if(circles.slice(0,i).some(p=>p.x===x&&p.y===y&&p.r===r))return;
+  const edges=[0,TAU],neighbors=circles.filter(p=>p.x!==x||p.y!==y||p.r!==r);
+  for(const p of neighbors){
+   const d=Math.hypot(p.x-x,p.y-y);
+   if(d>=r+p.r||d<=Math.abs(r-p.r))continue;
+   const angle=Math.atan2(p.y-y,p.x-x),half=Math.acos(clamp((d*d+r*r-p.r*p.r)/(2*d*r),-1,1));
+   edges.push((angle-half+TAU)%TAU,(angle+half+TAU)%TAU);
+  }
+  edges.sort((a,b)=>a-b);
+  for(let j=1;j<edges.length;j++){
+   const start=edges[j-1],end=edges[j],mid=(start+end)/2;
+   const px=x+Math.cos(mid)*r,py=y+Math.sin(mid)*r;
+   if(neighbors.some(p=>Math.hypot(p.x-px,p.y-py)<p.r))continue;
+   c.moveTo(x+Math.cos(start)*r,y+Math.sin(start)*r);c.arc(x,y,r,start,end);
+  }
+ });
+ c.strokeStyle='#39272a';c.lineWidth=6;c.stroke();
+ c.strokeStyle='#ffb78c';c.lineWidth=3;c.stroke();
+}
+export function createRenderer(canvas,art,combatHud={rects:[]}){
  const c=canvas.getContext('2d');let size={w:0,h:0,dpr:1},view={w:960,h:540},terrainCache=null,terrainKey='',siteStates=new Map();
  const conduitTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
  function draw(s,reduced=false){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
-  const gate=exitGate(s),lead=coastLead(s);
+  const gate=exitGate(s),lead=coastLead(s),aid=portAidCue(s);
   const guns=lead?.coastApproach==='r'&&lead.state==='active'?s.enemies.filter(e=>!e.dead&&e.siteId===lead.id):[];
   const follow=s.boss.active?1:!reduced&&s.operation&&s.stage==='holdout'?Math.max(0,1-s.holdTime/.65)**2:0;
   worldWidth+=(Math.max(worldWidth,Math.abs(s.player.x-s.boss.x)*1.2+300)-worldWidth)*follow;
@@ -471,8 +537,10 @@ export function createRenderer(canvas,art){
   const portraitBoss=mobile&&size.h>size.w&&follow>0;
   const bossMargin=portraitBoss?Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y))*follow:0;
   // The coast weak point can draw the pilot north of the tank, under the boss HUD.
-  const pilotMargin=portraitBoss&&s.boss.active&&!(s.operation?.region>0)
-   ?Math.max(0,Math.min(260,size.h*.39)/scale-s.player.y):0;
+  const portBoss=s.operation?.region===2&&s.boss.active;
+  const pilotLine=portBoss?Math.min(286,size.h*.45):Math.min(260,size.h*.39);
+  const pilotMargin=portraitBoss&&s.boss.active&&(portBoss||!(s.operation?.region>0))
+   ?Math.max(0,pilotLine/scale-s.player.y):0;
   let framedX=focusX;
   let sightX=0,sightY=0;
   if(mobile&&size.h>size.w&&guns.length){
@@ -597,7 +665,7 @@ export function createRenderer(canvas,art){
   }
   for(const g of s.gems)if(g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   paintCoastRear(c,s);
-  paintPortCue(c,s);
+  paintPortCue(c,s,aid);
   for(const n of s.sites)if(n!==lead)paintSiteLabel(c,n,s);
   if(gate&&distance(s.player,gate)<220){
    const label=gate.name;
@@ -690,16 +758,21 @@ export function createRenderer(canvas,art){
   }
   if(chargeLane)paintChargeLane(c,s.boss,chargeLane,true);
   for(const q of s.enemyShots)if(visible(q.x,q.y))circle(c,q.x,q.y-18,6,'#b0422c','#ffe1a1',2);
+  const portRounds=s.hazards.filter(h=>h.portRound&&!h.hit&&visible(h.x,h.y,blastContactRadius(h)));
+  if(portRounds.length)paintPortPerimeter(c,portRounds);
   for(const h of s.hazards){
-   if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:h.r+(h.coastMortar?16:0)))continue;
+   const wide=h.portRound||h.coastMortar;
+   if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:wide?blastContactRadius(h):h.r))continue;
    if(h.lane){paintRailWarning(c,h,s.player.y);continue;}
    if(h.coastMortar){
     if(!reduced&&Number.isFinite(h.fromX)&&Number.isFinite(h.fromY))paintCoastMortarFlight(c,h);
-    circle(c,h.x,h.y,h.r+16,null,'#ffc09c80',2);
    }
-   circle(c,h.x,h.y,h.r,'#d83d4120','#321e25',6);
-   circle(c,h.x,h.y,h.r,null,h.portRound==='rake'?'#ffad69':h.portRound==='turret'?'#f9bf83':'#ffada0',3);
-   circle(c,h.x,h.y,h.r*clamp(1-h.timer/(h.duration||.9),0,1),null,'#fff0bb',h.timer<.25?3:1);
+   if(!h.portRound){
+    if(h.coastMortar)circle(c,h.x,h.y,blastContactRadius(h),null,'#ffc09c80',2);
+    circle(c,h.x,h.y,h.r,'#d83d4120','#321e25',6);
+    circle(c,h.x,h.y,h.r,null,'#ffada0',3);
+   }
+   circle(c,h.x,h.y,(h.portRound?24:h.r)*clamp(1-h.timer/(h.duration||.9),0,1),null,'#fff0bb',h.timer<.25?3:1);
    if(h.portRound==='rake'){
     c.strokeStyle='#ffd1a4';c.lineWidth=2;c.beginPath();
     for(const side of [-1,1]){
@@ -717,12 +790,16 @@ export function createRenderer(canvas,art){
     c.stroke();
    }
   }
+  if(portBoss&&art&&s.player.y<s.boss.y&&s.boss.y-s.player.y<145&&Math.abs(s.player.x-s.boss.x)<97){
+   const {x,y}=s.player;
+   circle(c,x,y,16,null,'#182a2c',6);
+   circle(c,x,y,16,null,'#d8e9b8',2);
+   c.strokeStyle='#d8e9b8';c.lineWidth=3;
+   c.beginPath();c.moveTo(x-6,y-27);c.lineTo(x,y-21);c.lineTo(x+6,y-27);c.stroke();
+  }
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   if(lead)paintCoastCue(c,s,lead,guns,size,cx,cy,scale);
-  if(mobile&&s.boss.active){
-   const crate=s.boss.harborSupply,aid=crate||portAidPreview(s);
-   if(aid)paintAidBearing(c,aid,size,cx,cy,scale,!crate);
-  }
+  if(mobile&&aid)paintAidBearing(c,s,aid,size,cx,cy,scale,combatHud.rects);
  }
  return{draw,view:()=>view,resize};
 }

@@ -3,6 +3,19 @@ import assert from 'node:assert/strict';
 import {lobbyView,reportView} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
+import {aidBearingPosition} from '../src/reboot/render.js';
+
+test('mobile harbor cues move around HUD masks and live warning boxes',()=>{
+ const size={w:360,h:640};
+ const map={left:12,right:104,top:222,bottom:306};
+ const warning={left:12,right:115,top:306,bottom:392};
+ const topHud={left:12,right:348,top:112,bottom:240};
+ const cue=aidBearingPosition(size,{x:41,y:234},18,80,[map,topHud],[warning]);
+ assert.ok(cue&&cue.x-40>=map.right);
+ assert.equal(aidBearingPosition(size,{x:155,y:234},18,80,[map],[]),null);
+ const above=aidBearingPosition(size,{x:180,y:192},18,80,[topHud],[]);
+ assert.ok(above&&above.y-12>=topHud.bottom);
+});
 
 test('mission briefing does not select a later starting map, and saved operations offer a fresh sortie',()=>{
  const p=emptyProfile(),html=lobbyView(p,{brief:2});

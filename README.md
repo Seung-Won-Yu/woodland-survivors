@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.64.0" src="https://img.shields.io/badge/RIFT-0.64.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.65.0" src="https://img.shields.io/badge/RIFT-0.65.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.65는 모바일 항구전에서 미니맵과 무장 표시를 압축하고, 겹친 포격을 실제 피격 범위의 외곽선으로 표시합니다. 가려진 화물에는 방향 표식이 나오고 포격이 겹친 화물은 착탄 뒤 회수를 안내합니다. [항구 모바일 전투 검증](docs/RIFT-GAMEPLAY-V1.md#065-모바일-항구전의-시야와-포격).
 
 0.64는 철도에서 회수 의무 장비를 고른 판에 항구 지원 포격을 추가합니다. 측면 화물을 회수하고 스킬을 쓰면 장갑을 타격합니다. 가로 포격 예고에 맞추면 장갑탄도 끊습니다. 시드 22·23에서 인페르노와 전도 합체로 모바일 귀환을 확인했습니다. [부품별 항구 공략 검증](docs/RIFT-GAMEPLAY-V1.md#064-항구-화물과-지원-포격).
 
