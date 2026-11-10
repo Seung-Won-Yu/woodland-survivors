@@ -31,7 +31,14 @@ export function vanguardAid(player){
   charge:Math.min(100,player.charge+kit.charge)
  };
 }
-export const supportTactic=(id,index)=>FRONT_SUPPORTS[id]?.tactics[index-1]||'';
+export const PORT_SUPPORT={
+ breach:{impact:'측면에서 포탑 우선 조준 · 피해 +65%',detail:'포탑을 부수면 재장전 직전 부채꼴 사격이 멈춥니다.',hint:'차체 옆으로 이동해 포탑을 먼저 부수세요.',flank:105,boost:1.65},
+ overrun:{impact:'재장전 중 회피로 코어에 기본 피해 320',detail:'장갑 부위를 건너뛰고 코어 노출을 0.55초 연장합니다. 재장전당 1회.',hint:'붉은 원을 피한 뒤 코어 쪽으로 회피하세요.',reach:100,damage:320,delay:.55},
+ recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 세 번의 재장전 때 좌우에 번갈아 투하합니다. 가까이 가야 회수됩니다.',hint:'포격이 끝나면 측면 구급 화물을 회수하세요.',heal:12,charge:20,reach:36,limit:3,lanes:[625,975],y:335}
+};
+export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
+export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&Math.abs(s.player.x-s.boss.x)>=PORT_SUPPORT.breach.flank;
+export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
 export const FRONT_TACTICS={
  1:{
   heat:{name:'냉각 밸브 차단',role:'화염 · 측면 진입',impact:'재장전 중 측면에 붙어 분사하면 포대와 차체 피해 +45%',hint:'차선 포격 뒤 열차 옆에 붙어 불을 쏘세요.',range:176,side:55,boost:1.45},

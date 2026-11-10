@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
@@ -36,7 +36,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -50,6 +50,8 @@ export function restore(raw,{allowPrevious=false}={}){
  if(s.operation){
   s.trials??=s.trial?[s.trial]:[];
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
+  const supply=s.boss.harborSupply;
+  if(supply!=null&&(s.operation.region!==2||s.operation.support!=='recovery'||!PORT_SUPPORT.recovery.lanes.includes(supply.x)||supply.y!==PORT_SUPPORT.recovery.y))fail();
   if(s.operation.holdoutKills!=null&&(!Number.isSafeInteger(s.operation.holdoutKills)||s.operation.holdoutKills<0))fail();
   if(s.operation.tactic!=null&&!Object.hasOwn(FRONT_TACTICS[s.operation.region]||{},s.operation.tactic))fail();
  }
@@ -217,15 +219,16 @@ function buildCompleted(s,kind,weapon){
  }
 }
 export function partPosition(s,part){const b=s.boss;if(s.operation?.region===1)return{x:b.x+part.ox,y:b.y};return{x:b.x+Math.cos(b.body-Math.PI/2)*part.ox,y:b.y+Math.sin(b.body-Math.PI/2)*part.ox};}
-function targets(s){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){const breach=s.operation?.support==='breach';if(!breach)list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}if(breach)list.push(s.boss);}return list;}
+function targets(s){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){const breach=s.operation?.region===2?portBreachFlank(s):s.operation?.support==='breach';if(!breach)list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}if(breach)list.push(s.boss);}return list;}
 const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
 function move(s,e,dx,dy,r){const x=clamp(e.x+dx,FIELD.left+r,FIELD.right-r),y=clamp(e.y+dy,FIELD.top+r,FIELD.bottom-r);if(!blocked(s,x,e.y,r))e.x=x;if(!blocked(s,e.x,y,r))e.y=y;}
 function lineBlocked(s,a,b){const n=Math.ceil(distance(a,b)/20);for(let i=1;i<=n;i++)if(blocked(s,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return true;return false;}
 function attackTargets(s,range){return targets(s).filter(e=>e.hp>0&&distance(e,s.player)<range+e.r&&!lineBlocked(s,s.player,e)).sort((a,b)=>distance(a,s.player)-distance(b,s.player));}
 function targetFor(s,w,d,candidates){
- const locked=candidates.find(e=>e.id===w.targetId);if(locked&&s.t<(w.targetUntil||0))return locked;
+ const turret=portBreachFlank(s)&&candidates.find(e=>e===s.boss.parts[0]);
+ const locked=candidates.find(e=>e.id===w.targetId);if(locked&&s.t<(w.targetUntil||0)&&!(turret&&locked!==turret&&(locked.type==='boss'||locked.type==='part')))return locked;
  let selected=candidates[0];
- const part=s.operation?.support==='breach'&&candidates.find(e=>e.type==='part');
+ const part=s.operation?.region===2?turret:s.operation?.support==='breach'&&candidates.find(e=>e.type==='part');
  if(part&&selected?.type==='boss')selected=part;
  if(w.id==='f'){
   let best=-1;for(const candidate of candidates.slice(0,24)){const a=Math.atan2(candidate.y-s.player.y,candidate.x-s.player.x);let score=0;
@@ -236,7 +239,7 @@ function targetFor(s,w,d,candidates){
   const mortar=selected&&distance(s.player,selected)>90&&candidates.find(e=>e.type==='mortar'&&e.siteId==='supply-c'&&e.cohort==='coast-guard');
   selected=mortar||markedBlastTarget(s,candidates,selected,d.radius);
  }
- if(part&&selected?.type==='boss')selected=part;
+ if(part&&(selected?.type==='boss'||turret&&selected?.type==='part'))selected=part;
  w.targetId=selected?.id||null;w.targetUntil=s.t+RULES.player.targetHoldSeconds;return selected;
 }
 function markedBlastTarget(s,candidates,fallback,radius=100){
@@ -309,7 +312,13 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  const catalyst=moduleRank(s,'catalyst');if(kind==='blast'&&e.burn>0&&catalyst)amount*=1+RULES.modules.catalyst.blastBonusOnBurn[catalyst-1];
  amount*=1+s.boosts.power*.01;
  const breach=s.operation?.support==='breach';
- if(e.type==='part'&&breach){amount*=1.55;recordSupportUse(s);}
+ if(e.type==='part'&&breach){
+  if(s.operation.region!==2){amount*=1.55;recordSupportUse(s);}
+  else if(e===s.boss.parts[0]&&portBreachFlank(s)&&source!=='front-relay'){
+   amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
+   if(e.hp<=amount)emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 사격 차단'});
+  }
+ }
  if(e.type==='boss'){const b=s.boss,a=Math.atan2(s.player.y-b.y,s.player.x-b.x),rear=Math.cos(a-b.body)<-.35;amount*=s.operation?.region===1?(b.parts.some(p=>p.hp>0)?.5:b.mode==='recover'?1.5:1):s.operation?.region===2?(b.parts.some(p=>p.hp>0)?b.mode==='recover'?1:.65:b.mode==='recover'?1.6:1.15):b.mode==='recover'&&rear?1.5:Math.cos(a-b.body)>.35?.65:1;}
  const railSignal=s.operation?.region===1&&s.operation.tactic==='signal';
  if(s.boss.active&&(s.boss.mode==='recover'||railSignal)&&(e.type==='boss'||e.type==='part')){
@@ -466,9 +475,11 @@ function updateOperationBoss(s,dt){
    if(index===1&&s.operation.tactic==='signal'&&b.tacticCycle===b.cycle)b.timer+=FRONT_TACTICS[1].signal.delay;
    if(index===2&&b.parts[0].hp>0){for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);b.kick=1;b.flash=.12;}
    emit(s,'weakpoint',b.x,b.y,{text:index===1?'포격 재장전 · 포대를 노려라':'노출 코어 · 집중 공격',life:1.4});
-   if(s.operation.support==='recovery'&&b.cycle<=3){
-    const side=b.cycle%2?-1:1,x=800+side*(index===1?175:200),y=index===1?470:335;
-    dropXp(s,x,y,18,true);emit(s,'supply-ready',x,y,{life:1.1});
+   const kit=PORT_SUPPORT.recovery;
+   if(s.operation.support==='recovery'&&b.cycle<=kit.limit){
+    const side=b.cycle%2?-1:1,x=index===1?800+side*175:kit.lanes[1-b.cycle%2],y=index===1?470:kit.y;
+    if(index===1)dropXp(s,x,y,18,true);else b.harborSupply={x,y};
+    emit(s,'supply-ready',x,y,{life:1.1,...(index===2?{text:`${side<0?'좌측':'우측'} 구급 화물 투하`}:null)});
    }
   }else{b.mode='aim';b.timer=index===1?1.4:1.7;}
  }
@@ -730,7 +741,11 @@ export function step(s,dt,input={x:0,y:0},view=null){
  if(wasDashing&&p.dash<=0&&s.operation?.support==='overrun'){
   blast(s,p.x,p.y,100,85,'support');
   const b=s.boss;
-  if(b.active&&!b.dead&&b.mode==='recover'&&distance(p,b)<=100+b.r&&!lineBlocked(s,p,b)){
+  if(portCoreWindow(s)&&distance(p,b)<=PORT_SUPPORT.overrun.reach+b.r&&!lineBlocked(s,p,b)){
+   const kit=PORT_SUPPORT.overrun;
+   b.harborStrikeCycle=b.cycle;b.timer+=kit.delay;recordSupportUse(s);
+   damage(s,b,kit.damage,'blast','support');emit(s,'break',b.x,b.y,{text:'돌격 신관 · 코어 직격'});
+  }else if(s.operation.region!==2&&b.active&&!b.dead&&b.mode==='recover'&&distance(p,b)<=100+b.r&&!lineBlocked(s,p,b)){
    const target=b.parts.filter(part=>part.hp>0).map(part=>Object.assign(part,partPosition(s,part))).sort((a,b)=>distance(p,a)-distance(p,b))[0]||b;
    recordSupportUse(s);
    damage(s,target,260,'blast','support');emit(s,'break',target.x,target.y,{text:target===b?'돌격 신관 · 코어 직격':'돌격 신관 · 부위 직격'});
@@ -751,6 +766,13 @@ export function step(s,dt,input={x:0,y:0},view=null){
  updateShots(s,dt);
  for(const z of s.zones){z.life-=dt;z.tick-=dt;if(z.tick<=0){z.tick=.25;for(const e of targets(s))if(e.hp>0&&distance(z,e)<z.r+e.r&&!lineBlocked(s,z,e)){burn(e);damage(s,e,z.dps*.25,'fire',z.source==='wake'?'wake':'dot');}}}s.zones=s.zones.filter(z=>z.life>0);
  updateEnemies(s,dt);updateBoss(s,dt);if(s.hitCandidate)hurt(s,s.hitCandidate.amount,s.hitCandidate.x,s.hitCandidate.y);delete s.hitCandidate;
+ const crate=s.boss.harborSupply;
+ if(crate&&s.boss.active&&!s.boss.dead&&p.hp>0&&distance(p,crate)<PORT_SUPPORT.recovery.reach&&!lineBlocked(s,p,crate)){
+  const kit=PORT_SUPPORT.recovery,hp=p.hp,charge=p.charge;
+  p.hp=Math.min(p.maxHp,hp+kit.heal);p.charge=Math.min(100,charge+kit.charge);
+  delete s.boss.harborSupply;recordSupportUse(s);
+  emit(s,'heal',crate.x,crate.y,{life:.8,text:`구급 화물 회수 · 체력 +${Math.ceil(p.hp)-Math.ceil(hp)} / 전탄 +${Math.floor(p.charge)-Math.floor(charge)}`});
+ }
  let pickedXp=0,salvage=false;
  const reach=pickupReach(s);
  for(const gem of s.gems){
@@ -776,7 +798,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  }
  s.comboTime-=dt;if(s.comboTime<=0)s.combo=0;for(const fx of s.effects)fx.age+=dt;s.effects=s.effects.filter(fx=>fx.age<fx.life);
  if(s.boss.dead&&s.stage==='boss'&&p.hp>0){
-  s.stage='holdout';s.boss.active=false;s.clearPressure=s.pressure;s.holdTime=0;s.enemyShots=[];s.hazards=[];
+  s.stage='holdout';s.boss.active=false;delete s.boss.harborSupply;s.clearPressure=s.pressure;s.holdTime=0;s.enemyShots=[];s.hazards=[];
   if(s.operation){
    if(s.operation.region<2){s.tuning++;p.hp=Math.min(p.maxHp,p.hp+15);}
    openGate(s);

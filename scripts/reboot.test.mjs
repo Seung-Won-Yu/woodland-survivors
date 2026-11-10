@@ -346,20 +346,40 @@ test('front support changes the actual damage path for armor and crowd builds',(
  crowd.enemies=[enemy('near',850,800,'rifle',100),enemy('far',1000,800,'rifle',100)];
  step(crowd,dt);assert.deepEqual(crowd.enemies.map(e=>e.hp),[15,100]);
 });
-test('front support rewards side shots, a timed approach and recovery routes in both later boss arenas',()=>{
- const arena=(index,support,mode)=>{const s=quietOperation();s.operation.region=index;s.operation.support=support;s.stage='boss';Object.assign(s.boss,{active:true,x:800,y:250,mode,timer:999,spawnClock:999});return s;};
- for(const index of [1,2]){
-  const normal=arena(index,null,'aim'),armor=arena(index,'breach','aim');
-  for(const s of [normal,armor]){s.shots=[bullet(s,{x:755,y:250})];step(s,dt);}
-  assert.ok(normal.boss.hp<normal.boss.maxHp);assert.equal(armor.boss.hp,armor.boss.maxHp);assert.equal(armor.boss.parts[0].hp,295);
-  const attack=arena(index,'overrun','aim'),opening=arena(index,'overrun','recover');
-  for(const s of [attack,opening]){Object.assign(s.player,{x:800,y:400,dash:.01});step(s,dt);}
-  assert.equal(attack.boss.parts[0].hp,450);assert.equal(opening.boss.parts[0].hp,190);
-  const recovery=arena(index,'recovery','salvo');
-  recovery.boss.cycle=1;recovery.boss.timer=0;step(recovery,dt);
-  assert.deepEqual(recovery.gems.map(g=>[g.x,g.y,g.value,g.salvage]),[index===1?[625,470,18,true]:[600,335,18,true]]);
-  Object.assign(recovery.boss,{mode:'salvo',cycle:4,timer:0});step(recovery,dt);assert.equal(recovery.gems.length,1);
+function supportArena(index,support,mode){
+ const s=quietOperation();Object.assign(s.operation,{region:index,support});s.stage='boss';
+ Object.assign(s.boss,{active:true,x:800,y:250,mode,cycle:1,timer:999,spawnClock:999});return s;
+}
+test('rail parts retain the part hit, dash and XP routes',()=>{
+ const opening=supportArena(1,'overrun','recover');Object.assign(opening.player,{x:800,y:400,dash:.01});step(opening,dt);
+ assert.equal(opening.boss.parts[0].hp,190);
+ const recovery=supportArena(1,'recovery','salvo');recovery.boss.timer=0;step(recovery,dt);
+ assert.deepEqual(recovery.gems.map(g=>[g.x,g.y,g.value,g.salvage]),[[625,470,18,true]]);
+});
+test('harbor armor support rewards a flank and disables the turret fan',()=>{
+ const front=supportArena(2,'breach','salvo'),flank=restore(snapshot(front));
+ for(const [s,x] of [[front,800],[flank,650]]){
+  Object.assign(s.player,{x,y:410});s.shots=[bullet(s,{x:743,y:250},300)];step(s,dt);
+  s.boss.timer=0;step(s,dt);
  }
+ assert.equal(front.boss.parts[0].hp,450);assert.equal(front.enemyShots.length,9);
+ assert.equal(flank.boss.parts[0].hp,0);assert.equal(flank.enemyShots.length,0);assert.equal(flank.stats.supportUses[2],1);
+});
+test('harbor dash hits the exposed core directly once per recovery window',()=>{
+ const aim=supportArena(2,'overrun','aim'),opening=supportArena(2,'overrun','recover');
+ for(const s of [aim,opening]){Object.assign(s.player,{x:800,y:400,dash:.01});step(s,dt);}
+ assert.equal(aim.boss.hp,aim.boss.maxHp);assert.equal(opening.boss.hp,opening.boss.maxHp-320);
+ assert.equal(opening.boss.parts[0].hp,450);assert.ok(opening.boss.timer>999);
+ opening.player.dash=.01;step(opening,dt);assert.equal(opening.stats.supportUses[2],1);
+ opening.boss.cycle++;opening.player.dash=.01;step(opening,dt);assert.equal(opening.stats.supportUses[2],2);
+});
+test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
+ const s=supportArena(2,'recovery','salvo');s.boss.timer=0;Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
+ step(s,dt);assert.deepEqual(s.boss.harborSupply,{x:625,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);
+ const loaded=restore(snapshot(s));Object.assign(loaded.player,loaded.boss.harborSupply);step(loaded,dt);
+ assert.equal(loaded.player.hp,92);assert.equal(Math.floor(loaded.player.charge),60);assert.equal(loaded.stats.supportUses[2],1);assert.equal(loaded.boss.harborSupply,undefined);
+ Object.assign(loaded.boss,{mode:'salvo',cycle:2,timer:0});step(loaded,dt);assert.deepEqual(loaded.boss.harborSupply,{x:975,y:335});
+ delete loaded.boss.harborSupply;Object.assign(loaded.boss,{mode:'salvo',cycle:4,timer:0});step(loaded,dt);assert.equal(loaded.boss.harborSupply,undefined);
 });
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};

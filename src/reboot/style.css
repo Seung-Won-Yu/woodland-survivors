@@ -121,6 +121,12 @@
 .front-intel strong{color:#f7cf80}
 #field-intel{color:#fae1a3;line-height:1.5}
 #boss-tactic:not([hidden]){display:block;padding-top:5px;margin-top:5px;border-top:1px solid #afba8f58;color:#f6d897;line-height:1.45}
+#boss-support:not([hidden]){display:block;margin-top:4px;color:#fff0bf;line-height:1.45}
+#boss-support[data-part="breach"]{color:#c6e6f3}#boss-support[data-part="overrun"]{color:#ffc9a0}#boss-support[data-part="recovery"]{color:#c7f1bd}
+@media(max-width:700px) and (orientation:portrait){
+ .boss-active #combo{top:auto;bottom:130px;right:16px}
+ .boss-active #banner:is([data-kind="weakpoint"],[data-kind="break"],[data-kind="heal"],[data-kind="supply-ready"]){top:244px;font-size:13px}
+}
 @media(max-width:700px){
  .front-intel{grid-template-columns:1fr 1fr}
  .front-intel>.front-intel-heading{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #aab6974d}

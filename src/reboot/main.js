@@ -2,7 +2,7 @@ import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,isQuickMod} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol} from './field-scene.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,moduleRank,refitWeapons} from './content.js';
 import {createOperation,restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,activeManeuver,interaction,xpNeeded,takeEvents} from './model.js';
 import {createStore,buyResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -226,13 +226,23 @@ function updateHud(){
   $('boss-parts').textContent=names.map((name,i)=>`${name} ${boss.parts[i].hp>0?'가동':'파괴'}`).join(' / ');
   const active=tactic&&recovering&&boss.tacticCycle===boss.cycle;
   const supportId=run.operation?.support;
+  const harborPart=front===2&&Object.hasOwn(PORT_SUPPORT,supportId);
   const firstWarning=supportId==='vanguard'&&(boss.cycle===0&&boss.mode==='aim'||boss.cycle===1&&boss.mode==='salvo');
-  const dashWindow=supportId==='overrun'&&recovering;
+  const dashWindow=!harborPart&&supportId==='overrun'&&recovering;
   const supportHint=supportTactic(supportId,front);
-  let hint=tactic?.hint||(supportId==='vanguard'?'':supportHint);
+  let hint=tactic?.hint||(supportId==='vanguard'||harborPart?'':supportHint);
   if(active)hint=run.operation.tactic==='heat'?'장갑 과열 · 지금 집중 공격':'전류 연결 완료 · 남은 부위 사격';
   else if(firstWarning||dashWindow)hint=supportHint;
   $('boss-tactic').hidden=!hint;$('boss-tactic').textContent=hint;
+  const line=$('boss-support');
+  line.hidden=!harborPart;
+  if(harborPart){
+   line.dataset.part=supportId;
+   line.textContent=supportId==='breach'?(boss.parts[0].hp<=0?'철갑 · 포탑 사격 차단':portBreachFlank(run)?'철갑 · 측면 확보, 포탑 집중':'철갑 · 차체 옆으로 이동'):
+    supportId==='overrun'?(portCoreWindow(run)?'돌격 · 지금 코어 쪽으로 회피':recovering?'돌격 · 코어 직격 완료':'돌격 · 포격 뒤 회피 준비'):
+    boss.harborSupply?`구급 · ${boss.harborSupply.x<800?'왼쪽':'오른쪽'} 화물 회수`:
+    boss.cycle>=PORT_SUPPORT.recovery.limit&&recovering||boss.cycle>PORT_SUPPORT.recovery.limit?'구급 · 화물 투하 완료':'구급 · 포격 뒤 측면 투하';
+  }
  }
 }
 const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill','salvo-impact':'power-kill','payload-impact':'burst',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve',heal:'heal',break:'crowd-break'};

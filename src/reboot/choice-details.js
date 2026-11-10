@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
-import {REGIONS,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
+import {REGIONS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
@@ -39,7 +39,8 @@ export function choiceDetails(s,c){
  }else if(c.kind==='front-support'){
   const kit=FRONT_SUPPORTS[c.key];
   const index=s.operation.region+1;
-  out.art=kit.art;out.impact=kit.impact;out.detail=kit.detail;out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
+  const effect=index===2?PORT_SUPPORT[c.key]||kit:kit;
+  out.art=kit.art;out.impact=effect.impact;out.detail=effect.detail;out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
  }else if(c.kind==='cargo'){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
  }else if(c.kind==='advance'){

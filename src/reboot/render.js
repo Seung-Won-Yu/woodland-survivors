@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry} from './field-art.js';
-import {exitGate} from './campaign.js';
+import {exitGate,portBreachFlank,portCoreWindow} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach} from './model.js';
@@ -7,6 +7,30 @@ import {DEFENSE_ZONE,SIGNAL_ROUTE,signalCourier} from './campaign.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
 function bar(c,x,y,width,ratio,color){c.fillStyle='#101d26';c.fillRect(x-width/2,y,width,5);c.fillStyle=color;c.fillRect(x-width/2,y,width*clamp(ratio,0,1),5);}
+function paintPortCue(c,s){
+ const b=s.boss;
+ if(s.operation?.region!==2||!b.active||b.dead)return;
+ c.save();
+ if(s.operation.support==='breach'&&b.parts[0].hp>0){
+  const flank=portBreachFlank(s),p=partPosition(s,b.parts[0]);
+  c.strokeStyle=flank?'#c8f4ff':'#a9d6e9b0';c.lineWidth=3;
+  for(const side of [-1,1]){
+   const x=b.x+side*129,y=b.y+23;
+   c.beginPath();c.moveTo(x+side*10,y-13);c.lineTo(x,y);c.lineTo(x+side*10,y+13);c.stroke();
+  }
+  if(flank){circle(c,p.x,p.y,25,null,'#c8f4ff',3);c.fillStyle='#c8f4ff';c.fillRect(p.x-2,p.y-30,4,10);}
+ }else if(portCoreWindow(s)){
+  circle(c,b.x,b.y-21,22,'#432820aa','#ffd0a1',3);
+  c.fillStyle='#ffe6bb';c.beginPath();c.moveTo(b.x-9,b.y-22);c.lineTo(b.x+9,b.y-22);c.lineTo(b.x,b.y-33);c.closePath();c.fill();c.fillRect(b.x-3,b.y-22,6,12);
+ }
+ if(b.harborSupply){
+  const {x,y}=b.harborSupply;
+  circle(c,x,y,32,'#12292375','#c8f0ae',2);
+  c.fillStyle='#253d32';c.fillRect(x-19,y-24,38,25);c.strokeStyle='#d7f0b8';c.lineWidth=2;c.strokeRect(x-19,y-24,38,25);
+  c.fillStyle='#e0f4b9';c.fillRect(x-3,y-20,6,17);c.fillRect(x-8,y-15,16,6);
+ }
+ c.restore();
+}
 function flame(c,x,y,height,phase){
  const sway=Math.sin(phase)*height*.14;c.fillStyle='#df562cc0';c.beginPath();c.moveTo(x-height*.25,y);c.lineTo(x-height*.3,y-height*.42);c.lineTo(x+sway,y-height);c.lineTo(x+height*.12,y-height*.36);c.lineTo(x+height*.29,y-height*.56);c.lineTo(x+height*.22,y);c.closePath();c.fill();c.fillStyle='#ffcf7edc';c.beginPath();c.moveTo(x-height*.12,y);c.lineTo(x+sway*.5,y-height*.6);c.lineTo(x+height*.13,y);c.fill();
 }
@@ -69,8 +93,11 @@ export function createRenderer(canvas,art){
   const focusX=s.player.x+(s.boss.x-s.player.x)*.35*follow,focusY=s.player.y+(s.boss.y-s.player.y)*.35*follow;
   // A gate near a boundary needs room beside the objective rail and tactical map.
   const edgeMargin=gate&&s.operation?112*(1-follow):0;
+  // Leave the harbor target below the two tactical lines on portrait displays.
+  const bossMargin=mobile&&size.h>size.w&&s.boss.active&&s.operation?.region===2?
+   Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y)):0;
   const cx=clamp(focusX,view.w/2-edgeMargin,Math.max(view.w/2,1600-view.w/2)+edgeMargin);
-  const cy=clamp(focusY,view.h/2,Math.max(view.h/2,1200-view.h/2));
+  const cy=clamp(focusY,view.h/2-bossMargin,Math.max(view.h/2,1200-view.h/2));
   c.setTransform(size.dpr,0,0,size.dpr,0,0);c.clearRect(0,0,size.w,size.h);c.fillStyle='#263a44';c.fillRect(0,0,size.w,size.h);c.translate(size.w/2,size.h/2);c.scale(scale,scale);c.translate(-cx,-cy);c.imageSmoothingEnabled=false;
   const shake=!reduced&&s.player.hurt>0?Math.sin(s.t*75)*3:0;c.translate(shake,0);
   const index=s.operation?.region||0,key=`${index}:${s.seed}`;
@@ -139,6 +166,7 @@ export function createRenderer(canvas,art){
    c.restore();
   }
   for(const g of s.gems)if(g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
+  paintPortCue(c,s);
   for(const n of s.sites)paintSiteLabel(c,n,s);
   if(gate&&distance(s.player,gate)<220){
    const label=gate.name;
