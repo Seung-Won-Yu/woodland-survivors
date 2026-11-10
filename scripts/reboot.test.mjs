@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,operationCredits} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits} from '../src/reboot/campaign.js';
 import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
@@ -360,22 +360,37 @@ test('starting a fresh sortie settles a previous run once and survives a failed 
 test('all region supplies and boss entrances stay reachable around permanent geometry',()=>{
  for(const seed of [16,17,18,19])for(let index=0;index<3;index++){const m=regionLayout(seed,index),free=(x,y)=>x>55&&x<1545&&y>55&&y<1145&&!m.blocks.some(b=>b.hp!==0&&x+16>b.x&&x-16<b.x+b.w&&y+16>b.y&&y-16<b.y+b.h),key=(x,y)=>`${x},${y}`,queue=[[800,1040]],seen=new Set(['800,1040']);for(let i=0;i<queue.length;i++){const [x,y]=queue[i];for(const [dx,dy]of [[20,0],[-20,0],[0,20],[0,-20]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||!free(nx,ny))continue;seen.add(k);queue.push([nx,ny]);}}for(const goal of [...m.sites,{x:800,y:350}])assert.ok(queue.some(([x,y])=>Math.hypot(x-goal.x,y-goal.y)<55),`${index}/${seed} ${goal.id||'boss'}`);}
 });
-test('four beach plans keep the first rescue accessible and put the previewed kit into real supply choices',()=>{
- for(const seed of [16,17,18,19]){
+test('every beach offers both opening guns and the matching approach has safe guards and its module',()=>{
+ for(const seed of [16,17,18,19])for(const weapon of ['f','r']){
   const s=createOperation(seed),route=beachRoute(seed);
   assert.deepEqual(s.sites.map(site=>[site.x,site.y]),route.points);
   const [first,truck]=s.sites;
   assert.ok(Math.abs(Math.hypot(first.x-800,first.y-1040)-245)<10);
   for(const site of s.sites){
    const drift=site===truck?55:0;
-   for(let i=0;i<(site.kind==='armory'?5:4);i++){
-    const angle=i*Math.PI/3,x=site.x+Math.cos(angle)*85,y=site.y+Math.sin(angle)*65;
-    assert.ok(!s.blocks.some(b=>x+19+drift>b.x&&x-19-drift<b.x+b.w&&y+19>b.y&&y-19<b.y+b.h),site.id);
+   const formation=COAST_APPROACHES[site.coastApproach]?.guards||Array.from({length:site.kind==='armory'?5:4},(_,i)=>['rifle',Math.cos(i*Math.PI/3)*85,Math.sin(i*Math.PI/3)*65]);
+   for(const [type,dx,dy] of formation){
+    const x=site.x+dx,y=site.y+dy,r=type==='shield'?21:19;
+    assert.ok(!s.blocks.some(b=>x+r+drift>b.x&&x-r-drift<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h),site.id);
    }
   }
   s.sites.forEach(site=>site.state='done');s.enemies=[];s.spawnClock=999;
-  assert.ok(supply(s).some(c=>c.id===`gun:${route.gun}`));assert.ok(choose(s,`gun:${route.gun}`));
-  assert.ok(supply(s,'supply-b').some(c=>c.id===`module:${route.module}`));
+  assert.deepEqual(supply(s).filter(c=>c.kind==='gun').map(c=>c.weapon),[route.gun,route.gun==='r'?'f':'r']);
+  assert.equal(reroll(s),false);assert.ok(choose(s,`gun:${weapon}`));
+  const site=s.sites.find(n=>n.coastApproach===weapon);
+  site.state='waiting';s.player.x=site.x;s.player.y=site.y+160;step(s,dt);
+  assert.deepEqual(s.enemies.filter(e=>e.siteId===site.id).map(e=>e.type),COAST_APPROACHES[weapon].guards.map(([type])=>type));
+  assert.ok(supply(s,site.id).some(c=>c.id===`module:${COAST_APPROACHES[weapon].module}`));
+ }
+});
+test('coast rockets interrupt the battery at range and address enemies that close the gap',()=>{
+ for(const gap of [75,140]){
+  const s=quietOperation(),rocket={...makeWeapon('r'),uid:'r',cd:0};
+  s.weapons.push(rocket);
+  const p=s.player,rifle=enemy('rifle',p.x+gap,p.y),mortar=enemy('battery',p.x+225,p.y-100,'mortar',45);
+  Object.assign(mortar,{cohort:'coast-guard',siteId:'supply-c'});
+  s.enemies=[rifle,mortar];step(s,dt);
+  assert.equal(s.shots.find(q=>q.owner==='r')?.target,gap<90?rifle.id:mortar.id);
  }
 });
 test('harbor armor parts change actual body vulnerability and rare unique banish keeps crate quality',()=>{

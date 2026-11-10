@@ -45,17 +45,26 @@ export function holdoutTier(time){
 }
 export const groundXp=s=>s.gems.reduce((sum,g)=>sum+g.value,0);
 const BEACH_ROUTES=[
- {name:'서쪽 난파선',gun:'r',module:'coil',points:[[590,920],[385,650],[1165,530],[1295,220]]},
- {name:'동쪽 포대',gun:'f',module:'catalyst',points:[[1010,920],[1240,650],[355,510],[360,270]]},
- {name:'방파제 횡단',gun:'r',module:'magnet',points:[[600,890],[1240,720],[1245,490],[335,365]]},
- {name:'벙커 횡단',gun:'f',module:'catalyst',points:[[1000,890],[385,730],[355,450],[1215,300]]}
+ {name:'서쪽 난파선',gun:'r',points:[[590,920],[385,650],[1165,530],[1000,900]]},
+ {name:'동쪽 포대',gun:'f',points:[[1010,920],[1240,650],[355,510],[590,900]]},
+ {name:'방파제 횡단',gun:'r',points:[[600,890],[1070,885],[1245,490],[340,645]]},
+ {name:'벙커 횡단',gun:'f',points:[[1000,890],[555,875],[355,450],[1230,645]]}
 ];
 export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
+export const COAST_APPROACHES={
+ f:{name:'이동 보급차',label:'화염 · 근접 돌파',hint:'차량 쪽으로 붙어 밀집 보병을 태운다',module:'catalyst',range:215,
+  guards:[['shield',0,54],['rifle',-33,26],['rifle',33,26],['rifle',-40,-13],['rifle',40,-13],['rifle',0,-30]]},
+ r:{name:'박격포 진지',label:'전도 · 원거리 제압',hint:'거리를 두고 박격포부터 끊는다',module:'coil',range:300,
+  guards:[['mortar',-47,-42],['mortar',47,-42]]}
+};
 export function regionLayout(seed,index=0){
  const map=layout(seed);
  if(index===0){
   const route=beachRoute(seed);
-  return {...map,sites:map.sites.map((site,i)=>({...site,x:route.points[i][0],y:route.points[i][1],...(i===0?{gun:route.gun}:i===1?{module:route.module}:{})}))};
+  return {...map,sites:map.sites.map((site,i)=>{
+   const approach=i===1?'f':i===3?'r':null;
+   return {...site,x:route.points[i][0],y:route.points[i][1],...(i===0?{gun:route.gun,opening:true}:approach?{coastApproach:approach,name:COAST_APPROACHES[approach].name,module:COAST_APPROACHES[approach].module}:{})};
+  })};
  }
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});

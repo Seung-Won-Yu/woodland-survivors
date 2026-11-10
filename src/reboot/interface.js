@@ -1,5 +1,5 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
-import {REGIONS,RESEARCH,MANEUVERS,HOLDOUT_CONTRACTS,beachRoute,operationCredits} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,HOLDOUT_CONTRACTS,COAST_APPROACHES,beachRoute,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,makeWeapon,weaponStats} from './content.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
@@ -44,7 +44,7 @@ function operationMap(selected,seed){const map=previewLayout(seed,selected);
 }
 
 function frontIntel(index,seed){
- if(index===0){const route=beachRoute(seed);return `<div class="front-intel"><div class="front-intel-heading"><span>해안 투입 동선</span><strong>${route.name}</strong></div><div class="front-intel-stop"><span>01 · 포로 구출</span><b>${GUNS[route.gun].name}</b></div><div class="front-intel-stop"><span>02 · 이동 보급차 우선 후보</span><b>${MODULES[route.module].name}</b></div></div>`;}
+ if(index===0){const route=beachRoute(seed);return `<div class="front-intel"><div class="front-intel-heading"><span>01 · 포로 구출 후 F / R 선택</span><strong>${route.name}</strong></div>${Object.entries(COAST_APPROACHES).map(([id,approach])=>`<div class="front-intel-stop"><span>${id.toUpperCase()} · ${approach.name}</span><b>${MODULES[approach.module].name}</b></div>`).join('')}</div>`;}
  const [site,edge,boss,move]=index===1?['통신 중계기','차선 예고 +0.4초','양쪽 포대','측면 차선을 없앨 수 있음']:['항구 관제소','교란 선택 시 증원 6 → 3','노출 코어','집중 포격이 끝나면 공격'];
  return `<div class="front-intel"><div class="front-intel-heading"><span>다음 전선 공략</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>${site}</span><b>${edge}</b></div><div class="front-intel-stop"><span>${boss}</span><b>${move}</b></div></div>`;
 }

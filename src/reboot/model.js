@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,DEFENSE_ZONE,SIGNAL_ROUTE,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
@@ -32,7 +32,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -82,13 +82,20 @@ const upgradeable=s=>s.weapons.filter(w=>!w.evolved&&!w.fusion&&w.level<6);
 function modulePool(s){return ['ricochet','coil','catalyst','magnet',...(s.research||[])].filter(id=>!s.excluded.includes(id)&&compatible(s,id)&&moduleRank(s,id)<(RULES.modules[id].unique?1:3));}
 function currentInvestments(s){return[...upgradeable(s).map(gunCard),...s.modules.filter(m=>!RULES.modules[m.id].unique&&m.rank<3).map(m=>moduleCard(m.id,1))];}
 const trialModule=(s,pool)=>(s.trials||[s.trial]).find(id=>pool.includes(id));
+const newGun=(id,label='새 무기')=>({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label});
 function supplyCards(s,site){
- const guns=upgradeable(s),cards=[guns.length?gunCard(pick(s,'supply',guns)):currentInvestments(s)[0]||utility('health')];
+ const guns=upgradeable(s),rank=guns.length?gunCard(pick(s,'supply',guns)):currentInvestments(s)[0]||utility('health');
+ const pool=modulePool(s),trial=trialModule(s,pool);
+ if(site?.opening){
+  const opening=[site.gun,site.gun==='r'?'f':'r'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id));
+  return fillCards(s,[...opening.map(id=>newGun(id,COAST_APPROACHES[id].label)),trial?{...moduleCard(trial),label:'새 연구 · 첫 실전'}:rank]);
+ }
+ const cards=[rank];
  const unseen=['h','r','f'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id)&&!(s.supplyCount<2&&s.seenGuns.includes(id)));
- if(unseen.length){const id=unseen.includes(site?.gun)?site.gun:pick(s,'supply',unseen);cards.push({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label:id===site?.gun?'이 동선의 주력 무장':'새 무기'});if(!s.seenGuns.includes(id))s.seenGuns.push(id);}
- const pool=modulePool(s);let favored=pool;
+ if(unseen.length){const id=unseen.includes(site?.gun)?site.gun:pick(s,'supply',unseen);cards.push(newGun(id,id===site?.gun?'이 동선의 주력 무장':'새 무기'));if(!s.seenGuns.includes(id))s.seenGuns.push(id);}
+ let favored=pool;
  if(s.supplyCount<2){const focus=s.weapons.find(w=>w.id===s.firstNew)||s.weapons[0],requirements=Object.values(RULES.weapons[focus.id].evolution.moduleByBranch).flat();const useful=pool.filter(id=>requirements.includes(id));if(useful.length)favored=useful;}
- if(pool.length){const trial=trialModule(s,pool),id=trial||(pool.includes(site?.module)?site.module:pick(s,'supply',favored));cards.push({...moduleCard(id),...(id===trial?{label:'새 연구 · 첫 실전'}:id===site?.module?{label:'이 동선의 특화 모듈'}:{})});}
+ if(pool.length){const id=trial||(pool.includes(site?.module)?site.module:pick(s,'supply',favored));cards.push({...moduleCard(id),...(id===trial?{label:'새 연구 · 첫 실전'}:id===site?.module?{label:'이 동선의 특화 모듈'}:{})});}
  return fillCards(s,cards);
 }
 function fillCards(s,cards){const unique=[...new Map(cards.filter(Boolean).map(c=>[c.id,c])).values()];for(const key of ['health','charge','power'])if(unique.length<3&&!unique.some(c=>c.id===`utility:${key}`))unique.push(utility(key));return unique.slice(0,3);}
@@ -172,7 +179,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  if(heatSynergyReady(s))buildCompleted(s,'synergy');
  emit(s,'choose');nextChoice(s);return true;
 }
-export function reroll(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.rerolls<=0)return false;s.rerolls--;s.choices=s.choice.type==='level'?levelCards(s):s.choice.type==='supply'?supplyCards(s):crateCards(s,s.choice.quality,s.choice.type==='raid-reward'?(s.choice.contract||s.raid?.contract):null);return true;}
+export function reroll(s){if(s.phase!=='choice'||s.choice.opening||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.rerolls<=0)return false;s.rerolls--;s.choices=s.choice.type==='level'?levelCards(s):s.choice.type==='supply'?supplyCards(s):crateCards(s,s.choice.quality,s.choice.type==='raid-reward'?(s.choice.contract||s.raid?.contract):null);return true;}
 export function banishOptions(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&(!moduleRank(s,id)||c.support)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
 export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)return false;const target=c.kind==='gun'?c.weapon:c.module,index=s.choices.indexOf(c);if(!moduleRank(s,target))s.excluded.push(target);s.banishes--;
  const used=new Set([...s.choices.filter(card=>card!==c).map(card=>card.id),c.id]);let replacement;
@@ -213,7 +220,10 @@ function targetFor(s,w,d,candidates){
    for(const e of candidates){const b=Math.atan2(e.y-s.player.y,e.x-s.player.x);if(Math.abs(Math.atan2(Math.sin(b-a),Math.cos(b-a)))<d.cone*Math.PI/360)score+=(1+Math.min(e.hp,d.damage)/d.damage*.1)*(['boss','part','courier'].includes(e.type)?6:moduleRank(s,'catalyst')&&e.burn>0?.3:1);}
    if(score>best){best=score;selected=candidate;}
   }
- }else if(w.id==='r')selected=markedBlastTarget(s,candidates,selected,d.radius);
+ }else if(w.id==='r'){
+  const mortar=selected&&distance(s.player,selected)>90&&candidates.find(e=>e.type==='mortar'&&e.siteId==='supply-c'&&e.cohort==='coast-guard');
+  selected=mortar||markedBlastTarget(s,candidates,selected,d.radius);
+ }
  if(part&&selected?.type==='boss')selected=part;
  w.targetId=selected?.id||null;w.targetUntil=s.t+RULES.player.targetHoldSeconds;return selected;
 }
@@ -421,13 +431,26 @@ function updateSites(s,dt){
  if(s.stage==='boss')return;
  for(const site of s.sites){
   if(site.id==='supply-b'&&site.state==='waiting'){site.baseX??=site.x;site.x=site.baseX+Math.sin(s.t*.35)*55;}
-  if(site.state==='waiting'&&distance(site,s.player)<215){const count=site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6,reserve=alive(s).length+count-160;if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets?.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}if(alive(s).length+count>160)continue;site.state='active';for(let i=0;i<count;i++){const angle=i*TAU/6;spawnEnemy(s,site.kind==='armory'&&i===0?'officer':i===1?'shield':'rifle',site.x+Math.cos(angle)*85,site.y+Math.sin(angle)*65,site.id);}emit(s,'engage',site.x,site.y);}
+  const approach=COAST_APPROACHES[site.coastApproach];
+  if(approach&&s.sites[0].state!=='done')continue;
+  if(site.state==='waiting'&&distance(site,s.player)<(approach?.range??215)){
+   const count=approach?.guards.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6),reserve=alive(s).length+count-160;
+   if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets?.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}
+   if(alive(s).length+count>160)continue;
+   site.state='active';
+   for(let i=0;i<count;i++){
+    const angle=i*TAU/6;
+    const [type,x,y]=approach?approach.guards[i]:[site.kind==='armory'&&i===0?'officer':i===1?'shield':'rifle',Math.cos(angle)*85,Math.sin(angle)*65];
+    spawnEnemy(s,type,site.x+x,site.y+y,site.id,approach?{cohort:'coast-guard'}:{});
+   }
+   emit(s,'engage',site.x,site.y);
+  }
   if(site.kind==='relay'&&site.state==='active'&&distance(site,s.player)<125)site.progress=Math.min(5,site.progress+dt);
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
   if(site.state==='ready'&&distance(site,s.player)<74){site.state='done';
    if(site.kind==='control'){openChoice(s,'control',[{id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'이번 항구 보스전의 증원을 절반으로, 포격병 투입을 절반 빈도로 줄입니다.',label:'최종전 안전'},{id:'control:loot',kind:'control',key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈·재보급 3후보 중 하나를 받습니다.',label:'추가 화력'}],site.name);}
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality});}
-   else openChoice(s,'supply',supplyCards(s,site),site.name);
+   else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:{});
    return;
   }
  }

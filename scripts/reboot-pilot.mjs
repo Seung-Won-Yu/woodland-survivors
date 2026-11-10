@@ -83,7 +83,7 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
    if(interaction(s)?.id==='extract'){action(s,'interact');continue;}
    step(s,1/60,movement(s,exitGate(s),ctx));continue;
   }
-  const sites=s.sites.filter(n=>n.state!=='done'),target=sites[0];
+  const sites=s.sites.filter(n=>n.state!=='done'),target=sites.find(n=>n.coastApproach&&n.coastApproach===s.firstNew)||sites[0];
   if(!target&&!s.stats.completedBuild&&s.t<130){const gem=[...s.gems].sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0],goal=gem||{x:800+Math.cos(s.t*.6)*170,y:650+Math.sin(s.t*.6)*140};step(s,1/60,movement(s,goal,ctx));continue;}
   if(!target||s.stats.completedBuild&&s.level>=8){if(interaction(s)?.id==='boss'){action(s,'interact');continue;}step(s,1/60,movement(s,{x:800,y:350},ctx));continue;}
   let goal=target;
