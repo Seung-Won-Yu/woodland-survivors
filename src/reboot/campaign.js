@@ -18,6 +18,17 @@ export const FRONT_SUPPORTS={
  recovery:{name:'회수 의무 장비',role:'측면 순환',art:'medic',impact:'XP 회수 반경 +55 · 측면 구조 화물',detail:'보스의 첫 세 번 재장전 때 측면에 XP 18이 떨어집니다. XP를 회수해 체력을 회복합니다.',tactics:['재장전 때 좌우 선로 밖으로 돌아 구조 화물을 회수하세요.','포격 직후 컨테이너 앞 측면의 구조 화물을 주우세요.']}
 };
 export const supportTactic=(id,index)=>FRONT_SUPPORTS[id]?.tactics[index-1]||'';
+export const FRONT_TACTICS={
+ 1:{
+  heat:{name:'냉각 밸브 차단',role:'화염 · 측면 진입',impact:'재장전 중 측면에 붙어 분사하면 포대와 차체 피해 +45%',hint:'차선 포격 뒤 열차 옆에 붙어 불을 쏘세요.',range:176,side:55,boost:1.45},
+  signal:{name:'포대 신호 역송',role:'전도 · 원거리 연쇄',impact:'원거리 적중으로 포대 사이 전류 도약 · 재장전 +0.8초',hint:'차선 밖에서 로켓·전기·전도 격발망으로 포대를 끊으세요.',range:220,hop:220,delay:.8}
+ },
+ 2:{
+  heat:{name:'코어 냉각 차단',role:'화염 · 근접 돌파',impact:'붉은 원을 피해 접근한 뒤 분사하면 코어와 장갑 피해 +55%',hint:'집중 포격과 포탑 사격을 피해 노출 코어에 붙으세요.',range:168,boost:1.55},
+  signal:{name:'포탑 교신 탈취',role:'전도 · 원거리 제압',impact:'원거리 적중이 포탑으로 도약 · 다음 증원까지 최소 3초',hint:'붉은 원 바깥에서 로켓·전기·전도 격발망으로 포탑을 끊으세요.',range:220,hop:280,delay:3}
+ }
+};
+export const frontTactic=s=>FRONT_TACTICS[s.operation?.region]?.[s.operation?.tactic];
 export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
 export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'?s.challenge.target:null;
 export const DEFENSE_ZONE={x:800,y:560,r:108,seconds:8};

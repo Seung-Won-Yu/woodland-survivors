@@ -89,6 +89,15 @@
 }
 .pursuit-menu .upgrade-card{--accent:#c4a6ce}
 .pursuit-menu .upgrade-card[data-choice="pursuit:permit"]{--accent:#e3be76}
+.control-menu .upgrade-card[data-choice="control:heat"]{--accent:#efa174}
+.control-menu .upgrade-card[data-choice="control:signal"]{--accent:#9cd6df}
+@media(min-width:701px){
+ .control-menu .upgrade-deck{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .control-menu .upgrade-card{min-height:174px;padding:14px 16px 14px 112px;display:flex}
+ .control-menu .upgrade-illustration{position:absolute;width:94px;height:94px;left:9px;top:36px}
+ .control-menu .upgrade-copy{min-height:0}
+ .control-menu .install-label{display:none}
+}
 @media(max-width:700px){
  .field-stack{left:12px;top:112px;gap:8px}
  .boss-active .field-stack,.raid-active .field-stack{top:222px}

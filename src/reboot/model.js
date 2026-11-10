@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,regionBoss,gatePosition,exitGate,holdoutTier,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
@@ -18,7 +18,7 @@ export function createOperation(seed=17,research=[],trial=null){
 function advanceRegion(s){
  if(!s.operation||s.stage!=='holdout'||!s.boss.dead||s.operation.region>=2)return false;
  withdrawRaid(s);
- s.operation.support=s.operation.nextSupport||null;delete s.operation.nextSupport;
+ s.operation.support=s.operation.nextSupport||null;delete s.operation.nextSupport;delete s.operation.tactic;
  s.operation.history.push({region:s.operation.region,time:s.operation.regionTime,pressure:s.pressure,holdTime:s.holdTime,sites:s.sites.filter(n=>n.state==='done').length});s.operation.region++;s.operation.regionTime=0;s.operation.jammed=false;s.operation.challengeTier=0;delete s.operation.gate;delete s.pursuitClock;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[s.operation.region]};
  Object.assign(s,regionLayout(s.seed+s.operation.region*7919,s.operation.region));s.boss=regionBoss(s.operation.region);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;s.player.x=800;s.player.y=1040;s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
  if(s.powerWave?.showcase&&s.powerWave.paired>0){
@@ -32,7 +32,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 export function restore(raw,{allowPrevious=false}={}){
  const s=clone(raw);if(!allowPrevious&&!canResumeRevision(s.balanceRevision))throw Error('이전 규칙의 저장 판은 확보 성과를 정산한 뒤 새로 출격해야 합니다.');if(s.version!==VERSION||!Number.isSafeInteger(s.seed)||!s.rng||!s.player||!Array.isArray(s.weapons)||s.weapons.length<1||s.weapons.length>3||!Array.isArray(s.modules)||s.modules.length>4||!Array.isArray(s.sites)||!s.stats||!['playing','choice','paused','result'].includes(s.phase))throw Error('저장 형식을 확인할 수 없습니다.');
  for(const w of s.weapons)if(!GUNS[w.id]||!Number.isInteger(w.level)||w.level<1||w.level>6||w.branch&&!GUNS[w.id].branches[w.branch])throw Error('무장 저장이 손상됐습니다.');
@@ -46,6 +46,7 @@ export function restore(raw,{allowPrevious=false}={}){
  if(s.operation){
   s.trials??=s.trial?[s.trial]:[];
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
+  if(s.operation.tactic!=null&&!Object.hasOwn(FRONT_TACTICS[s.operation.region]||{},s.operation.tactic))fail();
  }
  if(s.powerWave?.paired>0&&!s.powerWave.showcase)s.powerWave.showcase='fusion';
  if(s.player.maneuver&&!Object.hasOwn(MANEUVERS,s.player.maneuver))fail();
@@ -170,7 +171,13 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  else if(c.kind==='refit'){const w=refitWeapons(s).find(w=>w.id===weapon);if(!w||!GUNS[w.id].branches[branch]||w.branch===branch)return false;w.branch=branch;w.targetId=null;s.stats.fieldRefits=(s.stats.fieldRefits||0)+1;}
  else if(c.kind==='resupply'){if(!Number.isFinite(c.heal)||!Number.isFinite(c.charge)||c.heal<0||c.charge<0)return false;s.player.hp=Math.min(s.player.maxHp,s.player.hp+c.heal);s.player.charge=Math.min(100,s.player.charge+c.charge);}
  else if(c.kind==='back'){s.phase='playing';s.choice=null;s.choices=[];return true;}
- else if(c.kind==='control'){if(c.key==='jam')s.operation.jammed=true;else s.queue.push({type:'armory',source:'관제소 시험 탄약',cards:armoryCards(s,'rare'),extra:{quality:'rare'}});}
+ else if(c.kind==='control'){
+  if(c.key==='jam')s.operation.jammed=true;
+  else if(c.key==='loot')s.queue.push({type:'armory',source:'관제소 시험 탄약',cards:armoryCards(s,'rare'),extra:{quality:'rare'}});
+  else if(c.key==='supply')s.queue.push({type:'supply',source:s.choice.source,cards:supplyCards(s)});
+  else if(Object.hasOwn(FRONT_TACTICS[s.operation?.region]||{},c.key)&&!s.operation.tactic)s.operation.tactic=c.key;
+  else return false;
+ }
  else if(c.kind==='extract'){if(s.operation&&s.operation.cleared===3)s.operation.extracted=true;finish(s,true);return true;}
  else if(c.kind==='stay'){s.phase='playing';s.choice=null;s.choices=[];return true;}
  else return false;
@@ -254,6 +261,35 @@ function scoreKill(s,e,source){
  const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);emit(s,'kill',e.x,e.y,{angle:s.player.aim});
  const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
 }
+function activateFrontTactic(s,e,kind,source,owner){
+ const b=s.boss,tactic=frontTactic(s),p=s.player;
+ if(!tactic||source==='front-relay')return;
+ const gap=distance(p,b),index=s.operation.region;
+ const cycle=index===1&&s.operation.tactic==='signal'&&b.mode==='aim'?b.cycle+1:b.cycle;
+ if(b.tacticCycle===cycle)return;
+ if(s.operation.tactic==='heat'){
+  if(kind!=='fire'||!['native','wake'].includes(source)||gap>tactic.range||tactic.side&&Math.abs(p.x-b.x)<tactic.side)return;
+  b.tacticCycle=cycle;
+  emit(s,'heat',e.x,e.y,{r:80,life:.4,text:'냉각 차단 · 장갑 과열'});
+ }else{
+  const linked=source==='native'&&s.weapons.some(w=>w.uid===owner&&(w.fusion||w.id==='r'&&kind==='blast'));
+  if(gap<tactic.range||!(kind==='electric'||source==='payload'||linked))return;
+  const target=[...b.parts,b].find(part=>part!==e&&part.hp>0&&!lineBlocked(s,e,part));
+  if(!target)return;
+  b.tacticCycle=cycle;
+  if(index===1&&b.mode==='recover')b.timer+=tactic.delay;
+  if(index===2)b.spawnClock=Math.max(b.spawnClock,tactic.delay);
+  s.effects.push({type:'lightning',x:e.x,y:e.y,x2:target.x,y2:target.y,age:0,life:.35});
+  emit(s,'weakpoint',target.x,target.y,{life:1,text:index===1?'포대 역송 · 재장전 지연':'포탑 역송 · 증원 호출 지연'});
+  damage(s,target,tactic.hop,'electric','front-relay');
+  if(index===1&&b.mode==='salvo'&&target.type==='part'&&target.hp<=0){
+   const lane=target===b.parts[0]?500:1100;
+   s.hazards=s.hazards.filter(h=>!h.lane||h.x!==lane||h.hit);
+  }
+ }
+ s.stats.frontTactics??={};
+ s.stats.frontTactics[index]=(s.stats.frontTactics[index]||0)+1;
+}
 function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  if(e.hp<=0||e.dead)return;
  const catalyst=moduleRank(s,'catalyst');if(kind==='blast'&&e.burn>0&&catalyst)amount*=1+RULES.modules.catalyst.blastBonusOnBurn[catalyst-1];
@@ -261,6 +297,12 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
  const breach=s.operation?.support==='breach';
  if(e.type==='part'&&breach)amount*=1.55;
  if(e.type==='boss'){const b=s.boss,a=Math.atan2(s.player.y-b.y,s.player.x-b.x),rear=Math.cos(a-b.body)<-.35;amount*=s.operation?.region===1?(b.parts.some(p=>p.hp>0)?.5:b.mode==='recover'?1.5:1):s.operation?.region===2?(b.parts.some(p=>p.hp>0)?b.mode==='recover'?1:.65:b.mode==='recover'?1.6:1.15):b.mode==='recover'&&rear?1.5:Math.cos(a-b.body)>.35?.65:1;}
+ const railSignal=s.operation?.region===1&&s.operation.tactic==='signal';
+ if(s.boss.active&&(s.boss.mode==='recover'||railSignal)&&(e.type==='boss'||e.type==='part')){
+  activateFrontTactic(s,e,kind,source,owner);
+  if(e.dead)return;
+  if(s.operation?.tactic==='heat'&&s.boss.tacticCycle===s.boss.cycle)amount*=frontTactic(s).boost;
+ }
  if(e.type==='shield'&&kind==='bullet'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.45)amount*=breach?.65:.45;
  if(e.type==='courier'&&kind==='bullet'&&s.raid?.contract==='armored'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.5)amount*=.5;
  const actual=e.part||e;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
@@ -404,6 +446,7 @@ function updateOperationBoss(s,dt){
    else{for(let i=0;i<(b.parts[0].hp>0?5:3);i++){const a=i*TAU/5;s.hazards.push({x:clamp(p.x+Math.cos(a)*95,90,1510),y:clamp(p.y+Math.sin(a)*95,90,1110),r:58,timer:.95,duration:.95});}emit(s,'boss-warning',p.x,p.y,{text:'집중 포격 · 포탑 사격',life:1});}
   }else if(b.mode==='salvo'){
    b.mode='recover';b.timer=index===1?2.2:2.6;
+   if(index===1&&s.operation.tactic==='signal'&&b.tacticCycle===b.cycle)b.timer+=FRONT_TACTICS[1].signal.delay;
    if(index===2&&b.parts[0].hp>0){for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16);b.kick=1;b.flash=.12;}
    emit(s,'weakpoint',b.x,b.y,{text:index===1?'포격 재장전 · 포대를 노려라':'노출 코어 · 집중 공격',life:1.4});
    if(s.operation.support==='recovery'&&b.cycle<=3){
@@ -427,6 +470,13 @@ function updateBoss(s,dt){
  if(b.spawnClock<=0){b.spawnClock=5;for(let i=0;i<6;i++)spawnAround(s,i===0?'shield':'rifle');}
  if(distance(b,p)<b.r+16&&(!s.hitCandidate||s.hitCandidate.amount<16))s.hitCandidate={amount:16,x:b.x,y:b.y};
 }
+function frontControlCards(index){
+ const orders=Object.entries(FRONT_TACTICS[index]).map(([key,t])=>({id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role}));
+ if(index===1)return [...orders,{id:'control:supply',kind:'control',key:'supply',title:'중계기 보급 회수',desc:'보유 병기를 개조하거나 새 무장과 모듈을 확보합니다.',label:'일반 보급'}];
+ return [...orders,
+  {id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'이번 항구 보스전의 증원을 절반으로, 포격병 투입을 절반 빈도로 줄입니다.',label:'최종전 안전'},
+  {id:'control:loot',kind:'control',key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈·재보급 3후보 중 하나를 받습니다.',label:'추가 화력'}];
+}
 function updateSites(s,dt){
  if(s.stage==='boss')return;
  for(const site of s.sites){
@@ -448,7 +498,7 @@ function updateSites(s,dt){
   if(site.kind==='relay'&&site.state==='active'&&distance(site,s.player)<125)site.progress=Math.min(5,site.progress+dt);
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
   if(site.state==='ready'&&distance(site,s.player)<74){site.state='done';
-   if(site.kind==='control'){openChoice(s,'control',[{id:'control:jam',kind:'control',key:'jam',title:'증원 통신 교란',desc:'이번 항구 보스전의 증원을 절반으로, 포격병 투입을 절반 빈도로 줄입니다.',label:'최종전 안전'},{id:'control:loot',kind:'control',key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈·재보급 3후보 중 하나를 받습니다.',label:'추가 화력'}],site.name);}
+   if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s.operation.region),site.name);
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality});}
    else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:{});
    return;

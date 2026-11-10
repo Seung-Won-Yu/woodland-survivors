@@ -393,6 +393,40 @@ test('coast rockets interrupt the battery at range and address enemies that clos
   assert.equal(s.shots.find(q=>q.owner==='r')?.target,gap<90?rifle.id:mortar.id);
  }
 });
+test('rail tactics are chosen at the relay and heat rewards a close flank during reload',()=>{
+ const base=quietOperation();base.operation.region=1;
+ base.sites=[{id:'rail-relay',kind:'relay',name:'중계기',state:'ready',x:800,y:800}];
+ step(base,dt);
+ assert.deepEqual(base.choices.map(c=>c.id),['control:heat','control:signal','control:supply']);
+ assert.ok(choose(base,'control:heat'));
+ const hit=(x,y,mode,heat=true)=>{
+  const s=restore(snapshot(base));s.stage='boss';
+  if(!heat)delete s.operation.tactic;
+  Object.assign(s.player,{x,y});Object.assign(s.boss,{active:true,mode,timer:99,spawnClock:99});
+  s.weapons.push({...makeWeapon('f'),uid:'inferno',level:6,branch:'trail',evolved:true,cd:0});
+  step(s,dt);return {count:s.stats.frontTactics?.[1]||0,damage:s.boss.maxHp-s.boss.hp};
+ };
+ const hot=hit(685,267,'recover'),cold=hit(685,267,'recover',false);
+ assert.equal(hot.count,1);
+ assert.ok(cold.damage>0&&Math.abs(hot.damage-cold.damage*1.45)<1e-6);
+ assert.equal(hit(800,325,'recover').count,0);
+ assert.equal(hit(685,267,'salvo').count,0);
+});
+test('a ranged signal arcs once to the other part and changes the next boss action',()=>{
+ for(const index of [1,2]){
+  const s=quietOperation();s.operation.region=index;s.operation.tactic='signal';s.stage='boss';
+  Object.assign(s.player,{x:800,y:445});
+  Object.assign(s.boss,{active:true,mode:index===1?'aim':'recover',timer:99,spawnClock:1,parts:s.boss.parts.map(p=>({...p,hp:500,maxHp:500}))});
+  s.weapons[0].fusion={secondary:'r',branch:'homing',overflow:0};
+  const hit=()=>{s.shots=[bullet(s,s.boss,20)];step(s,dt);};
+  hit();hit();
+  assert.equal(s.stats.frontTactics[index],1);
+  assert.equal(s.boss.parts[0].hp,index===1?280:220);
+  assert.equal(s.boss.parts[1].hp,500);
+  if(index===1){Object.assign(s.boss,{mode:'salvo',cycle:1,timer:0});step(s,dt);assert.equal(s.boss.timer,3);}
+  else assert.ok(s.boss.spawnClock>2.9);
+ }
+});
 test('harbor armor parts change actual body vulnerability and rare unique banish keeps crate quality',()=>{
  const hit=broken=>{const s=quietOperation();s.operation.region=2;s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.mode='aim';s.boss.timer=999;s.boss.spawnClock=999;if(broken)s.boss.parts.forEach(p=>p.hp=0);const hp=s.boss.hp;s.shots=[bullet(s,s.boss,100)];step(s,dt);return hp-s.boss.hp;};assert.ok(hit(true)>hit(false)*1.5);
  const s=quietOperation();s.research=['medic'];s.phase='choice';s.choice={type:'armory',quality:'rare'};s.choices=[{id:'module:medic',kind:'module',module:'medic',rank:1}];assert.ok(banish(s,'module:medic'));assert.equal(s.choices[0].rank,2);

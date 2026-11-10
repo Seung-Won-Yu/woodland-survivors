@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain} from './content.js';
-import {REGIONS,MANEUVERS,FRONT_SUPPORTS,CARGO_CREDITS,COAST_APPROACHES,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
+import {REGIONS,MANEUVERS,FRONT_SUPPORTS,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,holdoutContract,groundXp,holdoutTier,supportTactic} from './campaign.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
@@ -32,6 +32,10 @@ export function choiceDetails(s,c){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){
   out.impact=`조율권 ${s.tuning} → ${s.tuning+1}`;out.detail='진화·합체·모듈 강화 또는 응급 정비에 사용합니다.';out.link='병기 개조에서 사용';out.cost='다음 전선까지 보관';
+ }else if(c.kind==='control'){
+  const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
+  out.art=c.key==='heat'?'f':c.key==='signal'?'coil':'ammo';
+  if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';out.cost='이 전선 보스전에 적용';}
  }else if(c.kind==='front-support'){
   const kit=FRONT_SUPPORTS[c.key];
   const index=s.operation.region+1;

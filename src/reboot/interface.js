@@ -45,8 +45,8 @@ function operationMap(selected,seed){const map=previewLayout(seed,selected);
 
 function frontIntel(index,seed){
  if(index===0){const route=beachRoute(seed);return `<div class="front-intel"><div class="front-intel-heading"><span>01 · 포로 구출 후 F / R 선택</span><strong>${route.name}</strong></div>${Object.entries(COAST_APPROACHES).map(([id,approach])=>`<div class="front-intel-stop"><span>${id.toUpperCase()} · ${approach.name}</span><b>${MODULES[approach.module].name}</b></div>`).join('')}</div>`;}
- const [site,edge,boss,move]=index===1?['통신 중계기','차선 예고 +0.4초','양쪽 포대','측면 차선을 없앨 수 있음']:['항구 관제소','교란 선택 시 증원 6 → 3','노출 코어','집중 포격이 끝나면 공격'];
- return `<div class="front-intel"><div class="front-intel-heading"><span>다음 전선 공략</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>${site}</span><b>${edge}</b></div><div class="front-intel-stop"><span>${boss}</span><b>${move}</b></div></div>`;
+ const [site,heat,signal]=index===1?['통신 중계기','열차 측면 냉각 차단','원거리 포대 역송']:['항구 관제소','근접 코어 과열','원거리 포탑 교신 탈취'];
+ return `<div class="front-intel"><div class="front-intel-heading"><span>${site} · 현장 작전 선택</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>화염</span><b>${heat}</b></div><div class="front-intel-stop"><span>전도</span><b>${signal}</b></div></div>`;
 }
 
 function missionPanel(p,brief,previewSeed){const selected=brief??0,d=REGIONS[selected],copy=briefCopy[selected],goal=nextOrder(p),weapons=[makeWeapon('h')];

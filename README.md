@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.26.0" src="https://img.shields.io/badge/RIFT-0.26.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.27.0" src="https://img.shields.io/badge/RIFT-0.27.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -20,8 +20,8 @@
 | 전선 | 전장에서 하는 일 | 보스에서 다른 공략 |
 | :-- | :-- | :-- |
 | **해안 침투** | 포로 구출 후 화염 F로 보급차 돌파, 로켓 R로 박격포 진지 제압 | 돌진을 옆으로 피하고 후면 엔진 공격 |
-| **철도 차단** | 화차 통로 우회·중계기 해킹·정비창 선택 | 포격 차선 회피·좌우 포대 파괴 |
-| **항구 결전** | 컨테이너 길목 돌파·관제소 교란/시험 탄약 선택 | 집중 포격·포탑 사격 회피·부위 파괴 후 코어 공격 |
+| **철도 차단** | 중계기에서 냉각 밸브 차단 / 포대 신호 역송 / 보급 회수 | 화염은 재장전 때 측면에 붙고, 전도는 차선 밖에서 포대 연결 |
+| **항구 결전** | 관제소에서 코어 냉각 차단 / 포탑 교신 탈취 / 교란 / 시험 탄약 | 화염은 포격 뒤 코어에 진입하고, 전도는 먼 사선에서 포탑 제압 |
 
 보스는 시간·처치 수로 잠그지 않습니다. 격파 지점 옆에 XP가 떨어지고 게이트가 열립니다. 접근해 F를 누르면 **전진 / 잔류 / 중도귀환**을 고를 수 있습니다. 6초 뒤 첫 증원군이 오고, 잔류 공세는 10초마다 강해집니다. 무기·모듈·체력·XP는 다음 맵에도 이어집니다. 남은 상자와 바닥 XP는 두고 가므로 잔류할 이유가 있습니다. 최종 보스 뒤 살아서 귀환을 선택해야 완주입니다.
 
@@ -77,6 +77,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.27은 인앱 브라우저에서 시드 16을 화염과 전도로 각각 완주했습니다. 두 판 모두 철도와 항구에서 선택한 현장 공략을 발동하고 최종 게이트로 귀환했습니다. [철도·항구 공략 검증](docs/RIFT-GAMEPLAY-V1.md#027-철도와-항구의-보스-공략-검증).
 
 0.26은 시드 16의 해안 첫 90초를 두 무장으로 비교했습니다. 화염은 보급차의 밀집 보병을 돌파해 촉매를 얻었고, 전도는 반대쪽 진지의 박격포를 먼저 끊고 코일을 얻었습니다. [해안 첫 무장 검증](docs/RIFT-GAMEPLAY-V1.md#026-해안-첫-무장-검증).
 

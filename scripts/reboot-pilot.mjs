@@ -18,7 +18,7 @@ function movement(s,goal,ctx,avoid=true){
  return{x,y};
 }
 function priority(s,c,policy){
- if(c.kind==='advance')return 1100;if(c.kind==='control')return c.key==='jam'?100:90;if(c.kind==='extract')return 1000;if(c.kind==='stay')return -1;
+ if(c.kind==='advance')return 1100;if(c.kind==='control')return c.key===({fire:'heat',fusion:'signal',single:'jam'})[policy]?120:['jam','supply'].includes(c.key)?100:90;if(c.kind==='extract')return 1000;if(c.kind==='stay')return -1;
  if(c.kind==='permit')return s.tuning===0?100:65;
  if(c.kind==='cargo')return 100;
  if(c.kind==='front-support')return c.key===({single:'breach',fusion:'recovery',fire:'overrun'})[policy]?100:40;
@@ -53,7 +53,12 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
   action(s,'skill');
   if(s.stage==='boss'){
    const b=s.boss,p=s.player;let goal;
-   if(b.mode==='recover'&&s.operation?.region>0){goal=[-1,1].map(side=>({x:b.x+side*190,y:b.y+100})).filter(g=>free(s,g.x,g.y)).sort((a,b)=>distance(a,p)-distance(b,p))[0];}
+   if(s.operation?.tactic==='signal'){
+    goal=[-115,-65,65,115].map(dx=>({x:b.x+dx,y:b.y+250})).filter(g=>free(s,g.x,g.y)).sort((a,b)=>distance(a,p)-distance(b,p))[0];
+   }else if(b.mode==='recover'&&s.operation?.region>0){
+    const [sideGap,depth]=s.operation.tactic==='heat'?[115,87]:[190,100];
+    goal=[-1,1].map(side=>({x:b.x+side*sideGap,y:b.y+depth})).filter(g=>free(s,g.x,g.y)).sort((a,b)=>distance(a,p)-distance(b,p))[0];
+   }
    else if(b.mode==='recover'){const angles=[Math.PI,Math.PI-.65,Math.PI+.65].map(a=>b.body+a);goal=angles.map(a=>({x:b.x+Math.cos(a)*185,y:b.y+Math.sin(a)*185})).filter(g=>free(s,g.x,g.y)).sort((a,b)=>distance(a,p)-distance(b,p))[0];}
    if(s.operation?.region===1&&s.hazards.some(h=>h.lane&&!h.hit)){const lanes=[300,500,650,800,950,1100,1300].filter(x=>!s.hazards.some(h=>h.lane&&!h.hit&&Math.abs(h.x-x)<h.w/2+25));goal=lanes.map(x=>({x,y:p.y})).sort((a,b)=>distance(a,p)-distance(b,p))[0];}
    if(!goal){const a=Math.atan2(p.y-b.y,p.x-b.x)+.7;goal={x:b.x+Math.cos(a)*220,y:b.y+Math.sin(a)*220};goal.x=Math.max(80,Math.min(1520,goal.x));goal.y=Math.max(80,Math.min(1120,goal.y));}
@@ -83,14 +88,16 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
    if(interaction(s)?.id==='extract'){action(s,'interact');continue;}
    step(s,1/60,movement(s,exitGate(s),ctx));continue;
   }
-  const sites=s.sites.filter(n=>n.state!=='done'),target=sites.find(n=>n.coastApproach&&n.coastApproach===s.firstNew)||sites[0];
+  const sites=s.sites.filter(n=>n.state!=='done');
+  const orderSite=policy!=='single'&&sites.find(n=>['rail-relay','port-control'].includes(n.id));
+  const target=orderSite||sites.find(n=>n.coastApproach&&n.coastApproach===s.firstNew)||sites[0];
   if(!target&&!s.stats.completedBuild&&s.t<130){const gem=[...s.gems].sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0],goal=gem||{x:800+Math.cos(s.t*.6)*170,y:650+Math.sin(s.t*.6)*140};step(s,1/60,movement(s,goal,ctx));continue;}
-  if(!target||s.stats.completedBuild&&s.level>=8){if(interaction(s)?.id==='boss'){action(s,'interact');continue;}step(s,1/60,movement(s,{x:800,y:350},ctx));continue;}
+  if(!target||!orderSite&&s.stats.completedBuild&&s.level>=8){if(interaction(s)?.id==='boss'){action(s,'interact');continue;}step(s,1/60,movement(s,{x:800,y:350},ctx));continue;}
   let goal=target;
   if(target.state==='active'&&distance(s.player,target)<220){const a=s.t*.9;goal={x:target.x+Math.cos(a)*105,y:target.y+Math.sin(a)*105};}
-  const nearby=s.gems.filter(g=>distance(g,s.player)<130).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];if(nearby)goal=nearby;
+  const nearby=s.gems.filter(g=>distance(g,s.player)<130).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];if(nearby&&!(orderSite?.kind==='relay'&&orderSite.state==='active'))goal=nearby;
   if(s.enemies.some(e=>!e.dead&&distance(e,s.player)<50))action(s,'dash');step(s,1/60,movement(s,goal,ctx));
  }
- return{seed,policy,regions:s.operation?.cleared||0,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],...(pursuit?{pursuitRewards:s.stats.choices.filter(c=>c.source==='pursuit-reward').map(c=>c.id)}:{}),controls:{rerollsUsed:2-s.rerolls,banishesUsed:1-s.banishes},decisions,stalled};
+ return{seed,policy,regions:s.operation?.cleared||0,won:s.result?.won||false,seconds:Number(s.t.toFixed(1)),level:s.level,hp:Number(s.player.hp.toFixed(1)),kills:s.stats.kills,completed:s.stats.completedBuild,weapons:s.weapons.map(w=>({id:w.id,level:w.level,branch:w.branch,evolved:w.evolved,fusion:w.fusion})),modules:s.modules,score:s.stats.score,raids:[s.stats.raidSuccess,s.stats.raidFailed],...(s.operation?{frontOrders:s.stats.choices.filter(c=>c.source==='control').map(c=>c.id),frontTactics:s.stats.frontTactics||{}}:{}),...(pursuit?{pursuitRewards:s.stats.choices.filter(c=>c.source==='pursuit-reward').map(c=>c.id)}:{}),controls:{rerollsUsed:2-s.rerolls,banishesUsed:1-s.banishes},decisions,stalled};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){const seeds=process.argv.includes('--all')?[17,71,109,214]:[17],reports=[];for(const seed of seeds)for(const policy of ['single','fusion','fire'])reports.push(pilot(seed,policy));process.stdout.write(JSON.stringify(reports,null,2)+'\n');}
