@@ -7,6 +7,7 @@ import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
+import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -168,6 +169,69 @@ test('module-crate refresh and banish preserve its quality and upgrade amount',(
 });
 test('wager start persists an actual escrow and deterministic result through restoration',()=>{
  const s=quiet();supply(s,'arsenal');const old=snapshot(s.choices);assert.ok(action(s,'raid:armored'));assert.equal(s.raid.target.hp,4200);assert.deepEqual(s.raid.wagerCards,old);takeEvents(s);const r=restore(snapshot(s));tick(s,1,{x:.5,y:0});tick(r,1,{x:.5,y:0});assert.deepEqual(snapshot(s),snapshot(r));
+});
+test('both convoy contracts start near every crate source and clear mirrored cover along the whole lane',()=>{
+ for(const seed of [16,17,18,19]){
+  for(const [front,siteId] of [[0,'arsenal'],[1,'arsenal'],[2,'arsenal'],[2,'port-control']]){
+   const s=createOperation(seed);
+   Object.assign(s,regionLayout(mapSeed(seed,front),front));s.operation.region=front;
+   const site=s.sites.find(n=>n.id===siteId);
+   Object.assign(s.player,{x:site.x,y:site.y});
+   s.phase='choice';s.choice={type:'armory',quality:'rare',siteId};
+   for(const contract of ['light','armored']){
+    const r=snapshot(s),route=raidRoute(r,contract),[start]=route;
+    assert.ok(Math.hypot(start.x-site.x,start.y-site.y)<240);
+    const clear=(p,margin)=>r.blocks.every(b=>p.x+margin<=b.x||p.x-margin>=b.x+b.w||p.y+margin<=b.y||p.y-margin>=b.y+b.h);
+    for(const [i,a] of route.slice(0,-1).entries()){
+     const b=route[i+1],samples=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/4);
+     for(let j=0;j<=samples;j++){
+      const f=j/samples;
+      assert.ok(clear({x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f},45),`${seed} ${front} ${siteId} ${contract} segment ${i}`);
+     }
+    }
+    assert.ok(action(r,`raid:${contract}`));assert.deepEqual(r.raid.route,route);
+    assert.equal(raidOnNose(r),contract==='armored');
+    const escorts=r.enemies.filter(e=>e.cohort==='raid');
+    assert.equal(escorts.length,5);
+    assert.ok(escorts.every(e=>clear(e,e.r)&&Math.hypot(e.x-r.player.x,e.y-r.player.y)>=105));
+   }
+  }
+ }
+});
+test('convoy armor reads the arriving bullet angle and a frontal collision can hurt',()=>{
+ const s=quiet();supply(s,'arsenal');assert.ok(action(s,'raid:armored'));s.enemies=[];
+ const shot=(r,angle)=>{
+  const target=r.raid.target,x=Math.cos(angle),y=Math.sin(angle);
+  r.shots=[{...bullet(r,target),x:target.x+x*44,y:target.y+y*44,vx:-700*x,vy:-700*y}];
+  step(r,dt);
+ };
+ const front=snapshot(s),flank=snapshot(s);
+ shot(front,front.raid.target.aim);shot(flank,flank.raid.target.aim+Math.PI/2);
+ assert.equal(front.raid.target.hp,4150);assert.equal(flank.raid.target.hp,4100);
+ assert.ok(takeEvents(front).includes('armor-impact'));assert.ok(!takeEvents(flank).includes('armor-impact'));
+ const {x,y,aim}=s.raid.target;
+ Object.assign(s.player,{x:x+Math.cos(aim)*44,y:y+Math.sin(aim)*44});
+ const hp=s.player.hp;step(s,dt);
+ assert.equal(s.player.hp,hp-RULES.raidContracts.armored.contactDamage);
+});
+test('an in-flight b24 convoy resumes its saved route and wager',()=>{
+ const s=quiet();supply(s,'arsenal');assert.ok(action(s,'raid:light'));
+ s.balanceRevision='b24-harbor-counterplay';
+ s.raid.route=[{x:340,y:470},{x:630,y:300},{x:1000,y:470},{x:1340,y:700}];
+ s.raid.progress=s.raid.maxProgress*.72;Object.assign(s.raid.target,{x:1080,y:525});delete s.raid.segment;
+ pause(s);const resumed=restore(snapshot(s));
+ assert.deepEqual(resumed.raid.route,s.raid.route);
+ assert.deepEqual(resumed.raid.wagerCards,s.raid.wagerCards);
+ assert.deepEqual(raidAhead(resumed.raid),[resumed.raid.target,resumed.raid.route[3]]);
+ resume(resumed);step(resumed,dt);
+ assert.ok(resumed.raid.progress>s.raid.progress);assert.equal(resumed.raid.segment,2);
+});
+test('checkpoint rejects incomplete convoy display or reward data before resuming',()=>{
+ const s=quiet();supply(s,'arsenal');assert.ok(action(s,'raid:light'));
+ for(const corrupt of [r=>delete r.target.maxHp,r=>delete r.wager,r=>r.quality='missing',r=>r.target.aim='invalid']){
+  const broken=snapshot(s);corrupt(broken.raid);
+  assert.throws(()=>restore(broken),/체크포인트/);
+ }
 });
 test('a courier that crosses its exit cannot be killed by a later collision in that tick',()=>{
  const s=quiet();supply(s,'arsenal');action(s,'raid:light');s.raid.progress=s.raid.maxProgress-.1;s.shots=[bullet(s,s.raid.target,9999)];step(s,dt);assert.equal(s.raid.state,'failed');assert.equal(s.stats.raidFailed,1);assert.equal(s.stats.raidSuccess,0);

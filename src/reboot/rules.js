@@ -1,7 +1,7 @@
 export const RULES = {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b24-harbor-counterplay",
+  "balanceRevision": "b25-convoy-routes",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",
@@ -678,6 +678,7 @@ export const RULES = {
     },
     "armored": {
       "hp": 4200,
+      "contactDamage": 14,
       "speed": 50,
       "routeLength": 1050,
       "bulletFrontMultiplier": 0.5,

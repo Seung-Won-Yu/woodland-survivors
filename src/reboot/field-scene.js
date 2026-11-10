@@ -1,4 +1,5 @@
 import {REGIONS,regionLayout,mapSeed,frontEntry,exitGate} from './campaign.js';
+import {RAID_MARKS,raidRoute} from './raid.js';
 
 // One geography for canvas terrain, tactical maps and operation briefings.
 const rect=(x,y,w,h,fill)=>({type:'rect',x,y,w,h,fill});
@@ -49,6 +50,17 @@ export function gateSymbol({x,y,name}){
 }
 export function entryRouteSvg(entry){
  return entry?.routes.map(route=>`<polyline data-approach="${route.site}" points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="22 18" aria-label="${route.sign} 경로"/>`).join('')||'';
+}
+export function raidRouteSvg(route,contract){
+ const {color,name}=RAID_MARKS[contract],start=route[0],end=route.at(-1);
+ const points=route.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+ return `<g data-raid-route="${contract}" aria-label="${name} 탈출 경로" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="${points}" stroke="#233634" stroke-width="27"/><polyline points="${points}" stroke="${color}" stroke-width="15" stroke-dasharray="${contract==='light'?'30 16':'12 16'}"/><circle cx="${start.x}" cy="${start.y}" r="26" fill="#263735" stroke="${color}" stroke-width="11"/><path transform="translate(${end.x} ${end.y})" d="M-27 -22h54v44h-54z M-10 -22v44 M10 -22v44" fill="#263735" stroke="${color}" stroke-width="9"/></g>`;
+}
+export function raidPreview(s){
+ const ground=terrainSvg(s.operation?.region||0,s.seed);
+ const cover=s.blocks.filter(b=>b.hp!==0).map(b=>`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#2a403d" stroke="#798a7f" stroke-width="8"/>`).join('');
+ const paths=Object.keys(RAID_MARKS).map(id=>raidRouteSvg(raidRoute(s,id),id)).join('');
+ return `<svg class="raid-preview" viewBox="0 0 1600 1200" role="img" aria-label="보급차와 장갑 수송대의 출발점과 검문선. 흰 점은 현재 위치.">${ground}${cover}${paths}<circle cx="${s.player.x}" cy="${s.player.y}" r="31" fill="#fff5d5" stroke="#243a34" stroke-width="10"/></svg>`;
 }
 export function regionPreview(index,seed=17,current=null){
  const entry=frontEntry(mapSeed(seed,index),index);

@@ -4,9 +4,26 @@ import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_ROUTE,signalCourier} from './campaign.js';
+import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
 function bar(c,x,y,width,ratio,color){c.fillStyle='#101d26';c.fillRect(x-width/2,y,width,5);c.fillStyle=color;c.fillRect(x-width/2,y,width*clamp(ratio,0,1),5);}
+function paintRaidLane(c,raid,visible){
+ const path=raidAhead(raid),end=path.at(-1),prior=path.at(-2),{color}=RAID_MARKS[raid.contract];
+ c.save();c.lineCap='round';c.lineJoin='round';c.beginPath();
+ path.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));
+ c.strokeStyle='#233634';c.lineWidth=6;c.stroke();
+ c.strokeStyle=color;c.lineWidth=2.5;c.setLineDash(raid.contract==='light'?[14,9]:[5,9]);c.stroke();c.setLineDash([]);
+ if(visible(end.x,end.y,75)){
+  c.save();c.translate(end.x,end.y);c.rotate(Math.atan2(end.y-prior.y,end.x-prior.x));
+  c.fillStyle='#253635';c.fillRect(-9,-51,18,102);
+  c.fillStyle=color;for(let i=-45;i<=36;i+=18)c.fillRect(-6,i,12,9);
+  c.restore();
+  c.font='bold 12px Galmuri';c.textAlign='center';c.fillStyle='#263635';c.fillRect(end.x-47,end.y-70,94,22);
+  c.fillStyle=color;c.fillText('탈출 검문선',end.x,end.y-55);
+ }
+ c.restore();
+}
 function paintCoastCue(c,site,size,cx,cy,scale){
  const prefix=site.coastApproach?.toUpperCase();
  const name=site.opening?'포로 구출':site.name;
@@ -226,7 +243,9 @@ export function createRenderer(canvas,art){
    if(visible(s.boss.x,s.boss.y,150))paintWreckGround(c,s.boss.x,s.boss.y,index);
    if(visible(gate.x,gate.y,80))paintGateApproach(c,gate,gateNear);
   }
-  const approach=activeEntry(s);if(approach)paintEntryRoutes(c,approach);
+  const raid=s.raid?.state==='active'?s.raid:null;
+  const approach=activeEntry(s);
+  if(raid)paintRaidLane(c,raid,visible);else if(approach)paintEntryRoutes(c,approach);
   const entry=s.effects.find(f=>f.type==='region-entry');
   if(entry)paintFrontEntry(c,entry.x,entry.y,index,entry.age,reduced);
   for(const n of s.sites){const previous=siteStates.get(n.id);siteStates.set(n.id,{state:n.state,collected:previous&&previous.state!=='done'&&n.state==='done'?s.t:previous?.collected});}
@@ -249,7 +268,7 @@ export function createRenderer(canvas,art){
   const entities=[...s.sites.map(e=>({y:e.y,kind:'site',e})),...s.blocks.map(e=>({y:e.y+e.h,kind:'block',e})),...s.enemies.map(e=>({y:e.y,kind:'enemy',e})),{y:s.player.y,kind:'player',e:s.player}];
   if(gate)entities.push({y:gate.y,kind:'gate',e:gate});
   if(signal)entities.push({y:signal.y,kind:'courier',e:signal});
-  if(s.raid?.state==='active')entities.push({y:s.raid.target.y,kind:'courier',e:s.raid.target});if(s.boss.active||s.boss.dead||s.stage==='field')entities.push({y:s.boss.y,kind:'boss',e:s.boss});
+  if(raid)entities.push({y:raid.target.y,kind:'courier',e:raid.target});if(s.boss.active||s.boss.dead||s.stage==='field')entities.push({y:s.boss.y,kind:'boss',e:s.boss});
   for(const item of entities.sort((a,b)=>a.y-b.y)){
    const e=item.e;if(!visible(e.x,e.y,220))continue;c.save();
    if(item.kind==='gate'){if(s.operation)paintGate(c,e,s.holdTime,reduced);else if(art)prop(c,art,2,3,e.x,e.y,112);c.restore();continue;}
@@ -272,7 +291,15 @@ export function createRenderer(canvas,art){
     if(e.overdrive>0){c.strokeStyle='#ffce72aa';c.lineWidth=2;c.beginPath();c.arc(e.x,e.y-24,35,s.t*3,s.t*3+4.6);c.stroke();}
     const maneuver=activeManeuver(e);if(maneuver){c.fillStyle=maneuver==='brace'?'#f8cf7e':'#9becbe';for(const side of [-1,1])c.fillRect(e.x+side*22-3,e.y+6,6,2);}
    }else if(item.kind==='courier'){
-    if(art){c.save();c.translate(e.x,e.y);c.rotate(e.aim);prop(c,art,2,3,0,15,125);c.restore();}else{c.fillStyle='#81927c';c.fillRect(e.x-40,e.y-25,80,45);}bar(c,e.x,e.y-78,120,e.hp/e.maxHp,'#ddadff');
+    const armored=e===raid?.target&&raid.contract==='armored',color=e===raid?.target?RAID_MARKS[raid.contract].color:'#ddadff';
+    if(art&&armored)vehicle(c,art,{x:e.x,y:e.y,width:108,enemy:true,body:e.aim,turret:e.aim,tread:raid.progress,moving:true,damaged:e.hp<e.maxHp*.5,reduced});
+    else if(art){c.save();c.translate(e.x,e.y);c.rotate(e.aim);prop(c,art,2,3,0,15,115);c.restore();}
+    else{c.fillStyle='#81927c';c.fillRect(e.x-40,e.y-25,80,45);}
+    if(armored){
+     const front=raidOnNose(s);
+     c.strokeStyle=front?'#ffe1a4':color+'ae';c.lineWidth=front?4:2;c.beginPath();c.arc(e.x,e.y,61,e.aim-.75,e.aim+.75);c.stroke();
+    }
+    bar(c,e.x,e.y-66,100,e.hp/e.maxHp,color);
    }else{
     if(s.operation?.region===1)paintRailBoss(c,e,s);
     else if(art)vehicle(c,art,{x:e.x,y:e.y,width:s.operation?.region===2?225:185,enemy:true,body:e.body,turret:e.aim,kick:e.kick,tread:s.t*80,moving:!e.dead&&e.mode==='charge',flash:e.dead?0:e.flash,damaged:e.hp<e.maxHp*.5,wreck:e.dead,reduced});
@@ -318,6 +345,14 @@ export function createRenderer(canvas,art){
    else if(f.type==='explosion'||f.type==='break'||f.type==='shrapnel'){const r=(f.r||80)*(.35+t*.7);circle(c,f.x,f.y,r,'#ec963b30','#ffd384',2);circle(c,f.x,f.y,r*.45,'#ffe0a178');for(let i=0;i<7;i++){const a=i*TAU/7;c.fillStyle='#efbd76';c.fillRect(f.x+Math.cos(a)*r,f.y+Math.sin(a)*r,4,4);}}
    else if(f.type==='heat'){const r=(f.r||100)*(.25+t*.85);circle(c,f.x,f.y,r,null,'#ffc48a',reduced?2:5*(1-t)+1);if(!reduced)circle(c,f.x,f.y,r*.55,'#fff1c2'+(t<.15?'bb':'25'));for(let i=0;i<8;i++){const a=i*TAU/8;flame(c,f.x+Math.cos(a)*r*.65,f.y+Math.sin(a)*r*.5,16*(1-t)+4,i+t*8);}c.textAlign='center';c.font='bold 12px Galmuri';c.fillStyle='#ffe1aa';c.fillText('열압',f.x,f.y-r*.55-10);}
    else if(f.type==='raid-success'){const color=({common:'#ffe0a1',rare:'#90e0da',prototype:'#dcafff'})[f.quality];circle(c,f.x,f.y,25+t*110,null,color,4);for(let i=0;i<10;i++){const a=i*TAU/10;c.fillStyle=color;c.fillRect(f.x+Math.cos(a)*t*120,f.y+Math.sin(a)*t*75-20,4,8);}}
+   else if(f.type==='armor-impact'){
+    c.strokeStyle='#ffe6b5';c.lineWidth=2;c.beginPath();
+    for(const spread of [-.65,0,.65]){
+     const a=f.angle+spread,r=8+t*17;
+     c.moveTo(f.x,f.y);c.lineTo(f.x+Math.cos(a)*r,f.y+Math.sin(a)*r);
+    }
+    c.stroke();
+   }
    else if(f.type==='payload'){circle(c,f.x,f.y,12+t*48,null,'#9bf2e8',3);circle(c,f.x,f.y,6+t*20,'#b7f4e444');}
    else if(f.type==='formation'){
     const r=29+t*15;c.strokeStyle=f.showcase==='flame'?'#efb477':'#b3e7da';c.lineWidth=2;c.strokeRect(f.x-r,f.y-r,r*2,r*2);

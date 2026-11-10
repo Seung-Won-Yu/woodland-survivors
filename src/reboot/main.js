@@ -1,6 +1,7 @@
 import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,isQuickMod} from './choice-details.js';
-import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg} from './field-scene.js';
+import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,raidRouteSvg,raidPreview} from './field-scene.js';
+import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,activeEntry,coastLead,coastLeadColor,frontTactic,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynergyReady,moduleRank,refitWeapons} from './content.js';
@@ -69,7 +70,14 @@ function showChoices(){
 function showPause(){panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="pause-title"><span class="eyebrow">작전 일시정지</span><h2 id="pause-title">다음 한 수를 준비하라.</h2><p>${run.operation?`${run.operation.region+1}/3 ${region(run).name} · ${fmt(run.t)} · LV.${run.level}`:'전투 중'}<br>${run.stage==='holdout'?'게이트 개방. 남아서 XP를 회수하거나 게이트로 이동하세요.':region(run).mission}</p>${loadoutChips(run.weapons,run.modules)}<div class="pause-actions"><button class="primary" data-action="continue">전투 이어하기 ▶</button><button data-action="retreat">작전 정산</button></div><div class="pause-secondary">${run.raid?.state==='active'?'<button data-action="withdraw">습격 철수 · 건 상자 소실</button>':''}${run.stage==='holdout'&&(!run.challenge||run.operation&&['complete','failed'].includes(run.challenge.state))?`<button data-action="challenge">${holdoutContract(run).name} · D ${(run.operation?.challengeTier||0)+1}</button>`:''}<button class="text-button" data-action="settings-menu">환경 설정</button></div></section>`);}
 function showResult(r=run.result,archived=false){r=profile().recent.find(x=>isReport(x)&&(r.runId?x.runId===r.runId:x.seed===r.seed&&x.seconds===r.seconds))||r;document.body.dataset.scene=archived||!renderer?'lobby':'battle';panel(reportView(r,profile(),{archived}));}
 
-function showRaid(){subpanel={type:'raid'};panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="raid-title"><span class="eyebrow">WAGER THE SUPPLY</span><h2 id="raid-title">지금 상자를 걸겠습니까?</h2><p>현재 ${QUALITY[run.choice.quality]} 보급을 포기하고 수송대를 습격합니다.<br>탈출·철수하면 건 상자를 잃습니다. 기존 무장과 확보 기록은 유지됩니다.</p><table class="raid-table"><thead><tr><th>계약</th><th>내구 / 탈출</th><th>성공 보상 확률</th></tr></thead><tbody><tr><th>보급차</th><td>900 / 약17초</td><td>일반70 · 희귀27 · 원형3%<br><small>야전 분화 개장 / 무기 강화 후보</small></td></tr><tr><th>장갑 수송대</th><td>4,200 / 21초<br>전면 탄환 ×0.5</td><td>일반40 · 희귀45 · 원형15%<br><small>미완성 진화·연계 부품 후보</small></td></tr></tbody></table><small>장갑 계약은 완성 화력 권장 · 방패·장교·박격포 호위<br>위 확률은 습격 성공 뒤의 보상 품질입니다.</small><div class="buttons"><button data-action="raid:light">보급차 습격</button><button class="primary" data-action="raid:armored">장갑 수송대 습격</button><button data-action="choice-back">현재 보급 유지</button></div></section>`);}
+function showRaid(){
+ subpanel={type:'raid'};
+ const contracts=Object.entries(RAID_MARKS).map(([id,mark])=>{
+  const cfg=RULES.raidContracts[id],odds=RULES.quality[cfg.qualityKey];
+  return `<button class="raid-contract" data-action="raid:${id}" style="--route-ink:${mark.color}"><strong>${mark.name} 습격</strong><span>내구 ${cfg.hp.toLocaleString()} · ${Math.ceil(raidSeconds(id))}초</span><span>${mark.move}</span><small>${mark.reward}</small><small>희귀 ${Math.round(odds.rare*100)}% · 원형 ${Math.round(odds.prototype*100)}%</small></button>`;
+ }).join('');
+ panel(`<section class="sheet compact raid-brief" role="dialog" aria-modal="true" aria-labelledby="raid-title"><header><div><span class="eyebrow">무기고 · 선택 임무</span><h2 id="raid-title">수송대 습격</h2></div><span class="paused">Ⅱ 전투 정지</span></header><p>현재 <b>${QUALITY[run.choice.quality]} 보급</b>을 겁니다. 차량이 탈출하거나 철수하면 상자를 잃습니다.</p><div class="raid-brief-map">${raidPreview(run)}<div class="raid-legend"><span>● 현재 위치</span><span>○ 차량 출발</span><span>▥ 탈출 검문선</span></div></div><div class="raid-contracts">${contracts}</div><footer><small>장갑차는 완성 무장 권장 · 정면 탄환 피해 절반<br>정면 충돌 주의 · 확률은 성공 기준</small><button data-action="choice-back">현재 보급 유지</button></footer></section>`);
+}
 function showBranches(c,args){
  subpanel={type:'branch',card:c,args};
  const branches=Object.entries(GUNS[c.weapon].branches).map(([id,[name,desc]])=>{
@@ -245,7 +253,10 @@ function updateMap(lead,entry){
   if(boss.harborSupply)map+=dot('map-crate',boss.harborSupply.x,boss.harborSupply.y,42,'#d7f0b8','구급 화물');
  }
  const gate=exitGate(run);if(gate)map+=gateSymbol(gate);
- if(run.raid?.state==='active')map+=dot('map-courier',run.raid.target.x,run.raid.target.y,35,'#d7afff','습격 수송대');
+ if(run.raid?.state==='active'){
+  const {contract,target}=run.raid;
+  map+=raidRouteSvg(raidAhead(run.raid),contract)+dot('map-courier',target.x,target.y,34,RAID_MARKS[contract].color,RAID_MARKS[contract].name);
+ }
  if(run.challenge?.state==='active'&&run.challenge.type==='defend'){
   const {x,y,r}=DEFENSE_ZONE;
   map+=`<circle class="map-defense" cx="${x}" cy="${y}" r="${r}" fill="#cfa5e344" stroke="#f1c8fb" stroke-width="12" aria-label="중계기 방어 구역"/>`;
@@ -268,8 +279,10 @@ function updateHud(){
  const orderSite=run.stage==='field'&&front>0&&!tactic
   ?run.sites.find(n=>['rail-relay','port-control'].includes(n.id)&&n.state!=='done'):null;
  const focusBoss=run.boss.active||(interact?.id==='boss'&&!interact.blocked)||run.stats.completedBuild&&!localSite&&!orderSite;
- const next=gate||coastSite||(focusBoss?bossTarget:localSite||orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
- const choosingEntry=entry&&!localSite&&!focusBoss;
+ const raid=run.raid?.state==='active'?run.raid:null;
+ const convoy=raid&&{name:RAID_MARKS[raid.contract].name,x:raid.target.x,y:raid.target.y};
+ const next=convoy||gate||coastSite||(focusBoss?bossTarget:localSite||orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
+ const choosingEntry=entry&&!raid&&!localSite&&!focusBoss;
  const direction=bearing(p,next.x,next.y);
  $('operation-track').textContent=run.operation?REGIONS.map((d,i)=>`${i<run.operation.region?'✓':i===run.operation.region?'▶':'○'} ${d.name}`).join('  /  '):'';
  $('stage').textContent=run.operation?`${run.operation.region+1}/3 ${region(run).name}${run.stage==='holdout'?' · 돌파 완료':run.stage==='boss'?' · 보스 교전':''}`:run.powerWave&&run.stage==='field'?'POWER TEST / 완성 화력 전개':run.stage==='holdout'?'MISSION CLEAR / 잔류 가능':run.stage==='boss'?'ARMORED CARRIER':'BEACHHEAD / 해안 침투';
@@ -281,7 +294,8 @@ function updateHud(){
  $('threat').textContent=`경계 ${run.pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${reinforcements}`;
  const fieldIntel=$('field-intel');
  let intel='';
- if(choosingEntry)intel=entry.routes.map(route=>`${bearing(p,...route.path[1])} ${route.sign}`).join(' · ');
+ if(raid)intel='';
+ else if(choosingEntry)intel=entry.routes.map(route=>`${bearing(p,...route.path[1])} ${route.sign}`).join(' · ');
  else if(orderSite&&next===orderSite)intel='확보하면 보스 공략을 고를 수 있습니다.';
  else if(tactic&&run.stage==='field')intel=`${tactic.name} 확보 · 보스전에 적용`;
  else if(coastSite&&next===coastSite){
@@ -373,7 +387,14 @@ function updateHud(){
  for(const el of $('weapons').children)el.classList.toggle('just-equipped',performance.now()<equippedUntil&&el.dataset.weaponId===equippedWeapon);const feedback=$('field-feedback');feedback.hidden=!feedback.childElementCount||run.phase!=='playing'||performance.now()>equippedUntil;
  $('interact').hidden=!interact||!!interact.blocked;$('interact-label').textContent=interact?.label||'';
  const skill=RULES.fio[p.doctrine];$('skill').disabled=p.charge<skill.cost||p.skillCd>0||p.overdrive>0;$('skill').innerHTML=`전탄 보급<small>${p.overdrive>0?`${p.overdrive.toFixed(1)}초 가동`:p.skillCd>0?`${p.skillCd.toFixed(1)}초`:`${Math.floor(p.charge)}/${skill.cost}`}</small>`;$('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비<span class="key-hint"> · SPACE</span>'}</small>`;
- const raid=run.raid?.state==='active';$('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',raid);if(raid){$('raid-progress').value=run.raid.progress/run.raid.maxProgress;$('raid-hp').textContent=`${run.raid.contract==='armored'?'장갑 수송대':'보급차'} ${Math.ceil(run.raid.target.hp)} / ${run.raid.target.maxHp}`;}
+ $('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',!!raid);
+ if(raid){
+  const {target,contract}=raid;
+  $('raid-time').textContent=`탈출까지 ${Math.ceil(raidTimeLeft(raid))}초`;
+  $('raid-progress').max=target.maxHp;$('raid-progress').value=target.hp;
+  $('raid-hp').textContent=`${bearing(p,target.x,target.y)} ${RAID_MARKS[contract].name} ${Math.ceil(target.hp).toLocaleString()}`;
+  $('raid-angle').textContent=contract==='light'?'이탈로를 따라 추격':raidOnNose(run)?'전면 장갑 · 측면으로 우회':'측후면 · 탄환 피해 정상';
+ }
  $('boss-hud').hidden=!run.boss.active;
  document.body.classList.toggle('boss-active',run.boss.active);
  if(run.boss.active){
@@ -409,7 +430,7 @@ function updateHud(){
   }
  }
 }
-const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve',heal:'heal',break:'crowd-break'};
+const fieldCues={shot:'swarm-shot','rocket-shot':'scatter-shot',flame:'flame-loop',heat:'heat-break','fire-spread':'fire-spread',kill:'wood-kill',explosion:'power-kill','salvo-impact':'power-kill','payload-impact':'conduit-impact','payload-relay':'conduit-hop',hurt:'hurt',complete:'forge-evolve',skill:'burst',choose:'choose','boss-warning':'boss-warning','boss-down':'armor-collapse','challenge-clear':'rampage','region-entry':'front-entry','raid-success':'forge-evolve','armor-impact':'guard-block',heal:'heal',break:'crowd-break'};
 const bannerPriority=['region-entry','gate-open'];
 function processEvents(){
  const banner=$('banner'),events=new Set(takeEvents(run));

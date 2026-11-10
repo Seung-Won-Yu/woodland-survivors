@@ -1,5 +1,6 @@
 import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,FRONT_TACTICS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,completionModules,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
+import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
 const pick=(s,key,items)=>items[Math.floor(rng(s,key)*items.length)];
@@ -37,7 +38,7 @@ function exitCards(s){
  return [{id:'extract',kind:'extract',title:'살아서 귀환',desc:'최종 작전 보상과 기록을 확정합니다.',label:'작전 완수'},stay];
 }
 export const snapshot=s=>clone(s);
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -75,7 +76,16 @@ export function restore(raw,{allowPrevious=false}={}){
  if(s.phase==='result'&&(!s.result||typeof s.result.won!=='boolean'||!Number.isFinite(s.result.score)||!Number.isFinite(s.result.seconds)||!s.result.stats||!Array.isArray(s.result.weapons)||!Array.isArray(s.result.modules)||s.result.weapons.some(w=>!GUNS[w.id])||s.result.modules.some(m=>!MODULES[m.id])))fail();
  if(s.choice?.type==='assembly'){const ids=new Set([...assemblyOptions(s).map(c=>c.id),'back']);if(!s.choices.some(c=>c.id==='back'&&c.kind==='back')||s.choices.some(c=>!ids.has(c.id)))fail();}
  if(s.choice?.type==='clear'&&!s.stats.bossKilled)fail();
- if(s.queue.some(q=>!cardsOk(q.cards)))fail();if(s.raid&&(!['active','success','failed','withdrawn'].includes(s.raid.state)||!RULES.raidContracts[s.raid.contract]||!Number.isFinite(s.raid.progress)||!Number.isFinite(s.raid.target?.hp)))fail();
+ if(s.queue.some(q=>!cardsOk(q.cards)))fail();
+ if(s.raid){
+  const {state,contract,progress,maxProgress,target,route,segment,quality,wager}=s.raid;
+  const pointOk=p=>Number.isFinite(p?.x)&&Number.isFinite(p?.y);
+  if(!['active','success','failed','withdrawn'].includes(state)||!Object.hasOwn(RULES.raidContracts,contract)||!Number.isFinite(progress)||progress<0||!(maxProgress>0&&Number.isFinite(maxProgress)))fail();
+  if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
+  if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
+  if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
+  s.raid.segment??=raidCursor(s.raid).segment;
+ }
  if(s.operation&&s.stage==='holdout'){
   const gate=s.operation.gate;
   if(gate&&(!Number.isFinite(gate.x)||!Number.isFinite(gate.y)||gate.x<FIELD.left||gate.x>FIELD.right||gate.y<FIELD.top||gate.y>FIELD.bottom))fail();
@@ -220,7 +230,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
  else if(c.kind==='back'){s.phase='playing';s.choice=null;s.choices=[];return true;}
  else if(c.kind==='control'){
   if(c.key==='jam')s.operation.jammed=true;
-  else if(c.key==='loot')s.queue.push({type:'armory',source:'관제소 시험 탄약',cards:armoryCards(s,'rare'),extra:{quality:'rare'}});
+  else if(c.key==='loot')s.queue.push({type:'armory',source:'관제소 시험 탄약',cards:armoryCards(s,'rare'),extra:{quality:'rare',siteId:'port-control'}});
   else if(c.key==='supply')s.queue.push({type:'supply',source:s.choice.source,cards:supplyCards(s)});
   else if(Object.hasOwn(FRONT_TACTICS[s.operation?.region]||{},c.key)&&!s.operation.tactic)s.operation.tactic=c.key;
   else return false;
@@ -384,7 +394,6 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0){
   if(s.operation?.tactic==='heat'&&s.boss.tacticCycle===s.boss.cycle)amount*=frontTactic(s).boost;
  }
  if(e.type==='shield'&&kind==='bullet'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.45)amount*=breach?.65:.45;
- if(e.type==='courier'&&kind==='bullet'&&s.raid?.contract==='armored'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.5)amount*=.5;
  const actual=e.part||e;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
  if(['rifle','shield','mortar','officer'].includes(e.type)){const dx=e.x-s.player.x,dy=e.y-s.player.y,d=Math.hypot(dx,dy)||1,push=(kind==='blast'?RULES.combatFeel.blastPush:RULES.combatFeel.bulletPush)*(e.type==='shield'?RULES.combatFeel.shieldPushMultiplier:1);move(s,e,dx/d*push,dy/d*push,e.r);}
  if(source==='module')s.stats.moduleDamage+=amount;
@@ -481,7 +490,12 @@ function updateShots(s,dt){
   for(const e of targets(s)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
    if(q.arming>0&&q.target!==e.id||q.avoidGroup!=null&&q.avoidGroup===e.waveGroup)continue;
    q.hitIds.push(e.id);if(q.rocket){detonate(s,q);break;}
-   const wasBounce=q.pierce===undefined?q.hitIds.length>1:!!q.reflected;damage(s,e,q.damage,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1);if(wasBounce)s.stats.ricochetHits++;emit(s,'impact',e.x,e.y,{life:.12});
+   const wasBounce=q.pierce===undefined?q.hitIds.length>1:!!q.reflected;
+  const angle=e===s.raid?.target?Math.atan2(-q.vy,-q.vx):null,screened=angle!=null&&raidOnNose(s,angle);
+   const amount=screened?q.damage*RULES.raidContracts.armored.bulletFrontMultiplier:q.damage;
+   damage(s,e,amount,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1);
+   if(wasBounce)s.stats.ricochetHits++;
+   emit(s,screened?'armor-impact':'impact',screened?q.x:e.x,screened?q.y:e.y,{life:.12,angle});
    if(q.pierce>0){q.pierce--;q.damage*=.72;emit(s,'pierce',e.x,e.y,{angle:Math.atan2(q.vy,q.vx),life:.18});break;}
    if(q.bounces>0){const next=targets(s).filter(t=>t.hp>0&&!q.hitIds.includes(t.id)&&distance(t,e)<180&&!lineBlocked(s,e,t)).sort((a,b)=>distance(a,e)-distance(b,e))[0];if(next){q.bounces--;q.reflected=true;q.damage*=.7;q.x=e.x;q.y=e.y;const a=Math.atan2(next.y-e.y,next.x-e.x);q.vx=Math.cos(a)*700;q.vy=Math.sin(a)*700;q.life=Math.max(q.life,.28);s.effects.push({type:'ricochet',x:e.x,y:e.y,x2:next.x,y2:next.y,age:0,life:.1});break;}}
    q.life=0;break;
@@ -594,7 +608,7 @@ function updateSites(s,dt){
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
   if(site.state==='ready'&&distance(site,s.player)<SITE_PICKUP_RANGE){site.state='done';
    if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s.operation.region),site.name);
-   else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality});}
+   else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality,siteId:site.id});}
    else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:{});
    return;
   }
@@ -602,16 +616,31 @@ function updateSites(s,dt){
 }
 function startRaid(s,contract){
  if(s.phase!=='choice'||s.choice.type!=='armory'||s.raidUsed||!RULES.raidContracts[contract]||s.challenge?.state==='active')return false;
- const cfg=RULES.raidContracts[contract],route=s.operation?.region===1?[{x:800,y:950},{x:800,y:680},{x:800,y:400},{x:800,y:120}]:s.operation?.region===2?[{x:1380,y:950},{x:1380,y:680},{x:1380,y:400},{x:1380,y:120}]:s.seed%2===0?[{x:1260,y:470},{x:970,y:300},{x:600,y:470},{x:260,y:700}]:[{x:340,y:470},{x:630,y:300},{x:1000,y:470},{x:1340,y:700}];
- s.raidUsed=true;s.raid={state:'active',contract,progress:0,maxProgress:cfg.routeLength,route,quality:rollQuality(s,cfg.qualityKey),wager:snapshot(s.choice),wagerCards:clone(s.choices),target:{id:'courier',type:'courier',...route[0],r:35,hp:cfg.hp,maxHp:cfg.hp,aim:0,dead:false}};
- for(const [type,n]of Object.entries(cfg.escort))for(let i=0;i<n;i++)spawnEnemy(s,type,route[0].x+(rng(s,'combat')-.5)*190,route[0].y+(rng(s,'combat')-.5)*170);
+ const cfg=RULES.raidContracts[contract],route=raidRoute(s,contract),[start,next]=route;
+ const aim=Math.atan2(next.y-start.y,next.x-start.x);
+ s.raidUsed=true;s.raid={state:'active',contract,progress:0,maxProgress:cfg.routeLength,route,segment:0,quality:rollQuality(s,cfg.qualityKey),wager:snapshot(s.choice),wagerCards:clone(s.choices),target:{id:'courier',type:'courier',...start,r:35,hp:cfg.hp,maxHp:cfg.hp,aim,dead:false}};
+ const escorts=[];
+ for(const [type,count]of Object.entries(cfg.escort))for(let i=0;i<count;i++){
+  for(let attempt=0;attempt<24;attempt++){
+   const angle=rng(s,'combat')*TAU,radius=75+rng(s,'combat')*87;
+   const q={x:start.x+Math.cos(angle)*radius,y:start.y+Math.sin(angle)*radius};
+   if(q.x<FIELD.left+25||q.x>FIELD.right-25||q.y<FIELD.top+25||q.y>FIELD.bottom-25||blocked(s,q.x,q.y,25)||distance(s.player,q)<105||escorts.some(e=>distance(e,q)<48))continue;
+   const escort=spawnEnemy(s,type,q.x,q.y,null,{cohort:'raid'});
+   if(escort)escorts.push(escort);
+   break;
+  }
+ }
  s.phase='playing';s.choice=null;s.choices=[];emit(s,'raid-start',route[0].x,route[0].y,{life:1.2});return true;
 }
 function updateRaid(s,dt){
  const raid=s.raid;if(!raid||raid.state!=='active')return;const cfg=RULES.raidContracts[raid.contract];raid.progress+=cfg.speed*dt;
  if(raid.progress>=raid.maxProgress){raid.state='failed';s.stats.raidFailed++;emit(s,'raid-failed',s.player.x,s.player.y,{text:'수송대 이탈 · 건 상자 소실',life:1.5});return;}updateBurn(s,raid.target,dt);if(raid.state!=='active')return;
- const lengths=raid.route.slice(1).map((p,i)=>distance(p,raid.route[i])),total=lengths.reduce((a,b)=>a+b,0);let at=raid.progress/raid.maxProgress*total;
- for(let i=0;i<lengths.length;i++){if(at<=lengths[i]){const a=raid.route[i],b=raid.route[i+1],f=at/lengths[i];raid.target.x=a.x+(b.x-a.x)*f;raid.target.y=a.y+(b.y-a.y)*f;raid.target.aim=Math.atan2(b.y-a.y,b.x-a.x);break;}at-=lengths[i];}
+ const {segment,fraction}=raidCursor(raid),a=raid.route[segment],b=raid.route[segment+1];
+ raid.segment=segment;
+ raid.target.x=a.x+(b.x-a.x)*fraction;raid.target.y=a.y+(b.y-a.y)*fraction;
+ raid.target.aim=Math.atan2(b.y-a.y,b.x-a.x);
+ const {x,y,r}=raid.target,amount=cfg.contactDamage;
+ if(amount&&raidOnNose(s)&&distance(s.player,raid.target)<r+16)s.hitCandidate={amount,x,y};
 }
 function withdrawRaid(s){
  if(s.raid?.state!=='active')return false;
