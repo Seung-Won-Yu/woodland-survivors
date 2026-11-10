@@ -2,7 +2,7 @@ import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,pa
 import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidCue,portAidCounterReady,portEscapeLanes,railGunOf,COAST_MORTAR,coastLead,coastLeadColor,coastEncounterCue,coastMortarAiming,coastMortarThreatens,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,blastContactRadius,clamp} from './content.js';
-import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight,coastRocketVolley} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_COLOR,signalRoute,signalCourier} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
@@ -74,11 +74,11 @@ function paintEscapeLane(c,path,color,dashes,visible){
  }
  c.restore();
 }
-function paintCoastCue(c,s,site,guns,size,cx,cy,scale){
+function paintCoastCue(c,s,site,guns,volley,size,cx,cy,scale){
  const prefix=site.coastApproach?.toUpperCase();
  const name=site.opening?'포로 구출':site.name;
- const label=coastEncounterCue(s,site)||(site.state==='ready'&&site.opening?'접근해 구출':prefix?`${prefix} · ${name}`:name);
- const target=guns.find(e=>coastMortarAiming(s,e))||guns.reduce((near,e)=>!near||distance(e,s.player)<distance(near,s.player)?e:near,null)||site;
+ const label=coastEncounterCue(s,site,volley)||(site.state==='ready'&&site.opening?'접근해 구출':prefix?`${prefix} · ${name}`:name);
+ const target=guns.find(e=>coastMortarAiming(s,e))||volley||guns.reduce((near,e)=>!near||distance(e,s.player)<distance(near,s.player)?e:near,null)||site;
  const targetX=size.w/2+(target.x-cx)*scale;
  const targetY=size.h/2+(target.y-cy)*scale;
  const mobile=size.w<=700;
@@ -114,6 +114,16 @@ function paintCoastCue(c,s,site,guns,size,cx,cy,scale){
  c.rotate(Math.atan2(targetY-y,targetX-x));
  c.beginPath();
  c.moveTo(5,0);c.lineTo(-4,-4);c.lineTo(-2,0);c.lineTo(-4,4);c.closePath();c.fill();
+ c.restore();
+}
+function paintCoastVolley(c,volley){
+ const {x,y,state}=volley,aligned=state==='ready'||state==='inflight';
+ c.save();c.translate(x,y);
+ circle(c,0,0,13,aligned?'#26443e':'#38443d','#28342d',5);
+ circle(c,0,0,13,null,aligned?'#c4f6da':'#a5c6b0',2);
+ c.fillStyle=aligned?'#c4f6da':'#a5c6b0';
+ c.fillRect(-18,-1,9,2);c.fillRect(9,-1,9,2);
+ if(aligned)c.fillRect(-2,-2,4,4);
  c.restore();
 }
 function paintCoastGuard(c,s,e){
@@ -544,6 +554,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
   const gate=exitGate(s),lead=coastLead(s),aid=portAidCue(s);
   const guns=lead?.coastApproach==='r'&&lead.state==='active'?s.enemies.filter(e=>!e.dead&&e.siteId===lead.id):[];
+  const volley=guns.length===2?coastRocketVolley(s,lead):null;
   const follow=s.boss.active?1:!reduced&&s.operation&&s.stage==='holdout'?Math.max(0,1-s.holdTime/.65)**2:0;
   worldWidth+=(Math.max(worldWidth,Math.abs(s.player.x-s.boss.x)*1.2+300)-worldWidth)*follow;
   const scale=size.w/worldWidth;view={w:worldWidth,h:size.h/scale};
@@ -791,6 +802,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    else if(f.type==='impact'||f.type==='kill'){c.strokeStyle=f.type==='kill'?'#f9dcb4':'#fff1be';c.lineWidth=2;for(let i=0;i<4;i++){const a=i*TAU/4+f.age*4,r=5+t*16;c.beginPath();c.moveTo(f.x+Math.cos(a)*r,f.y-18+Math.sin(a)*r);c.lineTo(f.x+Math.cos(a)*(r+7),f.y-18+Math.sin(a)*(r+7));c.stroke();}}
    c.restore();
   }
+  if(volley&&visible(volley.x,volley.y,20))paintCoastVolley(c,volley);
   if(chargeLane)paintChargeLane(c,s.boss,chargeLane,true);
   for(const q of s.enemyShots)if(visible(q.x,q.y))circle(c,q.x,q.y-18,6,'#b0422c','#ffe1a1',2);
   const portRounds=s.hazards.filter(h=>h.portRound&&!h.hit);
@@ -834,7 +846,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   if(portRounds.length)paintPortEscape(c,s,portRounds,combatHud.analog);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
-  if(lead)paintCoastCue(c,s,lead,guns,size,cx,cy,scale);
+  if(lead)paintCoastCue(c,s,lead,guns,volley,size,cx,cy,scale);
   if(mobile&&aid)paintAidBearing(c,s,aid,size,cx,cy,scale,combatHud.rects);
  }
  return{draw,view:()=>view,resize};

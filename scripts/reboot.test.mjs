@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast} from '../src/reboot/choice-details.js';
@@ -1542,7 +1542,9 @@ test('every beach and garrison combination offers both opening guns, safe guards
   s.sites.forEach(site=>site.state='done');s.enemies=[];s.spawnClock=999;
   assert.deepEqual(supply(s).filter(c=>c.kind==='gun').map(c=>c.weapon),[route.gun,route.gun==='r'?'f':'r']);
   const site=s.sites.find(n=>n.coastApproach===weapon),approach=coastApproach(site);
-  assert.ok(choiceDetails(s,s.choices.find(c=>c.id===`gun:${weapon}`)).link.includes(approach.formation));
+  const opening=choiceDetails(s,s.choices.find(c=>c.id===`gun:${weapon}`));
+  assert.ok(opening.detail.includes(approach.formation));
+  assert.match(opening.link,/회수 후보/);
   assert.equal(reroll(s),false);assert.ok(choose(s,`gun:${weapon}`));
   site.state='waiting';s.player.x=site.x;s.player.y=site.y+160;step(s,dt);
   assert.deepEqual(s.enemies.filter(e=>e.siteId===site.id).map(e=>e.type),approach.guards.map(([type])=>type));
@@ -1570,6 +1572,48 @@ test('spaced garrisons survive an opening shot that hits all guards in the packe
   assert.deepEqual(beachRoute(17),beachRoute(splitSeed));
   assert.deepEqual([shot(17),shot(splitSeed),shot(splitSeed,true)],[...affected,affected[0]]);
  }
+});
+test('a clear standoff shot bursts between clustered mortars and preserves its aim through a checkpoint',()=>{
+ const s=quietOperation(),site=s.sites.find(n=>n.coastApproach==='r');
+ site.state='waiting';
+ Object.assign(s.player,{x:site.x,y:site.y+180});
+ s.weapons=[{...makeWeapon('r'),uid:'r',cd:999}];
+ s.firstNew='r';
+ step(s,dt);
+ const [left,right]=s.enemies;
+ const point={x:(left.x+right.x)/2,y:left.y};
+ assert.deepEqual(coastRocketVolley(s),{...point,state:'ready'});
+ const backup=restore(snapshot(s));backup.firstNew='f';
+ assert.equal(coastRocketVolley(backup),null);
+ const close=restore(snapshot(s));close.player.y=point.y+100;
+ assert.equal(coastRocketVolley(close).state,'close');
+ const outside=restore(snapshot(s));Object.assign(outside.player,{x:point.x-260,y:point.y+85});
+ assert.equal(coastRocketVolley(outside).state,'blocked');
+ const covered=restore(snapshot(s));covered.blocks=[{x:point.x-20,y:point.y+80,w:40,h:25,hp:-1}];
+ assert.equal(coastRocketVolley(covered).state,'blocked');
+ covered.sites.find(n=>n.id===site.id).coastPlan='split';
+ assert.equal(coastRocketVolley(covered),null);
+
+ s.weapons[0].cd=0;step(s,dt);
+ assert.deepEqual(s.shots[0].coastFuse,point);
+ assert.deepEqual(coastRocketVolley(s),{...point,state:'inflight'});
+ const restored=restore(snapshot(s));tick(restored,.75);
+ assert.equal(restored.enemies.filter(e=>e.dead).length,2);
+ assert.ok(restored.effects.some(f=>f.type==='coast-volley'&&f.x===point.x&&f.y===point.y));
+ restored.pendingLevels=1;step(restored,dt);
+ assert.equal(restored.phase,'playing');
+ assert.ok(action(restored,'upgrade'));
+ const atPickup=restore(snapshot(s));Object.assign(atPickup.player,{x:site.x,y:site.y});
+ tick(atPickup,.75);
+ assert.equal(atPickup.sites.find(n=>n.id===site.id).state,'ready');
+ assert.equal(atPickup.phase,'playing');
+ tick(atPickup,.55);
+ assert.equal(atPickup.choice.type,'supply');
+ const intercepted=restore(snapshot(s));
+ intercepted.enemies.push({...enemy('intercept',point.x,point.y+120,'rifle',28),speed:0});
+ tick(intercepted,.75);
+ assert.ok(intercepted.enemies.filter(e=>e.type==='mortar').every(e=>!e.dead));
+ assert.ok(!intercepted.effects.some(f=>f.type==='coast-volley'));
 });
 test('split escorts keep both wings visible in motion before converging on the pilot',()=>{
  const s=quietOperation(),site=s.sites.find(n=>n.coastApproach==='f');

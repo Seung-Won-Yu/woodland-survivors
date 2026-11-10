@@ -237,20 +237,20 @@ const BEACH_ROUTES=[
 ];
 export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
 export const COAST_APPROACHES={
- f:{name:'이동 보급차',label:'화염 · 근접 돌파',formation:'밀집 호위',hint:'보급차에 붙어 방패병과 보병을 함께 태우세요.',module:'catalyst',range:215,
+ f:{name:'이동 보급차',label:'화염 · 근접 돌파',formation:'밀집 호위',hint:'붙어서 호위를 함께 태우기',module:'catalyst',range:215,
   guards:[['shield',0,54],['rifle',-33,26],['rifle',33,26],['rifle',-40,-13],['rifle',40,-13],['rifle',0,-30]]},
- r:{name:'박격포 진지',label:'로켓 · 원거리 제압',formation:'집결 포대',hint:'열린 사선에서 박격포를 먼저 끊으세요.',module:'coil',range:300,
+ r:{name:'박격포 진지',label:'로켓 · 원거리 제압',formation:'집결 포대',hint:'멀리서 두 포대 사이에 폭발',module:'coil',range:300,
   guards:[['mortar',-47,-42],['mortar',47,-42]]}
 };
 const SPLIT_COAST={
- f:{...COAST_APPROACHES.f,formation:'양갈래 호위',hint:'두 호위 사이를 피하고 바깥쪽에서 한 줄씩 태우세요.',
+ f:{...COAST_APPROACHES.f,formation:'양갈래 호위',hint:'바깥으로 돌아 한 줄씩 태우기',
   guards:[['shield',-64,54],['rifle',-70,18],['rifle',-38,19],['rifle',64,54],['rifle',70,18],['rifle',38,19]]},
- r:{...COAST_APPROACHES.r,formation:'분산 포대',hint:'박격포 한 문을 끊고, 남은 쪽으로 사선을 옮기세요.',
+ r:{...COAST_APPROACHES.r,formation:'분산 포대',hint:'사선을 바꿔 한 문씩 끊기',
   guards:[['mortar',-78,-42],['mortar',78,-42]],firstSalvo:[.6,1.45]}
 };
 export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_APPROACHES)[site?.coastApproach];
 export const COAST_WING={offset:64,hold:1.25,release:1.6};
-export const COAST_MORTAR={range:400,tell:.36,warning:.9,spacing:.85};
+export const COAST_MORTAR={range:400,tell:.36,warning:.9,spacing:.85,volleyDistance:160,volleyBeat:.55};
 export function coastMortarWait(s,e){
  if(e.cohort!=='coast-guard'||!s.sites.some(n=>n.id===e.siteId&&n.coastPlan==='split'))return 0;
  // The far gun can rejoin after a retreat, but not lock the same position in the same frame.
@@ -283,10 +283,13 @@ export function coastLead(s){
  return null;
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
-export function coastEncounterCue(s,site){
+export function coastEncounterCue(s,site,volley){
  const approach=coastApproach(site);
  if(!approach)return null;
- if(site.state==='ready')return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
+ if(site.state==='ready'){
+  if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'))return '로켓 한 발 · 두 문 제압';
+  return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
+ }
  if(site.state!=='active')return null;
  const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id);
  if(site.coastApproach==='f'){
@@ -294,7 +297,9 @@ export function coastEncounterCue(s,site){
   const move=site.coastPlan!=='split'?'붙어서 분사':wings===1?'남은 호위 추격':'바깥에서 한쪽부터';
   return `${move} · 경비 ${guards.length}명`;
  }
- const aim=coastMortarThreatens(s,site)?'포격 원 밖으로':guards.some(e=>coastMortarAiming(s,e))?'박격포 조준 중':guards.length===1?'남은 포대를 노려라':site.coastPlan==='split'?'교대 포격 · 한 문씩':'폭발에 두 문을 넣어라';
+ const aim=coastMortarThreatens(s,site)?'포격 원 밖으로':guards.some(e=>coastMortarAiming(s,e))?'박격포 조준 중'
+  :volley?({ready:'사선 확보 · 동시 타격',inflight:'포대 사이로 로켓 비행',close:'포대와 거리 벌리기',far:'사거리까지 접근',blocked:'옆으로 돌아 사선 열기'})[volley.state]
+  :guards.length===1?'남은 포대를 노려라':site.coastPlan==='split'?'교대 포격 · 한 문씩':'포대를 향해 사선 잡기';
  return `${aim} · ${guards.length}문`;
 }
 export const mapSeed=(seed,index)=>seed+index*7919;
