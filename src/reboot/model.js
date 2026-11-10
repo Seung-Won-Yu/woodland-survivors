@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,makeWeapon,tags,moduleRank,moduleGain,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,clamp,layout} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -247,6 +247,7 @@ function openChoice(s,type,cards,source='',extra={}){
 const SITE_PICKUP_RANGE=74,LEVEL_PICKUP_PRIORITY=120;
 const RESCUE_FOCUS_SECONDS=15;
 const OPENING_WEAPON_SECONDS=2.5;
+const FIRST_CONTACT_SECONDS=6;
 function deferOpeningUpgrade(s){
  if(s.operation?.region!==0||s.stage!=='field'||s.player.hp<s.player.maxHp*.45)return false;
  if(s.t<(s.openingFireUntil||0))return true;
@@ -256,6 +257,14 @@ function deferOpeningUpgrade(s){
 export function canOpenLevel(s){
  return s.phase==='playing'&&s.player.hp>0&&s.pendingLevels>0&&!s.queue.length&&!deferOpeningUpgrade(s);
 }
+function deferContactDraft(s){
+ if(!s.openingFireUntil||s.t>=s.openingFireUntil+FIRST_CONTACT_SECONDS-OPENING_WEAPON_SECONDS||s.player.hp<s.player.maxHp*.45)return false;
+ if(s.operation?.order&&!s.operation.orderDone||s.raid?.state==='active')return false;
+ const site=coastLead(s);
+ if(!site?.coastApproach||site.coastApproach!==s.firstNew)return false;
+ const gap=distance(s.player,site);
+ return site.state==='waiting'?gap<=430:site.state==='active'&&gap<=COAST_APPROACHES[site.coastApproach].range+130;
+}
 function openLevel(s){
  s.pendingLevels--;
  openChoice(s,'level',levelCards(s),`LEVEL ${s.level}`);
@@ -263,7 +272,7 @@ function openLevel(s){
 function nextChoice(s){
  if(s.phase!=='playing')return;
  if(s.queue.length){const item=s.queue.shift();openChoice(s,item.type,item.cards,item.source,item.extra);return;}
- if(s.t<(s.levelReadyAt||0)||!canOpenLevel(s))return;
+ if(s.t<(s.levelReadyAt||0)||!canOpenLevel(s)||deferContactDraft(s))return;
  // Let nearby field objectives take precedence over routine upgrades.
  if(s.operation&&s.stage==='holdout'&&interaction(s)?.id==='extract')return;
  if(s.operation&&s.stage!=='boss'&&s.sites.some(site=>site.state==='ready'&&distance(site,s.player)<LEVEL_PICKUP_PRIORITY))return;

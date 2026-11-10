@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,portAidBaitRisk,railGunOf,coastLead,coastLeadColor,activeEntry} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidPreview,portAidWindow,portAidBaitRisk,railGunOf,coastLead,coastLeadColor,coastEncounterCue,activeEntry} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight} from './model.js';
@@ -74,10 +74,10 @@ function paintEscapeLane(c,path,color,dashes,visible){
  }
  c.restore();
 }
-function paintCoastCue(c,site,size,cx,cy,scale){
+function paintCoastCue(c,s,site,size,cx,cy,scale){
  const prefix=site.coastApproach?.toUpperCase();
  const name=site.opening?'포로 구출':site.name;
- const label=site.state==='ready'?(site.opening?'접근해 구출':'접근해 회수'):prefix?`${prefix} · ${name}`:name;
+ const label=coastEncounterCue(s,site)||(site.state==='ready'&&site.opening?'접근해 구출':prefix?`${prefix} · ${name}`:name);
  const targetX=size.w/2+(site.x-cx)*scale;
  const targetY=size.h/2+(site.y-cy)*scale;
  const mobile=size.w<=700;
@@ -85,9 +85,10 @@ function paintCoastCue(c,site,size,cx,cy,scale){
  c.save();
  c.font='bold 11px Galmuri, sans-serif';
  const width=Math.ceil(c.measureText(label).width)+32;
- const x=Math.round(clamp(targetX,width/2+12,size.w-width/2-12));
+ const compactMargin=mobile&&size.h<590?Math.min(114,size.w-width-12):12;
+ const x=Math.round(clamp(targetX,width/2+compactMargin,size.w-width/2-12));
  const left=x-width/2<165;
- const top=mobile?(left?Math.min(300,size.h*.45):124):112;
+ const top=mobile?(size.h<590?224:left?310:124):112;
  const bottom=mobile?Math.max(top+18,size.h-(left?324:155)):Math.max(top+18,size.h-112);
  const y=Math.round(clamp(targetY-64*scale,top,bottom));
  c.fillStyle='#152a28f2';
@@ -579,7 +580,7 @@ export function createRenderer(canvas,art){
    }
   }
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
-  if(lead)paintCoastCue(c,lead,size,cx,cy,scale);
+  if(lead)paintCoastCue(c,s,lead,size,cx,cy,scale);
   if(mobile&&s.boss.active){
    const crate=s.boss.harborSupply,aid=crate||portAidPreview(s);
    if(aid)paintAidBearing(c,aid,size,cx,cy,scale,!crate);

@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.54.0" src="https://img.shields.io/badge/RIFT-0.54.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.55.0" src="https://img.shields.io/badge/RIFT-0.55.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -59,7 +59,7 @@
 
 후반 공세는 일반병의 물량을 늘리고 장교·포격병의 수와 빈도를 제한합니다. 강화한 무기로 대군을 쓸고, 특수 적의 예고를 읽는 리듬을 분리했습니다.
 
-해안은 출격할 때마다 네 가지 배치 중 직전과 다른 동선을 엽니다. 전장 표식을 따라 포로의 경비를 제압한 뒤 감옥에 다가가면 첫 무장을 고릅니다. 화염 F는 보급차에 붙어 방패병과 밀집 보병을 태우고 촉매 연료를 노립니다. 로켓 R은 열린 사선에서 박격포부터 끊고 축전 코일을 노립니다. 두 거점 모두 공략할 수 있습니다.
+해안은 출격할 때마다 네 가지 배치 중 직전과 다른 동선을 엽니다. 전장 표식을 따라 포로의 경비를 제압한 뒤 감옥에 다가가면 첫 무장을 고릅니다. 화염 F는 보급차에 붙어 방패병과 밀집 보병을 태우고 촉매 연료를 노립니다. 로켓 R은 열린 사선에서 박격포부터 끊고 축전 코일을 노립니다. 표지가 남은 경비와 보급 회수 시점을 알려 주며, 첫 교전 중 얻은 개조는 잠시 대기합니다.
 
 해안은 지휘부 소탕, 철도는 중계기 방어, 항구는 탈출 차량 저지입니다. 해안·철도 첫 도전은 목표를 완료하고 잔류 증원 8명을 제압하면 희귀 보급을 엽니다. 철갑 급탄, 돌격 신관, 회수 의무 장비 중 시드와 전선으로 정한 두 부품이 나오며, 지금 쓸 응급 보급도 고를 수 있습니다. 같은 전장 재도전은 후보를 유지합니다.
 

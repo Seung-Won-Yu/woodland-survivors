@@ -1,4 +1,4 @@
-import {FIELD,clamp,layout} from './content.js';
+import {FIELD,MODULES,clamp,layout} from './content.js';
 import {routeCursor} from './raid.js';
 
 export const REGIONS=[
@@ -188,6 +188,14 @@ export function coastLead(s){
  return null;
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
+export function coastEncounterCue(s,site){
+ const approach=COAST_APPROACHES[site.coastApproach];
+ if(!approach)return null;
+ if(site.state==='ready')return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
+ if(site.state!=='active')return null;
+ const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id).length;
+ return site.coastApproach==='f'?`붙어서 분사 · 경비 ${guards}명`:`사선 열기 · 박격포 ${guards}문`;
+}
 export const mapSeed=(seed,index)=>seed+index*7919;
 export const RAIL_GARRISONS={
  shield:{name:'방패 검문',crew:'방패병',unit:'명',range:215,hint:'방패병 옆으로 돌아 사선을 여세요.',guards:[

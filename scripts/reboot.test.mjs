@@ -1211,6 +1211,26 @@ test('opening combat reserves earned upgrades through the rescue and a short wea
  assert.equal(resumed.choice.type,'level');
  assert.equal(resumed.pendingLevels,0);
 });
+test('the first coastal engagement defers only automatic drafts until the brief grace ends',()=>{
+ const run=quietOperation();
+ assert.ok(supply(run).some(c=>c.id==='gun:f'));assert.ok(choose(run,'gun:f'));
+ const truck=run.sites.find(site=>site.coastApproach==='f');truck.state='active';
+ Object.assign(run.player,{x:truck.x,y:truck.y+175});
+ run.enemies=[{...enemy('truck-guard',truck.x,truck.y,'shield'),siteId:truck.id}];
+ run.level=2;run.pendingLevels=1;run.t=run.openingFireUntil+.6;
+ for(const weapon of run.weapons)weapon.cd=999;
+ const ready=restore(snapshot(run));step(run,dt);
+ assert.equal(run.phase,'playing');assert.equal(run.pendingLevels,1);
+ assert.ok(action(run,'upgrade'));assert.equal(run.choice.type,'level');
+ const limit=restore(snapshot(ready));limit.t=limit.openingFireUntil+3.5;step(limit,dt);
+ assert.equal(limit.choice.type,'level');
+ const hurt=restore(snapshot(ready));hurt.player.hp=44;step(hurt,dt);
+ assert.equal(hurt.choice.type,'level');
+ const leave=restore(snapshot(ready));Object.assign(leave.player,{x:120,y:1050});step(leave,dt);
+ assert.equal(leave.choice.type,'level');
+ const cleared=restore(snapshot(ready));cleared.enemies=[];step(cleared,dt);
+ assert.equal(cleared.choice.type,'level');
+});
 test('campaign level drafts leave combat time between choices without consuming banked XP',()=>{
  const s=quietOperation();s.level=4;s.pendingLevels=2;
  step(s,dt);
