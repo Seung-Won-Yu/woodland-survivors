@@ -1,5 +1,5 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
-import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,HOLDOUT,HOLDOUT_CONTRACTS,coastApproach,beachRoute,railGarrison,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
+import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,HOLDOUT,HOLDOUT_CONTRACTS,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,makeWeapon,weaponStats} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
@@ -95,7 +95,7 @@ function researchPanel(p){
 }
 function weaponsPanel(){return `<section class="lobby-page"><header class="page-heading"><div><span class="section-index">병기 자료실</span><h1>어떤 화력으로 돌파할 것인가</h1><p>출격은 H로 시작합니다. 새 총은 전장에서 노획하고, 레벨4에서 발사 방식을 고릅니다.</p></div><span class="paper-tag">공격 3칸 / 모듈 4칸</span></header><div class="weapon-deck">${Object.entries(GUNS).map(([id,d])=>{const stats=weaponStats(makeWeapon(id));return `<article class="weapon-docket"><div class="weapon-blueprint"><span>${d.short}</span>${itemArt(id)}<small>${id==='h'?'빠른 연사':id==='r'?'광역 폭발':'근접 부채 화염'}</small></div><div class="weapon-spec"><h2>${d.name}</h2><p>시작 피해 ${stats.damage} · 간격 ${stats.interval.toFixed(2)}초</p><dl>${Object.values(d.branches).map(([name,desc],i)=>`<div><dt><span>${i?'B':'A'}</span>${name}</dt><dd>${desc}</dd></div>`).join('')}</dl><div class="evolution-recipe"><span>단일 진화</span><h3>${d.evolution}</h3><p>${d.short} L6 + ${id==='h'?'도탄기2':id==='f'?'촉매2':'코일2 · 점화는 촉매2도 가능'} + 조율권1</p></div></div></article>`;}).join('')}</div><div class="recipe-strip"><article><b>전도 합체 · H+R</b><p>H·R 각 L4 + 축전 코일2 + 조율권1</p><small>H 사격에 R 폭발을 계승하고 무기 한 칸을 돌려받습니다.</small></article><article><b>열압 연계 · 점화 후 기폭</b><p>서로 다른 연소·폭발 총 L4 + 촉매3</p><small>F로 점화하고 유탄 H·R로 폭파합니다. 총 두 개를 유지합니다.</small></article></div></section>`;}
 export function isReport(r){return !!(r&&Number.isSafeInteger(r.seed)&&r.seed>=0&&r.seed<=4294967295&&(r.sequence===undefined||Number.isSafeInteger(r.sequence))&&(!r.operation||Number.isInteger(r.operation.cleared)&&r.operation.cleared>=0&&r.operation.cleared<=3)&&Number.isFinite(r.seconds)&&r.seconds>=0&&Number.isFinite(r.score)&&Number.isFinite(r.level)&&r.stats&&['kills','challenge','raidSuccess','raidFailed','bestCombo'].every(k=>Number.isFinite(r.stats[k])&&r.stats[k]>=0)&&(!r.stats.completedBuild||Number.isFinite(r.stats.completedBuild.t))&&Array.isArray(r.weapons)&&r.weapons.every(w=>w&&GUNS[w.id]&&Number.isFinite(w.level)&&(!w.branch||GUNS[w.id].branches[w.branch])&&(!w.fusion||GUNS[w.fusion.secondary]))&&Array.isArray(r.modules)&&r.modules.every(m=>m&&MODULES[m.id]&&Number.isFinite(m.rank)));}
-function archivePanel(p){const marco=marcoRecord(p);const reports=p.recent.filter(isReport);const priorScore=Math.max(0,...(p.recordArchive||[]).map(entry=>Number(entry?.records?.score)||0));return `<section class="lobby-page"><header class="page-heading"><div><span class="section-index">전투 기록실</span><h1>다음 판에는 무엇을 바꿀까</h1><p>최근 열 번의 작전과 완성한 빌드를 비교하세요.</p></div></header><div class="archive-records"><div><b>${n(p.records.score)}</b><span>피오 최고 점수</span></div><div><b>${p.records.time===null?'—':clockText(p.records.time)}</b><span>피오 최단 완주</span></div><div><b>D${p.records.challenge}</b><span>피오 최고 잔류</span></div><div><b>${p.records.wins}</b><span>누적 완주</span></div></div>${marco?`<p class="operator-record"><b>마르코</b><span>최고 ${n(marco.score)}점</span><span>최단 ${marco.time===null?'—':clockText(marco.time)}</span><span>잔류 D${marco.challenge}</span></p>`:''}${priorScore?`<p class="inline-note">이전 규칙 최고 점수 ${n(priorScore)}점</p>`:''}${p.recent.length!==reports.length?'<p class="inline-note">읽을 수 없는 이전 보고서는 표시하지 않습니다. 크레딧과 연구는 유지됩니다.</p>':''}${reports.length?`<div class="report-list">${reports.map(r=>`<article class="report-row"><span class="report-stamp ${r.won?'won':r.reason==='prototype-failed'?'lost':''}">${r.won?'완주':r.reason==='prototype-failed'?'전사':'귀환'}</span><div><h2>작전 #${r.sequence} · ${operatorOf(r).name} <small>${r.operation?.cleared||0}/3 돌파 · ${clockText(r.seconds)}</small></h2><p>${r.weapons.map(w=>`${w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase()} L${w.level}`).join(' / ')}${sortieOrder(r.operation?.order)?` · ${sortieOrder(r.operation.order).name}`:''}${r.balanceRevision!==p.recordScope?' · 이전 규칙 기록':''}</p></div><div class="report-numbers"><b>${n(r.score)}점</b><small>+${n(r.credits)}C</small></div><button data-report="${r.sequence}">보고서</button></article>`).join('')}</div>`:'<div class="empty-archive">'+moduleIcon('archive')+'<h2>첫 보고서를 기다립니다.</h2><p>출격해 노획한 무기와 이번 선택을 기록하세요.</p><button class="primary" data-tab="mission">출격 준비</button></div>'}</section>`;}
+function archivePanel(p){const marco=marcoRecord(p);const reports=p.recent.map((r,index)=>({r,index})).filter(({r})=>isReport(r));const priorScore=Math.max(0,...(p.recordArchive||[]).map(entry=>Number(entry?.records?.score)||0));return `<section class="lobby-page"><header class="page-heading"><div><span class="section-index">전투 기록실</span><h1>다음 판에는 무엇을 바꿀까</h1><p>최근 열 번의 작전과 완성한 빌드를 비교하세요.</p></div></header><div class="archive-records"><div><b>${n(p.records.score)}</b><span>피오 최고 점수</span></div><div><b>${p.records.time===null?'—':clockText(p.records.time)}</b><span>피오 최단 완주</span></div><div><b>D${p.records.challenge}</b><span>피오 최고 잔류</span></div><div><b>${p.records.wins}</b><span>누적 완주</span></div></div>${marco?`<p class="operator-record"><b>마르코</b><span>최고 ${n(marco.score)}점</span><span>최단 ${marco.time===null?'—':clockText(marco.time)}</span><span>잔류 D${marco.challenge}</span></p>`:''}${priorScore?`<p class="inline-note">이전 규칙 최고 점수 ${n(priorScore)}점</p>`:''}${p.recent.length!==reports.length?'<p class="inline-note">읽을 수 없는 이전 보고서는 표시하지 않습니다. 크레딧과 연구는 유지됩니다.</p>':''}${reports.length?`<div class="report-list">${reports.map(({r,index})=>`<article class="report-row"><span class="report-stamp ${r.won?'won':r.reason==='prototype-failed'?'lost':''}">${r.won?'완주':r.reason==='prototype-failed'?'전사':'귀환'}</span><div><h2>작전 ${r.sequence?`#${r.sequence}`:'보고'} · ${operatorOf(r).name} <small>${r.operation?`${r.operation.cleared}/3 돌파 · `:''}${clockText(r.seconds)}</small></h2><p>${r.weapons.map(w=>`${w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase()} L${w.level}`).join(' / ')}${sortieOrder(r.operation?.order)?` · ${sortieOrder(r.operation.order).name}`:''}${r.balanceRevision!==p.recordScope?' · 이전 규칙 기록':''}</p></div><div class="report-numbers"><b>${n(r.score)}점</b>${hasPayout(r)?`<small>+${n(r.credits)}C</small>`:''}</div><button data-report="${index}">보고서</button></article>`).join('')}</div>`:'<div class="empty-archive">'+moduleIcon('archive')+'<h2>첫 보고서를 기다립니다.</h2><p>출격해 노획한 무기와 이번 선택을 기록하세요.</p><button class="primary" data-tab="mission">출격 준비</button></div>'}</section>`;}
 export function lobbyView(p,{tab='mission',brief=null,seed=17,order=null,operator='fio',requisition=null}={}){const tabs=[['mission','출격','route'],['weapons','병기','crate'],['research','연구','gear'],['archive','기록','archive']],available=readyResearch(p).length,content=tab==='research'?researchPanel(p):tab==='weapons'?weaponsPanel():tab==='archive'?archivePanel(p):missionPanel(p,brief,seed,order,operator,requisition);
  return `<section class="hangar-shell"><header class="command-header"><a class="rift-brand" href="./index.html" aria-label="RIFT 작전실"><b>RIFT</b><span>야전 작전실</span></a><nav class="command-nav" aria-label="작전실 메뉴">${tabs.map(([id,label,icon])=>`<button data-tab="${id}" ${tab===id?'aria-current="page"':''}>${moduleIcon(icon)}<span>${label}</span>${id==='research'&&(available||p.trials.length)?'<i aria-label="새 연구 소식"></i>':''}</button>`).join('')}</nav><div class="credit-counter"><span>보급 크레딧</span><b>${n(p.credits)}<small>C</small></b></div><button class="settings-button" data-action="settings-menu" aria-label="환경 설정">${moduleIcon('gear')}</button></header><div class="command-content" id="lobby-panel">${p.migrationNotice?`<p class="inline-note">${e(p.migrationNotice)}</p>`:''}${content}</div><footer class="command-footer"><span>이동 WASD · 회피 SPACE · ${OPERATORS[operator].skill} E · 상황 행동 F</span><span>노획한 무기로 매판 새롭게</span></footer></section>`;
 }
@@ -151,8 +151,104 @@ function harborPayoff(r){
  if(!results.length)return '';
  return `<section class="harbor-payoff" data-part="${part}"><span>철도 부품 · 항구 전과</span><b>${FRONT_SUPPORTS[part].name}</b><p>${results.join(' / ')}</p></section>`;
 }
+const payoutLabels={
+ fronts:'전선 보스 격파',extraction:'생존 귀환',combat:'적 제압',supply:'보급 거점',raids:'습격 성공',
+ holdout:'잔류 도전',cargo:'노획 화물',firstClear:'첫 완주 보너스',order:'추가 지령 완수'
+};
+function hasPayout(r){return Number.isSafeInteger(r.credits)&&r.credits>=0;}
+function payoutLines(r){
+ const lines=r.creditBreakdown,entries=Object.entries(payoutLabels);
+ if(!hasPayout(r)||!lines||entries.some(([id])=>!Number.isSafeInteger(lines[id])||lines[id]<0))return null;
+ if(entries.reduce((sum,[id])=>sum+lines[id],0)!==r.credits)return null;
+ return entries.filter(([id])=>lines[id]>0).map(([id,label])=>({id,label,value:lines[id]}));
+}
+function debriefRoute(operation){
+ if(!operation)return '';
+ const history=Array.isArray(operation.history)?operation.history:[];
+ const front=Number.isInteger(operation.region)?operation.region:-1;
+ return `<ol class="debrief-route" aria-label="전선별 진행 기록">${REGIONS.map((d,i)=>{
+  const cleared=i<operation.cleared,elapsed=history.find(entry=>entry?.region===i)?.time??(front===i?operation.regionTime:null);
+  const state=cleared?'돌파':front===i?'도달':'미도달';
+  const time=(cleared||front===i)&&Number.isFinite(elapsed)&&elapsed>=0?` · ${clockText(elapsed)}`:'';
+  return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small></li>`;
+ }).join('')}</ol>`;
+}
+function debriefNext(r,p,archived){
+ if(archived)return {title:'다른 작전과 비교',label:'기록실로 돌아가기',target:'archive'};
+ const unlocked=Array.isArray(r.researchUnlocked)?r.researchUnlocked:[];
+ const available=readyResearch(p);
+ const gun=r.weapons.some(w=>w.fusion)?'r':r.weapons.some(w=>w.id==='f'&&w.evolved)?'f':null;
+ const ready=available.find(([id,d])=>unlocked.includes(id)&&d.fieldGun===gun)
+  ||available.find(([id])=>unlocked.includes(id))||available[0];
+ if(ready){
+  const [,d]=ready;
+  return {title:`${d.name} 연구 가능`,text:`${n(d.cost)}C · ${d.fitting}`,label:'병기 연구실로',target:'research'};
+ }
+ if(!p.active&&p.trials.length)return {title:`${RESEARCH[p.trials[0]].name} 실전 배치`,text:RESEARCH[p.trials[0]].fieldBrief,label:'현장 시험 준비',target:'research'};
+ if(p.research.some(id=>canReserveResearch(p,id)))return {title:'철도 정비대에 장비 예약',text:'다음 작전에서 연구 모듈을 정비대 보급으로 받으세요.',label:'다음 장비 예약',target:'research'};
+ if(r.operation&&!r.won){
+  const front=REGIONS[r.operation.cleared];
+  return {title:front?`다음 목표 · ${front.name}`:'다음 목표 · 귀환 게이트',text:front?'해안부터 무장을 다시 모아 다음 전선을 돌파하세요.':'항구를 격파하고 열린 게이트에서 생존 귀환을 확정하세요.',label:'다음 작전 준비',target:'mission'};
+ }
+ return nextOrder(p);
+}
+function debriefActions(r,p,archived){
+ const next=debriefNext(r,p,archived),support=r.operation?.region===2?r.operation.support:null;
+ const parts=r.balanceRevision===p.recordScope?holdoutParts(r.seed,1):[];
+ const other=parts.includes(support)?parts.find(id=>id!==support):null;
+ return `<section class="debrief-actions" aria-labelledby="debrief-next">
+  <span class="section-index">다음 행동</span><h2 id="debrief-next">${e(next.title)}</h2>${next.text?`<p>${e(next.text)}</p>`:''}
+  <button class="primary" data-action="home" data-target="${next.target}">${e(next.label)} <span aria-hidden="true">▶</span></button>
+  <p class="report-footnote">${p.active?'진행 중인 작전을 정산한 뒤 출격합니다. ':''}표준 작전 · 현재 연구로 해안 LV.1 시작</p>
+  <div class="debrief-replays">
+   <button data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}">같은 전장 · 표준 작전${other?`<small>${FRONT_SUPPORTS[other].name} 노리기</small>`:''}</button>
+   <button data-action="launch" data-actor="${operatorId(r)}">새 전장 출격</button>
+  </div>
+ </section>`;
+}
+function debriefDetails(r,p,lines){
+ const procs=[['도탄 적중',r.stats.ricochetHits],['전기 연쇄',r.stats.coilBursts],['열압 폭발',r.stats.heatBursts],
+  ['합체 격발',r.stats.payloadBursts],['연쇄 도약',r.stats.payloadRelays],['연쇄탄 처치',r.stats.payloadKills],
+  ['인페르노 장판 처치',r.stats.wakeKills],['관통 사격 명중',r.stats.focusHits],['약점 직격',r.stats.focusWeakHits]].filter(([,v])=>v>0);
+ const fee=r.orderFee??r.requisitionFee,paid=Number.isSafeInteger(fee)&&fee>0,net=r.credits-fee;
+ const ledger=lines?`<section class="payout-ledger"><h2>보급 크레딧 지급 내역</h2><dl>
+  ${lines.map(({label,value})=>`<div><dt>${label}</dt><dd>+${n(value)}C</dd></div>`).join('')}
+  <div class="payout-total"><dt>이번에 지급</dt><dd>+${n(r.credits)}C</dd></div>
+  ${paid?`<div><dt>출격비 제외 순수익</dt><dd>${net>0?'+':''}${n(net)}C</dd></div>`:''}
+  </dl></section>`:'';
+ return `<details class="debrief-details"><summary><span>작전 상세</span><small>무장 · 보급 · 연구</small></summary>
+  <div class="debrief-detail-grid">
+   <div>${ledger}${orderReceipt(r)}${requisitionReceipt(r)}${unlockedResearch(r,p)}${researchFieldReport(r)}</div>
+   <section class="build-report"><h2>이번 작전의 화력</h2>
+    ${loadoutChips(r.weapons,r.modules)}${railWorkshopReport(r.stats)}
+    ${r.operation?.portEntry==='gantry'?'<p class="rail-workshop-record"><span>항구 진입</span><b>측면 해치 기습</b></p>':''}
+    ${Object.hasOwn(MANEUVERS,r.stats.maneuver)?`<small class="inline-note">노획 교범 · ${MANEUVERS[r.stats.maneuver].name}</small>`:''}
+    ${procs.length?`<div class="proc-list">${procs.map(([label,v])=>`<span>${label}<b>${n(v)}회</b></span>`).join('')}</div>`:''}
+    <small>${r.stats.completedBuild?`첫 완성 ${clockText(r.stats.completedBuild.t)} · `:''}습격 ${r.stats.raidSuccess}승 / ${r.stats.raidFailed}실패 · 최고 연속 처치 ${r.stats.bestCombo}</small>
+   </section>
+  </div></details>`;
+}
 export function reportView(r,p,{archived=false}={}){
- if(!isReport(r))return '<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="report-error"><h2 id="report-error">이 보고서를 읽지 못했습니다.</h2><p>크레딧과 연구는 유지됩니다. 다른 작전 기록을 확인하세요.</p><button class="primary" data-action="home" data-target="archive">기록실로 돌아가기</button></section>'; 
- const failed=r.reason==='prototype-failed',title=r.won?'항구를 돌파했다.':failed?'전사했다. 성과는 남았다.':'확보한 성과로 귀환했다.',eligible=readyResearch(p),reserve=p.research.some(id=>canReserveResearch(p,id)),target=archived?'archive':eligible.length||(!p.active&&p.trials.length)||reserve?'research':'mission',procs=[['도탄 적중',r.stats.ricochetHits],['전기 연쇄',r.stats.coilBursts],['열압 폭발',r.stats.heatBursts],['합체 격발',r.stats.payloadBursts],['연쇄 도약',r.stats.payloadRelays],['연쇄탄 처치',r.stats.payloadKills],['인페르노 장판 처치',r.stats.wakeKills],['관통 사격 명중',r.stats.focusHits],['약점 직격',r.stats.focusWeakHits]].filter(([,v])=>v>0),base=operationCredits(r,false),first=r.balanceRevision===p.recordScope&&(r.credits||0)-base===200?200:0;
- return `<section class="sheet report-sheet" role="dialog" aria-modal="true" aria-labelledby="result-title"><header class="debrief-header"><div><span class="section-index">작전 ${r.sequence?`#${r.sequence}`:'보고'}</span><h1 id="result-title">${title}</h1><p>${operatorOf(r).name} · ${clockText(r.seconds)} · LV.${r.level} · ${r.won?'생존 귀환':failed?'전사':'중도귀환'}${r.newTime&&r.balanceRevision===p.recordScope?' · 최단 기록 갱신':''}</p></div><span class="debrief-stamp ${r.won?'won':failed?'lost':''}">${r.won?'작전 완수':failed?'전사':'귀환'}</span></header><div class="debrief-route">${REGIONS.map((d,i)=>`<span class="${i<(r.operation?.cleared||0)?'done':''}">${i<(r.operation?.cleared||0)?'✓':'○'} ${d.name}</span>`).join('')}</div>${harborPayoff(r)}${orderReceipt(r)}${requisitionReceipt(r)}${unlockedResearch(r,p)}<div class="debrief-grid"><section><div class="earned-pay"><span>확보 보급 크레딧</span><b>+${n(r.credits)}<small>C</small></b><p>${r.won?'생존 귀환 보상 포함':'이번 성과는 다음 작전에 남습니다.'}</p>${first?`<small class="first-clear">첫 완주 보너스 ${n(first)}C 포함</small>`:''}</div><div class="debrief-records"><div><b>${n(r.score)}</b><span>작전 점수 ${r.newScore&&r.balanceRevision===p.recordScope?'· 갱신':''}</span></div><div><b>${n(r.stats.kills)}</b><span>일반 적 처치</span></div><div><b>D${r.stats.challenge}</b><span>잔류 도전</span></div></div></section><section class="build-report"><h2>이번 작전의 화력</h2>${loadoutChips(r.weapons,r.modules)}${railWorkshopReport(r.stats)}${r.operation?.portEntry==='gantry'?'<p class="rail-workshop-record"><span>항구 진입</span><b>측면 해치 기습</b></p>':''}${Object.hasOwn(MANEUVERS,r.stats.maneuver)?`<small class="inline-note">노획 교범 · ${MANEUVERS[r.stats.maneuver].name}</small>`:''}<div class="proc-list">${procs.map(([label,v])=>`<span>${label}<b>${n(v)}회</b></span>`).join('')||'<p>다음 작전에서 새로운 모듈 연계에 도전하세요.</p>'}</div><small>${r.stats.completedBuild?`첫 완성 ${clockText(r.stats.completedBuild.t)} · `:''}습격 ${r.stats.raidSuccess}승 / ${r.stats.raidFailed}실패 · 최고 연속 처치 ${r.stats.bestCombo}</small></section></div>${researchFieldReport(r)}<footer class="debrief-actions"><button class="primary" data-action="home" data-target="${target}">${archived?'기록실로 돌아가기':eligible.length?'병기 연구실로':target==='research'?p.trials.length?'현장 시험 준비':'다음 장비 예약':'다음 작전 준비'} <span>▶</span></button><div><button class="text-button" data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}">${(r.operation?.order||r.operation?.requisition)?'같은 전장 · 표준 작전':'같은 전장 · 다른 빌드'}</button><button class="text-button" data-action="launch" data-actor="${operatorId(r)}">바로 새 패로 출격</button></div></footer><small class="report-footnote">${p.active?'이전 판을 정산한 뒤 해안 LV.1부터 시작합니다.':'새 출격은 해안 LV.1부터 시작합니다.'} 크레딧·연구·기록은 유지됩니다.</small></section>`;
+ if(!isReport(r))return '<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="report-error"><h2 id="report-error">이 보고서를 읽지 못했습니다.</h2><p>크레딧과 연구는 유지됩니다. 다른 작전 기록을 확인하세요.</p><button class="primary" data-action="home" data-target="archive">기록실로 돌아가기</button></section>';
+ const failed=r.reason==='prototype-failed',title=r.won?(r.operation?'항구 돌파':'작전 완수'):failed?'작전 중 전사':'전선에서 복귀';
+ const sameScope=r.balanceRevision===p.recordScope,lines=payoutLines(r);
+ const legacyFirst=r.creditBreakdown==null&&r.won&&sameScope&&hasPayout(r)&&r.credits-operationCredits(r)===200;
+ const first=lines?.find(line=>line.id==='firstClear')?.value??(legacyFirst?200:0);
+ return `<section class="sheet report-sheet" role="dialog" aria-modal="true" aria-labelledby="result-title">
+  <header class="debrief-header"><div><span class="section-index">작전 보고${r.sequence?` / #${r.sequence}`:''}</span>
+   <h1 id="result-title">${title}</h1><p>${operatorOf(r).name} · ${clockText(r.seconds)} · LV.${r.level}${r.newTime&&sameScope?' · 최단 기록 갱신':''}</p></div>
+   <span class="debrief-stamp ${r.won?'won':failed?'lost':''}">${r.won?'생존 귀환':failed?'전사':'중도 귀환'}</span>
+  </header>
+  <div class="debrief-overview">
+   <section class="debrief-summary" aria-label="작전 성과">
+    <div class="debrief-scorecard">
+     ${hasPayout(r)?`<div class="earned-pay"><span>지급 크레딧</span><b>+${n(r.credits)}<small>C</small></b>${first?`<small class="first-clear">첫 완주 +${n(first)}C 포함</small>`:''}</div>`:''}
+     <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>일반 적 ${n(r.stats.kills)}명 · 잔류 D${r.stats.challenge}</small></div>
+    </div>
+    ${debriefRoute(r.operation)}${harborPayoff(r)}
+   </section>
+   ${debriefActions(r,p,archived)}
+  </div>
+  ${debriefDetails(r,p,lines)}
+ </section>`;
 }

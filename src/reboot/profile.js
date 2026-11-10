@@ -1,4 +1,4 @@
-import {RESEARCH,REQUISITION_FEE,operationCredits,orderBonus,sortieOrder} from './campaign.js';
+import {RESEARCH,REQUISITION_FEE,operationPayout,sortieOrder} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,restore,snapshot,finish,canResumeRun} from './model.js';
 import {operatorId} from './operator.js';
@@ -51,9 +51,10 @@ export function settleProfile(p,run){
  if(run.runId!==p.active.runId||run.result.runId!==p.active.runId)throw Error('다른 작전의 정산 결과입니다.');
  const n=copy(p),r=copy(run.result);if(n.active.sequence<=n.settled)return n;
  const order=sortieOrder(r.operation?.order),sameScope=r.balanceRevision===n.recordScope,marco=operatorId(r)==='marco';
- r.credits=operationCredits(r,!n.milestones.medic);r.newScore=false;r.newTime=false;
+ const {credits,lines}=operationPayout(r,!n.milestones.medic);
+ r.credits=credits;r.creditBreakdown=lines;r.newScore=false;r.newTime=false;
  if(order){
-  r.orderFee=order.fee;r.orderBonus=orderBonus(r);
+  r.orderFee=order.fee;r.orderBonus=lines.order;
  }
  if(r.operation?.requisition)r.requisitionFee=REQUISITION_FEE;
  if(sameScope&&(!order||r.orderBonus)){

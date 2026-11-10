@@ -47,8 +47,17 @@ test('reports distinguish this sortie unlocks from prior availability and show f
 });
 test('settled reports lead to affordable research and preserve exact replay seed',()=>{
  const run=createOperation(17);let p=beginProfile(emptyProfile(),run);run.operation.cleared=3;run.operation.extracted=true;run.stats.bossKilled=true;finish(run,true);p=settleProfile(p,run);
- const html=reportView(p.recent[0],p);assert.match(html,/data-target="research"/);assert.match(html,/data-action="same-seed" data-seed="17"/);assert.match(html,/첫 완주 보너스 200C 포함/);
- const old={...p.recent[0],balanceRevision:'old-rules'};assert.doesNotMatch(reportView(old,p),/첫 완주 보너스/);
+ const html=reportView(p.recent[0],p);assert.match(html,/data-target="research"/);assert.match(html,/data-action="same-seed" data-seed="17"/);assert.match(html,/첫 완주 \+200C 포함/);
+ assert.match(html,/전선 보스 격파<\/dt><dd>\+390C/);
+ assert.match(html,/이번에 지급<\/dt><dd>\+710C/);
+ assert.ok(html.indexOf('debrief-actions')<html.indexOf('debrief-details'));
+ const old={...p.recent[0],balanceRevision:'old-rules',creditBreakdown:undefined};
+ assert.match(reportView(old,p),/\+710/);
+ assert.doesNotMatch(reportView(old,p),/첫 완주|보급 크레딧 지급 내역|최단 기록 갱신/);
+ const oldSameRules=reportView({...old,balanceRevision:p.recordScope},p);
+ assert.match(oldSameRules,/첫 완주 \+200C 포함/);
+ assert.doesNotMatch(oldSameRules,/보급 크레딧 지급 내역/);
+ assert.doesNotMatch(reportView({...p.recent[0],creditBreakdown:{...p.recent[0].creditBreakdown,firstClear:400}},p),/보급 크레딧 지급 내역/);
  assert.match(reportView(p.recent[0],p,{archived:true}),/data-target="archive"/);
  const withActive=beginProfile(p,createOperation(18)),archived=reportView(p.recent[0],withActive,{archived:true});
  assert.match(archived,/data-action="same-seed" data-seed="17"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
@@ -64,6 +73,33 @@ test('harbor reports show the part actions actually recorded during the sortie',
  assert.match(render({...saved.operation,support:'breach',harborPayoff:{salvos:1,fans:0}}),/포탑탄 차단 1회/);
  assert.doesNotMatch(render({...saved.operation,harborPayoff:undefined}),/harbor-payoff/);
  assert.doesNotMatch(render({...saved.operation,harborPayoff:{safeAid:'<img>',aid:-1}}),/harbor-payoff/);
+ assert.match(render(saved.operation),/철갑 급탄 노리기/);
+ assert.match(render({...saved.operation,history:[{region:1,time:34.88}]}),/철도 차단<\/span><small>돌파 · 0:34/);
+});
+test('dispatch reports separate the real payout from the fee charged at launch',()=>{
+ const run=createOperation(19,[],null,'convoy'),active=beginProfile(emptyProfile(),run);
+ Object.assign(run.operation,{region:2,cleared:2});
+ run.player.hp=0;finish(run,false);
+ const p=settleProfile(active,run),html=reportView(p.recent[0],p);
+ assert.equal(p.credits,210);
+ assert.match(html,/이번에 지급<\/dt><dd>\+210C/);
+ assert.match(html,/출격비 제외 순수익<\/dt><dd>\+140C/);
+ assert.match(html,/출격 시 −70C/);
+ assert.match(html,/다음 목표 · 항구 결전/);
+ const immediate=createOperation(19,[],null,'convoy'),newActive=beginProfile(p,immediate);
+ finish(immediate,false);const early=settleProfile(newActive,immediate);
+ assert.match(reportView(early.recent[0],early),/출격비 제외 순수익<\/dt><dd>-70C/);
+});
+test('valid old reports without a sequence or campaign data open by their actual archive index',()=>{
+ const run=createOperation(17),active=beginProfile(emptyProfile(),run);
+ finish(run,false);
+ const p=settleProfile(active,run),legacy={...p.recent[0],sequence:undefined,credits:undefined,operation:undefined,won:true};
+ p.recent=[null,p.recent[0],legacy];
+ assert.match(lobbyView(p,{tab:'archive'}),/data-report="2"/);
+ assert.doesNotMatch(lobbyView(p,{tab:'archive'}),/data-report="0"|#undefined/);
+ const html=reportView(legacy,p,{archived:true});
+ assert.match(html,/작전 완수/);
+ assert.doesNotMatch(html,/지급 크레딧|항구 돌파|전선별 진행 기록/);
 });
 test('history handles empty states and escapes externally readable migration notes',()=>{
  const p=emptyProfile();assert.match(lobbyView(p,{tab:'archive'}),/첫 보고서를 기다립니다/);

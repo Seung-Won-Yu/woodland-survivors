@@ -302,4 +302,19 @@ export function requisitionSite(s){
  return s.sites.find(site=>site.id==='rail-cache'&&site.state!=='done')||null;
 }
 export const CARGO_CREDITS=70;
-export function operationCredits(r,firstWin=false){if(!r.operation)return 0;const s=r.stats,boss=[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0);return Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10+Math.min(s.sitesCleared||0,6)*40+boss+(r.won?120:0)+Math.min(s.raidSuccess,3)*40+Math.min(s.challengeWins||s.challenge,3)*20+(s.holdoutCargo?CARGO_CREDITS:0)+(firstWin&&r.won?200:0)+orderBonus(r);}
+export function operationPayout(r,firstWin=false){
+ if(!r.operation)return {credits:0,lines:{}};
+ const s=r.stats,lines={
+  fronts:[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0),
+  extraction:r.won?120:0,
+  combat:Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10,
+  supply:Math.min(s.sitesCleared||0,6)*40,
+  raids:Math.min(s.raidSuccess,3)*40,
+  holdout:Math.min(s.challengeWins||s.challenge,3)*20,
+  cargo:s.holdoutCargo?CARGO_CREDITS:0,
+  firstClear:firstWin&&r.won?200:0,
+  order:orderBonus(r)
+ };
+ return {credits:Object.values(lines).reduce((total,value)=>total+value,0),lines};
+}
+export const operationCredits=(r,firstWin=false)=>operationPayout(r,firstWin).credits;
