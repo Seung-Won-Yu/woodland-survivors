@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,DEFENSE_ZONE,CARGO_CREDITS,COAST_APPROACHES,operationCredits,regionBoss} from '../src/reboot/campaign.js';
 import {RULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,pickupReach} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,freshSortie} from '../src/reboot/profile.js';
@@ -404,20 +404,47 @@ test('harbor armor support rewards a flank and disables the turret fan',()=>{
  assert.equal(front.boss.parts[0].hp,450);assert.equal(front.enemyShots.length,9);
  assert.equal(flank.boss.parts[0].hp,0);assert.equal(flank.enemyShots.length,0);assert.equal(flank.stats.supportUses[2],1);
 });
-test('harbor dash hits the exposed core directly once per recovery window',()=>{
+test('harbor opening shutter resists normal damage and armor only pierces from the mirrored turret flank',()=>{
+ for(const seed of [17,18]){
+  const b=regionBoss(2,seed),side=seed%2===0?1:-1;
+  assert.equal(Math.sign(b.parts[0].ox),side);
+  const probe=(support,offset,mode='salvo')=>{
+   const s=supportArena(2,support,mode);
+   s.boss.parts=b.parts.map(part=>({...part}));
+   Object.assign(s.player,{x:800+offset*180,y:370});
+   s.weapons[0].cd=0;tick(s,.4);
+   return s;
+  };
+  const pierce=probe('breach',side),wrong=probe('breach',-side);
+  const screened=probe(null,side),open=probe(null,side,'recover');
+  assert.ok(pierce.stats.supportUses[2]>0);
+  assert.equal(wrong.stats.supportUses?.[2]||0,0);
+  assert.ok(screened.boss.parts[0].hp<b.parts[0].hp);
+  assert.ok(screened.boss.parts[0].hp>open.boss.parts[0].hp);
+  assert.equal(probe(null,side,'aim').boss.parts[0].hp,open.boss.parts[0].hp);
+  assert.ok(pierce.boss.parts[0].hp<open.boss.parts[0].hp);
+ }
+});
+test('harbor dash must enter the exposed core range and strikes once per recovery window',()=>{
  const aim=supportArena(2,'overrun','aim'),opening=supportArena(2,'overrun','recover');
- for(const s of [aim,opening]){Object.assign(s.player,{x:800,y:400,dash:.01});step(s,dt);}
- assert.equal(aim.boss.hp,aim.boss.maxHp);assert.equal(opening.boss.hp,opening.boss.maxHp-320);
+ const rush=(s,y,input)=>{
+  Object.assign(s.player,{x:800,y,dashCd:0});assert.ok(action(s,'dash'));tick(s,.2,input);
+ };
+ rush(aim,470,{x:0,y:-1});
+ rush(opening,400,{x:0,y:0});
+ assert.equal(aim.boss.hp,aim.boss.maxHp);assert.equal(opening.boss.hp,opening.boss.maxHp);
+ rush(opening,470,{x:0,y:-1});
+ assert.equal(opening.boss.hp,opening.boss.maxHp-320);
  assert.equal(opening.boss.parts[0].hp,450);assert.ok(opening.boss.timer>999);
- opening.player.dash=.01;step(opening,dt);assert.equal(opening.stats.supportUses[2],1);
- opening.boss.cycle++;opening.player.dash=.01;step(opening,dt);assert.equal(opening.stats.supportUses[2],2);
+ rush(opening,470,{x:0,y:-1});assert.equal(opening.stats.supportUses[2],1);
+ opening.boss.cycle++;rush(opening,470,{x:0,y:-1});assert.equal(opening.stats.supportUses[2],2);
 });
 test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
  const s=supportArena(2,'recovery','salvo');s.boss.timer=0;Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
- step(s,dt);assert.deepEqual(s.boss.harborSupply,{x:625,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);
+ step(s,dt);assert.deepEqual(s.boss.harborSupply,{x:975,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);
  const loaded=restore(snapshot(s));Object.assign(loaded.player,loaded.boss.harborSupply);step(loaded,dt);
  assert.equal(loaded.player.hp,92);assert.equal(Math.floor(loaded.player.charge),60);assert.equal(loaded.stats.supportUses[2],1);assert.equal(loaded.boss.harborSupply,undefined);
- Object.assign(loaded.boss,{mode:'salvo',cycle:2,timer:0});step(loaded,dt);assert.deepEqual(loaded.boss.harborSupply,{x:975,y:335});
+ Object.assign(loaded.boss,{mode:'salvo',cycle:2,timer:0});step(loaded,dt);assert.deepEqual(loaded.boss.harborSupply,{x:625,y:335});
  delete loaded.boss.harborSupply;Object.assign(loaded.boss,{mode:'salvo',cycle:4,timer:0});step(loaded,dt);assert.equal(loaded.boss.harborSupply,undefined);
 });
 test('claiming the rail relay extends the actual attack warning by 0.4 seconds',()=>{

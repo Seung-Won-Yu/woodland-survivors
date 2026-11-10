@@ -31,13 +31,16 @@ export function vanguardAid(player){
   charge:Math.min(100,player.charge+kit.charge)
  };
 }
+export const PORT_TURRET={shutterDamage:.16};
 export const PORT_SUPPORT={
- breach:{impact:'측면에서 포탑 우선 조준 · 피해 +65%',detail:'포탑을 부수면 재장전 직전 부채꼴 사격이 멈춥니다.',hint:'차체 옆으로 이동해 포탑을 먼저 부수세요.',flank:105,boost:1.65},
- overrun:{impact:'재장전 중 회피로 코어에 기본 피해 320',detail:'장갑 부위를 건너뛰고 코어 노출을 0.55초 연장합니다. 재장전당 1회.',hint:'붉은 원을 피한 뒤 코어 쪽으로 회피하세요.',reach:100,damage:320,delay:.55},
- recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 세 번의 재장전 때 좌우에 번갈아 투하합니다. 가까이 가야 회수됩니다.',hint:'포격이 끝나면 측면 구급 화물을 회수하세요.',heal:12,charge:20,reach:36,limit:3,lanes:[625,975],y:335}
+ breach:{impact:'포탑 쪽에서 첫 포격 장갑 관통 · 피해 +65%',detail:'포탑 쪽 사선을 잡아 첫 부채꼴 사격을 끊을 수 있습니다.',hint:'항구 작전도에서 포탑 쪽 측면을 확인하세요.',flank:105,boost:1.65},
+ overrun:{impact:'재장전 중 회피로 코어에 기본 피해 320',detail:'범위 밖에서 코어 쪽으로 돌입하면 장갑을 건너뛰고 노출을 0.55초 연장합니다. 재장전당 1회.',hint:'붉은 원을 피한 뒤 코어 쪽으로 회피하세요.',reach:100,damage:320,delay:.55},
+ recovery:{impact:'측면 구급 화물 · 체력 +12 / 전탄 +20',detail:'첫 화물은 포탑 반대편에, 이후 재장전마다 반대쪽에 투하합니다. 최대 3개.',hint:'포격이 끝나면 측면 구급 화물을 회수하세요.',heal:12,charge:20,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
-export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&Math.abs(s.player.x-s.boss.x)>=PORT_SUPPORT.breach.flank;
+export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
+export const portTurretShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
+export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.player.x-s.boss.x)*portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
 export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
 export const FRONT_TACTICS={
  1:{
@@ -121,7 +124,7 @@ export function regionLayout(seed,index=0){
   {id:'port-ammo',kind:'supply',name:'지휘부 탄약',...p(1100,300),state:'waiting'}
  ],blocks:[block('p1',550,690,210,100),block('p2',850,470,235,100),block('p3',340,350,170,100),block('p4',1120,800,160,100),block('p5',1070,170,160,75,280)]};
 }
-export function regionBoss(index){const d=REGIONS[index];return{id:'boss',type:'boss',x:800,y:180,hp:d.hp,maxHp:d.hp,r:index===1?76:65,active:false,dead:false,body:Math.PI/2,aim:Math.PI/2,mode:'aim',timer:1.3,cycle:0,spawnClock:4,kick:0,flash:0,parts:[{id:'part-a',type:'part',ox:-60,hp:d.partHp,maxHp:d.partHp,r:25},{id:'part-b',type:'part',ox:60,hp:d.partHp,maxHp:d.partHp,r:25}]};}
+export function regionBoss(index,seed=1){const d=REGIONS[index],turretSide=index===2&&seed%2===0?1:-1;return{id:'boss',type:'boss',x:800,y:180,hp:d.hp,maxHp:d.hp,r:index===1?76:65,active:false,dead:false,body:Math.PI/2,aim:Math.PI/2,mode:'aim',timer:1.3,cycle:0,spawnClock:4,kick:0,flash:0,parts:[{id:'part-a',type:'part',ox:60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25},{id:'part-b',type:'part',ox:-60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25}]};}
 export const RESEARCH={
  medic:{name:'응급 주사기',cost:300,condition:'첫 작전 완주',detail:'정예를 잡으면 체력12 회복 · 재사용12초. 보급 후보로 추가되며 모듈 한 칸을 씁니다.'},
  shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'유탄·로켓·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.'},

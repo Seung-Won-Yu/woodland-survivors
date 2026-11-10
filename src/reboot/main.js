@@ -2,7 +2,7 @@ import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,isQuickMod} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol} from './field-scene.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,coastLead,coastLeadColor,frontTactic,portBreachFlank,portCoreWindow,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_ROUTE,COAST_APPROACHES,coastLead,coastLeadColor,frontTactic,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,buildPaths,distance,evolutionParts,heatSynergyReady,moduleRank,refitWeapons} from './content.js';
 import {createOperation,restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,activeManeuver,interaction,xpNeeded,takeEvents} from './model.js';
 import {createStore,buyResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -158,6 +158,11 @@ function updateMap(lead){
  if(lead){const {x,y}=lead;map+=`<path d="M${x} ${y-51}l51 51 -51 51 -51 -51Z" fill="none" stroke="${coastLeadColor(lead)}" stroke-width="14" aria-label="${esc(sitePresentation(lead).name)} · 다음 표적"/>`;}
  if(run.stage==='field')map+=dot('map-boss-entry',800,350,34,'#ef8e64','보스 진입');
  if(run.boss.active){const b=run.boss;map+=dot('map-boss',b.x,b.y,50,'#ef8e64',run.operation?region(run).boss:'장갑 수송차')+`<line class="map-boss-facing" x1="${b.x}" y1="${b.y}" x2="${b.x+Math.cos(b.body)*120}" y2="${b.y+Math.sin(b.body)*120}" stroke="#ef8e64" stroke-width="16"/>`;}
+ const boss=run.boss;
+ if(boss.active&&run.operation?.region===2){
+  if(run.operation.support==='breach'&&boss.parts[0].hp>0)map+=dot('map-flank',boss.x+portTurretSide(boss)*150,boss.y+90,39,'#c8f4ff','철갑 포탑 사선');
+  if(boss.harborSupply)map+=dot('map-crate',boss.harborSupply.x,boss.harborSupply.y,42,'#d7f0b8','구급 화물');
+ }
  const gate=exitGate(run);if(gate)map+=gateSymbol(gate);
  if(run.raid?.state==='active')map+=dot('map-courier',run.raid.target.x,run.raid.target.y,35,'#d7afff','습격 수송대');
  if(run.challenge?.state==='active'&&run.challenge.type==='defend'){
@@ -285,7 +290,7 @@ function updateHud(){
   $('boss-hp').max=boss.maxHp;$('boss-hp').value=boss.hp;
   $('boss-state').textContent=front===1?(recovering?'재장전 · 반격 기회':'포격 열차 · 예고 차선 밖으로 이동'):front===2?(recovering?'코어 노출 · 집중 공격':'지휘 병기 · 붉은 원 밖으로 회피'):recovering?'후면 엔진 노출 · 뒤를 노려라':boss.mode==='windup'?'돌진 예고 · 옆으로 회피':'장갑 수송차 · 측후면을 노려라';
   const names=front===1?['좌측 포대','우측 포대']:front===2?['포탑','측면 장갑']:['포탑','궤도'];
-  $('boss-parts').textContent=names.map((name,i)=>`${name} ${boss.parts[i].hp>0?'가동':'파괴'}`).join(' / ');
+  $('boss-parts').textContent=names.map((name,i)=>`${name} ${boss.parts[i].hp<=0?'파괴':i===0&&portTurretShutter(run)?'포격 장갑':'가동'}`).join(' / ');
   const active=tactic&&recovering&&boss.tacticCycle===boss.cycle;
   const supportId=run.operation?.support;
   const harborPart=front===2&&Object.hasOwn(PORT_SUPPORT,supportId);
@@ -299,9 +304,10 @@ function updateHud(){
   const line=$('boss-support');
   line.hidden=!harborPart;
   if(harborPart){
+   const coreDistance=distance(p,boss)-boss.r;
    line.dataset.part=supportId;
-   line.textContent=supportId==='breach'?(boss.parts[0].hp<=0?'철갑 · 포탑 사격 차단':portBreachFlank(run)?'철갑 · 측면 확보, 포탑 집중':'철갑 · 차체 옆으로 이동'):
-    supportId==='overrun'?(portCoreWindow(run)?'돌격 · 지금 코어 쪽으로 회피':recovering?'돌격 · 코어 직격 완료':'돌격 · 포격 뒤 회피 준비'):
+   line.textContent=supportId==='breach'?(boss.parts[0].hp<=0?'철갑 · 포탑 사격 차단':portBreachFlank(run)?'철갑 · 포탑 방향 진입, 사선을 잡으세요':`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`):
+    supportId==='overrun'?(portCoreWindow(run)?(p.dash>0&&p.portRush?'돌격 · 코어 범위까지 이동':p.dashCd>0?'돌격 · 회피 재사용 대기':coreDistance<=PORT_SUPPORT.overrun.reach?'돌격 · 코어 밖에서 돌입 준비':coreDistance>PORT_SUPPORT.overrun.reach+110?'돌격 · 회피 사거리까지 접근':'돌격 · 지금 코어 쪽으로 회피'):recovering?'돌격 · 코어 직격 완료':'돌격 · 포격 뒤 회피 준비'):
     boss.harborSupply?`구급 · ${boss.harborSupply.x<800?'왼쪽':'오른쪽'} 화물 회수`:
     boss.cycle>=PORT_SUPPORT.recovery.limit&&recovering||boss.cycle>PORT_SUPPORT.recovery.limit?'구급 · 화물 투하 완료':'구급 · 포격 뒤 측면 투하';
   }

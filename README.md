@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.32.0" src="https://img.shields.io/badge/RIFT-0.32.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.33.0" src="https://img.shields.io/badge/RIFT-0.33.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -77,6 +77,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.33은 철도 잔류 부품에 따라 항구 첫 포격 공략이 갈립니다. 철갑은 시드별 포탑 사선을 잡고, 돌격은 포격 뒤 코어에 진입하고, 구급은 반대편 화물을 회수합니다. 시드 21·58의 화염과 전도 8판을 세로 인앱 화면에서 귀환까지 확인했습니다. [항구 공략 검증](docs/RIFT-GAMEPLAY-V1.md#033-항구-첫-포격과-잔류-부품).
 
 0.32는 강화와 분화를 고를 때 이번 선택으로 열리는 조합을 표시합니다. 시드 19에서 화염의 열압과 인페르노, 전도 격발망을 모바일 인앱 화면에서 각각 직접 장착하고 귀환을 확인했습니다. [성장 선택 검증](docs/RIFT-GAMEPLAY-V1.md#032-강화에서-조립까지).
 

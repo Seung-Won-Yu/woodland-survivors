@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry} from './field-art.js';
-import {exitGate,portBreachFlank,portCoreWindow,coastLead,coastLeadColor} from './campaign.js';
+import {exitGate,portBreachFlank,portCoreWindow,portTurretShutter,portTurretSide,coastLead,coastLeadColor} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {distance,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach} from './model.js';
@@ -42,14 +42,19 @@ function paintPortCue(c,s){
  const b=s.boss;
  if(s.operation?.region!==2||!b.active||b.dead)return;
  c.save();
- if(s.operation.support==='breach'&&b.parts[0].hp>0){
-  const flank=portBreachFlank(s),p=partPosition(s,b.parts[0]);
+ const turret=b.parts[0],flank=portBreachFlank(s);
+ if(portTurretShutter(s)&&!flank){
+  const p=partPosition(s,turret);
+  circle(c,p.x,p.y,27,'#b580453d','#edb272',3);
+ }
+ if(s.operation.support==='breach'&&turret?.hp>0){
+  const side=portTurretSide(b),x=b.x+side*142,y=b.y+58;
   c.strokeStyle=flank?'#c8f4ff':'#a9d6e9b0';c.lineWidth=3;
-  for(const side of [-1,1]){
-   const x=b.x+side*129,y=b.y+23;
-   c.beginPath();c.moveTo(x+side*10,y-13);c.lineTo(x,y);c.lineTo(x+side*10,y+13);c.stroke();
+  c.beginPath();c.moveTo(x+side*12,y-12);c.lineTo(x,y);c.lineTo(x+side*12,y+12);c.stroke();
+  if(flank){
+   const p=partPosition(s,turret);
+   circle(c,p.x,p.y,25,null,'#c8f4ff',3);c.fillStyle='#c8f4ff';c.fillRect(p.x-2,p.y-30,4,10);
   }
-  if(flank){circle(c,p.x,p.y,25,null,'#c8f4ff',3);c.fillStyle='#c8f4ff';c.fillRect(p.x-2,p.y-30,4,10);}
  }else if(portCoreWindow(s)){
   circle(c,b.x,b.y-21,22,'#432820aa','#ffd0a1',3);
   c.fillStyle='#ffe6bb';c.beginPath();c.moveTo(b.x-9,b.y-22);c.lineTo(b.x+9,b.y-22);c.lineTo(b.x,b.y-33);c.closePath();c.fill();c.fillRect(b.x-3,b.y-22,6,12);
