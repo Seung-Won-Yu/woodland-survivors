@@ -341,12 +341,29 @@ export function coastLead(s){
  if(s.operation.requisition==='thermal'&&s.firstNew==='f'&&!s.modules.some(m=>m.id==='coil'))return s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done')||null;
  return null;
 }
+export const COAST_SALVAGE_LEVEL=2;
+export function coastCrossGun(s,site){
+ const id=site?.coastApproach;
+ return s.operation?.region===0&&s.stage==='field'&&s.weapons.length<3&&Object.hasOwn(COAST_APPROACHES,id)&&id!==s.firstNew
+  &&Object.hasOwn(COAST_APPROACHES,s.firstNew)&&s.weapons.some(w=>w.id===s.firstNew)
+  &&!s.excluded.includes(id)&&!coastStrikeArmed(s,id)?id:null;
+}
+export function coastFork(s,primary=coastLead(s)){
+ if(!primary?.coastApproach||primary.coastApproach!==s.firstNew||orderTarget(s))return null;
+ const cross=s.sites.find(site=>site.state!=='done'&&coastCrossGun(s,site));
+ if(!cross)return null;
+ const engaged=site=>site.state!=='waiting'&&distance(site,s.player)<=coastApproach(site).range+24;
+ const followingCross=engaged(cross)&&(!engaged(primary)||distance(cross,s.player)<distance(primary,s.player));
+ return {lead:followingCross?cross:primary,other:followingCross?primary:cross,cross};
+}
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
 export function coastEncounterCue(s,site,volley){
  const approach=coastApproach(site);
  if(!approach)return null;
  if(site.state==='ready'){
   if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'))return '로켓 한 발 · 두 문 제압';
+  const salvage=coastCrossGun(s,site);
+  if(salvage)return `접근해 회수 · ${salvage.toUpperCase()} L${COAST_SALVAGE_LEVEL}`;
   return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
  }
  if(site.state!=='active')return null;

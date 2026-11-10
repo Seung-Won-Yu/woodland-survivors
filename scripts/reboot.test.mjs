@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalRoute,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -850,6 +850,43 @@ test('rail parts retain the part hit, dash and XP routes',()=>{
  assert.equal(opening.boss.parts[0].hp,190);
  const recovery=supportArena(1,'recovery','salvo');recovery.boss.timer=0;step(recovery,dt);
  assert.deepEqual(recovery.gems.map(g=>[g.x,g.y,g.value,g.salvage]),[[625,470,18,true]]);
+});
+test('opposite coast routes offer a saved L2 salvage choice alongside the live fight',()=>{
+ for(const first of ['f','r']){
+  const s=quietOperation();
+  supply(s);assert.ok(choose(s,`gun:${first}`));
+  const main=s.sites.find(n=>n.coastApproach===first),other=s.sites.find(n=>n.coastApproach&&n!==main);
+  main.state=other.state='waiting';
+  assert.equal(coastFork(s).lead,main);
+  assert.equal(coastFork(s).other,other);
+  other.state='active';Object.assign(s.player,{x:other.x,y:other.y});
+  assert.equal(coastFork(s).lead,other);
+  assert.equal(coastFork(s).other,main);
+  const native=other.coastApproach;
+  s.seenGuns.push(native);
+  const card=supply(s,other.id).find(c=>c.id===`gun:${native}`);
+  assert.equal(card.salvageLevel,2);
+  assert.match(choiceDetails(s,card).cost,/빈칸에 L2/);
+  assert.ok(!s.choices.some(c=>c.id===`module:${main.module}`||c.kind==='coast-strike'));
+  const bad=snapshot(s);
+  bad.choice.siteId=main.id;
+  assert.throws(()=>restore(bad));
+  const old=snapshot(s);
+  delete old.choices.find(c=>c.id===card.id).salvageLevel;
+  const legacy=restore(old);
+  assert.ok(choose(legacy,card.id));
+  assert.equal(legacy.weapons.at(-1).level,1);
+  const loaded=restore(snapshot(s));
+  assert.ok(reroll(loaded));
+  assert.equal(choose(loaded,card.id,{slot:1}),false);
+  assert.equal(loaded.phase,'choice');
+  assert.ok(choose(loaded,card.id));
+  assert.deepEqual(loaded.weapons.map(w=>[w.id,w.level]),[['h',1],[first,1],[native,2]]);
+  assert.equal(loaded.firstNew,first);
+  assert.equal(loaded.refits,1);
+  assert.equal(coastFork(loaded),null);
+  assert.ok(supply(loaded,main.id).some(c=>c.id===`coast:${first}`));
+ }
 });
 test('a coastal strike trades the first matching supply for a single attack window',()=>{
  const s=quietOperation();

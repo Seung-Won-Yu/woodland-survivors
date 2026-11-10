@@ -143,6 +143,8 @@
 .front-intel strong{color:#f7cf80}
 #field-intel{color:#fae1a3;line-height:1.5;white-space:pre-line}
 .objective #field-direct{color:#c2d6bf;border-top:1px solid #a5b3a55c;padding-top:4px}
+.objective #field-direct[data-coast="f"]{color:#ffd0a0}
+.objective #field-direct[data-coast="r"]{color:#bcece4}
 #boss-tactic:not([hidden]){display:block;padding-top:5px;margin-top:5px;border-top:1px solid #afba8f58;color:#f6d897;line-height:1.45}
 #boss-support:not([hidden]){display:block;margin-top:4px;color:#fff0bf;line-height:1.45}
 #boss-support[data-part="breach"]{color:#c6e6f3}#boss-support[data-part="overrun"]{color:#ffc9a0}#boss-support[data-part="recovery"]{color:#c7f1bd}
@@ -151,8 +153,8 @@
 .harbor-boss #banner[data-kind="boss-warning"]{opacity:0}
 #skill[data-counter="ready"]:not(:disabled){background:#c7e4a8;border-color:#eef6ce;color:#253a28}
 .mission-board>.launch-dock{border-bottom:1px solid #a7a276}
-.opening-supply .upgrade-card[data-choice="gun:f"]{--accent:#ffd0a0}
-.opening-supply .upgrade-card[data-choice="gun:r"]{--accent:#bcece4}
+:is(.opening-supply,.coast-salvage) .upgrade-card[data-choice="gun:f"]{--accent:#ffd0a0}
+:is(.opening-supply,.coast-salvage) .upgrade-card[data-choice="gun:r"]{--accent:#bcece4}
 .upgrade-link.forecast-ready,.branch-list .forecast-ready{color:#ffe19e;font-weight:700}
 .upgrade-link.forecast-progress,.branch-list .forecast-progress{color:#d3e5c3}
 .upgrade-link.forecast-cost,.branch-list .forecast-cost{color:#f4bf9e}
@@ -533,16 +535,27 @@
  .field-menu.control-menu:not(.quick-mod) .upgrade-illustration .kit-sprite{width:63px;height:63px}
  .control-menu :is(.upgrade-impact,.upgrade-detail,.upgrade-link){line-height:1.25;word-break:keep-all}
  .control-menu .choice-footer{margin-top:8px}
- :is(.coast-options,.rail-workshop) .upgrade-deck{gap:7px}
- :is(.coast-options,.rail-workshop) .upgrade-card{min-height:0;padding:8px 25px 8px 63px;gap:3px}
- :is(.coast-options,.rail-workshop) .upgrade-card kbd{right:8px;top:8px}
- :is(.coast-options,.rail-workshop) .upgrade-copy{gap:3px}
- :is(.coast-options,.rail-workshop) .upgrade-illustration{top:12px;left:1px;width:60px;height:64px}
- :is(.coast-options,.rail-workshop) .upgrade-illustration .kit-sprite{width:70px;height:70px}
- :is(.coast-options,.rail-workshop) :is(.upgrade-card h3,.upgrade-impact){line-height:1.25}
- :is(.coast-options,.rail-workshop) :is(.upgrade-detail,.upgrade-link,.upgrade-cost){line-height:1.3;word-break:keep-all}
- :is(.coast-options,.rail-workshop) .upgrade-cost{padding-top:0;border:0}
+ :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-deck{gap:7px}
+ :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-card{min-height:0;padding:8px 25px 8px 63px;gap:3px}
+ :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-card kbd{right:8px;top:8px}
+ :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-copy{gap:3px}
+ :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-illustration{top:12px;left:1px;width:60px;height:64px}
+ :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-illustration .kit-sprite{width:70px;height:70px}
+ :is(.coast-options,.rail-workshop,.coast-salvage) :is(.upgrade-card h3,.upgrade-impact){line-height:1.25}
+ :is(.coast-options,.rail-workshop,.coast-salvage) :is(.upgrade-detail,.upgrade-link,.upgrade-cost){line-height:1.3;word-break:keep-all}
+ :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-cost{padding-top:0;border:0}
  .rail-workshop .choice-footer{margin-top:10px}
- .coast-options .upgrade-levels{display:none}
+ :is(.coast-options,.coast-salvage) .upgrade-levels{display:none}
+ .field-menu.coast-salvage .upgrade-card{min-height:76px;padding:7px 25px 7px 63px;gap:2px}
+ .field-menu.coast-salvage .upgrade-illustration{width:60px}
+ .field-menu.coast-salvage .upgrade-illustration .kit-sprite{width:70px;height:70px}
+ .field-menu.coast-salvage :is(header,.choice-tools){margin-bottom:8px}
+ .field-menu.coast-salvage .choice-tools{flex-wrap:nowrap}
+ .field-menu.coast-salvage .choice-tools button{white-space:nowrap}
+ .field-menu.coast-salvage header p{margin-top:5px;line-height:1.4}
+ .field-menu.coast-salvage .eyebrow{margin-bottom:2px}
+ .field-menu.coast-salvage .choice-footer{margin-top:5px}
+ .field-menu.coast-salvage :is(.choice-tools,.choice-footer) button{min-height:44px}
+ .coast-salvage .choice-footer>small{display:none}
 }
 .coast-options .choice-tools{margin-top:12px;margin-bottom:0}

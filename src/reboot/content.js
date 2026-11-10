@@ -113,6 +113,12 @@ export function canReplaceModule(s,id,slot){
  return s.modules[slot].id!=='coil'||(id!=='thermal'&&!moduleRank(s,'thermal'));
 }
 export function moduleGain(s,id,amount){const current=moduleRank(s,id),next=Math.min(3,current+amount),overflow=Math.max(0,current+amount-3);return{current,next,overflow,charge:overflow*RULES.crateRewards.overflowChargePerRank};}
+export function gunEquipLevel(s,card,old){
+ const base=card.salvageLevel||1+(s.operation?.region||0);
+ if(!old)return base;
+ if(s.refits>0&&s.stage==='field')return Math.min(5,old.level);
+ return Math.min(5,base+Math.floor(Math.max(0,old.level-base)/2));
+}
 export const refitWeapons=s=>s.weapons.filter(w=>w.level>=4&&!w.evolved&&!w.fusion&&GUNS[w.id].branches[w.branch]);
 export function railCalibration(s,w){
  if(!w.evolved)return null;

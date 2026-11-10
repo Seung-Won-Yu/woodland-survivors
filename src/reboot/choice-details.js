@@ -1,5 +1,5 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_STRIKES,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS} from './campaign.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -63,6 +63,12 @@ export function choiceDetails(s,c){
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
  }else if(c.kind==='gun'){
   out.title=GUNS[c.weapon].name;out.impact=c.weapon==='r'?'무리째 날리는 광역 폭발':c.weapon==='f'?'가까운 적을 태우는 부채 화염':'끊임없이 쏟는 실탄 연사';out.detail=c.weapon==='r'?'높은 한 발 피해 · 느린 발사':c.weapon==='f'?'연소를 남겨 폭발 연계를 준비':'도탄 또는 유탄으로 분화';out.link=`L4 · ${Object.values(GUNS[c.weapon].branches).map(b=>b[0]).join(' / ')}`;out.cost=s.weapons.length<3?`새 총 L${1+(s.operation?.region||0)} · 공격 한 칸 사용`:s.refits>0&&s.stage==='field'?'기존 총 교체 · 무료 개장으로 L5까지 유지':'기존 총 교체 · 투자 일부 이전';
+  if(c.salvageLevel){
+   const other=s.weapons.find(gun=>gun.id===s.firstNew);
+   out.detail=c.weapon==='r'?'화염에 로켓 폭발 추가':'로켓에 연소를 더해 열압 재료 확보';
+   out.link='';
+   if(other)out.cost=`빈칸에 L${gunEquipLevel(s,c)} · ${GUNS[other.id].short} 유지`;
+  }
   const approach=s.choice?.opening&&coastApproach(s.sites.find(site=>site.coastApproach===c.weapon));
   if(approach){out.impact=approach.hint;out.detail=`${approach.name} · ${approach.formation}`;out.link=`회수 후보 · ${MODULES[approach.module].name}`;out.cost='';}
  }else if(c.module){
@@ -108,7 +114,7 @@ export function choiceDetails(s,c){
   out.impact=`조율권 ${s.tuning} → ${s.tuning+1}`;out.detail='진화·합체·모듈 강화 또는 응급 정비에 사용합니다.';out.link='병기 개조에서 사용';out.cost='다음 전선까지 보관';
  }else if(c.kind==='coast-strike'){
   const plan=COAST_STRIKES[c.key];
-  if(plan){out.art=c.key;out.impact=plan.impact;out.detail=plan.hint;out.link=plan.detail;out.cost='무장 대신 선택 · 공략 성공 시 철도 진입 보급';}
+  if(plan){out.art=c.key;out.impact=plan.impact;out.detail=plan.hint;out.link=plan.detail;out.cost=`지금 모듈 대신 선택 · 성공 시 철도에서 ${MODULES[COAST_APPROACHES[c.key].module].name} 보급 후보`;}
  }else if(c.kind==='control'){
   const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
   out.art=c.key==='heat'||c.key==='lens'?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
