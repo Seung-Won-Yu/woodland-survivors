@@ -312,7 +312,7 @@ export const COAST_APPROACHES={
   guards:[['mortar',-47,-42],['mortar',47,-42]]}
 };
 const SPLIT_COAST={
- f:{...COAST_APPROACHES.f,formation:'양갈래 호위',hint:'바깥으로 돌아 한 줄씩 태우기',
+ f:{...COAST_APPROACHES.f,formation:'양갈래 호위',hint:'방패 없는 쪽부터 태우거나 옆으로 돌아 분사',
   guards:[['shield',-64,54],['rifle',-70,18],['rifle',-38,19],['rifle',64,54],['rifle',70,18],['rifle',38,19]]},
  r:{...COAST_APPROACHES.r,formation:'분산 포대',hint:'사선을 바꿔 한 문씩 끊기',
   guards:[['mortar',-78,-42],['mortar',78,-42]],firstSalvo:[.6,1.45]}
@@ -367,6 +367,11 @@ export function coastFork(s,primary=coastLead(s)){
  return {lead:followingCross?cross:primary,other:followingCross?primary:cross,cross};
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
+export function coastShieldImpact(s,site){
+ if(site.coastApproach!=='f'||site.state!=='active')return null;
+ const impact=s.effects.findLast(f=>f.coastScreen===site.id);
+ return impact&&s.enemies.some(e=>e.id===impact.shieldId&&!e.dead&&e.hp>0)?impact:null;
+}
 export function coastEncounterCue(s,site,volley){
  const approach=coastApproach(site);
  if(!approach)return null;
@@ -380,7 +385,8 @@ export function coastEncounterCue(s,site,volley){
  const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id);
  if(site.coastApproach==='f'){
   const wings=new Set(guards.map(e=>e.coastWing).filter(Boolean)).size;
-  const move=site.coastPlan!=='split'?'붙어서 분사':wings===1?'남은 호위 추격':'바깥에서 한쪽부터';
+  const screened=coastShieldImpact(s,site);
+  const move=screened?'방패에 막힘 · 측면 분사':site.coastPlan!=='split'?'붙어서 분사':wings===1?'남은 호위 추격':'바깥에서 한쪽부터';
   return `${move} · 경비 ${guards.length}명`;
  }
  const aim=coastMortarThreatens(s,site)?'포격 원 밖으로':guards.some(e=>coastMortarAiming(s,e))?'박격포 조준 중'

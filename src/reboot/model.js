@@ -550,6 +550,17 @@ function clearCoastOverlap(s,entity,r,fallback){
 function move(s,e,dx,dy,r){const x=clamp(e.x+dx,FIELD.left+r,FIELD.right-r),y=clamp(e.y+dy,FIELD.top+r,FIELD.bottom-r);if(!blocked(s,x,e.y,r))e.x=x;if(!blocked(s,e.x,y,r))e.y=y;}
 function lineBlocked(s,a,b){const n=Math.ceil(distance(a,b)/20);for(let i=1;i<=n;i++)if(blocked(s,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return true;return false;}
 function attackTargets(s,range){return targets(s).filter(e=>e.hp>0&&distance(e,s.player)<range+e.r&&!lineBlocked(s,s.player,e)).sort((a,b)=>distance(a,s.player)-distance(b,s.player));}
+const shieldFaces=(shield,p)=>Math.cos(Math.atan2(p.y-shield.y,p.x-shield.x)-shield.aim)>.45;
+function coastFlameShield(s,guard){
+ if(s.operation?.region!==0||s.stage!=='field'||guard.type!=='rifle'||guard.cohort!=='coast-guard'||!guard.coastWing)return null;
+ const p=s.player,dx=guard.x-p.x,dy=guard.y-p.y,reach=dx*dx+dy*dy;
+ return s.enemies.find(shield=>{
+  if(shield.type!=='shield'||shield.cohort!=='coast-guard'||shield.siteId!==guard.siteId||shield.coastWing!==guard.coastWing
+   ||shield.hp<=0||shield.dead||!shieldFaces(shield,p))return false;
+  const along=(shield.x-p.x)*dx+(shield.y-p.y)*dy;
+  return along>0&&along<reach&&segmentDistance(shield.x,shield.y,p.x,p.y,guard.x,guard.y)<shield.r+5;
+ });
+}
 export function coastRocketVolley(s,site=s.sites.find(n=>n.coastApproach==='r'),w=s.weapons.find(weapon=>weapon.id==='r')){
  if(s.operation?.region!==0||s.stage!=='field'||s.firstNew!=='r'||site?.coastApproach!=='r'||site.state!=='active'||site.coastPlan==='split'||!w||w.branch||w.evolved||w.fusion)return null;
  const guns=s.enemies.filter(e=>e.siteId===site.id&&e.type==='mortar'&&!e.dead&&e.hp>0);
@@ -765,7 +776,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if(e.dead)return;
   if(s.operation?.tactic==='heat'&&s.boss.tacticCycle===s.boss.cycle)amount*=frontTactic(s).boost;
  }
- if(e.type==='shield'&&kind==='bullet'&&Math.cos(Math.atan2(s.player.y-e.y,s.player.x-e.x)-e.aim)>.45)amount*=breach?.65:.45;
+ if(e.type==='shield'&&kind==='bullet'&&shieldFaces(e,s.player))amount*=breach?.65:.45;
  amount+=coastStrikeDamage(s,e,kind,source,owner);
  const actual=e.part||e,before=actual.hp;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
  if(e===s.boss&&e.hp>0&&(source==='native'||source==='payload'))relayCoreHit(s,owner);
@@ -910,13 +921,20 @@ function shoot(s,w){
   p.aim=a;p.attack=.12;w.shots++;
   emit(s,'rocket-shot',p.x+Math.cos(a)*28,p.y-18+Math.sin(a)*28,{angle:a,life:.08});return true;
  }
- const lance=infernoCoreLine(s,w),candidates=attackTargets(s,d.range),target=targetFor(s,w,d,candidates,lance);if(!target){const b=s.blocks.find(b=>b.hp>0&&distance({x:b.x+b.w/2,y:b.y+b.h/2},p)<150);if(b){b.hp=Math.max(0,b.hp-d.damage);p.attack=.1;emit(s,'impact',b.x+b.w/2,b.y+b.h/2);return true;}return false;}if(w.id!=='f'&&s.shots.length+d.count+(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7?1:0)>320)return false;
+ const lance=infernoCoreLine(s,w),candidates=attackTargets(s,d.range);
+ const open=w.id==='f'&&!w.evolved&&s.operation?.region===0&&s.stage==='field'?candidates.filter(e=>!coastFlameShield(s,e)):candidates;
+ const target=targetFor(s,w,d,open.length?open:candidates,lance);
+ if(!target){const b=s.blocks.find(b=>b.hp>0&&distance({x:b.x+b.w/2,y:b.y+b.h/2},p)<150);if(b){b.hp=Math.max(0,b.hp-d.damage);p.attack=.1;emit(s,'impact',b.x+b.w/2,b.y+b.h/2);return true;}return false;}
+ if(w.id!=='f'&&s.shots.length+d.count+(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7?1:0)>320)return false;
  const a=Math.atan2(target.y-p.y,target.x-p.x);p.aim=a;p.attack=.12;
  if(w.id==='f'){
   const catalyst=moduleRank(s,'catalyst'),focused=w.branch==='focused';
+  let flameBlocker;
   for(const e of lance?[target]:candidates){
    const angle=Math.atan2(e.y-p.y,e.x-p.x),delta=Math.atan2(Math.sin(angle-a),Math.cos(angle-a));
    if(Math.abs(delta)>=d.cone*Math.PI/360)continue;
+   const shield=!w.evolved&&coastFlameShield(s,e);
+   if(shield){flameBlocker??=shield;continue;}
    burn(e,w.evolved?(focused&&e===target?36:24):RULES.modules.catalyst.burnDamagePerSecond[catalyst-1]||6,w.evolved?2:1.5);
    const core=lance&&e===s.boss;
    const bypass=core&&s.boss.parts.some(part=>part.hp>0)&&!portCoreDisrupted(s);
@@ -931,7 +949,13 @@ function shoot(s,w){
    }
    damage(s,e,d.damage*damageScale*(core?1.4:1)*(bypass?1.6:1),'fire','native',w.uid,0);
   }
-  emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14,evolved:w.evolved,...(focused?{focused:true}:null),...(lance?{coreDistance:distance(p,target)}:null)});
+  let screen;
+  if(flameBlocker){
+   const gap=distance(p,flameBlocker),heading=Math.atan2(flameBlocker.y-p.y,flameBlocker.x-p.x)-a;
+   screen={angle:Math.atan2(Math.sin(heading),Math.cos(heading)),half:Math.atan2(flameBlocker.r+5,gap),range:Math.max(8,gap-12)};
+   emit(s,'armor-impact',flameBlocker.x,flameBlocker.y,{life:.3,angle:flameBlocker.aim,coastScreen:flameBlocker.siteId,shieldId:flameBlocker.id});
+  }
+  emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14,evolved:w.evolved,...(screen?{screen}:null),...(focused?{focused:true}:null),...(lance?{coreDistance:distance(p,target)}:null)});
   if(w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<(w.evolved?4:3)){
    const reach=w.evolved?Math.min(120,distance(p,target)*.65):0;
    s.zones.push({x:p.x+Math.cos(a)*reach,y:p.y+Math.sin(a)*reach,r:w.evolved?74:50,dps:w.evolved?56:12,life:w.evolved?2.3:2,tick:.25,source:w.evolved?'wake':'dot',owner:w.uid});

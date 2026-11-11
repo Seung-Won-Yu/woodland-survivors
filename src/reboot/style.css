@@ -318,6 +318,13 @@
  #field-upgrade:not([hidden]){min-height:48px}
  #field-upgrade kbd{display:none}
 }
+@media(max-width:360px) and (orientation:portrait){
+ .coast-contact .arsenal{max-width:122px}
+ .coast-contact .arsenal .weapon{min-width:52px;min-height:36px;padding:3px 4px 3px 25px}
+ .coast-contact .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
+ .coast-contact .field-workbench{flex-direction:column;gap:3px}
+ .coast-contact .field-workbench #gear[data-view],.coast-contact #field-upgrade:not([hidden]){min-height:44px;padding:5px 6px;font-size:10px}
+}
 
 @media(max-width:700px) and (orientation:portrait){
  #banner:is([data-kind="region-entry"],[data-kind="port-hatch"]) {
