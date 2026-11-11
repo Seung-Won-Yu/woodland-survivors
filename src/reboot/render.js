@@ -2,7 +2,7 @@ import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,pa
 import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
-import {activeManeuver,partPosition,pickupReach,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine} from './model.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
@@ -320,15 +320,22 @@ function paintInferno(c,f,t,reduced){
   c.fillStyle=i%2?'#efb065':'#9e5234';c.fillRect(x,y,4+i%3,3);
  }
 }
-function paintEmberCharge(c,z){
- const armed=z.tick<=0;
+function paintEmberCharge(c,s,z){
+ const {armed,hostiles,railTarget,rollInReach}=emberChargeCue(s,z);
+ const contact=hostiles>0||railTarget,ready=rollInReach&&s.player.dashCd<=0;
  c.save();c.setLineDash([6,7]);
- circle(c,z.x,z.y,z.r,'#40342828',armed?'#a5d9a7ad':'#b2b3a470',2);
+ circle(c,z.x,z.y,z.r,'#40342828',contact?'#ffcc86c7':armed?'#a5d9a7ad':'#b2b3a470',contact?3:2);
  c.setLineDash([]);
  c.fillStyle='#2e3531';c.fillRect(z.x-13,z.y-7,26,14);
  c.strokeStyle='#89ae98';c.strokeRect(z.x-13.5,z.y-7.5,27,15);
- c.fillStyle=armed?'#ffca79':'#aaa190';
- for(const dx of [-7,0,7])c.fillRect(z.x+dx-2,z.y-3,4,6);
+ for(const [i,dx] of [-6,6].entries()){
+  c.fillStyle=armed&&(hostiles>i||railTarget&&i===0)?'#ffca79':'#aaa190';
+  c.fillRect(z.x+dx-3,z.y-3,6,6);
+ }
+ if(ready){
+  c.strokeStyle='#ffe0a2';c.lineWidth=3;c.beginPath();
+  c.moveTo(z.x-7,z.y-17);c.lineTo(z.x,z.y-11);c.lineTo(z.x+7,z.y-17);c.stroke();
+ }
  c.restore();
 }
 function paintWake(c,z,time,reduced){
@@ -376,6 +383,21 @@ function paintConduitImpact(c,f,t,reduced){
   c.moveTo(x*.28,y*.28);c.lineTo(x*.55-y*.22,y*.55+x*.16);c.lineTo(x,y);
  }
  c.stroke();
+}
+function paintEmberBurst(c,f,t,reduced){
+ const r=f.r*(reduced?.72:.27+t*.76);
+ c.save();c.translate(f.x,f.y);
+ c.globalAlpha=(1-t)*.82;
+ circle(c,0,0,r,'#a54f3036','#e9955e',3);
+ if(!reduced){
+  for(let i=0;i<8;i++){
+   const a=i*TAU/8+.18,reach=r*(.5+i%3*.14),x=Math.cos(a)*reach,y=Math.sin(a)*reach;
+   c.fillStyle=i%2?'#ec8a42':'#b14d31';
+   c.beginPath();c.moveTo(x-7,y);c.lineTo(x-3,y-12-t*9);c.lineTo(x+5,y-7);c.lineTo(x+7,y+2);c.closePath();c.fill();
+   if(t<.45){c.fillStyle='#ffe4a1';c.fillRect(x-2,y-4,4,4);}
+  }
+ }
+ c.restore();
 }
 function paintTransfer(c,f,t,reduced){
  const dx=f.x2-f.x,dy=f.y2-f.y;
@@ -627,11 +649,10 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   // Keep northern bosses and their barrels below the portrait HUD.
   const portraitBoss=mobile&&size.h>size.w&&follow>0;
   const bossMargin=portraitBoss?Math.min(235,Math.max(0,Math.min(310,size.h*.38)/scale-s.boss.y))*follow:0;
-  // The coast weak point can draw the pilot north of the tank, under the boss HUD.
+  // Keep a close-range flank or rail charge from leading the pilot beneath the boss HUD.
   const portBoss=s.operation?.region===2&&s.boss.active;
-  const pilotLine=portBoss?Math.min(286,size.h*.45):Math.min(260,size.h*.39);
-  const pilotMargin=portraitBoss&&s.boss.active&&(portBoss||!(s.operation?.region>0))
-   ?Math.max(0,pilotLine/scale-s.player.y):0;
+  const pilotLine=s.operation?.region>0?Math.min(286,size.h*.45):Math.min(260,size.h*.39);
+  const pilotMargin=portraitBoss&&s.boss.active?Math.max(0,pilotLine/scale-s.player.y):0;
   let framedX=focusX;
   let sightX=0,sightY=0;
   if(mobile&&size.h>size.w&&guns.length){
@@ -682,7 +703,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   for(const z of s.zones){
    if(!visible(z.x,z.y,z.r+25))continue;
    if(z.source==='wake'){paintWake(c,z,s.t,reduced);continue;}
-   if(z.source==='ember-charge'){paintEmberCharge(c,z);continue;}
+   if(z.source==='ember-charge'){paintEmberCharge(c,s,z);continue;}
    circle(c,z.x,z.y,z.r,'#552f282d','#cb753769',1);circle(c,z.x,z.y,z.r*.75,'#e7a05a30');
    for(let i=0;i<5;i++){const a=i*2.4+z.x,r=z.r*(.25+(i%3)*.22);flame(c,z.x+Math.cos(a)*r,z.y+Math.sin(a)*r,14+(reduced?0:Math.sin(s.t*12+i)*4),s.t*9+i);}
   }
@@ -859,7 +880,14 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     if(visible(f.x,f.y,100)||visible(f.x2,f.y2,60))paintTransfer(c,f,t,reduced);
    }
    else if(f.type==='payload-impact'||f.type==='ember-burst'){
-    if(visible(f.x,f.y,f.r+25))paintConduitImpact(c,f,t,reduced);
+    if(visible(f.x,f.y,f.r+25)){
+     if(f.type==='ember-burst')paintEmberBurst(c,f,t,reduced);
+     else paintConduitImpact(c,f,t,reduced);
+    }
+   }
+   else if(f.type==='ember-dash'){
+    c.save();c.globalAlpha=1-t;c.beginPath();c.moveTo(f.x2,f.y2);c.lineTo(f.x,f.y);
+    c.strokeStyle='#f6bd75';c.lineWidth=3;c.stroke();c.restore();
    }
    else if(f.type==='salvo-impact'||f.type==='aid-counter'){
     const aid=f.type==='aid-counter',r=(aid?68:f.r)*(.4+t*.65),edge=aid?'#d7f0b8':'#ffe49a';

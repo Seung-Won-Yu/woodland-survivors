@@ -2514,9 +2514,48 @@ test('incendiary payload arms a saved charge and two hostiles in its clear radiu
  step(loaded,dt);
  assert.equal(loaded.stats.emberBursts,1);
  assert.equal(loaded.stats.emberKills,2);
+ assert.ok(loaded.enemies.filter(e=>e.dead).every(e=>e.deathFlavor==='fire'));
  assert.equal(loaded.zones.length,0);
  tick(loaded,.6);
  assert.equal(loaded.stats.emberBursts,1);
+});
+test('moving through an armed charge ignites it once per dash against one living target',()=>{
+ const s=quiet();s.weapons[0].cd=999;
+ const charge=x=>({x,y:800,r:130,life:3,tick:0,source:'ember-charge',owner:s.weapons[0].uid});
+ s.zones=[charge(900),charge(930)];s.enemies=[enemy('lone',960,800,'rifle',400)];
+ const still=restore(snapshot(s)),outside=restore(snapshot(s)),covered=restore(snapshot(s));
+ outside.player.x=700;covered.blocks=[{x:865,y:760,w:6,h:80,hp:-1}];
+ for(const f of [still,outside,covered])assert.ok(action(f,'dash'));
+ step(still,dt);step(outside,dt,{x:1,y:0});step(covered,dt,{x:1,y:0});
+ for(const f of [still,outside,covered])assert.equal(f.stats.emberDashBursts,undefined);
+ step(s,dt,{x:1,y:0});assert.equal(s.stats.emberDashBursts,undefined);
+ assert.ok(action(s,'dash'));step(s,dt,{x:1,y:0});
+ assert.equal(s.stats.emberDashBursts,1);assert.equal(s.zones.length,1);
+ assert.ok(s.enemies[0].hp<400);assert.ok(s.effects.some(f=>f.type==='ember-dash'));
+ const resumed=restore(snapshot(s));tick(resumed,.16,{x:1,y:0});
+ assert.equal(resumed.stats.emberDashBursts,1);assert.equal(resumed.zones.length,1);
+ tick(resumed,1.9);assert.ok(action(resumed,'dash'));step(resumed,dt,{x:1,y:0});
+ assert.equal(resumed.stats.emberDashBursts,2);
+});
+test('rail reload lets a dash ignite charge against a gun or an exposed hull without infantry',()=>{
+ const s=supportArena(1,null,'recover');s.weapons[0].cd=999;
+ const part=s.boss.parts[0],point=partPosition(s,part);
+ Object.assign(s.player,{x:point.x,y:point.y+100});
+ s.zones=[{...point,r:130,life:3,tick:0,source:'ember-charge',owner:s.weapons[0].uid}];
+ const aiming=restore(snapshot(s)),stripped=restore(snapshot(s)),unarmed=restore(snapshot(s));
+ aiming.boss.mode='aim';stripped.boss.parts.forEach(p=>p.hp=0);unarmed.zones[0].tick=.45;
+ for(const f of [s,aiming,stripped,unarmed]){assert.ok(action(f,'dash'));step(f,dt,{x:0,y:1});}
+ assert.equal(part.hp,part.maxHp-105);assert.equal(s.stats.emberRailBursts,1);
+ assert.equal(stripped.boss.hp,stripped.boss.maxHp-105*1.5);assert.equal(stripped.stats.emberRailBursts,1);
+ for(const f of [aiming,unarmed])assert.equal(f.stats.emberDashBursts,undefined);
+});
+test('incendiary payload at cover leaves an armed charge on its approach side',()=>{
+ const s=quiet();s.weapons[0].cd=999;
+ s.blocks=[{x:935,y:755,w:60,h:90,hp:-1}];
+ s.shots=[{...bullet(s,{x:927,y:800},80),source:'payload',rocket:true,r:7,vx:640,radius:130,incendiary:true}];
+ step(s,dt);
+ assert.equal(s.shots.length,0);assert.equal(s.zones[0].source,'ember-charge');
+ assert.equal(s.zones[0].x,927);
 });
 test('a ranged signal arcs once to the other part and changes the next boss action',()=>{
  for(const index of [1,2]){

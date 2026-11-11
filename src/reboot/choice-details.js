@@ -1,4 +1,4 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isConductiveFusion,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isConductiveFusion,capstoneName,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
 import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
@@ -107,11 +107,11 @@ export function choiceDetails(s,c){
   const change=installed&&railCalibration(s,installed);
   if(change){
    const branches=GUNS[change.gun].branches;
-   out.title=installed.fusion?'전도 격발망':GUNS[installed.id].evolution;
+   out.title=installed.fusion?capstoneName(installed):GUNS[installed.id].evolution;
    out.impact=`${branches[change.from][0]} → ${branches[change.to][0]}`;
    if(installed.fusion){
-    out.detail=change.to==='incendiary'?'직선 탄착 뒤 화약을 남깁니다. 보병 둘이 모이면 지연 폭발.':'살아 있는 표적을 추적하고 한 폭발로 둘을 잡으면 도약합니다.';
-    out.link=change.to==='incendiary'?'도약 대신 보병을 화약 쪽으로 유도':'움직이는 적과 떨어진 두 무리에 유리';
+    out.detail=change.to==='incendiary'?'보병 둘이 모이면 자동 유폭 · 한 명이면 원 안을 이동하며 회피해 점화':'살아 있는 표적을 추적하고 한 폭발로 둘을 잡으면 도약합니다.';
+    out.link=change.to==='incendiary'?'재장전 중 철도 포대도 회피 유폭으로 타격':'움직이는 적과 떨어진 두 무리에 유리';
    }
    else if(installed.id==='f'){
     const before=weaponStats(installed),after=weaponStats({...installed,branch:change.to});
@@ -125,7 +125,7 @@ export function choiceDetails(s,c){
   out.link=c.weapon==='f'?w.branch==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'달린 자리에 불길 · 추격병을 불길로 유도':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
  }else if(c.kind==='fusion'){
   const incendiary=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch==='incendiary';
-  out.art=c.primary;out.impact=incendiary?'화약 지대에 보병 둘이 모이면 폭발':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'합체 직후 첫 화약탄 장전 · 보병 두 무리씩 접근':'합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
+  out.art=c.primary;out.impact=incendiary?'보병 둘이 모이면 자동 유폭':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'보병 한 명이면 화약 원 안을 이동하며 회피해 점화':'합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){

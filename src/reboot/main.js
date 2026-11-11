@@ -7,7 +7,7 @@ import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,evolutionParts,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
-import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,canStartChallenge,canCallGateChallenge} from './model.js';
+import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
 import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
@@ -668,7 +668,9 @@ function updateHud(entry){
  if(counterAvailable)skillButton.setAttribute('aria-label',`지원 포격 · ${counterTarget} · ${actor.skill} 동시 발동 · ${skillStatus}`);
  else skillButton.removeAttribute('aria-label');
  skillButton.innerHTML=`${counterAvailable?'지원 포격':actor.skill}<small>${readyCounter?counterShort:skillStatus}</small>`;
- $('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비<span class="key-hint"> · SPACE</span>'}</small>`;
+ const dash=$('dash'),dashEmber=p.dashCd<=0&&run.zones.some(z=>emberChargeCue(run,z).rollInReach);
+ dash.disabled=p.dashCd>0;dash.classList.toggle('ember-ready',dashEmber);
+ dash.innerHTML=`${dashEmber?'유폭 회피':'회피'}<small>${dashEmber?'이동 + 회피':p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비<span class="key-hint"> · SPACE</span>'}</small>`;
  $('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',!!raid);
  if(raid){
   const {target,contract}=raid;
@@ -784,6 +786,11 @@ function updateHud(entry){
   }
   const coastHit=front===0&&run.effects.findLast(f=>f.coastTactic);
   if(coastHit)hint=coastHit.text;
+  if(front===1){
+   const emberHit=run.effects.findLast(f=>f.type==='ember-dash');
+   if(emberHit)hint=emberHit.rail?'회피 유폭 · 철도 병기 명중':'회피 유폭';
+   else if(dashEmber)hint='화약 원 안에서 이동 + 회피';
+  }
   $('boss-tactic').hidden=!hint||portDanger||!!railDodge?.danger||dashLead||coreOpen;$('boss-tactic').textContent=hint;
   const line=$('boss-support');
   line.hidden=!harborPart||focusLead||portDanger&&!counterHit&&(!readyCounter||counterCovers&&!counterLeavesDanger);

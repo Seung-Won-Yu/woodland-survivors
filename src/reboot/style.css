@@ -154,6 +154,7 @@
 #boss-state.salvo-danger{color:#ffccaa;font-weight:700}
 .harbor-boss #banner[data-kind="boss-warning"]{opacity:0}
 #skill[data-counter="ready"]:not(:disabled){background:#c7e4a8;border-color:#eef6ce;color:#253a28}
+#dash.ember-ready{background:#e7b678;border-color:#ffdfa3;color:#36291f}
 .mission-board>.launch-dock{border-bottom:1px solid #a7a276}
 .launch-briefing{min-width:0}
 .has-coast-plan .launch-briefing{flex:1}
