@@ -663,7 +663,8 @@ function updateHud(entry){
  const counterTarget=counterRound?.portRound==='rake'?'가로 장갑탄 차단':counterRound?'발밑 조준탄 차단':'측면 장갑 타격';
  const counterShort=counterRound?.portRound==='rake'?'가로탄 차단':'발밑탄 차단';
  const readyCounter=counterRound&&!skillButton.disabled;
- document.body.classList.toggle('port-counter-aim',!!readyCounter);
+ const counterHit=front===2&&run.boss.active&&run.effects.findLast(f=>f.type==='aid-counter');
+ document.body.classList.toggle('port-counter-aim',!!(readyCounter||counterHit));
  if(counterAvailable)skillButton.setAttribute('aria-label',`지원 포격 · ${counterTarget} · ${actor.skill} 동시 발동 · ${skillStatus}`);
  else skillButton.removeAttribute('aria-label');
  skillButton.innerHTML=`${counterAvailable?'지원 포격':actor.skill}<small>${readyCounter?counterShort:skillStatus}</small>`;
@@ -677,16 +678,18 @@ function updateHud(entry){
   $('raid-angle').textContent=contract==='light'?'이탈로를 따라 추격':raidOnNose(run)?'전면 장갑 · 측면으로 우회':'측후면 · 탄환 피해 정상';
  }
  $('boss-hud').hidden=!run.boss.active;
+ const harborWarnings=front===2&&run.boss.active?run.hazards.filter(h=>!h.lane&&!h.hit):[];
  document.body.classList.toggle('boss-active',run.boss.active);
  document.body.classList.toggle('coast-danger',front===0&&run.boss.active&&['windup','charge'].includes(run.boss.mode));
  document.body.classList.toggle('rail-boss',run.boss.active&&front===1);
  document.body.classList.toggle('harbor-boss',run.boss.active&&front===2);
+ document.body.classList.toggle('harbor-warning',harborWarnings.length>0);
  if(run.boss.active){
   const boss=run.boss,recovering=boss.mode==='recover';
   const railRounds=front===1?run.hazards.filter(h=>h.lane&&!h.hit):[];
   const railDodge=railRounds.length?railEscapeSlot(run,railRounds):null;
-  const rounds=front===2?run.hazards.filter(h=>h.portRound&&!h.hit):[];
-  const dangerousRounds=rounds.filter(h=>distance(p,h)<blastContactRadius(h));
+  const rounds=harborWarnings.filter(h=>h.portRound);
+  const dangerousRounds=harborWarnings.filter(h=>distance(p,h)<blastContactRadius(h));
   const portDanger=dangerousRounds.length>0;
   const counterCovers=readyCounter&&dangerousRounds.some(h=>h.portRound===counterRound.portRound);
   const counterLeavesDanger=counterCovers&&dangerousRounds.some(h=>h.portRound!==counterRound.portRound);
@@ -702,15 +705,16 @@ function updateHud(entry){
    bossState.textContent=railOpen?'양쪽 포대 파괴 · 차체 노출':recovering?'재장전 · 반격 기회':countdown?`${dodge} · ${countdown}초`:boss.mode==='salvo'?'포격 종료 · 반격 준비':railHasRelay(run)?'중계기 · 조준 예상선':'포격 열차 · 조준 준비';
   }else if(front===2){
    const lock=rounds.find(h=>h.portRound==='lock');
-   const countdown=rounds.length&&(Math.ceil(Math.min(...rounds.map(h=>h.timer))*10)/10).toFixed(1);
+   const timed=portDanger?dangerousRounds:rounds;
+   const countdown=timed.length&&(Math.ceil(Math.min(...timed.map(h=>h.timer))*10)/10).toFixed(1);
    const rake=rounds.some(h=>h.portRound==='rake');
-   const warning=!lock?'발밑탄 차단 · 남은 포격':rake?'가로 포격':rounds.some(h=>h.portRound==='battery')?'세로 포격':lock.jammed?'교란 성공 · 발밑 포격':'발밑 조준 고정';
-   const lanes=portDanger?portEscapeLanes(run,rounds,combatHud.analog):[];
+   const warning=!lock?'포격 범위 밖 · 착탄 대기':rake?'가로 포격':rounds.some(h=>h.portRound==='battery')?'세로 포격':lock.jammed?'교란 성공 · 발밑 포격':'발밑 조준 고정';
+   const lanes=portDanger?portEscapeLanes(run,harborWarnings,combatHud.analog):[];
    const escape=lanes.length?`${lanes.map(lane=>lane.label).join('·')}${lanes[0].dy?'로':'으로'} 회피`:'탄착 범위 밖으로';
    const lead=counterCovers&&!counterLeavesDanger?`스킬 · ${counterShort}`:portDanger?escape:warning;
    const nextCycle=boss.cycle+1,axis=portBarrageAxis(run,nextCycle);
    const ready=axis==='vertical'?'세로 포격 준비':portRakeReady(run,nextCycle)?'측면 장갑 · 가로 포격 준비':'발밑 포격 준비';
-   bossState.textContent=recovering?'코어 노출 · 집중 공격':countdown?`${lead} · ${countdown}초`:boss.mode==='salvo'?'포격 종료 · 반격 준비':ready;
+   bossState.textContent=countdown?`${lead} · ${countdown}초`:recovering?'코어 노출 · 집중 공격':boss.mode==='salvo'?'포격 종료 · 반격 준비':ready;
   }
   else $('boss-state').textContent=recovering?'후면 엔진 노출 · 주황 표식으로':boss.mode==='windup'?`돌진 방향 고정 · ${(Math.ceil(boss.timer*10)/10).toFixed(1)}초`:boss.mode==='charge'?'돌진 중 · 진행선 밖으로':'장갑 수송차 · 측후면을 노려라';
   const names=front===1?['좌측 포대','우측 포대']:front===2?['포탑','측면 장갑']:['포탑','궤도'];
@@ -778,7 +782,7 @@ function updateHud(entry){
   if(coastHit)hint=coastHit.text;
   $('boss-tactic').hidden=!hint||portDanger||!!railDodge?.danger||dashLead||coreOpen;$('boss-tactic').textContent=hint;
   const line=$('boss-support');
-  line.hidden=!harborPart||focusLead||portDanger&&(!readyCounter||counterCovers&&!counterLeavesDanger);
+  line.hidden=!harborPart||focusLead||portDanger&&!counterHit&&(!readyCounter||counterCovers&&!counterLeavesDanger);
   line.classList.toggle('aid-alert',supportId==='recovery'&&!!(aid?.endangered||aid?.state==='blocked'));
   if(harborPart){
    line.dataset.part=supportId;
@@ -808,7 +812,8 @@ function updateHud(entry){
     }
    }else{
     const kit=PORT_SUPPORT.recovery;
-    if(readyCounter)line.textContent=`스킬 · ${counterShort}${portDanger?' · 남은 포격 회피':''}`;
+    if(counterHit)line.textContent=counterHit.text;
+    else if(readyCounter)line.textContent=`스킬 · ${counterShort}${portDanger?' · 남은 포격 회피':''}`;
     else if(aid?.endangered)line.textContent='구급 · 피격 범위 밖으로 회피';
     else if(aid&&!aid.preview){
      const direction=bearing(p,aid.point.x,aid.point.y);
@@ -845,7 +850,7 @@ function processEvents(){
  if(!priority&&!capstone&&bannerPriority.includes(banner.dataset.kind))return;
  const counter=!priority&&events.has('aid-counter')&&run.effects.findLast(f=>f.type==='aid-counter');
  const fx=capstone||counter||run.effects.findLast(f=>priority?f.type===priority:events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
- if(!fx||fx.coastTactic)return;
+ if(!fx||fx.coastTactic||fx.type==='aid-counter')return;
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
  bannerUntil=run.t+(bannerPriority.includes(fx.type)?2.1:1.5);
  if(fx.type==='region-entry'){

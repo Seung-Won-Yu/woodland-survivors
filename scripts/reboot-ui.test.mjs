@@ -18,7 +18,7 @@ test('harbor escape chevrons follow live rounds and omit paths through cover',()
  assert.deepEqual(labels(vertical),['왼쪽','오른쪽']);
  assert.deepEqual(labels([...horizontal,...turrets]),['위','아래']);
  assert.deepEqual(labels(vertical.slice(1)),[]);
- assert.deepEqual(labels([lock]),[]);
+ assert.deepEqual(labels([lock]),['왼쪽']);
  s.boss={active:true,x:690,y:498,r:65};
  assert.deepEqual(labels([...vertical,...turrets]),['왼쪽 위']);
  s.boss=null;
@@ -27,6 +27,26 @@ test('harbor escape chevrons follow live rounds and omit paths through cover',()
  assert.deepEqual(labels(vertical),['오른쪽']);
  s.player.x=885;
  assert.deepEqual(labels(vertical),[]);
+});
+
+test('harbor escape points clear every remaining circle without entering a fresh one',()=>{
+ const round=(portRound,x,y)=>({portRound,x,y,r:58});
+ const lock=round('lock',800,450),rake=round('rake',914,450);
+ const s={player:{x:850,y:450},blocks:[],boss:null};
+ const [afterCounter]=portEscapeLanes(s,[rake]);
+ assert.equal(afterCounter.label,'왼쪽');
+ assert.equal(afterCounter.reach,20);
+ assert.deepEqual(portEscapeLanes({...s,player:{x:840,y:450}},[rake]),[]);
+ const outer=round('turret',833,415),inner=round('turret',850,450);
+ const [outsideBoth]=portEscapeLanes(s,[outer,inner]);
+ assert.ok([outer,inner].every(h=>Math.hypot(s.player.x+outsideBoth.dx*outsideBoth.reach-h.x,s.player.y+outsideBoth.dy*outsideBoth.reach-h.y)>74));
+ const next={x:783,y:450,r:48};
+ assert.notEqual(portEscapeLanes(s,[rake,next])[0].label,'왼쪽');
+ const cover={x:790,y:432,w:30,h:35,hp:-1};
+ assert.notEqual(portEscapeLanes({...s,blocks:[cover]},[rake])[0].label,'왼쪽');
+ const atEdge={player:{x:60,y:450},blocks:[],boss:null};
+ assert.notEqual(portEscapeLanes(atEdge,[round('battery',126,450)])[0].label,'왼쪽');
+ assert.equal(portEscapeLanes(s,[lock,rake]).length,2);
 });
 
 test('harbor escape chevrons never point deeper into the drifting hull and respect stick or keys',()=>{

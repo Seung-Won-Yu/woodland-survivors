@@ -265,6 +265,7 @@
 }
 @media(max-width:700px) and (max-height:700px) and (orientation:portrait){
  .arsenal{bottom:max(135px,calc(env(safe-area-inset-bottom) + 108px));gap:3px}
+ .harbor-warning .arsenal :is(#weapons,#synergy,#maneuver-status){display:none}
 }
 @media(max-width:700px){
  .front-intel{grid-template-columns:1fr 1fr}
