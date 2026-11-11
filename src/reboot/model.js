@@ -1,5 +1,5 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
-import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
+import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
 import {OPERATORS,operatorOf,skillRules,canUseSkill,focusLane,aimFromInput,chargeLabel} from './operator.js';
@@ -540,7 +540,7 @@ export function portTurretInSight(s){
 }
 export function infernoCoreLine(s,w){
  const {player:p,boss:b}=s;
- if(w?.id!=='f'||!w.evolved||w.branch!=='focused'||s.operation?.region!==2||!b.active||b.dead||b.mode!=='recover'||p.moving)return false;
+ if(!isFocusedInferno(w)||s.operation?.region!==2||!b.active||b.dead||b.mode!=='recover'||p.moving)return false;
  const gap=distance(p,b),range=weaponStats(w).range;
  if(gap<INFERNO_CORE_DISTANCE||gap>=range+b.r||lineBlocked(s,p,b))return false;
  const turret=b.parts[0];
@@ -869,6 +869,7 @@ function shoot(s,w){
    const bypass=core&&s.boss.parts.some(part=>part.hp>0)&&!portCoreDisrupted(s);
    if(core){
     s.stats.infernoCoreHits=(s.stats.infernoCoreHits||0)+1;
+    if(portCoreDisrupted(s)&&portCompressionBand(s))recordHarborPayoff(s,'compressionHits');
     const b=s.boss;
     if(s.operation.tactic==='lens'&&b.tacticCycle!==b.cycle){
      b.tacticCycle=b.cycle;b.timer+=FRONT_TACTICS[2].lens.delay;recordFrontTactic(s);
@@ -1454,7 +1455,7 @@ export function action(s,kind,input){
   const b=s.boss;
   delete p.portRush;delete p.portCutX;
   if(s.operation?.region===2&&s.operation.support==='overrun'&&b.active&&!b.dead){
-   if(distance(p,b)>portCoreReach(b))p.portRush=true;
+   if(distance(p,b)>portCoreReach(s))p.portRush=true;
    else p.portCutX=p.x;
   }
   p.dash=.18;p.dashCd=2;p.invuln=Math.max(p.invuln,.30);
@@ -1552,7 +1553,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  if(s.operator!=='marco')p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);
  s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
  const ix=Number.isFinite(input.x)?input.x:0,iy=Number.isFinite(input.y)?input.y:0,len=Math.max(1,Math.hypot(ix,iy)),moving=Math.hypot(ix,iy)>.07;p.moving=moving;
- const b=s.boss,coreDash=p.dash>0&&portCoreWindow(s),coreReach=portCoreReach(b);
+ const b=s.boss,coreDash=p.dash>0&&portCoreWindow(s),coreReach=coreDash?portCoreReach(s):0;
  const coreEntry=coreDash&&p.portRush&&distance(p,b)>coreReach;
  if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;if(s.operator==='marco')p.moveAim=Math.atan2(iy,ix);}
  const kit=PORT_SUPPORT.overrun;

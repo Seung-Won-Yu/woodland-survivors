@@ -142,7 +142,7 @@ function harborPayoff(r){
  const part=r.operation?.support,log=r.operation?.harborPayoff;
  const labels={
   breach:[['turrets','측면 포탑 파괴'],['salvos','포탑탄 차단'],['fans','후속 탄막 차단']],
-  overrun:[['dives','코어 돌입'],['sidesteps','측면 회피']],
+  overrun:[['dives','코어 돌입'],['sidesteps','측면 회피'],['compressionHits','장갑 해제 중 중거리 압축 직격']],
   recovery:[['locks','발밑 조준탄 차단'],['rakes','가로 포격 차단'],['counterfire','측면 장갑 타격'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
  };
  if(!log||!Object.hasOwn(labels,part))return '';

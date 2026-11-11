@@ -5,8 +5,8 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,isReport,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
-import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,buildPaths,distance,blastContactRadius,evolutionParts,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
+import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,buildPaths,distance,blastContactRadius,evolutionParts,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,showcaseWindow,coastRocketVolley,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
@@ -377,7 +377,7 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast){
    const {x,y}=portFlankPoint(boss);
    map+=dot('map-flank',x,y,39,'#c8f4ff','철갑 포탑 사선');
   }
-  if(portCoreWindow(run))map+=`<circle cx="${boss.x}" cy="${boss.y}" r="${portCoreReach(boss)}" fill="none" stroke="#ffd0a1" stroke-width="12" stroke-dasharray="24 20" aria-label="회피로 넘을 코어 경계"/>`;
+  if(portCoreWindow(run))map+=`<circle cx="${boss.x}" cy="${boss.y}" r="${portCoreReach(run)}" fill="none" stroke="#ffd0a1" stroke-width="12" stroke-dasharray="24 20" aria-label="회피로 넘을 코어 경계"/>`;
   if(aid?.preview)map+=`<circle cx="${aid.point.x}" cy="${aid.point.y}" r="42" fill="none" stroke="#d7f0b8" stroke-width="9" stroke-dasharray="14 10" aria-label="다음 구급 화물 투하 지점"/>`;
   else if(aid)map+=dot('map-crate',aid.point.x,aid.point.y,42,aid.state==='blocked'?'#ffae86':'#d7f0b8',aid.state==='blocked'?'포격 중인 구급 화물':'구급 화물');
  }
@@ -603,7 +603,7 @@ function updateHud(entry){
   ?supportTactic(run.operation.support,front):`${support.name} · ${support.role}`;
  $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
  const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion]),run.modules,run.tuning]);if(key!==inventoryStamp){inventoryStamp=key;$('weapons').innerHTML=run.weapons.map(w=>`<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}">${itemArt(w.id)}<b>${w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:GUNS[w.id].short}</b><small>${w.evolved?capstoneName(w):`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`}</small></div>`).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');$('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');}
- const fusion=run.weapons.find(w=>w.fusion),focused=run.weapons.find(w=>w.id==='f'&&w.evolved&&w.branch==='focused'),synergy=$('synergy');
+ const fusion=run.weapons.find(w=>w.fusion),focused=run.weapons.find(isFocusedInferno),synergy=$('synergy');
  synergy.classList.toggle('conductive',!!fusion);
  synergy.textContent=fusion?.fusion.branch==='incendiary'?`화약탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 유폭 ${run.stats.emberBursts||0}회`:fusion?`연쇄탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 도약 ${run.stats.payloadRelays||0}회`:moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
  if(moduleRank(run,'shrapnel'))synergy.textContent+=`${synergy.textContent?' · ':''}파쇄 ${run.stats.shrapnelBursts||0}회`;
@@ -696,9 +696,12 @@ function updateHud(entry){
   const active=tactic&&recovering&&boss.tacticCycle===boss.cycle;
   const supportId=run.operation?.support;
   const harborPart=front===2&&Object.hasOwn(PORT_SUPPORT,supportId);
-  const coreGap=distance(p,boss)-portCoreReach(boss);
-  const dashLead=focused&&harborPart&&supportId==='overrun'&&portCoreWindow(run)&&(p.dash>0||p.dashCd<=0&&coreGap<=110);
-  const focusLead=focused&&harborPart&&supportId==='overrun'&&recovering&&!dashLead&&!portCoreDisrupted(run)&&!portTurretInSight(run);
+  const coreGap=distance(p,boss)-portCoreReach(run);
+  const compression=focused&&supportId==='overrun'&&front===2;
+  const coreOpen=compression&&portCoreDisrupted(run);
+  const compressionBand=compression&&portCompressionBand(run);
+  const dashLead=compression&&portCoreWindow(run)&&(p.dash>0||p.dashCd<=0&&coreGap<=110);
+  const focusLead=compression&&recovering&&!dashLead&&!coreOpen;
   const firstWarning=supportId==='vanguard'&&(boss.cycle===0&&boss.mode==='aim'||boss.cycle===1&&boss.mode==='salvo');
   const dashWindow=!harborPart&&supportId==='overrun'&&recovering;
   const supportHint=supportTactic(supportId,front);
@@ -735,7 +738,7 @@ function updateHud(entry){
    }else if(recovering)hint='연료관 · 뒤로 돌아 엔진에 분사';
    else if(boss.mode!=='windup')hint='연료관 · 돌진 뒤 후면을 노려라';
   }
-  $('boss-tactic').hidden=!hint||portDanger||!!railDodge?.danger||dashLead;$('boss-tactic').textContent=hint;
+  $('boss-tactic').hidden=!hint||portDanger||!!railDodge?.danger||dashLead||coreOpen;$('boss-tactic').textContent=hint;
   const line=$('boss-support');
   const readyCounter=counterRound&&!skillButton.disabled;
   line.hidden=!harborPart||focusLead||portDanger&&!readyCounter;
@@ -752,7 +755,17 @@ function updateHud(entry){
     else if(portBreachFlank(run))line.textContent='철갑 · 엄폐를 돌아 포탑 사거리로';
     else line.textContent=`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
    }else if(supportId==='overrun'){
-    line.textContent=portCoreDisrupted(run)?'돌격 · 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 경계 안으로 이동':p.dash>0&&Number.isFinite(p.portCutX)?'돌격 · 좌우 이동 유지':p.dashCd>0?'돌격 · 회피 재사용 대기':coreGap<=0?'돌격 · ↔ 이동 + 회피':coreGap>110?'돌격 · 코어 경계까지 접근':'돌격 · 코어 쪽 이동 + 회피';
+    if(coreOpen){
+     line.textContent=infernoCoreLine(run,focused)?'장갑 해제 · 압축 분사 직격'
+      :distance(p,boss)<INFERNO_CORE_DISTANCE?`장갑 해제 · 코어에서 ${INFERNO_CORE_DISTANCE/10}m 거리 확보`
+      :p.moving?'장갑 해제 · 멈춰 압축 분사':'장갑 해제 · 엄폐 밖 코어 사선으로';
+    }else if(compressionBand&&portCoreWindow(run)&&p.dashCd<=0){
+     line.textContent='원 안에서 ↔ 회피 후 정지';
+    }else if(compression&&coreGap>0&&portCoreWindow(run)&&p.dashCd<=0){
+     line.textContent=`압축 인페르노 · ${portCompressionRange}에서 회피`;
+    }else{
+     line.textContent=portCoreDisrupted(run)?'돌격 · 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 경계 안으로 이동':p.dash>0&&Number.isFinite(p.portCutX)?'돌격 · 좌우 이동 유지':p.dashCd>0?'돌격 · 회피 재사용 대기':coreGap<=0?'돌격 · ↔ 이동 + 회피':coreGap>110?'돌격 · 코어 경계까지 접근':'돌격 · 코어 쪽 이동 + 회피';
+    }
    }else{
     const kit=PORT_SUPPORT.recovery;
     if(readyCounter)line.textContent=counterRound.portRound==='rake'?'스킬 · 가로 장갑탄 차단 · 발밑 회피':'스킬 · 발밑탄 차단 · 남은 포격 회피';

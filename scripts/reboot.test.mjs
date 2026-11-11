@@ -1273,6 +1273,31 @@ test('a harbor sidestep opens the core inside the ring but vertical or blocked d
  assert.equal(loaded.stats.supportUses[2],1);
  assert.deepEqual(loaded.operation.harborPayoff,{sidesteps:1});
 });
+test('compressed Inferno can sidestep at 22m and follow up from the same firing line',()=>{
+ const arena=(branch,mode='recover')=>{
+  const s=supportArena(2,'overrun',mode);
+  s.operation.harborPayoff={};
+  s.weapons=[{...makeWeapon('f'),uid:'fire',level:6,branch,evolved:true,cd:999}];
+  Object.assign(s.player,{x:800,y:470});
+  return s;
+ };
+ const compressed=arena('focused'),trail=arena('trail'),warning=arena('focused','aim');
+ for(const s of [compressed,trail,warning]){
+  assert.ok(action(s,'dash'));
+  tick(s,.18,{x:1,y:0});
+  s.weapons[0].cd=0;
+  step(s,dt);
+ }
+ assert.equal(compressed.stats.infernoCoreHits,1);
+ assert.deepEqual(compressed.operation.harborPayoff,{sidesteps:1,compressionHits:1});
+ assert.ok(compressed.boss.timer>999);
+ assert.deepEqual(trail.operation.harborPayoff,{});
+ assert.deepEqual(warning.operation.harborPayoff,{});
+ const card=choiceDetails({...compressed,operation:{region:1}},{
+  id:'support:overrun',key:'overrun',kind:'front-support',title:'돌격 신관'
+ });
+ assert.match(card.detail,/20~26m.*좌우 회피.*멈춰 분사/);
+});
 test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
  const s=supportArena(2,'recovery','aim');Object.assign(s.boss,{cycle:0,timer:0});Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
  step(s,dt);assert.equal(s.boss.mode,'salvo');assert.deepEqual(s.boss.harborSupply,{x:975,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);

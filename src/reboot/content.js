@@ -3,6 +3,7 @@ export {RULES};
 export const VERSION='reboot-0.1-b01';
 export const FIELD={left:40,top:40,right:1560,bottom:1160};
 export const INFERNO_CORE_DISTANCE=200;
+export const isFocusedInferno=w=>w?.id==='f'&&w.evolved&&w.branch==='focused';
 export const EMBER_CHARGE={impactScale:.65,arm:.45,life:3.2,damage:105};
 export const GUNS={
  h:{name:'기관총 H',short:'H',color:'#ffcf75',branches:{ricochet:['산개 도탄','탄이 다른 적에게 한 번 더 튕깁니다.'],grenade:['유탄 급탄','8번 발사마다 폭발 유탄을 함께 발사합니다.']},evolution:'사중 기관포'},
