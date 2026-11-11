@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.82.0" src="https://img.shields.io/badge/RIFT-0.82.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.83.0" src="https://img.shields.io/badge/RIFT-0.83.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.83에서는 같은 전장에 다시 나가기 전에 해안 무장 경로와 철도 잔류 보급을 확인합니다. 귀환 보고서에 기록 차이와 함께 실제로 바꾼 완성 무장과 항구 장비가 표시됩니다. [재도전 브리핑 검증](docs/RIFT-GAMEPLAY-V1.md#083-재도전-브리핑과-장비-비교).
 
 0.82에서는 전도 격발망으로 돌격 신관이 연 코어를 맞히면 남은 장갑이나 포탑에 역송합니다. 철도와 항구의 거점 보급에서 인페르노 조립을 앞당길 수 있습니다. [잔류 부품과 인페르노 보급 검증](docs/RIFT-GAMEPLAY-V1.md#082-잔류-부품과-인페르노-보급).
 

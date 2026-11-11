@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView,gatePace} from '../src/reboot/interface.js';
+import {lobbyView,reportView,replayBriefingView,gatePace} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition} from '../src/reboot/render.js';
@@ -118,9 +118,20 @@ test('a comparable repeat shows independent time and score changes and the actua
   run.stats.score=score;run.stats.bossKilled=true;run.t=fronts.reduce((sum,time)=>sum+time,0);finish(run,true);
  };
  const a=createOperation(23),first=beginProfile(emptyProfile(),a);complete(a,[50.25,33.4,25.3],9620);
+ a.result.weapons=[{id:'f',evolved:true,branch:'focused',level:6}];
+ a.result.operation.support='vanguard';
  const p=settleProfile(first,a),report=p.recent[0];
  const firstHtml=reportView(report,p);
- assert.match(firstHtml,/data-replay-from="1"[^>]*>같은 전장 · 기록 도전<small>1:49\.0 · 12,620점/);
+ assert.match(firstHtml,/data-action="replay-brief" data-replay-from="1"[^>]*>같은 전장 · 기록 도전<small>1:49\.0 · 12,620점/);
+ const briefing=replayBriefingView(report,p);
+ assert.match(briefing,/지난 완주<\/strong> 압축 인페르노 · 선발 지원/);
+ assert.match(briefing,/data-coast="r" data-suggested/);
+ assert.match(briefing,/중계기 방어 8초 · 증원 8명 제압/);
+ assert.match(briefing,/돌격 신관/);
+ assert.match(briefing,/회수 의무 장비/);
+ assert.doesNotMatch(briefing,/철갑 급탄/);
+ assert.match(briefing,/data-action="same-seed" data-seed="23" data-actor="fio" data-replay-from="1"/);
+ assert.match(lobbyView(p,{brief:1,seed:23}),/중계기 방어 8초 · 증원 8명 제압/);
  for(const unsupported of [{...report,balanceRevision:'previous'}, {...report,operation:{...report.operation,requisition:'thermal'}}]){
   const html=reportView(unsupported,p);
   assert.match(html,/같은 전장 · 표준 작전/);
@@ -131,9 +142,13 @@ test('a comparable repeat shows independent time and score changes and the actua
  assert.match(gatePace({region:1,regionTime:43.3},next.active.reference),/#1 대비 · 지금 전진 시.*9\.9초 지연/);
  assert.match(gatePace({region:1,regionTime:10.049},{sequence:1,fronts:[0,9.951]}),/기록과 동일/);
  complete(run,[50.25,43.3,23.9],10270);
+ run.result.weapons=[{id:'h',level:6,fusion:{secondary:'r',branch:'homing'}}];
+ run.result.operation.support='recovery';
  const final=settleProfile(next,run),html=reportView(final.recent[0],final);
  assert.match(html,/같은 전장 #1 대비.*전체 8\.5초 지연.*\+650점/);
  assert.match(html,/항구 결전<\/span><small>돌파 · 0:23\.9<\/small><small class="front-pace" data-trend="ahead">1\.4초 단축/);
+ assert.match(html,/완성 무장<\/dt><dd>압축 인페르노 <span>→<\/span> <strong>전도 격발망/);
+ assert.match(html,/항구 장비<\/dt><dd>선발 지원 <span>→<\/span> <strong>회수 의무 장비/);
  const early=reportView({...final.recent[0],won:false,operation:{...run.operation,region:1,extracted:false,cleared:1}},final);
  assert.match(early,/같은 전장 #1 대비<\/span><b>미완주/);
  assert.doesNotMatch(early,/전체 8\.5초 지연|\+650점/);
@@ -152,7 +167,6 @@ test('harbor reports show the part actions actually recorded during the sortie',
  assert.match(render({...saved.operation,harborPayoff:{locks:1,safeAid:1}}),/발밑 조준탄 차단 1회 \/ 경고 중 안전 회수 1회/);
  assert.doesNotMatch(render({...saved.operation,harborPayoff:undefined}),/harbor-payoff/);
  assert.doesNotMatch(render({...saved.operation,harborPayoff:{safeAid:'<img>',aid:-1}}),/harbor-payoff/);
- assert.match(render(saved.operation),/철갑 급탄 노리기/);
  assert.match(render({...saved.operation,history:[{region:1,time:34.88}]}),/철도 차단<\/span><small>돌파 · 0:34/);
 });
 test('dispatch reports separate the real payout from the fee charged at launch',()=>{

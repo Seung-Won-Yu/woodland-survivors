@@ -1665,6 +1665,8 @@ test('the selected replay reference survives eviction, checkpoint reload and set
  const base=store.get(),original=quietOperation();
  let p=beginProfile(base,original);
  Object.assign(original.operation,{region:2,cleared:3,extracted:true,regionTime:26.5,history:[{region:0,time:50},{region:1,time:40}]});
+ original.operation.support='overrun';
+ original.weapons.push({...makeWeapon('f'),uid:'inferno',level:6,branch:'focused',evolved:true});
  Object.assign(original.stats,{bossKilled:true,score:7000});original.t=116.5;finish(original,true);
  p=settleProfile(p,original);
  const source=p.recent[0];
@@ -1674,7 +1676,7 @@ test('the selected replay reference survives eviction, checkpoint reload and set
  const current=store.get();
  const {run,next}=freshSortie(current,source.seed,null,'fio',null,source.sequence);
  assert.equal(next.recent.some(r=>r.sequence===source.sequence),false);
- const reference={sequence:1,seed:source.seed,operator:'fio',scope:source.balanceRevision,score:10000,seconds:116.5,fronts:[50,40,26.5]};
+ const reference={sequence:1,seed:source.seed,operator:'fio',scope:source.balanceRevision,score:10000,seconds:116.5,fronts:[50,40,26.5],capstones:['압축 인페르노'],harborSupport:'overrun'};
  assert.deepEqual(next.active.reference,reference);
  assert.equal(freshSortie(current,source.seed,null,'marco',null,1).next.active.reference,undefined);
  assert.equal(freshSortie(current,source.seed+1,null,'fio',null,1).next.active.reference,undefined);
@@ -1683,9 +1685,15 @@ test('the selected replay reference survives eviction, checkpoint reload and set
  step(run,dt);
  const checkpoint=checkpointProfile(store.get(),run);
  assert.deepEqual(parseProfile(JSON.stringify(checkpoint)).active.reference,reference);
+ const earlier=snapshot(checkpoint);
+ delete earlier.active.reference.capstones;
+ delete earlier.active.reference.harborSupport;
+ assert.deepEqual(parseProfile(JSON.stringify(earlier)).active.reference,earlier.active.reference);
  const damaged=snapshot(checkpoint);damaged.active.reference.fronts[1]=-5;
  assert.equal(parseProfile(JSON.stringify(damaged)).active.reference,undefined);
  assert.equal(parseProfile(JSON.stringify(damaged)).active.run.runId,run.runId);
+ damaged.active.reference={...reference,harborSupport:{toString:null}};
+ assert.equal(parseProfile(JSON.stringify(damaged)).active.reference,undefined);
  await store.commit(checkpoint);
  finish(run,false);
  const pending=store.get(),withoutReference=snapshot(pending);

@@ -1,9 +1,9 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
-import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
+import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,bearing,distance,makeWeapon,weaponStats,capstoneName} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
-import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference} from './replay.js';
+import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
 export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
@@ -48,11 +48,11 @@ function operationMap(selected,seed,order){const map=previewLayout(seed,selected
  return `<div class="operation-chart"><nav class="sector-selector" aria-label="전선 브리핑">${REGIONS.map((d,i)=>`<button class="sector-pin ${selected===i?'selected':''}" data-brief="${i}" aria-pressed="${selected===i}" aria-label="${d.name} 브리핑 보기"><span>${`0${i+1}`}</span><b>${d.name}</b><small>${i===0?'해안 교두보':i===1?'물자 수송로':'지휘 병기'}</small></button>`).join('')}</nav><div class="field-chart">${regionPreview(selected,seed,null,order)}<span class="chart-direction">N ↑</span><div class="chart-legend"><strong>${REGIONS[selected].name}</strong><span class="chart-key"><i></i>투입 지점</span><span class="chart-key boss"><i></i>보스 진입</span>${map.sites.map(n=>`<span class="chart-site ${n.state==='done'?'done':''}"><svg viewBox="-30 -30 60 60" aria-hidden="true">${siteSymbol(n,0,0,21)}</svg><span>${sitePresentation(n).name}${n.state==='done'?'<small>확보 완료</small>':''}</span></span>`).join('')}</div></div></div>`;
 }
 
-function coastPlan(seed,order){
+function coastPlan(seed,order,suggested=null){
  const {sites}=previewLayout(seed,0,order),rescue=sites.find(site=>site.opening);
  const stops=sites.filter(site=>site.coastApproach).map(site=>{
   const id=site.coastApproach,approach=coastApproach(site);
-  return `<li data-coast="${id}"><span class="coast-plan-mark">${GUNS[id].short}</span><div><strong>${approach.name}</strong><span>${bearing(rescue,site.x,site.y)} 약 ${Math.round(distance(rescue,site)/10)}m · ${approach.formation}</span><small>${MODULES[approach.module].name} 후보</small></div></li>`;
+  return `<li data-coast="${id}"${id===suggested?' data-suggested':''}><span class="coast-plan-mark">${GUNS[id].short}</span><div><strong>${approach.name}</strong><span>${bearing(rescue,site.x,site.y)} 약 ${Math.round(distance(rescue,site)/10)}m · ${approach.formation}</span><small>${MODULES[approach.module].name} 후보</small></div></li>`;
  }).join('');
  return `<section class="coast-plan" aria-label="해안 첫 보급"><header><b>포로 구출 → F / R 선택</b><span>${beachRoute(seed).name}</span></header><ul>${stops}</ul></section>`;
 }
@@ -61,6 +61,15 @@ function frontIntel(index,seed){
  const rail=index===1?previewLayout(seed,index).sites.slice(0,2).map(railGarrison):null;
  const [cache,order,task]=rail?[`화차 정비대 · ${rail[0].name}`,`통신 중계기 · ${rail[1].name}`,`${rail[1].crew} 제압 후 해킹 · 포대 공략`]:['해치 · 측면 기습','관제소 · 전술 선택','첫 장갑탄 교란 또는 화력 전술'];
  return `<div class="front-intel"><div class="front-intel-heading"><span>투입 지점의 두 갈래</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>${cache}</span><b>${index===1?'장착 무장 강화 · 완성 병기 개장':'방패와 박격포 제압 · 포탑 측면 진입'}</b></div><div class="front-intel-stop"><span>${order}</span><b>${task}</b></div></div>`;
+}
+function railGateBrief(seed){
+ const parts=holdoutParts(seed,1);
+ return `<section class="rail-gate-brief" aria-label="철도 게이트 선택">
+   <h3>철도 게이트</h3>
+   <p><b>전진</b> 격파 뒤 ${HOLDOUT.grace}초 내 출발 · 첫 예고 +1초</p>
+   <p><b>잔류</b> 중계기 방어 ${defenseSeconds(1)}초 · 증원 ${HOLDOUT.rareKills}명 제압</p>
+   <ul>${parts.map(id=>`<li><strong>${FRONT_SUPPORTS[id].name}</strong><small>${PORT_SUPPORT[id].hint}</small></li>`).join('')}</ul>
+  </section>`;
 }
 
 function launchDock(profile,id,operator,requisition,plan){
@@ -86,7 +95,7 @@ function operatorSelector(operator){
  return `<div class="operator-selector" role="group" aria-label="출전 대원 선택">${Object.entries(OPERATORS).map(([id,d])=>`<button data-pilot="${id}" aria-pressed="${id===operator}"><span>${d.short}</span><b>${d.name}</b><small>${d.skill}</small></button>`).join('')}</div>`;
 }
 function missionPanel(p,brief,previewSeed,requested,operator,requisition){const actor=OPERATORS[operator],order=canLaunchOrder(p,requested)?requested:null,reserved=!order&&canReserveResearch(p,requisition)?requisition:null,selected=brief??0,d=REGIONS[selected],copy=briefCopy[selected],goal=nextOrder(p),weapons=[makeWeapon('h')];
- return `<div class="mission-layout"><section class="mission-board"><header class="board-heading"><div><span class="section-index">작전 지령</span><h1>시험 병기 수송을 차단하라</h1></div></header>${launchDock(p,order,operator,reserved,selected===0?coastPlan(previewSeed,order):'')}${orderOptions(p,order,operator,reserved)}${operationMap(selected,previewSeed,order)}${selected?frontIntel(selected,previewSeed):''}<div class="sector-brief"><div><span class="sector-number">0${selected+1}</span><div><h2>${d.name}</h2><p>${copy.terrain} · ${copy.supply}</p></div></div><p class="tactic"><b>${d.boss}</b>${copy.tactic}</p></div><p class="brief-contract"><b>잔류 · ${HOLDOUT_CONTRACTS[selected].name}</b><span>${HOLDOUT_CONTRACTS[selected].goal}${selected<2?` + 증원 ${HOLDOUT.rareKills}명 제압`:''}</span></p></section><aside class="deployment"><section class="operator-station" data-operator="${operator}"><div class="operator-heading"><span>출전 대원</span><h2>${actor.name}</h2><b>${actor.skill}</b></div><canvas class="portrait" id="portrait" aria-label="${actor.name} 출격 준비 모습"></canvas><div class="operator-platform"></div><div class="starting-kit"><span>시작 무장</span><div>${weapons.map(w=>`<b>${e(w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase())}<small>L${w.level}</small></b>`).join('')}</div><p>${actor.brief}</p></div></section><section class="next-assignment"><span>다음 목표</span><h3>${e(goal.title)}</h3><p>${e(goal.text)}</p><button class="text-button" data-tab="${goal.target}">${goal.label} ↗</button></section>${p.active?'<button class="danger-text" data-action="end-saved">이전 판 정산</button>':''}</aside></div>`;
+ return `<div class="mission-layout"><section class="mission-board"><header class="board-heading"><div><span class="section-index">작전 지령</span><h1>시험 병기 수송을 차단하라</h1></div></header>${launchDock(p,order,operator,reserved,selected===0?coastPlan(previewSeed,order):'')}${orderOptions(p,order,operator,reserved)}${operationMap(selected,previewSeed,order)}${selected?frontIntel(selected,previewSeed):''}${selected===1?railGateBrief(previewSeed):''}<div class="sector-brief"><div><span class="sector-number">0${selected+1}</span><div><h2>${d.name}</h2><p>${copy.terrain} · ${copy.supply}</p></div></div><p class="tactic"><b>${d.boss}</b>${copy.tactic}</p></div><p class="brief-contract"><b>잔류 · ${HOLDOUT_CONTRACTS[selected].name}</b><span>${HOLDOUT_CONTRACTS[selected].goal}${selected<2?` + 증원 ${HOLDOUT.rareKills}명 제압`:''}</span></p></section><aside class="deployment"><section class="operator-station" data-operator="${operator}"><div class="operator-heading"><span>출전 대원</span><h2>${actor.name}</h2><b>${actor.skill}</b></div><canvas class="portrait" id="portrait" aria-label="${actor.name} 출격 준비 모습"></canvas><div class="operator-platform"></div><div class="starting-kit"><span>시작 무장</span><div>${weapons.map(w=>`<b>${e(w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase())}<small>L${w.level}</small></b>`).join('')}</div><p>${actor.brief}</p></div></section><section class="next-assignment"><span>다음 목표</span><h3>${e(goal.title)}</h3><p>${e(goal.text)}</p><button class="text-button" data-tab="${goal.target}">${goal.label} ↗</button></section>${p.active?'<button class="danger-text" data-action="end-saved">이전 판 정산</button>':''}</aside></div>`;
 }
 function trialDispatch(p){
  if(p.active||!p.trials.length)return '';
@@ -205,6 +214,40 @@ function debriefPace(r,reference){
  const points=score===0?'점수 동일':`${score>0?'+':'−'}${n(Math.abs(score))}점`;
  return `<section class="debrief-pace" aria-label="같은 전장 기록 비교"><span>같은 전장 #${reference.sequence} 대비</span>${time?`<b data-trend="${time.trend}">전체 ${time.text}</b><b data-trend="${score>0?'ahead':score<0?'behind':'even'}">${points}</b>`:'<b>미완주</b>'}</section>`;
 }
+const buildNames=capstones=>capstones.join(' · ')||'완성 무장 없음';
+const supportName=id=>FRONT_SUPPORTS[id]?.name||'지원 장비 없음';
+function debriefEquipment(r,reference){
+ if(!reference)return '';
+ const rows=[];
+ const before=reference.capstones;
+ const after=installedCapstones(r.weapons);
+ if(before&&(before.length!==after.length||before.some(name=>!after.includes(name))))rows.push(['완성 무장',buildNames(before),buildNames(after)]);
+ const current=harborLoadout(r.operation);
+ if(r.operation?.region===2&&reference.harborSupport!==undefined&&reference.harborSupport!==current)rows.push(['항구 장비',supportName(reference.harborSupport),supportName(current)]);
+ return rows.length?`<dl class="debrief-equipment" aria-label="이전 작전과 장비 비교">${rows.map(([label,prior,next])=>`<div><dt>${label}</dt><dd>${e(prior)} <span>→</span> <strong>${e(next)}</strong></dd></div>`).join('')}</dl>`:'';
+}
+const alternateRecipes={
+ r:{name:'전도 격발망',materials:'R 추적 다탄두 · H·R 각 L4 + 축전 코일 2 + 조율권 1'},
+ f:{name:'인페르노',materials:'F L6 + 촉매 연료 2 + 조율권 1'}
+};
+export function replayBriefingView(r,p){
+ const reference=replayReference(r,p.recordScope);
+ if(!reference)return '';
+ const fire=r.weapons.some(w=>w.id==='f'&&w.evolved),fusion=r.weapons.some(w=>w.fusion);
+ const suggested=fire===fusion?null:fire?'r':'f';
+ const alternate=alternateRecipes[suggested];
+ return `<section class="sheet replay-briefing" role="dialog" aria-modal="true" aria-labelledby="replay-brief-title">
+  <header><div><span class="section-index">작전 #${reference.sequence} · ${operatorOf(r).name}</span><h2 id="replay-brief-title">같은 전장 재도전</h2></div><b>${splitClockText(reference.seconds)}<small>${n(reference.score)}점</small></b></header>
+  <p class="replay-last-kit"><strong>지난 완주</strong> ${e(buildNames(reference.capstones))} · ${e(supportName(reference.harborSupport))}</p>
+  ${coastPlan(r.seed,null,suggested)}
+  ${alternate?`<p class="replay-route-hint" data-coast="${suggested}"><strong>${alternate.name}</strong><span>${alternate.materials}</span></p>`:''}
+  ${railGateBrief(r.seed)}
+  <footer>
+   <small>${p.active?'진행 중인 작전을 정산하고 ':''}현재 연구로 해안 LV.1부터 시작합니다.</small>
+   <div><button data-action="replay-brief-back">보고서로</button><button class="primary" data-action="same-seed" data-seed="${reference.seed}" data-actor="${reference.operator}" data-replay-from="${reference.sequence}">재출격 <span aria-hidden="true">▶</span></button></div>
+  </footer>
+ </section>`;
+}
 function debriefNext(r,p){
  const unlocked=Array.isArray(r.researchUnlocked)?r.researchUnlocked:[];
  const available=readyResearch(p);
@@ -224,13 +267,10 @@ function debriefNext(r,p){
  return nextOrder(p);
 }
 function debriefActions(r,p,archived,compared){
- const support=r.operation?.region===2?r.operation.support:null;
- const parts=r.balanceRevision===p.recordScope?holdoutParts(r.seed,1):[];
- const other=parts.includes(support)?parts.find(id=>id!==support):null;
  const reference=replayReference(r,p.recordScope);
  const target=reference?`${splitClockText(reference.seconds)} · ${n(reference.score)}점`:'';
  const replay=`<div class="debrief-replays">
-   <button data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}"${reference?` data-replay-from="${reference.sequence}"`:''}>같은 전장 · ${reference?'기록 도전':'표준 작전'}${target?`<small>${target}</small>`:''}${other?`<small>${FRONT_SUPPORTS[other].name} 노리기</small>`:''}</button>
+   <button ${reference?`data-action="replay-brief" data-replay-from="${reference.sequence}"`:`data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}"`}>같은 전장 · ${reference?'기록 도전':'표준 작전'}${target?`<small>${target}</small>`:''}</button>
    <button data-action="launch" data-actor="${operatorId(r)}">새 전장 출격</button>
   </div>`;
  const footnote=`<p class="report-footnote">${p.active?'진행 중인 작전을 정산한 뒤 출격합니다. ':''}표준 작전 · 현재 연구로 해안 LV.1 시작</p>`;
@@ -285,7 +325,7 @@ export function reportView(r,p,{archived=false}={}){
      ${hasPayout(r)?`<div class="earned-pay"><span>지급 크레딧</span><b>+${n(r.credits)}<small>C</small></b>${first?`<small class="first-clear">첫 완주 +${n(first)}C 포함</small>`:''}</div>`:''}
      <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>일반 적 ${n(r.stats.kills)}명 · 잔류 D${r.stats.challenge}</small></div>
     </div>
-    ${debriefPace(r,reference)}${debriefRoute(r.operation,r.stats,reference)}${harborPayoff(r)}
+    ${debriefPace(r,reference)}${debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${harborPayoff(r)}
    </section>
    ${debriefActions(r,p,archived,!!reference)}
   </div>
