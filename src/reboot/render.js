@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine} from './model.js';
@@ -252,6 +252,14 @@ function paintPortCue(c,s,aid){
  }else if(portCoreDisrupted(s)){
   circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
  }
+ if(s.operation.tactic==='wake'){
+  const {x,y,r}=portWakePoint(b),ready=b.mode==='recover'&&b.tacticCycle!==b.cycle;
+  c.fillStyle='#2e3739';c.fillRect(x-r-4,y-10,2*r+8,20);
+  c.strokeStyle=ready?'#ffce93':'#9d9077';c.lineWidth=2;c.strokeRect(x-r-4,y-10,2*r+8,20);
+  c.fillStyle=ready?'#f5ad66':'#9d9077';
+  for(const dx of [-7,0,7])c.fillRect(x+dx-1,y-5,2,10);
+  if(ready){c.setLineDash([5,5]);circle(c,x,y,25,null,'#ffc683',2);c.setLineDash([]);}
+ }
  if(portAidCounterReady(s)&&b.parts[1].hp>0){
   const p=partPosition(s,b.parts[1]);
   c.setLineDash([5,4]);circle(c,p.x,p.y,31,null,'#d7f0b8',2);c.setLineDash([]);
@@ -324,13 +332,15 @@ function paintEmberCharge(c,z){
  c.restore();
 }
 function paintWake(c,z,time,reduced){
- circle(c,z.x,z.y,z.r,'#39271f35','#6e443143',1);
+ c.save();c.globalAlpha=Math.min(1,z.life/.42);
+ circle(c,z.x,z.y,z.r,'#6e342a49','#d5814b68',1.5);
  for(let i=0;i<6;i++){
   const a=i*2.4+z.x,r=z.r*(.35+(i%3)*.22),x=z.x+Math.cos(a)*r,y=z.y+Math.sin(a)*r;
   c.fillStyle='#3e2c2699';c.fillRect(x-6,y-2,12,4);
   c.fillStyle=i%2?'#e08b49':'#a75530';c.fillRect(x-2,y-2,4,2);
-  if(!reduced&&i%2===0)flame(c,x,y,9+Math.sin(time*9+i)*3,time*8+i);
+  if(!reduced&&i%2===0)flame(c,x,y,12+Math.sin(time*9+i)*3,time*8+i);
  }
+ c.restore();
 }
 function paintHeatImpulse(c,f,t,reduced){
  const r=(f.r??100)*(reduced?.84:.48+t*.58);

@@ -425,7 +425,7 @@ const workshopForecasts=new WeakMap();
 function fieldEntry(s){
  const entry=activeEntry(s),inferno=entry&&infernoControlRank(s);
  if(s.operation?.region===2&&entry){
-  const key=portTacticKeys(s).find(id=>id==='lens'||id==='ember');
+  const key=portTacticKeys(s).find(id=>['lens','wake','ember'].includes(id));
   const part=s.operation.support;
   const routes=entry.routes.map(route=>{
    if(route.site==='port-control'&&inferno)return {...route,sign:'관제소 · F L6 또는 보스 전술'};
@@ -758,6 +758,10 @@ function updateHud(entry){
    else if(boss.emberCycle===boss.cycle+1)hint='급탄선 단선 · 다음 포탑탄 차단';
    else hint='포탑 근처 화약에 보병 한 명 유도';
   }
+  if(portTactic==='wake'){
+   const hit=run.effects.findLast(f=>f.portWake);
+   hint=hit?.text||(active?'냉각 배관 점화 완료':recovering?`${boss.parts[1].ox<0?'왼쪽':'오른쪽'} 배관 옆을 달려 불길 남기기`:'포격 뒤 측면 냉각 배관으로');
+  }
   if(!(front>0)&&boss.mode==='windup'){
    const blockId=boss.chargePath?.blockId;
    hint=blockId&&run.blocks.some(b=>b.id===blockId&&b.hp!==0)?'엄폐까지 돌진 · 진행선 옆으로 빠지세요.':'고정된 돌진선 밖으로 빠지세요.';
@@ -850,7 +854,7 @@ function processEvents(){
  if(!priority&&!capstone&&bannerPriority.includes(banner.dataset.kind))return;
  const counter=!priority&&events.has('aid-counter')&&run.effects.findLast(f=>f.type==='aid-counter');
  const fx=capstone||counter||run.effects.findLast(f=>priority?f.type===priority:events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
- if(!fx||fx.coastTactic||fx.type==='aid-counter')return;
+ if(!fx||fx.coastTactic||fx.portWake||fx.type==='aid-counter')return;
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
  bannerUntil=run.t+(bannerPriority.includes(fx.type)?2.1:1.5);
  if(fx.type==='region-entry'){

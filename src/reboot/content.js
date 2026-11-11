@@ -4,6 +4,8 @@ export const VERSION='reboot-0.1-b01';
 export const FIELD={left:40,top:40,right:1560,bottom:1160};
 export const INFERNO_CORE_DISTANCE=200;
 export const isFocusedInferno=w=>w?.id==='f'&&w.evolved&&w.branch==='focused';
+export const isTrailInferno=w=>w?.id==='f'&&w.evolved&&w.branch==='trail';
+export const INFERNO_WAKE={spacing:96,radius:70,life:2.3,dps:56,limit:4};
 export const isConductiveFusion=w=>w?.id==='h'&&w.fusion?.secondary==='r'&&w.fusion.branch==='homing';
 export const EMBER_CHARGE={impactScale:.65,arm:.45,life:3.2,damage:105};
 export const GUNS={

@@ -1,5 +1,5 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
-import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
+import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
 import {OPERATORS,operatorOf,skillRules,canUseSkill,focusLane,aimFromInput,chargeLabel} from './operator.js';
@@ -950,12 +950,40 @@ function updateZones(s,dt){
    s.stats.emberKills=(s.stats.emberKills||0)+(s.stats.payloadKills||0)-kills;
   }else if(z.tick<=0){
    z.tick=.25;
-   for(const e of targets(s))if(e.hp>0&&distance(z,e)<z.r+e.r&&!lineBlocked(s,z,e)){
-    burn(e);damage(s,e,z.dps*.25,'fire',z.source==='wake'?'wake':'dot');
+   const wake=z.source==='wake';
+   if(wake&&z.life<=0)continue;
+   if(wake)heatHarborCooling(s,z);
+   for(const e of targets(s))if(e.hp>0&&(wake?wakeTouches(s,z,e):distance(z,e)<z.r+e.r&&!lineBlocked(s,z,e))){
+    burn(e);damage(s,e,z.dps*.25,'fire',wake?'wake':'dot');
    }
   }
  }
  s.zones=s.zones.filter(z=>z.life>0);
+}
+function wakeTouches(s,z,e){
+ const gap=distance(z,e);
+ if(gap>=z.r+e.r)return false;
+ if(gap===0)return true;
+ const dx=(e.x-z.x)/gap,dy=(e.y-z.y)/gap;
+ return !s.blocks.some(b=>b.hp!==0&&rayBoxDistance(z,dx,dy,b)<gap);
+}
+function heatHarborCooling(s,z){
+ const b=s.boss;
+ if(s.operation?.region!==2||s.operation.tactic!=='wake'||!b.active||b.dead||b.mode!=='recover'||b.tacticCycle===b.cycle)return;
+ const pipe=portWakePoint(b);
+ if(!wakeTouches(s,z,pipe)||!s.weapons.some(w=>w.uid===z.owner&&isTrailInferno(w)))return;
+ const armor=b.parts[1],armored=armor.hp>0,target=armored?Object.assign(armor,partPosition(s,armor)):b;
+ b.tacticCycle=b.cycle;recordFrontTactic(s);
+ damage(s,target,FRONT_TACTICS[2].wake.damage,'fire','support');
+ emit(s,'overheat',pipe.x,pipe.y,{life:1.15,text:armored?'냉각 배관 점화 · 측면 장갑 손상':'냉각 배관 점화 · 차체 손상',portWake:true});
+}
+function leaveInfernoWake(s,weapon,x,y){
+ const from={x,y},plan=INFERNO_WAKE;
+ if(distance(from,s.player)<.5)return;
+ const wakes=s.zones.filter(z=>z.source==='wake'&&z.owner===weapon.uid&&z.life>0);
+ if(wakes.some(z=>distance(from,z)<plan.spacing))return;
+ if(wakes.length>=plan.limit)s.zones.splice(s.zones.indexOf(wakes[0]),1);
+ if(s.zones.length<RULES.limits.zones)s.zones.push({...from,r:plan.radius,dps:plan.dps,life:plan.life,tick:.25,source:'wake',owner:weapon.uid});
 }
 const emberContact=(s,z,target)=>distance(z,target)<=z.r+target.r&&!lineBlocked(s,z,target);
 function recordPortEmberIntercept(s,point){
@@ -1022,10 +1050,8 @@ function shoot(s,w,counter){
    emit(s,'armor-impact',flameBlocker.x,flameBlocker.y,{life:.3,angle:flameBlocker.aim,coastScreen:flameBlocker.siteId,shieldId:flameBlocker.id});
   }
   emit(s,'flame',p.x,p.y,{angle:a,r:d.range,cone:d.cone,life:.14,evolved:w.evolved,...(screen?{screen}:null),...(focused?{focused:true}:null),...(lance?{coreDistance:distance(p,target)}:null)});
-  if(w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<(w.evolved?4:3)){
-   const reach=w.evolved?Math.min(120,distance(p,target)*.65):0;
-   s.zones.push({x:p.x+Math.cos(a)*reach,y:p.y+Math.sin(a)*reach,r:w.evolved?74:50,dps:w.evolved?56:12,life:w.evolved?2.3:2,tick:.25,source:w.evolved?'wake':'dot',owner:w.uid});
-  }
+  if(!w.evolved&&w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<3&&s.zones.length<RULES.limits.zones)
+   s.zones.push({x:p.x,y:p.y,r:50,dps:12,life:2,tick:.25,source:'dot',owner:w.uid});
  }else{
   const ordered=[target,...candidates.filter(e=>e.id!==target.id)];
   for(let i=0;i<d.count;i++){
@@ -1399,7 +1425,11 @@ function withdrawRaid(s){
 }
 function spawnShowcaseWave(s,pulse,showcase,remaining){
  const p=s.player,crowd=alive(s);
- const flame=showcase==='flame',approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x):p.aim;
+ const flame=showcase==='flame';
+ const trail=flame&&s.stage!=='boss'&&s.weapons.find(isTrailInferno);
+ const wake=trail&&s.zones.filter(z=>z.source==='wake'&&z.owner===trail.uid&&z.life>.55&&distance(p,z)>=58&&distance(p,z)<170&&!lineBlocked(s,p,z))
+  .sort((a,b)=>distance(p,b)-distance(p,a))[0];
+ const approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x):wake?Math.atan2(wake.y-p.y,wake.x-p.x):p.aim;
  const pair=flame?[[0,190],[0,264]]:[[-.34,205],[.48,248]];
  const plans=!flame&&remaining-(pulse-1)*8>=12?[[[-.75,208],[.1,224],[.93,242]],pair]:[pair];
  for(const lanes of plans){
@@ -1724,7 +1754,13 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const ix=Number.isFinite(input.x)?input.x:0,iy=Number.isFinite(input.y)?input.y:0,len=Math.max(1,Math.hypot(ix,iy)),moving=Math.hypot(ix,iy)>.07;p.moving=moving;
  const b=s.boss,coreDash=p.dash>0&&portCoreWindow(s),coreReach=coreDash?portCoreReach(s):0;
  const coreEntry=coreDash&&p.portRush&&distance(p,b)>coreReach;
- if(moving){const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;if(s.operator==='marco')p.moveAim=Math.atan2(iy,ix);}
+ if(moving){
+  const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1),{x,y}=p;
+  move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;
+  const trail=s.weapons.find(isTrailInferno);
+  if(trail)leaveInfernoWake(s,trail,x,y);
+  if(s.operator==='marco')p.moveAim=Math.atan2(iy,ix);
+ }
  const kit=PORT_SUPPORT.overrun;
  const coreCut=coreDash&&Number.isFinite(p.portCutX)&&Math.abs(p.x-p.portCutX)>=kit.sideStep;
  if((coreEntry||coreCut)&&distance(p,b)<=coreReach&&!lineBlocked(s,p,b)){

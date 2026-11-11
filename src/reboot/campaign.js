@@ -1,4 +1,4 @@
-import {FIELD,MODULES,INFERNO_CORE_DISTANCE,isFocusedInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
+import {FIELD,MODULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
 import {routeCursor} from './raid.js';
 
 export const REGIONS=[
@@ -123,6 +123,7 @@ export const PORT_SUPPORT={
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
 export const portFlankPoint=boss=>({x:boss.x+portTurretSide(boss)*142,y:boss.y+95});
+export const portWakePoint=boss=>({x:boss.x-portTurretSide(boss)*134,y:boss.y+86,r:12});
 const portOpeningShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
 const portTurretFlank=s=>(s.player.x-s.boss.x)*portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
 export const portGantryBypass=s=>s.operation?.portEntry==='gantry'&&portOpeningShutter(s)&&portTurretFlank(s);
@@ -245,6 +246,7 @@ export const FRONT_TACTICS={
  },
  2:{
   heat:{name:'코어 냉각 차단',role:'화염 · 근접 돌파',impact:'근접 분사 · 코어·장갑 피해 +55%',hint:'붉은 포격 범위를 피해 노출 코어에 붙으세요.',range:168,boost:1.55},
+  wake:{name:'냉각 배관 점화',role:'연료 살포 · 측면 우회',impact:'재장전 중 배관에 불길이 닿으면 장갑 또는 차체 피해 180',hint:'포격 뒤 표시된 냉각 배관 옆을 달려 지나가세요.',damage:180},
   signal:{name:'포탑 교신 탈취',role:'전도 · 원거리 제압',impact:'원거리 적중 · 포탑 전류 도약',hint:'붉은 원 밖에서 사격하면 증원을 최소 3초 늦춥니다.',range:220,hop:280,delay:3},
   lens:{name:'코어 재장전 지연',role:'압축 분사 · 사선 유지',impact:'코어 직격으로 재장전 +0.8초',hint:'포격 뒤 중거리에서 멈춰 압축 분사를 코어에 맞히세요.',delay:.8},
   ember:{name:'포탑 급탄선 단선',role:'점화 탄두 · 포탑 유폭',impact:'포탑 옆 유폭 · 이번 또는 다음 포탑탄 차단',hint:'살아 있는 포탑과 보병 한 명을 화약에 넣으세요.'}
@@ -252,9 +254,9 @@ export const FRONT_TACTICS={
 };
 export const frontTactic=s=>FRONT_TACTICS[s.operation?.region]?.[s.operation?.tactic];
 export function portTacticKeys(s){
- const focused=s.weapons.some(isFocusedInferno);
+ const fire=s.weapons.some(isFocusedInferno)?'lens':s.weapons.some(isTrailInferno)?'wake':'heat';
  const incendiary=s.weapons.some(w=>w.fusion?.branch==='incendiary');
- return [focused?'lens':'heat',incendiary?'ember':'signal'];
+ return [fire,incendiary?'ember':'signal'];
 }
 export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
 export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'&&!s.challenge.secured?s.challenge.target:null;

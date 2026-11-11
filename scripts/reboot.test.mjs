@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
-import {RULES,FIELD,MODULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
@@ -88,12 +88,25 @@ test('first fusion primes the launcher and stages three legal packs when there i
  const end=average(groups[0]);
  assert.ok(Math.hypot(end.x-start.x,end.y-start.y)>40);
 });
-test('evolved sweeping fire leaves a forward wake while focused fire builds a stronger burn',()=>{
+test('evolved sweeping fire leaves a wake on the route while focused fire builds a stronger burn',()=>{
  const fixture=branch=>{const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:0,level:6,evolved:true,branch}];s.enemies=[enemy('guard',970,800,'rifle',1000)];step(s,dt,{x:1,y:0});return s;};
  const sweep=fixture('trail'),jet=fixture('focused'),patch=sweep.zones[0];
- assert.equal(patch.source,'wake');assert.ok(patch.x>sweep.player.x+90);assert.equal(patch.r,74);
+ assert.equal(patch.source,'wake');assert.equal(patch.x,800);assert.ok(patch.x<sweep.player.x);assert.equal(patch.r,INFERNO_WAKE.radius);
  assert.equal(jet.zones.length,0);assert.ok(jet.enemies[0].burnDps>sweep.enemies[0].burnDps);
  const victim=enemy('crossing',patch.x,patch.y+50,'rifle',10);sweep.enemies.push(victim);sweep.weapons[0].cd=999;tick(sweep,.3);assert.equal(sweep.stats.wakeKills,1);
+});
+test('Inferno wake spacing follows movement through empty ground and never builds against a wall',()=>{
+ const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:999,level:6,evolved:true,branch:'trail'}];
+ s.blocks=[{x:816,y:730,w:48,h:130,hp:-1}];
+ tick(s,.5,{x:1,y:0});
+ assert.equal(s.player.x,800);assert.equal(s.zones.length,0);
+ s.blocks=[];tick(s,.45,{x:1,y:0});
+ assert.equal(s.zones.length,1);assert.equal(s.zones[0].x,800);
+ tick(s,1.7,{x:1,y:0});
+ assert.equal(s.zones.length,INFERNO_WAKE.limit);
+ assert.ok(s.zones.every((z,i)=>!i||z.x-s.zones[i-1].x>=INFERNO_WAKE.spacing));
+ assert.equal(s.weapons[0].shots,0);
+ tick(s,2.4);assert.equal(s.zones.length,0);
 });
 test('assembly progress distinguishes a ready recipe from an already completed weapon',()=>{
  const s=quiet();assert.ok(buildPaths(s).every(p=>!p.ready&&!p.complete));s.weapons[0].level=6;s.weapons[0].branch='ricochet';s.modules=[{id:'ricochet',rank:2}];assert.ok(buildPaths(s).some(p=>p.ready&&p.title.includes('사중')));action(s,'gear');choose(s,'evolve:h');assert.ok(buildPaths(s).some(p=>p.complete&&p.title.includes('사중')));assert.ok(buildPaths(s).every(p=>!p.ready));
@@ -469,6 +482,15 @@ test('Inferno forms a dense lane even when heat synergy was completed earlier',(
  assert.ok(Math.abs(Math.hypot(markers[0].x-markers[1].x,markers[0].y-markers[1].y)-74)<1e-6);
  assert.equal(s.stats.completedBuild.kind,'synergy');assert.equal(s.enemies.length,8);
 });
+test('Inferno pursuit favors the traveled wake lane over the current weapon aim',()=>{
+ const s=quiet();s.player.aim=Math.PI/2;
+ s.weapons=[{...makeWeapon('f'),uid:'inferno',level:6,branch:'trail',cd:999}];s.modules=[{id:'catalyst',rank:2}];
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'evolve:f'));
+ tick(s,.72,{x:1,y:0});
+ const formation=s.effects.filter(e=>e.type==='formation');
+ assert.equal(formation.length,2);
+ assert.ok(formation.every(e=>e.x<s.player.x-155&&Math.abs(e.y-s.player.y)<1));
+});
 test('campaign advances real maps while retaining gear, HP, XP, tokens and earned choices',()=>{
  const s=quietOperation();s.weapons[0].level=4;s.weapons[0].branch='grenade';s.modules=[{id:'coil',rank:2}];s.player.hp=50;s.xp=4;clearRegion(s);assert.equal(s.operation.cleared,1);assert.equal(s.player.hp,65);assert.equal(s.tuning,2);const gear=snapshot(s.weapons),modules=snapshot(s.modules),hp=s.player.hp,xp=s.xp;assert.ok(choose(s,'stay'));assert.equal(s.operation.region,0);s.player.x=800;s.player.y=420;assert.equal(action(s,'interact'),false);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'advance'));assert.equal(s.operation.region,1);assert.equal(s.operation.regionTime,0);assert.equal(s.pressure,0);assert.deepEqual(s.weapons,gear);assert.deepEqual(s.modules,modules);assert.equal(s.player.hp,hp+20);assert.equal(s.operation.support,'vanguard');assert.equal(s.xp,xp);assert.ok(s.sites.some(n=>n.kind==='relay'));assert.ok(s.blocks.some(b=>b.id==='r1'));assert.deepEqual(restore(snapshot(s)).operation,s.operation);
 });
@@ -841,6 +863,33 @@ test('the harbor control cards match equipped capstones and focused fire extends
  flame.cd=0;step(s,dt);
  assert.ok(Math.abs(s.boss.timer-(2+.8-2*dt))<1e-9);
  assert.equal(s.stats.frontTactics[2],1);
+});
+test('Inferno wake ignites the harbor coolant pipe once per reload even after the side armor is gone',()=>{
+ const s=supportArena(2,null,'salvo');
+ s.stage='field';s.boss.active=false;
+ s.weapons=[{...makeWeapon('f'),uid:'fire',level:6,evolved:true,branch:'trail',cd:999}];
+ s.sites=[{id:'port-control',kind:'control',state:'ready',x:800,y:535,name:'항구 관제소'}];
+ Object.assign(s.player,{x:800,y:535});step(s,dt);
+ assert.deepEqual(s.choices.map(c=>c.id),['control:wake','control:signal','control:jam','control:loot']);
+ assert.ok(choose(s,'control:wake'));
+ s.stage='boss';s.boss.active=true;
+ const point=portWakePoint(s.boss);
+ Object.assign(s.player,{x:point.x+52,y:point.y});step(s,dt,{x:0,y:1});
+ tick(s,.27);
+ assert.equal(s.stats.frontTactics?.[2],undefined);
+ s.boss.mode='recover';
+ const ready=restore(snapshot(s)),blocked=restore(snapshot(s)),exposed=restore(snapshot(s));
+ blocked.blocks=[{x:point.x+25,y:point.y-30,w:8,h:75,hp:-1}];
+ exposed.boss.parts[1].hp=0;
+ const before=ready.boss.parts[1].hp,hull=exposed.boss.hp;
+ tick(ready,.26);tick(blocked,.26);tick(exposed,.26);
+ assert.equal(before-ready.boss.parts[1].hp,180);
+ assert.equal(hull-exposed.boss.hp,180);
+ assert.equal(exposed.stats.frontTactics[2],1);
+ assert.equal(ready.stats.frontTactics[2],1);
+ assert.equal(blocked.stats.frontTactics?.[2],undefined);
+ const resumed=restore(snapshot(ready));tick(resumed,.26);
+ assert.equal(resumed.stats.frontTactics[2],1);
 });
 test('one soldier can trigger a port charge against a live turret with pending rounds',()=>{
  const s=supportArena(2,null,'salvo');

@@ -116,13 +116,13 @@ export function choiceDetails(s,c){
    else if(installed.id==='f'){
     const before=weaponStats(installed),after=weaponStats({...installed,branch:change.to});
     out.detail=`사거리 ${before.range} → ${after.range} · 분사각 ${num(before.cone)}° → ${num(after.cone)}°`;
-    out.link=change.to==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'이동하며 분사하면 화염 장판';
+    out.link=change.to==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'달린 자리에 불길 · 항구에서 냉각 배관 점화';
    }else out.detail=branches[change.to][1];
    out.cost='완성·투자 유지 · 귀환까지 적용';
   }
  }else if(c.kind==='evolve'){
   out.impact=c.weapon==='f'?w.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
-  out.link=c.weapon==='f'?w.branch==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'이동 중 화염을 뿌리면 앞쪽에 불길이 남습니다.':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
+  out.link=c.weapon==='f'?w.branch==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'달린 자리에 불길 · 추격병을 불길로 유도':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
  }else if(c.kind==='fusion'){
   const incendiary=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch==='incendiary';
   out.art=c.primary;out.impact=incendiary?'화약 지대에 보병 둘이 모이면 폭발':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'합체 직후 첫 화약탄 장전 · 보병 두 무리씩 접근':'합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
@@ -135,7 +135,7 @@ export function choiceDetails(s,c){
   if(plan){out.art=c.key;out.impact=plan.impact;out.detail=plan.hint;out.link=plan.detail;out.cost=`지금 모듈 대신 선택 · 성공 시 철도에서 ${MODULES[COAST_APPROACHES[c.key].module].name} 보급 후보`;}
  }else if(c.kind==='control'){
   const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
-  out.art=c.infernoRank||c.key==='heat'||c.key==='lens'?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
+  out.art=c.infernoRank||['heat','lens','wake'].includes(c.key)?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
   out.cost='';
   if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';}
   if(c.infernoRank){
