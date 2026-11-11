@@ -1331,6 +1331,60 @@ test('compressed Inferno can sidestep at 22m and follow up from the same firing 
  });
  assert.match(card.detail,/20~26m.*좌우 회피.*멈춰 분사/);
 });
+test('conductive hits relay from a dash-opened harbor core once per reload',()=>{
+ const arena=(branch='homing',support='overrun')=>{
+  const s=supportArena(2,support,'recover');
+  s.weapons=[{...makeWeapon('h'),uid:'fused',level:6,fusion:{secondary:'r',branch,overflow:0},cd:999}];
+  s.operation.harborPayoff=support?{}:undefined;
+  Object.assign(s.player,{x:760,y:400});
+  return s;
+ };
+ const hit=(s,owner=s.weapons[0].uid)=>{
+  s.shots=[{...bullet(s,s.boss,1),owner}];
+  step(s,dt);
+ };
+ const open=s=>{
+  Object.assign(s.player,{x:760,y:400,dashCd:0});
+  assert.ok(action(s,'dash'));
+  tick(s,.18,{x:1,y:0});
+ };
+ const s=arena(),hp=s.boss.parts[1].hp;
+ hit(s);
+ assert.deepEqual(s.operation.harborPayoff,{});
+ open(s);hit(s,'other-weapon');
+ assert.equal(s.boss.parts[1].hp,hp);
+ hit(s);
+ assert.equal(s.boss.parts[1].hp,hp-210);
+ assert.deepEqual(s.operation.harborPayoff,{sidesteps:1,arcArmor:1});
+ const resumed=restore(snapshot(s));
+ hit(resumed);
+ assert.equal(resumed.boss.parts[1].hp,hp-210);
+ resumed.boss.cycle++;
+ open(resumed);
+ hit(resumed);
+ resumed.boss.parts[1].hp=40;
+ resumed.boss.cycle++;
+ open(resumed);hit(resumed);
+ assert.equal(resumed.boss.parts[1].hp,0);
+ assert.equal(resumed.operation.harborPayoff.arcArmor,3);
+ assert.equal(resumed.operation.harborPayoff.arcBreaks,1);
+ const turret=resumed.boss.parts[0].hp;
+ hit(resumed);
+ assert.equal(resumed.boss.parts[0].hp,turret);
+ resumed.boss.cycle++;
+ open(resumed);hit(resumed);
+ assert.equal(resumed.boss.parts[0].hp,turret-210);
+ assert.equal(resumed.operation.harborPayoff.arcTurret,1);
+ for(const other of [arena('incendiary'),arena('homing',null)]){
+  open(other);hit(other);
+  assert.equal(other.boss.parts[1].hp,hp);
+  assert.equal(other.operation.harborPayoff?.arcArmor,undefined);
+ }
+ const card=choiceDetails({...s,operation:{region:1}},{
+  id:'support:overrun',key:'overrun',kind:'front-support',title:'돌격 신관'
+ });
+ assert.match(card.detail,/회피로 코어를 열고 전도 격발망으로 맞히면/);
+});
 test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
  const s=supportArena(2,'recovery','aim');Object.assign(s.boss,{cycle:0,timer:0});Object.assign(s.player,{x:700,y:335,hp:80,charge:40});
  step(s,dt);assert.equal(s.boss.mode,'salvo');assert.deepEqual(s.boss.harborSupply,{x:975,y:335});assert.equal(s.player.hp,80);assert.equal(s.gems.length,0);
@@ -2078,6 +2132,43 @@ test('rail workshop protects a weak build from a random new weapon and provides 
  assert.equal(reroll(s),false);
  assert.ok(choose(s,'module:catalyst'));assert.equal(s.tuning,ready);
  assert.ok(assemblyOptions(s).some(c=>c.id==='evolve:f'));
+});
+test('relay and harbor equipment reward committed fire builds while the other tactics remain selectable',()=>{
+ const rail=quietRailWorkshop();
+ rail.weapons.push({...makeWeapon('f'),uid:'flame',level:4,branch:'focused',cd:999});
+ rail.modules=[{id:'catalyst',rank:2}];
+ const relay=supply(rail,'rail-relay');
+ const equipment=relay.find(c=>c.id==='control:supply');
+ assert.equal(equipment.infernoRank,5);
+ assert.match(choiceDetails(rail,equipment).link,/인페르노까지 한 단계/);
+ const tactics=restore(snapshot(rail));
+ assert.ok(choose(tactics,'control:heat'));
+ assert.equal(tactics.operation.tactic,'heat');assert.equal(tactics.weapons[1].level,4);
+ assert.ok(choose(rail,'control:supply'));
+ assert.equal(rail.choice.siteId,'rail-relay');
+ assert.equal(rail.choices.filter(c=>c.id==='rank:f').length,1);
+ assert.ok(reroll(rail));
+ assert.equal(rail.choices.find(c=>c.id==='rank:f').label,'인페르노 준비');
+ const loaded=restore(snapshot(rail));assert.ok(choose(loaded,'rank:f'));
+ assert.equal(loaded.weapons[1].level,5);assert.equal(loaded.operation.tactic,undefined);
+
+ Object.assign(loaded.operation,{region:2,regionTime:0});
+ Object.assign(loaded,regionLayout(mapSeed(loaded.seed,2),2));
+ loaded.boss=regionBoss(2,loaded.seed);loaded.blocks=[];
+ loaded.sites.forEach(site=>site.state='done');
+ const port=supply(loaded,'port-control'),loot=port.find(c=>c.id==='control:loot');
+ assert.equal(loot.infernoRank,6);
+ const jam=restore(snapshot(loaded));assert.ok(choose(jam,'control:jam'));
+ assert.equal(jam.operation.jammed,true);assert.equal(jam.weapons[1].level,5);
+ assert.ok(choose(loaded,'control:loot'));
+ assert.ok(reroll(loaded));
+ assert.equal(loaded.choices.find(c=>c.id==='rank:f').label,'인페르노 조립 재료');
+ const final=restore(snapshot(loaded)),permits=final.tuning;
+ assert.ok(choose(final,'rank:f'));assert.equal(final.operation.jammed,false);
+ assert.equal(final.weapons[1].level,6);assert.equal(final.tuning,permits);
+ assert.ok(action(final,'gear'));assert.ok(choose(final,'evolve:f'));
+ assert.equal(final.weapons[1].branch,'focused');assert.equal(final.tuning,permits-1);
+ assert.equal(final.powerWave.showcase,'flame');
 });
 test('rail workshop previews and offers the missing H branch for a rocket-first fusion',()=>{
  const s=quietRailWorkshop();s.firstNew='r';

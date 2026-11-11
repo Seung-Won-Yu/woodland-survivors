@@ -109,7 +109,7 @@ export const PORT_LANDING={range:215,guards:[
 ]};
 export const PORT_SUPPORT={
  breach:{impact:'포탑 측면 피해 +65% · 후속 탄막 차단',detail:'예고 중에는 포탑탄도 끊습니다. 포탄이 떨어진 뒤에는 재장전 전까지 후속 탄막을 끊을 수 있습니다.',hint:'포격 예고 중 포탑 쪽 사선 확보',flank:105,boost:1.65},
- overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,focusedReach:260,sideStep:48,damage:320,delay:.9},
+ overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,focusedReach:260,sideStep:48,damage:320,delay:.9,arcDamage:210},
  recovery:{impact:'측면 화물 회수 → 스킬로 포격 차단',detail:'화물은 포격 예고와 함께 떨어집니다. 체력 +12, 전탄 +20. 경고 중 안전 회수 시 전탄 +45와 회피 재정비.',hint:'화물에서 떨어져 조준 유도 → 회수 후 스킬',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';

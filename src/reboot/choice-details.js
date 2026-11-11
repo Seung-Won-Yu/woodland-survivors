@@ -1,4 +1,4 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isConductiveFusion,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
 import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
@@ -135,9 +135,13 @@ export function choiceDetails(s,c){
   if(plan){out.art=c.key;out.impact=plan.impact;out.detail=plan.hint;out.link=plan.detail;out.cost=`지금 모듈 대신 선택 · 성공 시 철도에서 ${MODULES[COAST_APPROACHES[c.key].module].name} 보급 후보`;}
  }else if(c.kind==='control'){
   const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
-  out.art=c.key==='heat'||c.key==='lens'?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
+  out.art=c.infernoRank||c.key==='heat'||c.key==='lens'?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
   out.cost='';
   if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';}
+  if(c.infernoRank){
+   out.detail='이 보급을 고르면 이번 전선의 보스 전술을 포기합니다.';
+   out.link=c.infernoRank===6?'L6 장착 후 조율권 1개로 인페르노 조립':'F L5 장착 · 인페르노까지 한 단계';
+  }
  }else if(c.kind==='front-support'){
   const kit=FRONT_SUPPORTS[c.key];
   const index=s.operation.region+1;
@@ -146,6 +150,9 @@ export function choiceDetails(s,c){
   if(index===2&&c.key==='overrun'&&s.weapons.some(isFocusedInferno)){
    out.detail=`압축 인페르노 장착 중 · 코어에서 ${portCompressionRange} 떨어져 좌우 회피한 뒤 멈춰 분사하세요.`;
    out.link='장갑 해제 · 재장전 +0.9초';
+  }else if(index===2&&c.key==='overrun'&&s.weapons.some(isConductiveFusion)){
+   out.detail='회피로 코어를 열고 전도 격발망으로 맞히면 측면 장갑이나 포탑에 역송합니다.';
+   out.link=`기본 피해 ${effect.arcDamage} · 재장전마다 한 번`;
   }
  }else if(c.kind==='cargo'){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
