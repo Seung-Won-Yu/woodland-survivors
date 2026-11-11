@@ -7,7 +7,7 @@ import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,evolutionParts,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
-import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,canStartChallenge,canCallGateChallenge} from './model.js';
+import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
 import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
@@ -553,7 +553,7 @@ function updateHud(entry){
    const move=touchLayout.matches?'스틱 이동':'WASD 이동';
    intel=coastSite.state==='ready'?'감옥에 가까이 가면 구출됩니다.':coastSite.state==='active'?`경비 ${guards}명 제압 후 접근`:`${move} · 사격은 자동`;
   }else if(run.operation?.requisition==='thermal'&&coastSite.coastApproach==='r'&&!moduleRank(run,'coil'))intel='흡열 코일 준비 · 이 진지에서 축전 코일 확보';
-  else intel=coastEncounterCue(run,coastSite,coastRocketVolley(run,coastSite))||(fork?`${coastReward(coastSite)} · ${coastApproach(coastSite).formation}`:coastApproach(coastSite).hint);
+  else intel=coastEncounterCue(run,coastSite,coastRocketVolley(run,coastSite),coastRocketCounter(run,coastSite))||(fork?`${coastReward(coastSite)} · ${coastApproach(coastSite).formation}`:coastApproach(coastSite).hint);
  }
  else if(front===0&&run.sites[0]?.state!=='done'){
   const rescue=run.sites[0],route=beachRoute(run.seed).name;

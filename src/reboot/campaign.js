@@ -314,12 +314,12 @@ export const COAST_APPROACHES={
 const SPLIT_COAST={
  f:{...COAST_APPROACHES.f,formation:'양갈래 호위',hint:'방패 없는 쪽부터 태우거나 옆으로 돌아 분사',
   guards:[['shield',-64,54],['rifle',-70,18],['rifle',-38,19],['rifle',64,54],['rifle',70,18],['rifle',38,19]]},
- r:{...COAST_APPROACHES.r,formation:'분산 포대',hint:'사선을 바꿔 한 문씩 끊기',
+ r:{...COAST_APPROACHES.r,formation:'분산 포대',hint:'포격 원 옆으로 빠지면 반격탄 1회',
   guards:[['mortar',-78,-42],['mortar',78,-42]],firstSalvo:[.6,1.45]}
 };
 export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_APPROACHES)[site?.coastApproach];
 export const COAST_WING={offset:64,hold:1.25,release:1.6};
-export const COAST_MORTAR={range:400,tell:.36,warning:.9,spacing:.85,volleyDistance:160,volleyBeat:.55};
+export const COAST_MORTAR={range:400,tell:.36,warning:.9,spacing:.85,volleyDistance:160,volleyBeat:.55,counterSide:44};
 export function coastMortarWait(s,e){
  if(e.cohort!=='coast-guard'||!s.sites.some(n=>n.id===e.siteId&&n.coastPlan==='split'))return 0;
  // The far gun can rejoin after a retreat, but not lock the same position in the same frame.
@@ -372,7 +372,7 @@ export function coastShieldImpact(s,site){
  const impact=s.effects.findLast(f=>f.coastScreen===site.id);
  return impact&&s.enemies.some(e=>e.id===impact.shieldId&&!e.dead&&e.hp>0)?impact:null;
 }
-export function coastEncounterCue(s,site,volley){
+export function coastEncounterCue(s,site,volley,counter){
  const approach=coastApproach(site);
  if(!approach)return null;
  if(site.state==='ready'){
@@ -389,7 +389,12 @@ export function coastEncounterCue(s,site,volley){
   const move=screened?'방패에 막힘 · 측면 분사':site.coastPlan!=='split'?'붙어서 분사':wings===1?'남은 호위 추격':'바깥에서 한쪽부터';
   return `${move} · 경비 ${guards.length}명`;
  }
- const aim=coastMortarThreatens(s,site)?'포격 원 밖으로':guards.some(e=>coastMortarAiming(s,e))?'박격포 조준 중'
+ const fired=s.effects.some(f=>f.coastCounter===site.id);
+ const aim=coastMortarThreatens(s,site)?(counter?'포격 원 옆으로 · 반격 장전':'포격 원 밖으로')
+  :fired?'측면 반격탄 발사':counter?.state==='blocked'?'측면에서 포대 사선 확보'
+  :counter?.state==='far'?'포대 사거리까지 접근'
+  :counter?.state==='close'?`포대와 ${COAST_MORTAR.volleyDistance/10}m 이상 거리 확보`:counter?.state==='sidestep'?'포격 사선 옆으로'
+  :guards.some(e=>coastMortarAiming(s,e))?'박격포 조준 중'
   :volley?({ready:'사선 확보 · 동시 타격',inflight:'포대 사이로 로켓 비행',close:'포대와 거리 벌리기',far:'사거리까지 접근',blocked:'옆으로 돌아 사선 열기'})[volley.state]
   :guards.length===1?'남은 포대를 노려라':site.coastPlan==='split'?'교대 포격 · 한 문씩':'포대를 향해 사선 잡기';
  return `${aim} · ${guards.length}문`;

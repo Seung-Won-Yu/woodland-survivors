@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.84.0" src="https://img.shields.io/badge/RIFT-0.84.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.85.0" src="https://img.shields.io/badge/RIFT-0.85.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.85에서는 로켓으로 분산 포대에 접근해 포격 원 옆으로 빠지고 열린 사선을 잡으면 반격탄을 바로 발사합니다. [분산 포대 반격 검증](docs/RIFT-GAMEPLAY-V1.md#085-분산-포대의-측면-반격).
 
 0.84에서는 양갈래 보급차의 방패병이 같은 갈래 후열을 정면 화염에서 가립니다. 막힌 불꽃은 방패 앞에서 끊기며, 옆에서 사선을 열거나 반대 갈래부터 태울 수 있습니다. [해안 보급차 교전 검증](docs/RIFT-GAMEPLAY-V1.md#084-해안-보급차의-방패-사선).
 
