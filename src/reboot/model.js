@@ -42,7 +42,7 @@ function advanceRegion(s){
  const sectorSeed=mapSeed(s.seed,s.operation.region),arrival=frontEntry(sectorSeed,s.operation.region).arrival;
  Object.assign(s,regionLayout(sectorSeed,s.operation.region));s.boss=regionBoss(s.operation.region,s.seed);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;Object.assign(s.player,arrival);s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
  if(s.powerWave?.showcase&&s.powerWave.paired>0){
-  s.powerWave.remaining=Math.max(s.powerWave.remaining,60);s.powerWave.delay=1;
+  s.powerWave.remaining=Math.max(s.powerWave.remaining,60);s.powerWave.delay=1;delete s.powerWave.retried;
  }else if(s.stats.completedBuild)s.powerWave={delay:3,remaining:60,clock:0};
  if(recoverStrike)s.queue.unshift({type:'supply',source:'장갑 수송차 노획',cards:supplyCards(s,coastRecovery(s)),extra:{coastRecovery:true}});
  for(let i=0;i<10;i++)spawnAround(s,i===0?'officer':'rifle',{cohort:'ambient'},360,30);emit(s,'region-entry',arrival.x,arrival.y,{text:`${s.operation.region+1}/3 · ${region(s).name}`,life:1.6});nextChoice(s);return true;
@@ -492,9 +492,11 @@ function buildCompleted(s,kind,{weapon,incendiary=false}={}){
  const revealed=showcase==='fusion'?'fusionReveal':'flameReveal';
  if(showcase&&!s.stats[revealed]){
   s.stats[revealed]=true;
-  s.powerWave={delay:.65,remaining:s.powerDone?Math.max(24,s.powerWave?.remaining||0):60,clock:0,paired:3,showcase};
+  const remaining=s.powerDone?Math.max(24,s.powerWave?.remaining||0):60;
+  s.powerWave={delay:.65,remaining,clock:0,paired:Math.min(4,Math.floor(remaining/8)),showcase};
   s.powerDone=true;
-  emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text:showcase==='fusion'?`전도 격발망 가동 · 첫 ${incendiary?'화약탄':'연쇄탄'} 장전`:'인페르노 가동 · 밀집 보병 접근'});
+  const name=incendiary?'점화 격발망':'전도 격발망';
+  emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text:showcase==='fusion'?`${name} 가동 · 분산 편대 접근`:'인페르노 가동 · 밀집 보병 접근'});
  }else if(!s.powerDone){
   s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};
   emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='single'?'무기 진화 완료':'발동 연계 완성'});
@@ -942,6 +944,7 @@ function separateEnemies(s,dt){
  crowd.forEach((a,i)=>{const cx=Math.floor(a.x/cell),cy=Math.floor(a.y/cell);for(let x=cx-1;x<=cx+1;x++)for(let y=cy-1;y<=cy+1;y++)for(const j of cells.get(`${x},${y}`)||[]){if(j<=i)continue;const b=crowd[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),gap=(a.r+b.r)*.9;if(d>=gap)continue;const angle=((i+1)*2.399963+(j+1)*.7),nx=d>.001?dx/d:Math.cos(angle),ny=d>.001?dy/d:Math.sin(angle),push=Math.min(limit,(gap-d)*.5);forces[i].x-=nx*push;forces[i].y-=ny*push;forces[j].x+=nx*push;forces[j].y+=ny*push;}});
  crowd.forEach((e,i)=>{const f=forces[i],length=Math.hypot(f.x,f.y);if(length)move(s,e,f.x*Math.min(1,limit/length),f.y*Math.min(1,limit/length),e.r);});
 }
+const FORMATION_INGRESS={flame:.65,fusion:1.15};
 function updateEnemies(s,dt){
  const p=s.player;let incoming=null;
  for(const e of s.enemies){if(e.dead){e.death-=dt;continue;}e.spawnAge+=dt;e.hurt=Math.max(0,e.hurt-dt);e.timer-=dt;e.walk+=dt*e.speed*.12;
@@ -967,9 +970,15 @@ function updateEnemies(s,dt){
    const before={x:e.x,y:e.y},speed=e.speed*(e.hurt>0&&e.type!=='officer'?RULES.combatFeel.hurtMoveMultiplier:1);
    const wing=e.coastWing===-1||e.coastWing===1?e.coastWing:0;
    const spread=wing*COAST_WING.offset*clamp((COAST_WING.release-e.spawnAge)/(COAST_WING.release-COAST_WING.hold),0,1);
+   const ingress=Number.isFinite(e.formationHeading)&&e.spawnAge<FORMATION_INGRESS[e.showcase]&&d>=76;
    const x=dx+spread,len=spread?Math.hypot(x,dy)||1:d;
-   move(s,e,x/len*speed*dt,dy/len*speed*dt,e.r);
-   if(e.x===before.x&&e.y===before.y)move(s,e,-dy/len*speed*dt,x/len*speed*dt,e.r);
+   const vx=ingress?Math.cos(e.formationHeading):x/len,vy=ingress?Math.sin(e.formationHeading):dy/len;
+   if(ingress)e.aim=e.formationHeading;
+   move(s,e,vx*speed*dt,vy*speed*dt,e.r);
+   if(e.x===before.x&&e.y===before.y){
+    if(ingress)delete e.formationHeading;
+    move(s,e,-dy/len*speed*dt,x/len*speed*dt,e.r);
+   }
   }
   if(e.type==='officer'&&d<420&&e.timer<=0){e.timer=2.4;for(let i=-2;i<=2;i++)enemyShot(s,e,e.aim+i*.18);emit(s,'enemy-fire',e.x,e.y,{life:.2});}
  }
@@ -1236,18 +1245,20 @@ function spawnShowcaseWave(s,pulse,showcase,remaining){
  const p=s.player,crowd=alive(s);
  const flame=showcase==='flame',approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x):p.aim;
  const pair=flame?[[0,190],[0,264]]:[[-.34,205],[.48,248]];
- const plans=!flame&&remaining>=12?[[[-.75,208],[.1,224],[.93,242]],pair]:[pair];
+ const plans=!flame&&remaining-(pulse-1)*8>=12?[[[-.75,208],[.1,224],[.93,242]],pair]:[pair];
  for(const lanes of plans){
   const count=lanes.length*4;
   if(crowd.length+count>160)continue;
-  for(let i=0;i<8;i++){
-   const heading=approach+i*TAU/8;
+  // Try the original eight directions first, then look between them for open ground.
+  for(let i=0;i<16;i++){
+   const heading=approach+(i%8+(i<8?0:.5))*TAU/8;
    const centers=lanes.map(([offset,reach])=>({x:p.x+Math.cos(heading+offset)*reach,y:p.y+Math.sin(heading+offset)*reach}));
    const cos=flame?Math.cos(heading):1,sin=flame?Math.sin(heading):0;
    const packs=centers.map(({x,y})=>[[-18,-20],[18,-20],[-18,20],[18,20]].map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
    if(centers.some((q,j)=>j>0&&lineBlocked(s,centers[j-1],q))||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||s.boss.active&&distance(q,s.boss)<s.boss.r+28||crowd.some(e=>distance(q,e)<32)))continue;
-   for(let group=0;group<packs.length;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',showcase,...(flame?{}:{waveGroup:pulse*4+group})});
-   for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase,angle:Math.atan2(p.y-q.y,p.x-q.x)});
+   const formationHeading=heading+Math.PI;
+   for(let group=0;group<packs.length;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',showcase,formationHeading,...(flame?{}:{waveGroup:pulse*4+group})});
+   for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase,angle:formationHeading});
    return count;
   }
  }
@@ -1264,11 +1275,13 @@ function updatePowerWave(s,dt){
   const count=wave.remaining>=8?spawnShowcaseWave(s,wave.paired,wave.showcase,wave.remaining):0;
   if(count)wave.remaining-=count;
   else{
+   if(!wave.retried){wave.retried=true;wave.clock=.25;return;}
    const before=wave.remaining;
    for(let i=0;i<8&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{cohort:'ambient'},360))wave.remaining--;
    if(wave.remaining===before){wave.clock=.25;return;}
   }
-  wave.paired--;wave.clock=.9;
+  delete wave.retried;
+  wave.paired--;wave.clock=wave.paired===1?1.55:.9;
  }else{
   wave.clock=.4;for(let i=0;i<4&&wave.remaining>0;i++)if(spawnAround(s,'rifle',{},360))wave.remaining--;
  }

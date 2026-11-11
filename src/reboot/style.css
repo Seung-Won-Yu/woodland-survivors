@@ -244,6 +244,7 @@
  .rail-fork #field-feedback{visibility:hidden}
  .rail-fork #banner[data-kind="region-entry"]{top:max(232px,36vh);width:min(284px,calc(100% - 32px))}
  .boss-active #combo{top:auto;bottom:130px;right:16px}
+ .boss-active .arsenal .weapon.empty{display:none}
  .boss-active #banner:is([data-kind="weakpoint"],[data-kind="break"],[data-kind="heal"],[data-kind="supply-ready"]){top:244px;font-size:13px}
  .boss-active #field-feedback{left:auto;right:14px;bottom:max(102px,calc(env(safe-area-inset-bottom) + 80px));transform:none;min-width:0;max-width:60%;padding-right:10px}
  .boss-active:has(#field-feedback:not([hidden])) #combo{visibility:hidden}
@@ -256,7 +257,7 @@
  .harbor-boss #banner[data-kind="supply-ready"]{opacity:0}
  .rail-boss #banner[data-kind="boss-warning"]{opacity:0}
  .rail-boss .arsenal #synergy{display:none}
- :is(.rail-boss,.harbor-boss) .arsenal :is(.weapon.empty,#modules,#support-status){display:none}
+ :is(.rail-boss,.harbor-boss) .arsenal :is(#modules,#support-status){display:none}
  :is(.rail-boss,.harbor-boss) .arsenal .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
  :is(.rail-boss,.harbor-boss) .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
 }

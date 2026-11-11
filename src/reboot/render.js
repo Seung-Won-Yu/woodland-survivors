@@ -394,7 +394,7 @@ function paintFormationEntry(c,f,reduced){
  c.save();c.globalAlpha=(1-t)*.75;c.translate(f.x,f.y);c.rotate(f.angle??0);
  c.fillStyle=fire?'#c78850':'#77b8ad';
  for(const offset of [-15,15]){
-  c.fillRect(-25,offset-2,16,4);c.fillRect(-27,offset-5,4,10);
+  c.fillRect(-25,offset-2,fire?24:16,4);c.fillRect(-27,offset-5,4,10);
   if(!reduced){c.fillStyle=fire?'#e4bc79':'#b8e1cd';c.fillRect(-26-t*14,offset+(offset>0?5:-7),5,3);c.fillStyle=fire?'#c78850':'#77b8ad';}
  }
  c.restore();

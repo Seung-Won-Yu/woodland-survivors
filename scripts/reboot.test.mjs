@@ -71,12 +71,22 @@ test('two payload kills send a single relay into another pack without feeding th
 });
 test('first fusion primes the launcher and stages three legal packs when there is room',()=>{
  const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});s.modules=[{id:'coil',rank:2}];
- s.powerDone=true;s.stats.completedBuild={kind:'synergy',t:0};
  assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));assert.equal(s.weapons[0].payload,RULES.fusion.hitsPerPayload);
  const resumed=restore(snapshot(s));tick(resumed,.72);
  const groups=[...new Set(resumed.enemies.map(e=>e.waveGroup))];
- assert.deepEqual(groups.map(id=>resumed.enemies.filter(e=>e.waveGroup===id).length),[4,4,4]);assert.ok(groups.every(Number.isInteger));assert.equal(resumed.powerWave.remaining,12);
+ assert.deepEqual(groups.map(id=>resumed.enemies.filter(e=>e.waveGroup===id).length),[4,4,4]);assert.ok(groups.every(Number.isInteger));assert.equal(resumed.powerWave.remaining,48);
  assert.ok(resumed.enemies.every(e=>Math.hypot(e.x-resumed.player.x,e.y-resumed.player.y)>150));
+ const average=id=>{
+  const pack=resumed.enemies.filter(e=>e.waveGroup===id);
+  return {x:pack.reduce((sum,e)=>sum+e.x,0)/pack.length,y:pack.reduce((sum,e)=>sum+e.y,0)/pack.length};
+ };
+ const spacing=()=>{const a=average(groups[0]),b=average(groups[1]);return Math.hypot(a.x-b.x,a.y-b.y);};
+ const before=spacing(),start=average(groups[0]);
+ tick(resumed,.76);
+ assert.ok(before>152);
+ assert.ok(Math.abs(spacing()-before)<.001);
+ const end=average(groups[0]);
+ assert.ok(Math.hypot(end.x-start.x,end.y-start.y)>40);
 });
 test('evolved sweeping fire leaves a forward wake while focused fire builds a stronger burn',()=>{
  const fixture=branch=>{const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:0,level:6,evolved:true,branch}];s.enemies=[enemy('guard',970,800,'rifle',1000)];step(s,dt,{x:1,y:0});return s;};
@@ -379,7 +389,7 @@ test('a rail gate fits a completed weapon without advancing the clock or leaving
  assert.equal(loaded.operation.region,2);
  assert.equal(loaded.operation.support,'overrun');
  assert.equal(loaded.powerWave.showcase,'flame');
- assert.equal(loaded.powerWave.paired,3);
+ assert.equal(loaded.powerWave.paired,4);
 });
 test('gate upgrade consumes one earned draft and restores that deal until it is resolved',()=>{
  const s=quietOperation();
@@ -409,10 +419,33 @@ test('the fusion showcase waits through the boss attack and survives a quick gat
  const s=quietOperation();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing',cd:999});s.modules=[{id:'coil',rank:2}];
  assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));
  s.boss.mode='charge';s.boss.cycle=1;s.boss.timer=99;s.boss.spawnClock=99;tick(s,1);
- assert.equal(s.powerWave.paired,3);assert.ok(s.enemies.every(e=>e.waveGroup==null));
- s.boss.mode='recover';tick(s,.72);assert.equal(s.powerWave.paired,2);
+ assert.equal(s.powerWave.paired,4);assert.ok(s.enemies.every(e=>e.waveGroup==null));
+ s.boss.mode='recover';tick(s,.72);assert.equal(s.powerWave.paired,3);
  assert.ok(s.enemies.filter(e=>e.waveGroup!=null).length>=8);
- clearRegion(s);assert.ok(choose(s,'advance'));assert.equal(s.powerWave.showcase,'fusion');assert.equal(s.powerWave.paired,2);
+ clearRegion(s);assert.ok(choose(s,'advance'));assert.equal(s.powerWave.showcase,'fusion');assert.equal(s.powerWave.paired,3);
+});
+test('the final formation is held for another beat and deploys out of the same reserve',()=>{
+ const s=quietOperation();
+ Object.assign(s.weapons[0],{level:4,branch:'ricochet'});
+ s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing',cd:999});
+ s.modules=[{id:'coil',rank:2}];
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));
+ for(const [seconds,remaining] of [[.72,3],[.9,2],[.9,1]]){
+  s.enemies=[];tick(s,seconds);
+  assert.equal(s.powerWave.paired,remaining);
+ }
+ assert.equal(s.powerWave.remaining,24);
+ s.enemies=[];s.stage='boss';
+ Object.assign(s.boss,{x:800,y:350,active:true,mode:'charge',cycle:1,timer:99,spawnClock:99});
+ tick(s,2);
+ assert.equal(s.powerWave.paired,1);
+ assert.equal(s.powerWave.remaining,24);
+ s.boss.mode='recover';tick(s,1);
+ assert.equal(s.powerWave.paired,1);
+ tick(s,.58);
+ assert.equal(s.powerWave.paired,0);
+ assert.equal(s.powerWave.remaining,12);
+ assert.equal(s.enemies.filter(e=>e.showcase==='fusion').length,12);
 });
 test('entering a boss keeps the staged infantry and lets a pending wave approach from behind during opening aim',()=>{
  const s=quietOperation();Object.assign(s.player,{aim:Math.PI/2});
@@ -425,7 +458,7 @@ test('entering a boss keeps the staged infantry and lets a pending wave approach
  assert.ok(first.every(id=>s.enemies.some(e=>e.id===id)));
  assert.ok(!s.enemies.some(e=>e.id==='ordinary'));
  tick(s,.95);
- assert.equal(s.boss.mode,'aim');assert.equal(s.powerWave.paired,1);
+ assert.equal(s.boss.mode,'aim');assert.equal(s.powerWave.paired,2);
  const second=s.enemies.filter(e=>e.showcase==='fusion'&&!first.includes(e.id));
  assert.ok(second.length>=8&&second.every(e=>e.y>s.player.y+80));
 });

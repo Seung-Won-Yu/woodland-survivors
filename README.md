@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.80.0" src="https://img.shields.io/badge/RIFT-0.80.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.81.0" src="https://img.shields.io/badge/RIFT-0.81.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.81에서는 화염 편대가 한 통로로 밀고 들어오고, 전도 편대는 연쇄탄이 건너갈 간격을 유지합니다. 증원 여유가 있으면 후속 편대가 보스 재장전 때 합류합니다. [완성 무장의 후속 공세 검증](docs/RIFT-GAMEPLAY-V1.md#081-완성-무장의-후속-공세).
 
 0.80에서는 완주 보고서에서 같은 전장에 도전할 수 있습니다. 게이트에서 전선별 시간을 비교하고, 귀환 뒤에는 전체 시간과 점수의 변화를 확인합니다. [같은 전장 기록 도전 검증](docs/RIFT-GAMEPLAY-V1.md#080-같은-전장-기록-도전).
 
