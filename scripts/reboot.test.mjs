@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley,coastRocketCounter} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast,gateContractDetails} from '../src/reboot/choice-details.js';
@@ -935,7 +935,9 @@ test('a coastal strike trades the first matching supply for a single attack wind
  const flame=battle.weapons.find(w=>w.id==='f');
  Object.assign(battle.player,{x:800,y:382});flame.cd=0;step(battle,dt);
  assert.equal(battle.operation.coastStrikeUsed,undefined);
+ assert.equal(coastFlameLine(battle),'rear');
  Object.assign(battle.player,{x:800,y:122});flame.cd=0;
+ assert.equal(coastFlameLine(battle),'ready');
  const before=battle.boss.hp,timer=battle.boss.timer;
  step(battle,dt);
  assert.ok(before-battle.boss.hp>=560);
@@ -969,6 +971,51 @@ test('a long-range rocket interrupts the fixed coastal charge, once and only dur
  assert.equal(applied.boss.mode,'recover');assert.equal(applied.boss.chargePath,undefined);
  assert.ok(applied.boss.maxHp-applied.boss.hp>=780);
  for(const refused of [shot(130,'windup','r'),shot(205,'aim','r'),shot(205,'windup','h')])assert.equal(refused.operation.coastStrikeUsed,undefined);
+});
+test('a prepared coast signal fires outside the locked lane and keeps its launch range through impact',()=>{
+ const arena=(fusion=false)=>{
+  const s=supportArena(0,null,'windup');
+  s.firstNew='r';s.operation.coastStrike='r';
+  Object.assign(s.boss,{body:Math.PI/2,timer:.85});
+  Object.assign(s.player,{x:1040,y:250});
+  s.boss.chargePath=planCoastCharge(s);
+  s.weapons=[{...makeWeapon(fusion?'h':'r'),uid:'signal',cd:999,...(fusion?{level:6,fusion:{secondary:'r',branch:'homing',overflow:0}}:{})}];
+  return s;
+ };
+ const s=arena(),unsafe=arena(),blocked=arena(),late=arena(),intercepted=arena(),fused=arena(true);
+ Object.assign(unsafe.player,{x:800,y:490});
+ assert.equal(coastSignalPlan(unsafe).state,'escape');
+ step(unsafe,dt);
+ assert.equal(unsafe.shots.length,0);
+ blocked.blocks=[{x:920,y:254,w:35,h:20,hp:-1}];
+ assert.equal(coastSignalPlan(blocked).state,'blocked');
+ late.player.x=1200;
+ assert.equal(coastSignalPlan(late).state,'late');
+ assert.equal(coastSignalPlan(s).state,'ready');
+ step(s,dt);
+ assert.equal(s.shots.filter(q=>q.coastSignal).length,1);
+ assert.ok(s.weapons[0].cd>998);
+ assert.equal(coastSignalPlan(s).state,'flying');
+ const resumed=restore(snapshot(s));
+ resumed.player.x=930;
+ tick(resumed,.7);
+ assert.equal(resumed.operation.coastStrikeUsed,true);
+ assert.equal(resumed.boss.mode,'recover');
+ assert.equal(resumed.boss.chargePath,undefined);
+ assert.equal(coastSignalPlan(resumed),null);
+ intercepted.enemies=[enemy('screen',1005,250,'rifle',500)];
+ tick(intercepted,.2);
+ assert.equal(coastSignalPlan(intercepted).state,'spent');
+ assert.equal(intercepted.operation.coastStrikeUsed,undefined);
+ assert.equal(intercepted.shots.filter(q=>q.coastSignal).length,0);
+ const nextWarning=restore(snapshot(intercepted));
+ nextWarning.boss.mode='aim';nextWarning.boss.timer=0;
+ step(nextWarning,dt);
+ assert.equal(nextWarning.boss.coastSignalFired,undefined);
+ step(fused,dt);
+ assert.ok(fused.shots.some(q=>q.source==='payload'&&q.coastSignal));
+ tick(fused,.45);
+ assert.equal(fused.operation.coastStrikeUsed,true);
 });
 test('harbor armor support rewards a flank and disables the turret fan',()=>{
  const front=supportArena(2,'breach','salvo'),flank=restore(snapshot(front));
@@ -1496,6 +1543,41 @@ test('harbor aid intercepts the center of a vertical salvo and leaves the other 
  assert.deepEqual(s.hazards.map(h=>h.portRound),['battery','turret','battery','turret']);
  assert.equal(s.operation.harborPayoff.locks,1);
  assert.ok(s.effects.some(e=>e.type==='aid-counter'&&e.x===before.x&&e.y===before.y));
+});
+test('harbor aid intercepts the threatening round before an outlying rake',()=>{
+ const s=supportArena(2,'recovery','aim');
+ Object.assign(s.boss,{cycle:0,timer:0});
+ Object.assign(s.player,{x:800,y:570,charge:100});
+ step(s,dt);
+ Object.assign(s.player,s.boss.harborSupply);
+ step(s,dt);
+ const lock=s.hazards.find(h=>h.portRound==='lock');
+ const rake=s.hazards.find(h=>h.portRound==='rake'&&(h.x-lock.x)*s.boss.parts[0].ox<0);
+ const direction=Math.sign(rake.x-lock.x);
+ for(const [offset,target] of [[0,'lock'],[39,'lock'],[50,'lock'],[57,'rake'],[64,'rake'],[74,'rake'],[114,'rake']]){
+  s.player.x=lock.x+direction*offset;s.player.y=lock.y;
+  assert.equal(portAidCounterRound(s)?.portRound,target,`offset ${offset}`);
+ }
+ for(const [point,target] of [[lock,'lock'],[rake,'rake']]){
+  const armed=restore(snapshot(s));
+  Object.assign(armed.player,{x:point.x,y:point.y});
+  const hp=armed.player.hp;
+  assert.ok(action(armed,'skill'));
+  assert.ok(armed.hazards.every(h=>h.portRound!==target));
+  assert.ok(armed.hazards.some(h=>h.portRound===(target==='rake'?'lock':'rake')));
+  assert.equal(armed.hazards.filter(h=>h.portRound==='turret').length,2);
+  assert.ok(armed.effects.some(e=>e.type==='aid-counter'&&e.x===point.x&&e.y===point.y));
+  tick(armed,1);
+  assert.equal(armed.player.hp,hp);
+ }
+ const overlap=restore(snapshot(s));
+ Object.assign(overlap.player,{x:lock.x+direction*50,y:lock.y});
+ const hp=overlap.player.hp;
+ assert.ok(action(overlap,'skill'));
+ assert.ok(overlap.hazards.some(h=>h.portRound==='rake'&&h.x===rake.x));
+ assert.ok(overlap.hazards.every(h=>h.portRound!=='lock'));
+ tick(overlap,1);
+ assert.equal(overlap.player.hp,hp-14);
 });
 test('aid charges collected after the armor breaks survive a save and a skill between salvos',()=>{
  const s=supportArena(2,'recovery','recover');

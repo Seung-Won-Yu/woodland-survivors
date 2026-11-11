@@ -7,7 +7,7 @@ import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,evolutionParts,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
-import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,canStartChallenge,canCallGateChallenge} from './model.js';
+import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
 import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
@@ -661,9 +661,12 @@ function updateHud(entry){
  skillButton.disabled=!canUseSkill(run);
  skillButton.dataset.counter=counterAvailable?'ready':'';
  const counterTarget=counterRound?.portRound==='rake'?'가로 장갑탄 차단':counterRound?'발밑 조준탄 차단':'측면 장갑 타격';
+ const counterShort=counterRound?.portRound==='rake'?'가로탄 차단':'발밑탄 차단';
+ const readyCounter=counterRound&&!skillButton.disabled;
+ document.body.classList.toggle('port-counter-aim',!!readyCounter);
  if(counterAvailable)skillButton.setAttribute('aria-label',`지원 포격 · ${counterTarget} · ${actor.skill} 동시 발동 · ${skillStatus}`);
  else skillButton.removeAttribute('aria-label');
- skillButton.innerHTML=`${counterAvailable?'지원 포격':actor.skill}<small>${skillStatus}</small>`;
+ skillButton.innerHTML=`${counterAvailable?'지원 포격':actor.skill}<small>${readyCounter?counterShort:skillStatus}</small>`;
  $('dash').disabled=p.dashCd>0;$('dash').innerHTML=`회피<small>${p.dashCd>0?`${p.dashCd.toFixed(1)}초`:'준비<span class="key-hint"> · SPACE</span>'}</small>`;
  $('raid-hud').hidden=!raid;document.body.classList.toggle('raid-active',!!raid);
  if(raid){
@@ -675,6 +678,7 @@ function updateHud(entry){
  }
  $('boss-hud').hidden=!run.boss.active;
  document.body.classList.toggle('boss-active',run.boss.active);
+ document.body.classList.toggle('coast-danger',front===0&&run.boss.active&&['windup','charge'].includes(run.boss.mode));
  document.body.classList.toggle('rail-boss',run.boss.active&&front===1);
  document.body.classList.toggle('harbor-boss',run.boss.active&&front===2);
  if(run.boss.active){
@@ -682,7 +686,10 @@ function updateHud(entry){
   const railRounds=front===1?run.hazards.filter(h=>h.lane&&!h.hit):[];
   const railDodge=railRounds.length?railEscapeSlot(run,railRounds):null;
   const rounds=front===2?run.hazards.filter(h=>h.portRound&&!h.hit):[];
-  const portDanger=rounds.some(h=>distance(p,h)<blastContactRadius(h));
+  const dangerousRounds=rounds.filter(h=>distance(p,h)<blastContactRadius(h));
+  const portDanger=dangerousRounds.length>0;
+  const counterCovers=readyCounter&&dangerousRounds.some(h=>h.portRound===counterRound.portRound);
+  const counterLeavesDanger=counterCovers&&dangerousRounds.some(h=>h.portRound!==counterRound.portRound);
   const bossState=$('boss-state');
   bossState.classList.toggle('salvo-danger',portDanger||!!railDodge?.danger);
   const railOpen=front===1&&recovering&&railDisarmed(boss);
@@ -700,7 +707,7 @@ function updateHud(entry){
    const warning=!lock?'발밑탄 차단 · 남은 포격':rake?'가로 포격':rounds.some(h=>h.portRound==='battery')?'세로 포격':lock.jammed?'교란 성공 · 발밑 포격':'발밑 조준 고정';
    const lanes=portDanger?portEscapeLanes(run,rounds,combatHud.analog):[];
    const escape=lanes.length?`${lanes.map(lane=>lane.label).join('·')}${lanes[0].dy?'로':'으로'} 회피`:'탄착 범위 밖으로';
-   const lead=portDanger?escape:warning;
+   const lead=counterCovers&&!counterLeavesDanger?`스킬 · ${counterShort}`:portDanger?escape:warning;
    const nextCycle=boss.cycle+1,axis=portBarrageAxis(run,nextCycle);
    const ready=axis==='vertical'?'세로 포격 준비':portRakeReady(run,nextCycle)?'측면 장갑 · 가로 포격 준비':'발밑 포격 준비';
    bossState.textContent=recovering?'코어 노출 · 집중 공격':countdown?`${lead} · ${countdown}초`:boss.mode==='salvo'?'포격 종료 · 반격 준비':ready;
@@ -754,15 +761,24 @@ function updateHud(entry){
   if(coastPlan&&!run.operation.coastStrikeUsed){
    if(!coastArmed)hint=`${coastPlan.name} · 필요한 무장 미장착`;
    else if(run.operation.coastStrike==='r'){
-    if(boss.mode==='windup')hint='신호탄 · 떨어져 차체에 로켓 명중';
-    else hint='신호탄 · 돌진 예고를 기다려라';
-   }else if(recovering)hint='연료관 · 뒤로 돌아 엔진에 분사';
+    const signal=coastSignalPlan(run);
+    hint=({
+     escape:'신호탄 · 먼저 돌진선 밖으로',near:`신호탄 · 차체에서 ${coastPlan.range/10}m 거리 확보`,
+     late:'신호탄 · 다음 예고 전에 가까이',blocked:'신호탄 · 엄폐 옆에서 사선 열기',
+     ready:'신호탄 · 차체 사선 확보',spent:'신호탄 · 다음 예고에 재장전',wait:'신호탄 · 돌진 예고를 기다려라'
+    })[signal?.state]||'';
+    if(signal?.state==='flying')hint=signal.danger?'신호탄 비행 중 · 돌진선 밖으로':'신호탄 비행 중 · 돌진선 밖 유지';
+   }else if(recovering)hint=({
+    rear:'연료관 · 주황 표식 뒤로',range:'연료관 · 엔진 사거리까지 접근',
+    blocked:'연료관 · 엄폐 옆에서 사선 열기',ready:'연료관 · 분사 사선 확보'
+   })[coastFlameLine(run)]||'';
    else if(boss.mode!=='windup')hint='연료관 · 돌진 뒤 후면을 노려라';
   }
+  const coastHit=front===0&&run.effects.findLast(f=>f.coastTactic);
+  if(coastHit)hint=coastHit.text;
   $('boss-tactic').hidden=!hint||portDanger||!!railDodge?.danger||dashLead||coreOpen;$('boss-tactic').textContent=hint;
   const line=$('boss-support');
-  const readyCounter=counterRound&&!skillButton.disabled;
-  line.hidden=!harborPart||focusLead||portDanger&&!readyCounter;
+  line.hidden=!harborPart||focusLead||portDanger&&(!readyCounter||counterCovers&&!counterLeavesDanger);
   line.classList.toggle('aid-alert',supportId==='recovery'&&!!(aid?.endangered||aid?.state==='blocked'));
   if(harborPart){
    line.dataset.part=supportId;
@@ -792,7 +808,7 @@ function updateHud(entry){
     }
    }else{
     const kit=PORT_SUPPORT.recovery;
-    if(readyCounter)line.textContent=counterRound.portRound==='rake'?'스킬 · 가로 장갑탄 차단 · 발밑 회피':'스킬 · 발밑탄 차단 · 남은 포격 회피';
+    if(readyCounter)line.textContent=`스킬 · ${counterShort}${portDanger?' · 남은 포격 회피':''}`;
     else if(aid?.endangered)line.textContent='구급 · 피격 범위 밖으로 회피';
     else if(aid&&!aid.preview){
      const direction=bearing(p,aid.point.x,aid.point.y);
@@ -829,7 +845,7 @@ function processEvents(){
  if(!priority&&!capstone&&bannerPriority.includes(banner.dataset.kind))return;
  const counter=!priority&&events.has('aid-counter')&&run.effects.findLast(f=>f.type==='aid-counter');
  const fx=capstone||counter||run.effects.findLast(f=>priority?f.type===priority:events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
- if(!fx)return;
+ if(!fx||fx.coastTactic)return;
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
  bannerUntil=run.t+(bannerPriority.includes(fx.type)?2.1:1.5);
  if(fx.type==='region-entry'){

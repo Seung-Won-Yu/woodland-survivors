@@ -246,6 +246,7 @@
  .boss-active #combo{top:auto;bottom:130px;right:16px}
  .boss-active .arsenal .weapon.empty{display:none}
  .boss-active #banner:is([data-kind="weakpoint"],[data-kind="break"],[data-kind="heal"],[data-kind="supply-ready"]){top:244px;font-size:13px}
+ .coast-danger :is(#banner[data-kind="boss-arrival"],#field-feedback){visibility:hidden}
  .boss-active #field-feedback{left:auto;right:14px;bottom:max(102px,calc(env(safe-area-inset-bottom) + 80px));transform:none;min-width:0;max-width:60%;padding-right:10px}
  .boss-active:has(#field-feedback:not([hidden])) #combo{visibility:hidden}
  :is(.rail-boss,.harbor-boss){--boss-map-width:84px}
@@ -255,6 +256,7 @@
  :is(.rail-boss,.harbor-boss) #boss-hp{height:7px;margin:5px 0}
  :is(.rail-boss,.harbor-boss) #boss-tactic:not([hidden]){padding-top:3px;margin-top:3px}
  .harbor-boss #banner[data-kind="supply-ready"]{opacity:0}
+ .port-counter-aim :is(#banner[data-kind="heal"],#field-feedback){visibility:hidden}
  .rail-boss #banner[data-kind="boss-warning"]{opacity:0}
  .rail-boss .arsenal #synergy{display:none}
  :is(.rail-boss,.harbor-boss) .arsenal :is(#modules,#support-status){display:none}

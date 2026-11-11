@@ -110,7 +110,7 @@ export const PORT_LANDING={range:215,guards:[
 export const PORT_SUPPORT={
  breach:{impact:'포탑 측면 피해 +65% · 후속 탄막 차단',detail:'예고 중에는 포탑탄도 끊습니다. 포탄이 떨어진 뒤에는 재장전 전까지 후속 탄막을 끊을 수 있습니다.',hint:'포격 예고 중 포탑 쪽 사선 확보',flank:105,boost:1.65},
  overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,focusedReach:260,sideStep:48,damage:320,delay:.9,arcDamage:210},
- recovery:{impact:'측면 화물 회수 → 스킬로 포격 차단',detail:'화물은 포격 예고와 함께 떨어집니다. 체력 +12, 전탄 +20. 경고 중 안전 회수 시 전탄 +45와 회피 재정비.',hint:'화물에서 떨어져 조준 유도 → 회수 후 스킬',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
+ recovery:{impact:'측면 화물 회수 → 스킬로 위협탄 차단',detail:'화물로 체력 +12, 전탄 +20. 경고 중 안전 회수는 전탄 +45와 회피 재정비. 지원 포격은 현재 위치를 덮는 차단 가능 탄을 우선합니다.',hint:'측면 화물 회수 → 스킬로 표시된 포격 차단',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
@@ -128,7 +128,10 @@ export const portCompressionRange=`${INFERNO_CORE_DISTANCE/10}~${PORT_SUPPORT.ov
 export const portAidCounterReady=s=>s.operation?.region===2&&s.operation.support==='recovery'&&s.boss.active&&!s.boss.dead&&s.boss.harborCounter===true;
 export function portAidCounterRound(s){
  if(!portAidCounterReady(s))return null;
- return s.hazards.find(h=>!h.hit&&h.portRound==='rake')||s.hazards.find(h=>!h.hit&&h.portRound==='lock')||null;
+ const rounds=s.hazards.filter(h=>!h.hit&&(h.portRound==='rake'||h.portRound==='lock'));
+ const threatened=rounds.filter(h=>roundThreatens(h,s.player));
+ if(threatened.length)return threatened.sort((a,b)=>a.timer-b.timer||distance(a,s.player)-distance(b,s.player)||Number(a.portRound==='lock')-Number(b.portRound==='lock'))[0];
+ return rounds.find(h=>h.portRound==='rake')||rounds[0]||null;
 }
 export function portAidPoint(boss,cycle){
  const kit=PORT_SUPPORT.recovery,side=(cycle%2?-1:1)*portTurretSide(boss);
@@ -333,7 +336,7 @@ export const coastMortarThreatens=(s,site)=>s.hazards.some(h=>h.coastMortar===si
  &&Math.hypot(h.x-s.player.x,h.y-s.player.y)<h.r+16);
 export const COAST_STRIKES={
  f:{name:'연료관 점화',impact:'후면 엔진 점화 · 추가 피해 560',hint:'돌진을 피한 뒤 후면 엔진에 불을 맞히세요.',detail:'재장전 2초 연장. 장갑 수송차에 한 번 적용됩니다.',damage:560,delay:2},
- r:{name:'신호탄 포착',impact:'원거리 로켓으로 돌진 차단 · 차체 피해 +780',hint:'돌진 예고 중 떨어져 차체에 로켓을 맞히세요.',detail:'폭발에 맞으면 돌진이 멈추고 바로 재장전합니다. 한 번 적용됩니다.',damage:780,range:160}
+ r:{name:'신호탄 포착',impact:'전용 로켓으로 돌진 차단 · 차체 피해 +780',hint:'예고 중 돌진선 밖에서 16m 이상 거리를 두고 사선을 여세요.',detail:'전용탄이 차체에 맞으면 한 번 돌진을 차단합니다.',damage:780,range:160}
 };
 export function coastStrike(s){
  const id=s.operation?.coastStrike;

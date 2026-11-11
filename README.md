@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.85.0" src="https://img.shields.io/badge/RIFT-0.85.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.86.0" src="https://img.shields.io/badge/RIFT-0.86.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.86에서는 철도에서 회수 의무 장비를 확보하면 항구의 지원 포격으로 현재 위치를 위협하는 탄을 끊을 수 있습니다. 포격 원과 스킬 버튼에서 차단 대상을 먼저 확인할 수 있습니다. [항구 잔류 부품 검증](docs/RIFT-GAMEPLAY-V1.md#086-항구-잔류-부품과-지원-포격).
 
 0.85에서는 로켓으로 분산 포대에 접근해 포격 원 옆으로 빠지고 열린 사선을 잡으면 반격탄을 바로 발사합니다. [분산 포대 반격 검증](docs/RIFT-GAMEPLAY-V1.md#085-분산-포대의-측면-반격).
 

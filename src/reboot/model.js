@@ -602,6 +602,47 @@ export function coastRocketCounter(s,site=s.sites.find(n=>n.coastApproach==='r')
  const target=line.find(gun=>gun.id!==round.coastGun)||line[0];
  return target?{state:'ready',target,site}:{state:'blocked'};
 }
+export function coastSignalPlan(s){
+ const b=s.boss,plan=coastStrike(s);
+ if(!plan||s.operation.coastStrike!=='r'||s.operation.coastStrikeUsed||!b.active||b.dead)return null;
+ const weapon=s.weapons.find(w=>w.id==='r')||s.weapons.find(w=>w.fusion?.secondary==='r');
+ if(!weapon)return {state:'unarmed'};
+ if(b.mode!=='windup')return {state:'wait'};
+ const lane=coastChargeLane(s),p=s.player;
+ if(!lane)return {state:'wait'};
+ const danger=segmentDistance(p.x,p.y,lane.x,lane.y,lane.endX,lane.endY)<lane.r;
+ if(s.shots.some(q=>q.coastSignal&&q.life>0))return {state:'flying',danger};
+ if(danger)return {state:'escape'};
+ if(b.coastSignalFired)return {state:'spent'};
+ const gap=distance(p,b);
+ if(gap<plan.range)return {state:'near'};
+ const d=weaponStats(weapon),speed=weapon.fusion?RULES.fusion.payloadSpeed:RULES.weapons.r.projectileSpeed;
+ const flight=gap-22-b.r-7;
+ if(flight>d.range||flight>speed*b.timer)return {state:'late'};
+ const dx=(b.x-p.x)/gap,dy=(b.y-p.y)/gap;
+ if(rocketTerrainBlocked(s,{x:p.x+dx*22,y:p.y+dy*22},dx,dy,gap-b.r-22))return {state:'blocked'};
+ return {state:'ready',weapon,angle:Math.atan2(dy,dx)};
+}
+const atCoastRear=(p,b)=>Math.cos(Math.atan2(p.y-b.y,p.x-b.x)-b.body)<COAST_CHARGE.rearDot;
+export function coastFlameLine(s){
+ const {boss:b,player:p}=s;
+ if(!coastStrike(s)||s.operation.coastStrike!=='f'||s.operation.coastStrikeUsed||!b.active||b.dead||b.mode!=='recover')return null;
+ if(!atCoastRear(p,b))return 'rear';
+ if(!s.weapons.some(w=>w.id==='f'&&distance(p,b)<weaponStats(w).range+b.r))return 'range';
+ return lineBlocked(s,p,b)?'blocked':'ready';
+}
+function fireCoastSignal(s){
+ const plan=coastSignalPlan(s);
+ if(plan?.state!=='ready')return;
+ const {weapon,angle}=plan,b=s.boss,p=s.player;
+ const payload=weapon.fusion,incendiary=payload?.branch==='incendiary';
+ const options=payload?{source:'payload',radius:RULES.fusion.payloadRadius,homing:!incendiary,incendiary}:{};
+ const damage=payload?RULES.fusion.payloadDamage:weaponStats(weapon).damage;
+ if(!fire(s,weapon,b,angle,damage,{...options,rocket:true,coastSignal:true}))return;
+ b.coastSignalFired=true;
+ p.aim=angle;p.attack=.12;
+ emit(s,'rocket-shot',p.x+Math.cos(angle)*28,p.y-18+Math.sin(angle)*28,{angle,life:.08});
+}
 export function portTurretInSight(s){
  if(!portBreachFlank(s))return false;
  const turret=s.boss.parts[0],point=partPosition(s,turret);
@@ -742,28 +783,27 @@ function activateFrontTactic(s,e,kind,source,owner){
  }
  recordFrontTactic(s);
 }
-function coastStrikeDamage(s,target,kind,source,owner){
+function coastStrikeDamage(s,target,kind,source,owner,coastSignal){
  const b=s.boss;
  if(target!==b||!b.active||b.dead)return 0;
  const plan=coastStrike(s);
  if(!plan||s.operation.coastStrikeUsed)return 0;
  if(s.operation.coastStrike==='f'){
-  const rear=Math.cos(Math.atan2(s.player.y-b.y,s.player.x-b.x)-b.body)<COAST_CHARGE.rearDot;
-  if(b.mode!=='recover'||!rear||kind!=='fire'||source!=='native')return 0;
+  if(b.mode!=='recover'||!atCoastRear(s.player,b)||kind!=='fire'||source!=='native')return 0;
   b.timer+=plan.delay;
-  emit(s,'break',b.x,b.y,{text:'연료관 점화 · 엔진 노출 연장',life:1.3});
+  emit(s,'break',b.x,b.y,{text:'연료관 점화 · 엔진 노출 +2초',life:1.3,coastTactic:true});
  }else{
-  if(b.mode!=='windup'||kind!=='blast'||distance(s.player,b)<plan.range)return 0;
+  if(b.mode!=='windup'||kind!=='blast'||!coastSignal&&distance(s.player,b)<plan.range)return 0;
   const weapon=s.weapons.find(w=>w.uid===owner);
   if(!(source==='native'&&weapon?.id==='r'||source==='payload'&&weapon?.fusion?.secondary==='r'))return 0;
   b.mode='recover';b.timer=COAST_CHARGE.recover;
   delete b.chargePath;
-  emit(s,'barrage-cancel',target.x,target.y,{text:'신호탄 명중 · 돌진 차단',life:1.3});
+  emit(s,'barrage-cancel',target.x,target.y,{text:`${coastSignal?'신호탄':'로켓'} 명중 · 돌진 차단`,life:1.3,coastTactic:true,coastSignal:!!coastSignal});
  }
  s.operation.coastStrikeUsed=true;
  return plan.damage;
 }
-function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,breachLane){
+function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,breachLane,coastSignal){
  if(e.hp<=0||e.dead)return;
  const catalyst=moduleRank(s,'catalyst');if(kind==='blast'&&e.burn>0&&catalyst)amount*=1+RULES.modules.catalyst.blastBonusOnBurn[catalyst-1];
  amount*=1+s.boosts.power*.01;
@@ -802,7 +842,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if(s.operation?.tactic==='heat'&&s.boss.tacticCycle===s.boss.cycle)amount*=frontTactic(s).boost;
  }
  if(e.type==='shield'&&kind==='bullet'&&shieldFaces(e,s.player))amount*=breach?.65:.45;
- amount+=coastStrikeDamage(s,e,kind,source,owner);
+ amount+=coastStrikeDamage(s,e,kind,source,owner,coastSignal);
  const actual=e.part||e,before=actual.hp;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
  if(e===s.boss&&e.hp>0&&(source==='native'||source==='payload'))relayCoreHit(s,owner);
  if(s.operator==='marco'&&source==='native'&&actual.hp<before&&s.player.focusChargeAt<=s.t&&s.player.charge<100&&distance(s.player,e)<=RULES.marco.chargeReach+e.r&&!lineBlocked(s,s.player,e)){
@@ -859,14 +899,14 @@ function launchPayload(s,w,origin,target,amount,relay,breachLane){
  const incendiary=!relay&&w.fusion.branch==='incendiary';
  return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane});
 }
-function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane){
+function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal){
  const charge=ignite&&effect==='payload-impact';
  const reach=charge?r*EMBER_CHARGE.impactScale:r;
  emit(s,effect,x,y,{r:reach,life:.4,...(charge?{incendiary:true}:{})});let budget=2;
  for(const e of (source==='support'?alive(s):targets(s,breachLane))){
   if(e.hp<=0||distance(e,{x,y})>reach+e.r||lineBlocked(s,{x,y},e))continue;
   const w=source==='native'?Math.min(.5,budget):0,before=e.hp;
-  budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane);
+  budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane,coastSignal);
   if(effect==='shrapnel'&&e.hp<before){
    s.stats.shrapnelHits=(s.stats.shrapnelHits||0)+1;
    if(e.dead&&Object.hasOwn(RULES.enemies,e.type))s.stats.shrapnelKills=(s.stats.shrapnelKills||0)+1;
@@ -929,7 +969,7 @@ function fire(s,w,target,a,amount,opts={}){
  const breachLane=s.operation?.region===2&&s.operation.support==='breach'?(opts.breachLane??(
   portBreachFlank(s)&&!lineBlocked(s,s.player,partPosition(s,s.boss.parts[0]))
  )):undefined;
- s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
+ s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),...(opts.coastSignal?{coastSignal:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
 }
 export function activeManeuver(p){
  if(p.maneuver==='assault'&&p.moving&&p.assaultTime>0)return 'assault';
@@ -1006,7 +1046,7 @@ function detonate(s,q){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
  const mortars=q.coastFuse&&s.enemies.filter(e=>!e.dead&&e.cohort==='coast-guard'&&e.type==='mortar'&&e.hp>0);
- blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane);q.life=0;
+ blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal);q.life=0;
  if(mortars?.length===2&&mortars.every(e=>e.dead)){
   s.levelReadyAt=Math.max(s.levelReadyAt||0,s.t+COAST_MORTAR.volleyBeat);
   emit(s,'coast-volley',q.x,q.y,{life:.85});
@@ -1247,6 +1287,7 @@ function updateBoss(s,dt){
   else if(b.mode==='recover'){b.mode='aim';b.timer=1.4;const angle=Math.atan2(p.y-b.y,p.x-b.x),count=b.parts[0].hp>0?5:3;for(let i=0;i<count;i++)enemyShot(s,b,angle+(i-(count-1)/2)*.19);b.kick=1;b.flash=.12;}
   else{
    b.mode='windup';b.timer=COAST_CHARGE.warning;b.body=Math.atan2(p.y-b.y,p.x-b.x);
+   delete b.coastSignalFired;
    lockCoastCharge(s);
    emitBossWarning(s,'coast-lock',b.x,b.y,{angle:b.body,life:COAST_CHARGE.warning});
   }
@@ -1720,6 +1761,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
    if(fired||w.cd<=0)w.cd=fired?weaponStats(w).interval*cadence:0;
   }
  }
+ if(s.operation?.coastStrike==='r'&&s.operation.region===0&&b.mode==='windup')fireCoastSignal(s);
  updateShots(s,dt);
  updateZones(s,dt);
  // A burning gun can be destroyed on the final warning tick, before its shells land.
