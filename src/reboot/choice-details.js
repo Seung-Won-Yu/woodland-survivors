@@ -1,4 +1,4 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isConductiveFusion,capstoneName,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
 import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
@@ -150,6 +150,9 @@ export function choiceDetails(s,c){
   if(index===2&&c.key==='overrun'&&s.weapons.some(isFocusedInferno)){
    out.detail=`압축 인페르노 장착 중 · 코어에서 ${portCompressionRange} 떨어져 좌우 회피한 뒤 멈춰 분사하세요.`;
    out.link='장갑 해제 · 재장전 +0.9초';
+  }else if(index===2&&c.key==='overrun'&&s.weapons.some(isTrailInferno)){
+   out.detail='연료 살포 인페르노 · 회피로 코어를 연 뒤 냉각 배관 옆을 달려 불길을 남기세요.';
+   out.link=`장갑 또는 차체 피해 ${effect.wakeDamage} · 재장전마다 한 번`;
   }else if(index===2&&c.key==='overrun'&&s.weapons.some(isConductiveFusion)){
    out.detail='회피로 코어를 열고 전도 격발망으로 맞히면 측면 장갑이나 포탑에 역송합니다.';
    out.link=`기본 피해 ${effect.arcDamage} · 재장전마다 한 번`;

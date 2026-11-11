@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -126,6 +126,8 @@ export function restore(raw,{allowPrevious=false}={}){
   if(s.boss.harborCounter!==undefined&&(s.boss.harborCounter!==true||s.operation.region!==2||s.operation.support!=='recovery'||s.stage!=='boss'))fail();
   const arcCycle=s.boss.harborArcCycle;
   if(arcCycle!==undefined&&(s.operation.region!==2||s.operation.support!=='overrun'||!Number.isSafeInteger(arcCycle)||arcCycle<1||arcCycle>s.boss.cycle))fail();
+  const wakeCycle=s.boss.harborWakeCycle;
+  if(wakeCycle!==undefined&&(s.operation.region!==2||s.operation.support!=='overrun'||!Number.isSafeInteger(wakeCycle)||wakeCycle<1||wakeCycle>s.boss.cycle))fail();
   if(s.boss.emberCycle!==undefined&&(s.operation.region!==2||s.operation.tactic!=='ember'||!Number.isSafeInteger(s.boss.emberCycle)||s.boss.emberCycle<1||s.boss.emberCycle>s.boss.cycle+1))fail();
   if(s.operation.holdoutKills!=null&&(!Number.isSafeInteger(s.operation.holdoutKills)||s.operation.holdoutKills<0))fail();
   const {coastStrike:planned,coastStrikeUsed}=s.operation;
@@ -966,14 +968,24 @@ function groundLineClear(s,from,to){
 }
 const wakeTouches=(s,z,e)=>distance(z,e)<z.r+e.r&&groundLineClear(s,z,e);
 function heatHarborCooling(s,z){
- const b=s.boss;
- if(s.operation?.region!==2||s.operation.tactic!=='wake'||!b.active||b.dead||b.mode!=='recover'||b.tacticCycle===b.cycle)return;
+ const b=s.boss,mode=portWakeMode(s);
+ if(!mode)return;
  const pipe=portWakePoint(b);
  if(!wakeTouches(s,z,pipe)||!s.weapons.some(w=>w.uid===z.owner&&isTrailInferno(w)))return;
  const armor=b.parts[1],armored=armor.hp>0,target=armored?Object.assign(armor,partPosition(s,armor)):b;
- b.tacticCycle=b.cycle;recordFrontTactic(s);
- damage(s,target,FRONT_TACTICS[2].wake.damage,'fire','support');
- emit(s,'overheat',pipe.x,pipe.y,{life:1.15,text:armored?'냉각 배관 점화 · 측면 장갑 손상':'냉각 배관 점화 · 차체 손상',portWake:true});
+ const opened=mode==='overrun';
+ if(opened){
+  b.harborWakeCycle=b.cycle;
+  s.operation.harborPayoff??={};
+  recordHarborPayoff(s,armored?'wakeHits':'wakeHull');
+ }else{
+  b.tacticCycle=b.cycle;recordFrontTactic(s);
+ }
+ damage(s,target,opened?PORT_SUPPORT.overrun.wakeDamage:FRONT_TACTICS[2].wake.damage,'fire','support');
+ const broken=armored&&armor.hp<=0;
+ if(opened&&broken)recordHarborPayoff(s,'wakeBreaks');
+ const hit=broken?'측면 장갑 파괴':armored?'측면 장갑 손상':'차체 직격';
+ emit(s,'overheat',pipe.x,pipe.y,{life:1.15,text:`냉각 배관 점화 · ${hit}`,portWake:true});
 }
 function leaveInfernoWake(s,weapon,x,y){
  const from={x,y},plan=INFERNO_WAKE;

@@ -891,6 +891,51 @@ test('Inferno wake ignites the harbor coolant pipe once per reload even after th
  const resumed=restore(snapshot(ready));tick(resumed,.26);
  assert.equal(resumed.stats.frontTactics[2],1);
 });
+test('overrun opens the harbor pipe for Trail Inferno and shares its use with the control tactic',()=>{
+ const s=supportArena(2,'overrun','recover');
+ s.operation.harborPayoff={};
+ s.weapons=[{...makeWeapon('f'),uid:'fire',level:6,evolved:true,branch:'trail',cd:999}];
+ const point=portWakePoint(s.boss),side=Math.sign(point.x-s.boss.x);
+ const armor=s.boss.parts[1],before=armor.hp;
+ Object.assign(s.player,{x:s.boss.x,y:point.y});
+ tick(s,.25,{x:side,y:0});
+ assert.equal(armor.hp,before);
+ const blocked=restore(snapshot(s)),idle=restore(snapshot(s)),withControl=restore(snapshot(s)),exposed=restore(snapshot(s));
+ const open=run=>{
+  assert.ok(action(run,'dash'));
+  tick(run,.18,{x:side,y:0});
+ };
+ blocked.blocks=[{x:point.x-4,y:point.y-28,w:8,h:56,hp:-1}];
+ open(blocked);tick(blocked,.28);
+ assert.equal(blocked.boss.parts[1].hp,before);
+ assert.equal(blocked.operation.harborPayoff.wakeHits,undefined);
+ assert.ok(action(idle,'dash'));tick(idle,.5);
+ assert.equal(idle.boss.parts[1].hp,before);
+ assert.equal(idle.operation.harborPayoff.wakeHits,undefined);
+ withControl.operation.tactic='wake';
+ delete withControl.operation.harborPayoff;
+ open(withControl);tick(withControl,.28);
+ assert.equal(withControl.boss.parts[1].hp,before-320);
+ assert.equal(withControl.operation.harborPayoff.wakeHits,1);
+ assert.equal(withControl.stats.frontTactics?.[2],undefined);
+ armor.hp=250;
+ open(s);tick(s,.28);
+ assert.equal(armor.hp,0);
+ assert.deepEqual(s.operation.harborPayoff,{sidesteps:1,wakeHits:1,wakeBreaks:1});
+ assert.ok(s.effects.some(e=>e.portWake&&e.text.includes('측면 장갑 파괴')));
+ const resumed=restore(snapshot(withControl));tick(resumed,.3);
+ assert.equal(resumed.operation.harborPayoff.wakeHits,1);
+ exposed.boss.parts[1].hp=0;
+ const spent=restore(snapshot(exposed));
+ spent.boss.harborWakeCycle=spent.boss.cycle;
+ for(const run of [exposed,spent]){open(run);tick(run,.28);}
+ assert.ok(Math.abs(spent.boss.hp-exposed.boss.hp-320)<1e-6);
+ assert.equal(exposed.operation.harborPayoff.wakeHull,1);
+ const card=choiceDetails({...s,operation:{region:1}},{
+  id:'support:overrun',key:'overrun',kind:'front-support',title:'돌격 신관'
+ });
+ assert.match(card.detail,/회피로 코어를 연 뒤 냉각 배관 옆을 달려/);
+});
 test('one soldier can trigger a port charge against a live turret with pending rounds',()=>{
  const s=supportArena(2,null,'salvo');
  s.operation.tactic='ember';

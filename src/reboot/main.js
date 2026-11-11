@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
+import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,evolutionParts,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -808,7 +808,9 @@ function updateHud(entry){
     else line.textContent=`철갑 · ${portTurretSide(boss)<0?'왼쪽':'오른쪽'} 포탑 사선으로`;
    }else if(supportId==='overrun'){
     const arc=run.weapons.some(isConductiveFusion);
-    if(arc&&harborArcTarget(run))line.textContent='장갑 해제 · 코어 명중으로 전도 역송';
+    if(portWakeMode(run)==='overrun')line.textContent=`장갑 해제 · ${portTurretSide(boss)<0?'오른쪽':'왼쪽'} 배관 옆을 달려 점화`;
+    else if(portCoreDisrupted(run)&&boss.harborWakeCycle===boss.cycle)line.textContent=run.effects.findLast(f=>f.portWake)?.text||'배관 점화 완료 · 열린 코어 집중 사격';
+    else if(arc&&harborArcTarget(run))line.textContent='장갑 해제 · 코어 명중으로 전도 역송';
     else if(arc&&portCoreDisrupted(run)&&boss.harborArcCycle===boss.cycle)line.textContent='전도 역송 완료 · 열린 코어 집중 사격';
     else if(coreOpen){
      line.textContent=infernoCoreLine(run,focused)?'장갑 해제 · 압축 분사 직격'
@@ -818,6 +820,8 @@ function updateHud(entry){
      line.textContent='원 안에서 ↔ 회피 후 정지';
     }else if(compression&&coreGap>0&&portCoreWindow(run)&&p.dashCd<=0){
      line.textContent=`압축 인페르노 · ${portCompressionRange}에서 회피`;
+    }else if(!recovering&&portWakeBreach(run)){
+     line.textContent='돌격 · 포격 뒤 회피로 배관 열기';
     }else{
      line.textContent=portCoreDisrupted(run)?'돌격 · 장갑 해제 · 집중 사격':!portCoreWindow(run)?'돌격 · 포격 뒤 회피 준비':p.dash>0&&p.portRush?'돌격 · 경계 안으로 이동':p.dash>0&&Number.isFinite(p.portCutX)?'돌격 · 좌우 이동 유지':p.dashCd>0?'돌격 · 회피 재사용 대기':coreGap<=0?'돌격 · ↔ 이동 + 회피':coreGap>110?'돌격 · 코어 경계까지 접근':'돌격 · 코어 쪽 이동 + 회피';
     }

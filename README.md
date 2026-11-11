@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.89.0" src="https://img.shields.io/badge/RIFT-0.89.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.90.0" src="https://img.shields.io/badge/RIFT-0.90.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -95,6 +95,8 @@ npm run test:pages
 ### 검증 범위
 
 0.89에서는 점화 격발망의 화약 원 안을 회피로 지나며 보병 한 명이나 재장전 중인 철도 병기를 직접 유폭시킬 수 있습니다. [점화 격발망과 회피 유폭 검증](docs/RIFT-GAMEPLAY-V1.md#089-점화-격발망의-회피-유폭).
+
+0.90에서는 철도 잔류에서 돌격 신관을 확보한 연료 살포 인페르노가 항구에서 코어를 열고 이동 불길로 측면 배관을 점화합니다. [항구 부품별 공략과 모바일 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#090-항구-잔류-부품과-이동-불길).
 
 0.88에서는 연료 살포 인페르노가 실제 이동 경로에 불길을 남깁니다. 밀집 보병을 불길로 끌어들이거나 항구의 냉각 배관을 점화할 수 있습니다. [인페르노 분화 검증](docs/RIFT-GAMEPLAY-V1.md#088-인페르노-이동-불길과-냉각-배관).
 

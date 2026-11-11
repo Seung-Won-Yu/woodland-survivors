@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
@@ -252,14 +252,6 @@ function paintPortCue(c,s,aid){
  }else if(portCoreDisrupted(s)){
   circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
  }
- if(s.operation.tactic==='wake'){
-  const {x,y,r}=portWakePoint(b),ready=b.mode==='recover'&&b.tacticCycle!==b.cycle;
-  c.fillStyle='#2e3739';c.fillRect(x-r-4,y-10,2*r+8,20);
-  c.strokeStyle=ready?'#ffce93':'#9d9077';c.lineWidth=2;c.strokeRect(x-r-4,y-10,2*r+8,20);
-  c.fillStyle=ready?'#f5ad66':'#9d9077';
-  for(const dx of [-7,0,7])c.fillRect(x+dx-1,y-5,2,10);
-  if(ready){c.setLineDash([5,5]);circle(c,x,y,25,null,'#ffc683',2);c.setLineDash([]);}
- }
  if(portAidCounterReady(s)&&b.parts[1].hp>0){
   const p=partPosition(s,b.parts[1]);
   c.setLineDash([5,4]);circle(c,p.x,p.y,31,null,'#d7f0b8',2);c.setLineDash([]);
@@ -278,6 +270,22 @@ function paintPortCue(c,s,aid){
   c.setLineDash([6,5]);circle(c,x,y,32,'#12292345',color,2);c.setLineDash([]);
   c.fillStyle=color;c.font='bold 11px Galmuri';c.textAlign='center';c.fillText(aid.endangered?'회피 우선':risk?'포격 위험':'투하 예정',x,y+4);
  }
+ c.restore();
+}
+function paintPortWakeCue(c,s){
+ const b=s.boss;
+ if(s.operation?.region!==2||!b.active||b.dead||s.operation.tactic!=='wake'&&!portWakeBreach(s))return;
+ const {x,y,r}=portWakePoint(b),ready=!!portWakeMode(s);
+ c.save();
+ const color=ready?'#ffd6a3':'#ad9d7e';
+ if(ready){
+  circle(c,x,y,26,'#2d241cc2','#292322',6);
+  c.setLineDash([6,5]);circle(c,x,y,26,null,color,2.5);c.setLineDash([]);
+ }
+ c.fillStyle='#283238';c.fillRect(x-r-4,y-10,2*r+8,20);
+ c.strokeStyle=color;c.lineWidth=2;c.strokeRect(x-r-4,y-10,2*r+8,20);
+ c.fillStyle=color;
+ for(const dx of [-7,0,7])c.fillRect(x+dx-1,y-5,2,10);
  c.restore();
 }
 function flame(c,x,y,height,phase){
@@ -980,6 +988,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    c.strokeStyle='#d8e9b8';c.lineWidth=3;
    c.beginPath();c.moveTo(x-6,y-27);c.lineTo(x,y-21);c.lineTo(x+6,y-27);c.stroke();
   }
+  paintPortWakeCue(c,s);
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   if(lead)paintCoastCue(c,s,lead,guns,volley,counter,size,cx,cy,scale);
