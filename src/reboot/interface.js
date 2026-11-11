@@ -67,8 +67,9 @@ function launchDock(profile,id,operator,requisition,plan){
  const title=request?`철도 예약 · ${request.name}`:order?`지령 · ${order.name}`:'첫 목표 · 포로 구출';
  const briefing=request?`출격 시 −${REQUISITION_FEE}C · 철도 화차 정비대에서 선택 · ${request.fitting}`:order?`${order.fee}C 선납 · 목표 확보 후 최종 귀환 +${order.bonus}C`:'포로를 구출해 화염방사기나 로켓을 확보하세요.';
  const note=!plan||order||request?`<div class="launch-note"><b>${title}</b><small>${briefing}</small>${request?'<button class="text-button cancel-requisition" data-reserve="">예약 취소</button>':''}</div>`:'';
- const activeNote=profile.active?'<small class="launch-checkpoint">이전 판은 확보 성과를 정산하고 새로 시작합니다.</small>':'';
- return `<div class="launch-dock${plan?' has-coast-plan':''}"><div class="launch-briefing">${plan}${note}</div><div class="launch-controls">${operatorSelector(operator)}<button class="primary launch-button" data-action="launch"${order?` data-sortie="${id}"`:request?` data-requisition="${requisition}"`:''}>${actor.name} · ${request?'예약 출격':order?'지령 출격':'새 출격'}<span aria-hidden="true">▶</span></button>${activeNote}</div></div>`;
+ const label=`${actor.name} · ${request?'예약 출격':order?'지령 출격':'새 출격'}`;
+ const action=profile.active?`<span>${label}<small class="launch-checkpoint">이전 판 정산 후 시작</small></span>`:label;
+ return `<div class="launch-dock${plan?' has-coast-plan':''}"><div class="launch-briefing">${plan}${note}</div><div class="launch-controls">${operatorSelector(operator)}<button class="primary launch-button" data-action="launch"${order?` data-sortie="${id}"`:request?` data-requisition="${requisition}"`:''}>${action}<span aria-hidden="true">▶</span></button></div></div>`;
 }
 function orderOptions(p,selected,operator,reserved){
  if(!p.records.wins||p.active)return '';

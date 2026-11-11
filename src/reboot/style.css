@@ -167,7 +167,8 @@
 .coast-plan li small{color:var(--route-color)}
 .coast-plan-mark{display:grid;place-items:center;flex:none;width:20px;height:20px;background:var(--route-color);color:#263c35;font-size:12px;font-weight:700}
 .coast-plan+.launch-note{margin-top:9px}
-.launch-dock .launch-checkpoint{margin:0;line-height:1.4}
+.launch-dock .launch-button:has(.launch-checkpoint){padding-block:7px}
+.launch-dock .launch-checkpoint{margin:2px 0 0;line-height:1.25;text-align:left;color:#3e412f}
 @media(max-width:1100px){.has-coast-plan .launch-briefing{width:100%}}
 @media(max-width:700px){
  .command-content:has(.mission-layout){padding-top:8px}

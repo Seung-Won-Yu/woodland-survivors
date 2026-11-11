@@ -1730,7 +1730,9 @@ test('every beach and garrison combination offers both opening guns, safe guards
   assert.ok(opening.link.includes(`${MODULES[approach.module].name} 후보`));
   assert.ok(opening.cost.includes(`${other.coastApproach.toUpperCase()} L2 교차 노획 후보`));
   other.state='done';
-  assert.equal(choiceDetails(s,s.choices.find(c=>c.id===`gun:${weapon}`)).cost,'');
+  const card=s.choices.find(c=>c.id===`gun:${weapon}`);
+  assert.equal(choiceDetails(s,card).cost,'');
+  assert.equal(choiceDetails({...s,stage:'holdout',excluded:[approach.module]},card).link,'');
   assert.equal(reroll(s),false);assert.ok(choose(s,`gun:${weapon}`));
   site.state='waiting';s.player.x=site.x;s.player.y=site.y+160;step(s,dt);
   assert.deepEqual(s.enemies.filter(e=>e.siteId===site.id).map(e=>e.type),approach.guards.map(([type])=>type));

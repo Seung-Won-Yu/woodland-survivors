@@ -58,8 +58,8 @@ test('mission briefing does not select a later starting map, and saved operation
  const p=emptyProfile(),html=lobbyView(p,{brief:2});
  assert.match(html,/heading|작전 지령/);assert.match(html,/data-action="launch">피오 · 새 출격/);
  const run=createOperation(17);run.operation.region=1;const active=beginProfile(p,run),view=lobbyView(active);
- assert.match(view,/data-action="launch">피오 · 새 출격/);
- assert.match(view,/이전 판은 확보 성과를 정산/);assert.doesNotMatch(view,/data-action="resume-run"/);
+ assert.match(view,/data-action="launch"><span>피오 · 새 출격<small class="launch-checkpoint">이전 판 정산 후 시작/);
+ assert.doesNotMatch(view,/data-action="resume-run"/);
 });
 test('research makes condition, funds, active-run block and owned trial explicit',()=>{
  const p=emptyProfile();let html=lobbyView(p,{tab:'research'});assert.match(html,/실증 조건 미달/);

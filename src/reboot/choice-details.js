@@ -16,7 +16,7 @@ function openingGunRoute(s,gun){
  const other=s.sites.find(n=>n.coastApproach&&n.coastApproach!==gun&&n.state!=='done');
  const cross=coastCrossGun(equipped,other),module=approach.module;
  const supply=!s.excluded.includes(module)&&moduleRank(s,module)<3&&compatible(equipped,module)
-  ?MODULES[module].name:!s.operation.coastStrike?COAST_STRIKES[gun].name:'';
+  ?MODULES[module].name:s.stage==='field'&&!s.operation.coastStrike?COAST_STRIKES[gun].name:'';
  return {impact:`${coastBearing(s,site)} · ${approach.name}`,detail:`${approach.formation} · ${approach.hint}`,
   link:supply?`맞춤 보급 · ${supply} 후보`:'',cost:cross?`${coastBearing(s,other)} · ${GUNS[cross].short} L${COAST_SALVAGE_LEVEL} 교차 노획 후보`:''};
 }
