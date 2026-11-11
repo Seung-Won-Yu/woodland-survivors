@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.78.0" src="https://img.shields.io/badge/RIFT-0.78.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.79.0" src="https://img.shields.io/badge/RIFT-0.79.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.79에서는 출격 전에 포로 구출 지점에서 이어지는 첫 보급 두 곳을 확인합니다. 구출 뒤에는 무장 카드에서 현재 위치 기준 방향과 맞춤 보급, 교차 노획 후보를 비교할 수 있습니다. [해안 출격과 첫 보급 검증](docs/RIFT-GAMEPLAY-V1.md#079-해안-출격과-첫-보급).
 
 0.78에서는 압축 인페르노와 돌격 신관으로 항구 코어에서 20~26m 떨어져 회피한 뒤, 멈춰 압축 분사를 이어갈 수 있습니다. 철갑은 측면 포탑, 회수 의무 장비는 화물 회수와 지원 포격을 노립니다. [항구 부품별 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#078-항구-부품과-중거리-압축-분사).
 

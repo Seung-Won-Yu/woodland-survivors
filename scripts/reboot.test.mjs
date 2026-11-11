@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portBarrageMark,portAidPreview,portAidBaitRisk,portAidCue,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
-import {RULES,FIELD,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
+import {RULES,FIELD,MODULES,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
@@ -1722,14 +1722,32 @@ test('every beach and garrison combination offers both opening guns, safe guards
   s.sites.forEach(site=>site.state='done');s.enemies=[];s.spawnClock=999;
   assert.deepEqual(supply(s).filter(c=>c.kind==='gun').map(c=>c.weapon),[route.gun,route.gun==='r'?'f':'r']);
   const site=s.sites.find(n=>n.coastApproach===weapon),approach=coastApproach(site);
+  const other=s.sites.find(n=>n.coastApproach&&n!==site);
+  site.state=other.state='waiting';
   const opening=choiceDetails(s,s.choices.find(c=>c.id===`gun:${weapon}`));
+  assert.match(opening.impact,new RegExp(`[→↘↓↙←↖↑↗] \\d+m · ${approach.name}`));
   assert.ok(opening.detail.includes(approach.formation));
-  assert.match(opening.link,/회수 후보/);
+  assert.ok(opening.link.includes(`${MODULES[approach.module].name} 후보`));
+  assert.ok(opening.cost.includes(`${other.coastApproach.toUpperCase()} L2 교차 노획 후보`));
+  other.state='done';
+  assert.equal(choiceDetails(s,s.choices.find(c=>c.id===`gun:${weapon}`)).cost,'');
   assert.equal(reroll(s),false);assert.ok(choose(s,`gun:${weapon}`));
   site.state='waiting';s.player.x=site.x;s.player.y=site.y+160;step(s,dt);
   assert.deepEqual(s.enemies.filter(e=>e.siteId===site.id).map(e=>e.type),approach.guards.map(([type])=>type));
   assert.ok(supply(s,site.id).some(c=>c.id===`module:${approach.module}`));
  }
+});
+test('a rescue draft after a prior relay weapon shows the existing route without promising a second salvage',()=>{
+ const s=createOperation(22,[],null,'wire');
+ s.sites.forEach(site=>site.state='done');s.enemies=[];s.spawnClock=999;
+ assert.ok(supply(s,'arsenal').some(c=>c.id==='gun:f'));
+ assert.ok(choose(s,'gun:f'));
+ assert.ok(supply(s).some(c=>c.id==='gun:r'));
+ s.sites.filter(site=>site.coastApproach).forEach(site=>site.state='waiting');
+ const preview=choiceDetails(s,s.choices.find(c=>c.id==='gun:r'));
+ assert.match(preview.link,/첫 노획 F · 이동 보급차 경로 유지/);
+ assert.doesNotMatch(preview.cost,/교차 노획/);
+ assert.ok(choose(s,'gun:r'));assert.equal(s.firstNew,'f');
 });
 test('spaced garrisons survive an opening shot that hits all guards in the packed deployment',()=>{
  for(const [id,splitSeed,range,affected] of [['f',21,130,[6,3]],['r',25,155,[2,1]]]){

@@ -218,15 +218,27 @@ test('coastal tracks connect the actual sites through clear ground and water sta
   assert.deepEqual(tracks,[[[800,1040],rescue],[rescue,truck],[rescue,battery]]);
   assert.ok(shapes.some(s=>s.type==='rect'&&s.y===FIELD.bottom&&s.fill===water&&s.w===1600));
   assert.ok(shapes.some(s=>s.type==='rect'&&s.x===0&&s.fill===water&&s.w===FIELD.left));
-  for(const track of tracks){
-   assert.ok(html.includes(`points="${track.map(p=>p.join(',')).join(' ')}"`));
+  for(const [index,track] of tracks.entries()){
+   assert.ok(html.includes(`data-approach="${sites[[0,1,3][index]].id}" points="${track.map(p=>p.join(',')).join(' ')}"`));
    const [[ax,ay],[bx,by]]=track,steps=Math.ceil(Math.hypot(bx-ax,by-ay)/8);
    for(let i=0;i<=steps;i++){
     const x=ax+(bx-ax)*i/steps,y=ay+(by-ay)*i/steps;
     assert.ok(!blocks.some(b=>x+23>b.x&&x-23<b.x+b.w&&y+23>b.y&&y-23<b.y+b.h),`track on seed ${seed}`);
    }
   }
+  assert.doesNotMatch(regionPreview(0,seed,createOperation(seed)),/data-approach=/);
  }
+});
+test('the launch briefing names both coastal routes before the start button and reflects the seeded garrisons',()=>{
+ const briefing=seed=>lobbyView(emptyProfile(),{seed}).match(/<section class="coast-plan"[\s\S]*?<\/section>/)[0];
+ const seed22=briefing(22),seed25=briefing(25);
+ assert.match(seed22,/→ 약 47m · 양갈래 호위/);
+ assert.match(seed22,/↖ 약 36m · 집결 포대/);
+ assert.match(seed25,/↗ 약 35m · 밀집 호위/);
+ assert.match(seed25,/← 약 42m · 분산 포대/);
+ const lobby=lobbyView(emptyProfile(),{seed:22});
+ assert.ok(lobby.indexOf(seed22)<lobby.indexOf('data-action="launch"'));
+ assert.doesNotMatch(lobbyView(emptyProfile(),{seed:22,brief:1}),/class="coast-plan"/);
 });
 test('the harbor quay follows the field boundary and bay marks follow mirrored loading sites',()=>{
  const port=fieldScene(2,19),mirror=fieldScene(2,18);

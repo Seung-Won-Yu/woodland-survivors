@@ -1,6 +1,6 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
 import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
-import {GUNS,MODULES,RULES,makeWeapon,weaponStats,capstoneName} from './content.js';
+import {GUNS,MODULES,RULES,bearing,distance,makeWeapon,weaponStats,capstoneName} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -46,19 +46,29 @@ function operationMap(selected,seed,order){const map=previewLayout(seed,selected
  return `<div class="operation-chart"><nav class="sector-selector" aria-label="전선 브리핑">${REGIONS.map((d,i)=>`<button class="sector-pin ${selected===i?'selected':''}" data-brief="${i}" aria-pressed="${selected===i}" aria-label="${d.name} 브리핑 보기"><span>${`0${i+1}`}</span><b>${d.name}</b><small>${i===0?'해안 교두보':i===1?'물자 수송로':'지휘 병기'}</small></button>`).join('')}</nav><div class="field-chart">${regionPreview(selected,seed,null,order)}<span class="chart-direction">N ↑</span><div class="chart-legend"><strong>${REGIONS[selected].name}</strong><span class="chart-key"><i></i>투입 지점</span><span class="chart-key boss"><i></i>보스 진입</span>${map.sites.map(n=>`<span class="chart-site ${n.state==='done'?'done':''}"><svg viewBox="-30 -30 60 60" aria-hidden="true">${siteSymbol(n,0,0,21)}</svg><span>${sitePresentation(n).name}${n.state==='done'?'<small>확보 완료</small>':''}</span></span>`).join('')}</div></div></div>`;
 }
 
+function coastPlan(seed,order){
+ const {sites}=previewLayout(seed,0,order),rescue=sites.find(site=>site.opening);
+ const stops=sites.filter(site=>site.coastApproach).map(site=>{
+  const id=site.coastApproach,approach=coastApproach(site);
+  return `<li data-coast="${id}"><span class="coast-plan-mark">${GUNS[id].short}</span><div><strong>${approach.name}</strong><span>${bearing(rescue,site.x,site.y)} 약 ${Math.round(distance(rescue,site)/10)}m · ${approach.formation}</span><small>${MODULES[approach.module].name} 후보</small></div></li>`;
+ }).join('');
+ return `<section class="coast-plan" aria-label="해안 첫 보급"><header><b>포로 구출 → F / R 선택</b><span>${beachRoute(seed).name}</span></header><ul>${stops}</ul></section>`;
+}
+
 function frontIntel(index,seed){
- if(index===0){const route=beachRoute(seed);return `<div class="front-intel"><div class="front-intel-heading"><span>01 · 포로 구출 후 F / R 선택</span><strong>${route.name}</strong></div>${previewLayout(seed,index).sites.filter(site=>site.coastApproach).map(site=>{const approach=coastApproach(site);return `<div class="front-intel-stop"><span>${site.coastApproach.toUpperCase()} · ${approach.name}</span><b>${approach.formation} · ${MODULES[approach.module].name}</b></div>`;}).join('')}</div>`;}
  const rail=index===1?previewLayout(seed,index).sites.slice(0,2).map(railGarrison):null;
  const [cache,order,task]=rail?[`화차 정비대 · ${rail[0].name}`,`통신 중계기 · ${rail[1].name}`,`${rail[1].crew} 제압 후 해킹 · 포대 공략`]:['해치 · 측면 기습','관제소 · 전술 선택','첫 장갑탄 교란 또는 화력 전술'];
  return `<div class="front-intel"><div class="front-intel-heading"><span>투입 지점의 두 갈래</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>${cache}</span><b>${index===1?'장착 무장 강화 · 완성 병기 개장':'방패와 박격포 제압 · 포탑 측면 진입'}</b></div><div class="front-intel-stop"><span>${order}</span><b>${task}</b></div></div>`;
 }
 
-function launchDock(profile,id,operator,requisition){
+function launchDock(profile,id,operator,requisition,plan){
  const actor=OPERATORS[operator];
  const order=sortieOrder(id),request=RESEARCH[requisition];
  const title=request?`철도 예약 · ${request.name}`:order?`지령 · ${order.name}`:'첫 목표 · 포로 구출';
- const briefing=request?`출격 시 −${REQUISITION_FEE}C · 철도 화차 정비대에서 선택 · ${request.fitting}`:order?`${order.fee}C 선납 · 목표 확보 후 최종 귀환 +${order.bonus}C`:profile.active?'이전 판은 확보 성과를 정산하고 새로 시작합니다.':'포로를 구출해 화염방사기나 로켓을 확보하세요.';
- return `<div class="launch-dock"><div><b>${title}</b><small>${briefing}</small>${request?'<button class="text-button cancel-requisition" data-reserve="">예약 취소</button>':''}</div><div class="launch-controls">${operatorSelector(operator)}<button class="primary launch-button" data-action="launch"${order?` data-sortie="${id}"`:request?` data-requisition="${requisition}"`:''}>${actor.name} · ${request?'예약 출격':order?'지령 출격':'새 출격'}<span aria-hidden="true">▶</span></button></div></div>`;
+ const briefing=request?`출격 시 −${REQUISITION_FEE}C · 철도 화차 정비대에서 선택 · ${request.fitting}`:order?`${order.fee}C 선납 · 목표 확보 후 최종 귀환 +${order.bonus}C`:'포로를 구출해 화염방사기나 로켓을 확보하세요.';
+ const note=!plan||order||request?`<div class="launch-note"><b>${title}</b><small>${briefing}</small>${request?'<button class="text-button cancel-requisition" data-reserve="">예약 취소</button>':''}</div>`:'';
+ const activeNote=profile.active?'<small class="launch-checkpoint">이전 판은 확보 성과를 정산하고 새로 시작합니다.</small>':'';
+ return `<div class="launch-dock${plan?' has-coast-plan':''}"><div class="launch-briefing">${plan}${note}</div><div class="launch-controls">${operatorSelector(operator)}<button class="primary launch-button" data-action="launch"${order?` data-sortie="${id}"`:request?` data-requisition="${requisition}"`:''}>${actor.name} · ${request?'예약 출격':order?'지령 출격':'새 출격'}<span aria-hidden="true">▶</span></button>${activeNote}</div></div>`;
 }
 function orderOptions(p,selected,operator,reserved){
  if(!p.records.wins||p.active)return '';
@@ -73,7 +83,7 @@ function operatorSelector(operator){
  return `<div class="operator-selector" role="group" aria-label="출전 대원 선택">${Object.entries(OPERATORS).map(([id,d])=>`<button data-pilot="${id}" aria-pressed="${id===operator}"><span>${d.short}</span><b>${d.name}</b><small>${d.skill}</small></button>`).join('')}</div>`;
 }
 function missionPanel(p,brief,previewSeed,requested,operator,requisition){const actor=OPERATORS[operator],order=canLaunchOrder(p,requested)?requested:null,reserved=!order&&canReserveResearch(p,requisition)?requisition:null,selected=brief??0,d=REGIONS[selected],copy=briefCopy[selected],goal=nextOrder(p),weapons=[makeWeapon('h')];
- return `<div class="mission-layout"><section class="mission-board"><header class="board-heading"><div><span class="section-index">작전 지령</span><h1>시험 병기 수송을 차단하라</h1></div><span class="operation-count">세 전선 연속 작전</span></header>${launchDock(p,order,operator,reserved)}${orderOptions(p,order,operator,reserved)}${operationMap(selected,previewSeed,order)}${frontIntel(selected,previewSeed)}<div class="sector-brief"><div><span class="sector-number">0${selected+1}</span><div><h2>${d.name}</h2><p>${copy.terrain} · ${copy.supply}</p></div></div><p class="tactic"><b>${d.boss}</b>${copy.tactic}</p></div><p class="brief-contract"><b>잔류 · ${HOLDOUT_CONTRACTS[selected].name}</b><span>${HOLDOUT_CONTRACTS[selected].goal}${selected<2?` + 증원 ${HOLDOUT.rareKills}명 제압`:''}</span></p></section><aside class="deployment"><section class="operator-station" data-operator="${operator}"><div class="operator-heading"><span>출전 대원</span><h2>${actor.name}</h2><b>${actor.skill}</b></div><canvas class="portrait" id="portrait" aria-label="${actor.name} 출격 준비 모습"></canvas><div class="operator-platform"></div><div class="starting-kit"><span>시작 무장</span><div>${weapons.map(w=>`<b>${e(w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase())}<small>L${w.level}</small></b>`).join('')}</div><p>${actor.brief}</p></div></section><section class="next-assignment"><span>다음 목표</span><h3>${e(goal.title)}</h3><p>${e(goal.text)}</p><button class="text-button" data-tab="${goal.target}">${goal.label} ↗</button></section>${p.active?'<button class="danger-text" data-action="end-saved">이전 판 정산</button>':''}</aside></div>`;
+ return `<div class="mission-layout"><section class="mission-board"><header class="board-heading"><div><span class="section-index">작전 지령</span><h1>시험 병기 수송을 차단하라</h1></div></header>${launchDock(p,order,operator,reserved,selected===0?coastPlan(previewSeed,order):'')}${orderOptions(p,order,operator,reserved)}${operationMap(selected,previewSeed,order)}${selected?frontIntel(selected,previewSeed):''}<div class="sector-brief"><div><span class="sector-number">0${selected+1}</span><div><h2>${d.name}</h2><p>${copy.terrain} · ${copy.supply}</p></div></div><p class="tactic"><b>${d.boss}</b>${copy.tactic}</p></div><p class="brief-contract"><b>잔류 · ${HOLDOUT_CONTRACTS[selected].name}</b><span>${HOLDOUT_CONTRACTS[selected].goal}${selected<2?` + 증원 ${HOLDOUT.rareKills}명 제압`:''}</span></p></section><aside class="deployment"><section class="operator-station" data-operator="${operator}"><div class="operator-heading"><span>출전 대원</span><h2>${actor.name}</h2><b>${actor.skill}</b></div><canvas class="portrait" id="portrait" aria-label="${actor.name} 출격 준비 모습"></canvas><div class="operator-platform"></div><div class="starting-kit"><span>시작 무장</span><div>${weapons.map(w=>`<b>${e(w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase())}<small>L${w.level}</small></b>`).join('')}</div><p>${actor.brief}</p></div></section><section class="next-assignment"><span>다음 목표</span><h3>${e(goal.title)}</h3><p>${e(goal.text)}</p><button class="text-button" data-tab="${goal.target}">${goal.label} ↗</button></section>${p.active?'<button class="danger-text" data-action="end-saved">이전 판 정산</button>':''}</aside></div>`;
 }
 function trialDispatch(p){
  if(p.active||!p.trials.length)return '';

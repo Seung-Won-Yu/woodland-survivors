@@ -1,8 +1,25 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
+const coastBearing=(s,site)=>`${bearing(s.player,site.x,site.y)} ${Math.round(distance(s.player,site)/10)}m`;
+function openingGunRoute(s,gun){
+ const site=s.sites.find(n=>n.coastApproach===gun&&n.state!=='done');
+ const approach=coastApproach(site);
+ if(!approach||s.weapons.length>=3)return null;
+ if(s.firstNew&&s.firstNew!==gun){
+  return s.weapons.some(w=>w.id===s.firstNew)&&COAST_APPROACHES[s.firstNew]
+   ?{link:`첫 노획 ${GUNS[s.firstNew].short} · ${COAST_APPROACHES[s.firstNew].name} 경로 유지`}:null;
+ }
+ const equipped={...s,firstNew:gun,weapons:[...s.weapons,makeWeapon(gun)]};
+ const other=s.sites.find(n=>n.coastApproach&&n.coastApproach!==gun&&n.state!=='done');
+ const cross=coastCrossGun(equipped,other),module=approach.module;
+ const supply=!s.excluded.includes(module)&&moduleRank(s,module)<3&&compatible(equipped,module)
+  ?MODULES[module].name:!s.operation.coastStrike?COAST_STRIKES[gun].name:'';
+ return {impact:`${coastBearing(s,site)} · ${approach.name}`,detail:`${approach.formation} · ${approach.hint}`,
+  link:supply?`맞춤 보급 · ${supply} 후보`:'',cost:cross?`${coastBearing(s,other)} · ${GUNS[cross].short} L${COAST_SALVAGE_LEVEL} 교차 노획 후보`:''};
+}
 export function gateContractDetails(s){
  const front=s.operation.region,tier=(s.operation.challengeTier||0)+1,contract=holdoutContract(s);
  const rare=front<2&&tier===1;
@@ -71,8 +88,7 @@ export function choiceDetails(s,c){
    out.link='';
    if(other)out.cost=`빈칸에 L${gunEquipLevel(s,c)} · ${GUNS[other.id].short} 유지`;
   }
-  const approach=s.choice?.opening&&coastApproach(s.sites.find(site=>site.coastApproach===c.weapon));
-  if(approach){out.impact=approach.hint;out.detail=`${approach.name} · ${approach.formation}`;out.link=`회수 후보 · ${MODULES[approach.module].name}`;out.cost='';}
+  if(s.choice?.opening&&s.operation?.region===0)Object.assign(out,openingGunRoute(s,c.weapon));
  }else if(c.module){
   const g=moduleGain(s,c.module,c.kind==='tune'?1:c.rank),m=MODULES[c.module];out.title=m.name;out.impact=m.detail(g.next);out.detail=m.desc;out.link=MODULE_LINKS[c.module];out.art=['coil','thermal'].includes(c.module)?'coil':c.module==='medic'?'medic':c.module==='shrapnel'?'ammo':null;
   if(c.kind==='module'&&!c.id?.startsWith('requisition:')&&!compatible(s,c.module)){

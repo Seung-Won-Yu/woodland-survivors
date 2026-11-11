@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -105,8 +105,12 @@ export function regionPreview(index,seed=17,current=null,order=null){
  const entry=front?{...front,direct:index===2?portCenterRoute(seed):railCenterRoute(seed)}:null;
  const map=current||previewLayout(seed,index,order),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
  const stops=index===0&&!current?map.sites.filter(n=>n.opening||n.coastApproach):[];
- const insertion=entry?entryRouteSvg(entry):stops.length?`<path d="M800 1040L${stops[0].x} ${stops[0].y}" stroke="#ffdf8b" stroke-width="12" stroke-dasharray="20 20"/>`:'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';
- const numbers=stops.map(site=>`<g transform="translate(${site.x+54} ${site.y-46})" aria-hidden="true"><circle r="30" fill="#f1cc79" stroke="#263d35" stroke-width="6"/><text y="12" text-anchor="middle" fill="#263d35" font-size="35" font-weight="bold">${site.coastApproach?.toUpperCase()||'1'}</text></g>`).join('');
+ const tracks=stops.length?fieldScene(0,seed).tracks:null;
+ const coastRoutes=tracks&&{routes:stops.map((site,i)=>({
+  site:site.id,sign:sitePresentation(site).name,color:coastLeadColor(site),path:tracks[i]
+ }))};
+ const insertion=entryRouteSvg(entry||coastRoutes)||'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';
+ const numbers=stops.map(site=>`<g transform="translate(${site.x+52} ${site.y-55})" aria-hidden="true"><circle r="43" fill="${coastLeadColor(site)}" stroke="#263d35" stroke-width="8"/><text y="20" text-anchor="middle" fill="#263d35" font-size="60" font-weight="bold">${site.coastApproach?.toUpperCase()||'1'}</text></g>`).join('');
  const orderPin=index===0?orderPinSvg(map.sites.find(site=>site.id==='arsenal'),order):'';
  return `<svg class="sector-preview" viewBox="0 0 1600 1200" role="img" aria-label="${REGIONS[index].name} · 전장과 같은 지형과 보급 위치">${terrainSvg(index,seed)}${map.blocks.filter(b=>b.hp!==0).map(b=>`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#354a40" stroke="#b6b394" stroke-width="10"/>`).join('')}${gate?gateSymbol(gate):`${insertion}<path d="m800 315-40 60h80Z" fill="#e6a36a"/>`}${map.sites.map(n=>siteSymbol(n,n.x,n.y,40)).join('')}${numbers}${orderPin}<circle cx="${player.x}" cy="${player.y}" r="22" fill="#fff1bf" stroke="#263d35" stroke-width="10"/></svg>`;
 }
