@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,coastApproach,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -10,7 +10,9 @@ export function gateContractDetails(s){
  const quota=rare?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
  const reward=rare?holdoutParts(s.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / ')
   :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:`완료 점수 +${tier*500}`;
- return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':''};
+ const escort=s.challenge?.recoverCargo?signalGuardCount(s):SIGNAL_ESCORT_COUNT;
+ const cost=front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
+ return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost};
 }
 
 function projectedGrowth(s,c,args,before){
@@ -147,7 +149,7 @@ export function choiceDetails(s,c){
   out.link='게이트는 계속 열려 있습니다.';out.cost='';
  }
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}
- else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':'크레딧·연구·기록 유지';out.cost='다음 판은 해안 · LV.1에서 시작';}
+ else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':signalCargo(s)?'잔해의 미회수 화물을 두고 귀환':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':'크레딧·연구·기록 유지';out.cost='다음 판은 해안 · LV.1에서 시작';}
  return out;
 }
 export const isQuickMod=s=>s.choice.type==='level'&&s.level<4&&s.weapons.length<=2&&!s.modules.length;

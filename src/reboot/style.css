@@ -193,6 +193,17 @@
  .field-menu:not(.quick-mod) .upgrade-illustration .kit-sprite{width:86px;height:86px}
 }
 @media(max-width:700px) and (orientation:portrait){
+ .signal-pursuit .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
+ .signal-pursuit .objective{width:100%}
+ .holdout-active.signal-pursuit #map-panel{display:block;width:84px;justify-self:end}
+ .signal-pursuit :is(#field-feedback,#banner,#combo){visibility:hidden}
+ .signal-warning .arsenal{visibility:hidden}
+ .signal-warning #pursuit-intel{color:#ffd29e}
+ .signal-pursuit .arsenal{top:201px;bottom:auto;left:auto;right:12px;width:84px}
+ .signal-pursuit .arsenal :is(#weapons,#modules,#support-status,#synergy,#maneuver-status){display:none}
+ .signal-pursuit .field-workbench{display:grid;gap:4px}
+ .signal-pursuit .field-workbench #gear[data-view]{display:grid;gap:2px;width:100%;padding:5px 6px;font-size:9px}
+ .signal-pursuit #field-upgrade:not([hidden]){padding-inline:5px;font-size:9px}
  .rail-fork .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
  .rail-fork .objective{width:100%}
  .rail-fork .objective #stage{display:none}

@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,signalLane,signalPosition,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portTurretShutter,portTurretSide,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railBarrageRounds,railLaneBounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,EMBER_CHARGE,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -201,8 +201,10 @@ export function restore(raw,{allowPrevious=false}={}){
  if(s.challenge?.reserveAt!==undefined&&(s.operation?.region!==0||s.challenge.type!=='hunt'||s.challenge.tier!==1||s.challenge.state!=='active'
   ||!Number.isFinite(s.challenge.reserveAt)||s.challenge.reserveAt<0||s.challenge.reserveAt>=HOLDOUT.grace))fail();
  if(s.challenge?.type==='intercept'){
-  const {lane,timeLeft,target}=s.challenge;
+  const {lane,timeLeft,target,tier,recoverCargo,secured}=s.challenge;
   if(![timeLeft,target?.x,target?.y,target?.hp,target?.maxHp].every(Number.isFinite)||timeLeft<0||timeLeft>SIGNAL_SECONDS||lane!==undefined&&lane!==signalLane(s.seed))fail();
+  if(recoverCargo!==undefined&&(recoverCargo!==true||tier!==1||s.operation?.region!==2||!lane
+   ||secured&&(target.hp!==0||!target.dead)))fail();
  }
  s.events=[];return s;
 }
@@ -380,7 +382,7 @@ function nextChoice(s){
  if(s.queue.length){const item=s.queue.shift();openChoice(s,item.type,item.cards,item.source,item.extra);return;}
  if(s.t<(s.levelReadyAt||0)||!canOpenLevel(s)||deferContactDraft(s))return;
  // Let nearby field objectives take precedence over routine upgrades.
- if(s.operation&&s.stage==='holdout'&&interaction(s)?.id==='extract')return;
+ if(s.operation&&s.stage==='holdout'&&interaction(s))return;
  if(s.operation&&s.stage!=='boss'&&s.sites.some(site=>site.state==='ready'&&distance(site,s.player)<LEVEL_PICKUP_PRIORITY))return;
  openLevel(s);
 }
@@ -945,13 +947,19 @@ function updateEnemies(s,dt){
   updateBurn(s,e,dt);if(e.dead)continue;
   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1,desired=Math.atan2(dy,dx);
   if(e.type==='shield'){const delta=Math.atan2(Math.sin(desired-e.aim),Math.cos(desired-e.aim)),turn=RULES.enemies.shield.turnRadiansPerSecond*dt;e.aim+=clamp(delta,-turn,turn);}else e.aim=desired;
-  if(e.type==='mortar'&&d<COAST_MORTAR.range){
-   if(e.timer<=0&&coastMortarWait(s,e)<=0){
+  const escort=e.cohort==='signal-guard';
+  if(e.type==='mortar'&&(d<COAST_MORTAR.range||escort)){
+   const courier=escort&&signalCourier(s);
+   const cut=courier&&signalPosition(s.challenge.lane,s.challenge.timeLeft-1.55);
+   const inCut=cut&&distance(p,cut)<225&&distance(e,cut)<COAST_MORTAR.range;
+   if(d<COAST_MORTAR.range&&e.timer<=0&&coastMortarWait(s,e)<=0&&(!courier||inCut)){
     e.timer=2.8;
     const coast=e.cohort==='coast-guard';
     const duration=COAST_MORTAR.warning;
-    s.hazards.push({x:p.x,y:p.y,r:48,timer:duration,age:0,...(coast?{coastMortar:e.siteId,fromX:e.x,fromY:e.y}:null)});
-    emit(s,'warning',p.x,p.y,{r:48,life:duration});
+    const mark=inCut?cut:p,r=inCut?62:48;
+    const launch=coast||inCut?{fromX:e.x,fromY:e.y}:null;
+    s.hazards.push({x:mark.x,y:mark.y,r,timer:duration,age:0,...launch,...(coast?{coastMortar:e.siteId}:null),...(inCut?{signalCut:true}:null)});
+    emit(s,'warning',mark.x,mark.y,{r,life:duration});
     if(coast)emit(s,'mortar-fire',e.x,e.y,{life:.21});
    }
   }else{
@@ -1296,7 +1304,11 @@ function challengeObjectiveDone(s,challenge,dt){
   if(target.hp>0){
    challenge.timeLeft=Math.max(0,challenge.timeLeft-dt);
    Object.assign(target,signalPosition(challenge.lane,challenge.timeLeft));
-   if(challenge.timeLeft===0){challenge.state='failed';emit(s,'challenge-failed',s.player.x,s.player.y,{text:'통신 차량 이탈 · 재도전 가능',life:1.6});}
+   if(challenge.timeLeft===0){
+    challenge.state='failed';
+    if(challenge.recoverCargo)s.stats.signalOutcome='escaped';
+    emit(s,'challenge-failed',s.player.x,s.player.y,{text:'통신 차량 이탈 · 재도전 가능',life:1.6});
+   }
    return false;
   }
  }else if(challenge.targets.some(id=>s.enemies.some(e=>e.id===id&&!e.dead)))return false;
@@ -1309,8 +1321,16 @@ function updateChallenge(s,dt){
  if(!challenge.secured){
   if(!challengeObjectiveDone(s,challenge,dt))return;
   challenge.secured=true;
+  if(challenge.recoverCargo){
+   const {x,y}=challenge.target;
+   emit(s,'signal-down',x,y,{text:'차량 정지 · 잔해에서 화물 회수',life:1.4});
+  }
  }
+ if(signalCargo(s))return;
  if(s.operation?.region<2&&tier===1&&(s.operation.holdoutKills||0)<HOLDOUT.rareKills)return;
+ completeChallenge(s,challenge,tier);
+}
+function completeChallenge(s,challenge,tier){
  challenge.state='complete';
  delete challenge.reserveAt;
  s.stats.challenge=Math.max(s.stats.challenge,tier);s.stats.challengeWins=(s.stats.challengeWins||0)+1;
@@ -1326,8 +1346,19 @@ function updateChallenge(s,dt){
 }
 
 export function canStartChallenge(s){
- return s.stage==='holdout'&&s.player.hp>0&&s.raid?.state!=='active'&&s.challenge?.state!=='active'
-  &&(!s.challenge||!!s.operation)&&(holdoutContract(s).id!=='hunt'||alive(s).length<=158);
+ if(s.stage!=='holdout'||s.player.hp<=0||s.raid?.state==='active'||s.challenge?.state==='active'||s.challenge&&!s.operation)return false;
+ const type=holdoutContract(s).id;
+ const incoming=type==='hunt'?2:freshSignalEscort(s)?SIGNAL_ESCORT_COUNT:0;
+ return !incoming||alive(s).length+incoming<=160;
+}
+const freshSignalEscort=s=>s.operation?.region===2&&!s.operation.challengeTier&&!s.challenge?.recoverCargo;
+function deploySignalEscort(s,lane){
+ for(const {type,x,y} of signalEscortPlan(lane)){
+  // A field call can be made from the route itself. Keep arrivals outside contact range.
+  const point=[{x,y},{x,y:y+105},{x,y:y-105}].find(p=>distance(p,s.player)>=96&&!blocked(s,p.x,p.y,24)
+   &&!s.enemies.some(e=>!e.dead&&e.cohort==='signal-guard'&&distance(e,p)<40));
+  if(point)spawnEnemy(s,type,point.x,point.y,null,{cohort:'signal-guard',timer:type==='mortar'?1.45:1.8});
+ }
 }
 export function canCallGateChallenge(s){
  return !!s.operation&&s.phase==='choice'&&s.choice?.type==='clear'&&canStartChallenge(s)
@@ -1342,7 +1373,10 @@ function startChallenge(s){
  }else if(contract.id==='intercept'){
   const hp=Math.round(1050*1.22**Math.min(24,tier-1));
   const lane=signalLane(s.seed),timeLeft=SIGNAL_SECONDS;
-  s.challenge={type:'intercept',state:'active',tier,lane,timeLeft,target:{id:'signal',type:'courier',...signalPosition(lane,timeLeft),r:34,hp,maxHp:hp,dead:false}};
+  if(freshSignalEscort(s))deploySignalEscort(s,lane);
+  if(tier===1)delete s.stats.signalOutcome;
+  s.challenge={type:'intercept',state:'active',tier,lane,timeLeft,...(tier===1?{recoverCargo:true}:{}),
+   target:{id:'signal',type:'courier',...signalPosition(lane,timeLeft),r:34,hp,maxHp:hp,dead:false}};
  }else{
   const ids=[],hp=Math.round(450*1.22**Math.min(24,tier-1));
   const oldId=s.id,oldCombat=s.rng.combat;
@@ -1366,7 +1400,9 @@ export function interaction(s){
  if(gantry&&distance(s.player,gantry)<64)return{id:'boss',gantry,blocked:s.raid?.state==='active',label:'측면 해치 · 기습 진입'};
  if(s.stage==='field'&&distance(s.player,{x:800,y:350})<130)return{id:'boss',blocked:s.raid?.state==='active',label:`${s.operation?region(s).boss:'장갑 수송차'} 도전`};
  const gate=exitGate(s);
- return gate&&distance(s.player,gate)<(s.operation?92:140)?{id:'extract',label:s.operation?.region===2?'귀환 선택':'전진 · 잔류 선택'}:null;
+ if(gate&&distance(s.player,gate)<(s.operation?92:140))return{id:'extract',label:s.operation?.region===2?'귀환 선택':'전진 · 잔류 선택'};
+ const cargo=signalCargo(s);
+ return cargo&&distance(s.player,cargo)<=SIGNAL_CARGO_REACH&&!lineBlocked(s,s.player,cargo)?{id:'signal-cargo',label:'통신 화물 회수'}:null;
 }
 function focusWeakPoint(s,target){
  const b=s.boss,front=s.operation.region;
@@ -1437,6 +1473,7 @@ export function action(s,kind,input){
  if(kind==='interact'){
   const item=interaction(s);if(!item||item.blocked)return false;
   if(item.id==='extract'){if(s.operation)openChoice(s,'clear',exitCards(s),'열린 출구');else finish(s,true);return true;}
+  if(item.id==='signal-cargo'){s.stats.signalOutcome='recovered';completeChallenge(s,s.challenge,s.challenge.tier);return true;}
   if(item.gantry)s.operation.portEntry='gantry';
   const dock=s.operation?.region===2&&s.sites.find(site=>site.id==='port-landing');
   if(dock?.state==='active')dock.state='waiting';
@@ -1455,7 +1492,11 @@ export function action(s,kind,input){
 }
 export function finish(s,won=false,reason='retreat'){
  if(s.phase==='result')return false;won=!!won&&s.stats.bossKilled&&(!s.operation||s.operation.cleared===3&&s.operation.extracted===true)&&s.player.hp>0;if(won&&!s.stats.extractionPaid){s.stats.score+=3000;s.stats.extractionPaid=true;}
- withdrawRaid(s);if(s.challenge?.state==='active')s.challenge.state='withdrawn';
+ withdrawRaid(s);
+ if(s.challenge?.state==='active'){
+  if(s.challenge.recoverCargo)s.stats.signalOutcome=s.challenge.secured?'left-cargo':'aborted';
+  s.challenge.state='withdrawn';
+ }
  s.phase='result';s.result={runId:s.runId||null,...(s.operator?{operator:s.operator}:{}),balanceRevision:s.balanceRevision||'b05-campaign',won,reason:won?'prototype-complete':s.player.hp<=0?'prototype-failed':reason,seed:s.seed,seconds:s.t,score:s.stats.score,level:s.level,weapons:clone(s.weapons),modules:clone(s.modules),stats:clone(s.stats),...(s.operation?{operation:clone(s.operation)}:{})};s.choice=null;s.choices=[];return true;
 }
 function updateCampaignAmbient(s,dt){

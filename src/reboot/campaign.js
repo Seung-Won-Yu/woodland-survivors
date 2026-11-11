@@ -244,7 +244,15 @@ export function portTacticKeys(s){
  return [focused?'lens':'heat',incendiary?'ember':'signal'];
 }
 export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
-export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'?s.challenge.target:null;
+export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'&&!s.challenge.secured?s.challenge.target:null;
+export const signalCargo=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'&&s.challenge.recoverCargo&&s.challenge.secured?s.challenge.target:null;
+export const SIGNAL_CARGO_REACH=76;
+const SIGNAL_SCREEN=[
+ ['shield',477,637],['rifle',428,661],['rifle',398,713],['mortar',292,582]
+];
+export const SIGNAL_ESCORT_COUNT=SIGNAL_SCREEN.length;
+export const signalEscortPlan=lane=>SIGNAL_SCREEN.map(([type,x,y])=>({type,x:lane==='east'?1600-x:x,y}));
+export const signalGuardCount=s=>s.enemies.filter(e=>!e.dead&&e.cohort==='signal-guard').length;
 export const DEFENSE_ZONE={x:800,y:560,r:108,seconds:8};
 export const defenseSeconds=tier=>DEFENSE_ZONE.seconds+Math.min(8,(tier-1)*2);
 export const SIGNAL_SECONDS=18;

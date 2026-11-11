@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.76.0" src="https://img.shields.io/badge/RIFT-0.76.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.77.0" src="https://img.shields.io/badge/RIFT-0.77.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -93,6 +93,8 @@ npm run test:pages
 로컬 주소는 `http://127.0.0.1:5200/`입니다. 빌드는 GitHub Pages의 저장소 하위 경로에서도 동작합니다. `main`에 반영하면 검사 후 Pages로 배포합니다.
 
 ### 검증 범위
+
+0.77에서는 항구 게이트가 지금 확정할 정산액을 보여줍니다. 추격을 부르면 호위대를 뚫고 차량을 저지한 뒤, 열린 귀환로를 보면서 잔해에서 화물을 회수합니다. [항구 추격과 화물 회수 검증](docs/RIFT-GAMEPLAY-V1.md#077-항구-추격과-화물-회수).
 
 0.76에서는 포로 구출 뒤 맞춤 보급과 반대편 노획 경로가 함께 보입니다. 이동 보급차에서 화염방사기 L2, 박격포 진지에서 로켓 L2를 빈칸에 장착해 첫 무장과 다른 조합으로 갈 수 있습니다. [해안 교차 노획 검증](docs/RIFT-GAMEPLAY-V1.md#076-해안-교차-노획).
 

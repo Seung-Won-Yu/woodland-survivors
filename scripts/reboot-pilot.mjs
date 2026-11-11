@@ -1,7 +1,7 @@
 // Normal-input model pilot. It never edits HP, gear, XP, world time or RNG.
 import {pathToFileURL} from 'node:url';
 import {createRun,createOperation,step,choose,action,assemblyOptions,interaction,reroll,banish,banishOptions} from '../src/reboot/model.js';
-import {exitGate,DEFENSE_ZONE,signalCourier,signalPosition} from '../src/reboot/campaign.js';
+import {exitGate,DEFENSE_ZONE,signalCargo,signalCourier,signalPosition} from '../src/reboot/campaign.js';
 import {moduleRank,distance,compatible} from '../src/reboot/content.js';
 import {canUseSkill,skillRules} from '../src/reboot/operator.js';
 function free(s,x,y){return x>=60&&x<=1540&&y>=60&&y<=1140&&(!s.boss.active||Math.hypot(x-s.boss.x,y-s.boss.y)>s.boss.r+38)&&!s.blocks.some(b=>b.hp!==0&&x+22>b.x&&x-22<b.x+b.w&&y+22>b.y&&y-22<b.y+b.h);}
@@ -87,6 +87,12 @@ export function pilot(seed=17,policy='single',{maxSeconds=360,operation=false,re
   if(s.stage==='holdout'){
    if(!s.challenge&&s.operation&&(pursuit==='all'||pursuit&&s.operation.region===0))action(s,'challenge');
    if(s.challenge?.state==='active'){
+    const cargo=signalCargo(s);
+    if(cargo){
+     if(interaction(s)?.id==='signal-cargo')action(s,'interact');
+     else step(s,1/60,movement(s,cargo,ctx,false));
+     continue;
+    }
     if(s.challenge.secured){
      const nearest=s.enemies.filter(e=>!e.dead&&e.cohort==='holdout').sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];
      const gate=exitGate(s),goal=nearest&&distance(nearest,s.player)>160?nearest:{x:gate.x+Math.cos(s.t*1.4)*100,y:gate.y+Math.sin(s.t*1.4)*100};

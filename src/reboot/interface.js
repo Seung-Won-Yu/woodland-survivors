@@ -162,7 +162,7 @@ function payoutLines(r){
  if(entries.reduce((sum,[id])=>sum+lines[id],0)!==r.credits)return null;
  return entries.filter(([id])=>lines[id]>0).map(([id,label])=>({id,label,value:lines[id]}));
 }
-function debriefRoute(operation){
+function debriefRoute(operation,stats){
  if(!operation)return '';
  const history=Array.isArray(operation.history)?operation.history:[];
  const front=Number.isInteger(operation.region)?operation.region:-1;
@@ -172,7 +172,9 @@ function debriefRoute(operation){
   const state=cleared?'돌파':front===i?'도달':'미도달';
   const time=(cleared||front===i)&&Number.isFinite(elapsed)&&elapsed>=0?` · ${clockText(elapsed)}`:'';
   const part=Object.hasOwn(FRONT_SUPPORTS,entry?.nextSupport)?FRONT_SUPPORTS[entry.nextSupport]:null;
-  const wager=entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'';
+  const signal=i===2&&({recovered:stats.holdoutCargo?'차량 저지 · 통신 화물':'차량 저지 · 후송 구급낭',
+   'left-cargo':'차량 저지 · 화물 미회수',aborted:'차량 추격 중단',escaped:'차량 이탈'})[stats.signalOutcome];
+  const wager=signal||(entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'');
   return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small>${wager?`<small class="debrief-wager">${e(wager)}</small>`:''}</li>`;
  }).join('')}</ol>`;
 }
@@ -253,7 +255,7 @@ export function reportView(r,p,{archived=false}={}){
      ${hasPayout(r)?`<div class="earned-pay"><span>지급 크레딧</span><b>+${n(r.credits)}<small>C</small></b>${first?`<small class="first-clear">첫 완주 +${n(first)}C 포함</small>`:''}</div>`:''}
      <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>일반 적 ${n(r.stats.kills)}명 · 잔류 D${r.stats.challenge}</small></div>
     </div>
-    ${debriefRoute(r.operation)}${harborPayoff(r)}
+    ${debriefRoute(r.operation,r.stats)}${harborPayoff(r)}
    </section>
    ${debriefActions(r,p,archived)}
   </div>

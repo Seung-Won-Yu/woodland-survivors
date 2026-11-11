@@ -5,7 +5,7 @@ const fieldCues={
  heat:'heat-break','fire-spread':'fire-spread','payload-impact':'conduit-impact','payload-relay':'conduit-hop','ember-burst':'heat-break',
  kill:'wood-kill',impact:'rifle-hit',explosion:'power-kill','charge-impact':'slam','salvo-impact':'power-kill','armor-impact':'guard-block',
  complete:'forge-evolve',skill:'burst',choose:'choose','boss-arrival':'boss-arrival',
- 'port-hatch':'front-entry','port-ambush':'front-entry','region-entry':'front-entry','hunt-reserve':'front-entry','challenge-clear':'rampage','raid-success':'forge-evolve',
+ 'port-hatch':'front-entry','port-ambush':'front-entry','region-entry':'front-entry','hunt-reserve':'front-entry','signal-down':'armor-collapse','challenge-clear':'rampage','raid-success':'forge-evolve',
  heal:'heal',break:'crowd-break','xp-pickup':'xp'
 };
 
