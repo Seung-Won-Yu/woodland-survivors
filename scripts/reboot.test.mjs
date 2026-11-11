@@ -1573,6 +1573,42 @@ test('starting a fresh sortie settles a previous run once and survives a failed 
  mem.setFail(true);await assert.rejects(store.commit(next));assert.deepEqual(store.get(),previous);
  mem.setFail(false);await store.commit(next);assert.equal(store.get().active.runId,run.runId);assert.equal(store.get().recent.length,1);
 });
+test('the selected replay reference survives eviction, checkpoint reload and settlement',async()=>{
+ const mem=memory(),store=createStore(mem);
+ const base=store.get(),original=quietOperation();
+ let p=beginProfile(base,original);
+ Object.assign(original.operation,{region:2,cleared:3,extracted:true,regionTime:26.5,history:[{region:0,time:50},{region:1,time:40}]});
+ Object.assign(original.stats,{bossKilled:true,score:7000});original.t=116.5;finish(original,true);
+ p=settleProfile(p,original);
+ const source=p.recent[0];
+ p.sequence=p.settled=10;
+ p.recent=Array.from({length:10},(_,i)=>({...source,sequence:10-i}));
+ await store.commit(beginProfile(p,quietOperation()));
+ const current=store.get();
+ const {run,next}=freshSortie(current,source.seed,null,'fio',null,source.sequence);
+ assert.equal(next.recent.some(r=>r.sequence===source.sequence),false);
+ const reference={sequence:1,seed:source.seed,operator:'fio',scope:source.balanceRevision,score:10000,seconds:116.5,fronts:[50,40,26.5]};
+ assert.deepEqual(next.active.reference,reference);
+ assert.equal(freshSortie(current,source.seed,null,'marco',null,1).next.active.reference,undefined);
+ assert.equal(freshSortie(current,source.seed+1,null,'fio',null,1).next.active.reference,undefined);
+ mem.setFail(true);await assert.rejects(store.commit(next));assert.deepEqual(store.get(),current);
+ mem.setFail(false);await store.commit(next);
+ step(run,dt);
+ const checkpoint=checkpointProfile(store.get(),run);
+ assert.deepEqual(parseProfile(JSON.stringify(checkpoint)).active.reference,reference);
+ const damaged=snapshot(checkpoint);damaged.active.reference.fronts[1]=-5;
+ assert.equal(parseProfile(JSON.stringify(damaged)).active.reference,undefined);
+ assert.equal(parseProfile(JSON.stringify(damaged)).active.run.runId,run.runId);
+ await store.commit(checkpoint);
+ finish(run,false);
+ const pending=store.get(),withoutReference=snapshot(pending);
+ delete withoutReference.active.reference;
+ run.result.reference={...reference,score:1};
+ assert.equal(settleProfile(withoutReference,run).recent[0].reference,undefined);
+ const settled=settleProfile(pending,run);
+ assert.deepEqual(settled.recent[0].reference,reference);
+ assert.deepEqual(settleProfile(settled,run),settled);
+});
 test('all region supplies and boss entrances stay reachable around permanent geometry',()=>{
  for(const seed of [16,17,18,19])for(let index=0;index<3;index++){const m=regionLayout(seed,index),free=(x,y)=>x>55&&x<1545&&y>55&&y<1145&&!m.blocks.some(b=>b.hp!==0&&x+16>b.x&&x-16<b.x+b.w&&y+16>b.y&&y-16<b.y+b.h),key=(x,y)=>`${x},${y}`,queue=[[800,1040]],seen=new Set(['800,1040']);for(let i=0;i<queue.length;i++){const [x,y]=queue[i];for(const [dx,dy]of [[20,0],[-20,0],[0,20],[0,-20]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||!free(nx,ny))continue;seen.add(k);queue.push([nx,ny]);}}for(const goal of [...m.sites,{x:800,y:350}])assert.ok(queue.some(([x,y])=>Math.hypot(x-goal.x,y-goal.y)<55),`${index}/${seed} ${goal.id||'boss'}`);}
 });

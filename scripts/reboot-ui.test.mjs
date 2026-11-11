@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView} from '../src/reboot/interface.js';
-import {emptyProfile,beginProfile,settleProfile,createStore} from '../src/reboot/profile.js';
+import {lobbyView,reportView,gatePace} from '../src/reboot/interface.js';
+import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition} from '../src/reboot/render.js';
 import {portEscapeLanes} from '../src/reboot/campaign.js';
@@ -111,6 +111,32 @@ test('settled reports lead to affordable research and preserve exact replay seed
  assert.match(reportView(p.recent[0],p,{archived:true}),/data-target="archive"/);
  const withActive=beginProfile(p,createOperation(18)),archived=reportView(p.recent[0],withActive,{archived:true});
  assert.match(archived,/data-action="same-seed" data-seed="17"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
+});
+test('a comparable repeat shows independent time and score changes and the actual sector splits',()=>{
+ const complete=(run,fronts,score)=>{
+  Object.assign(run.operation,{region:2,cleared:3,extracted:true,regionTime:fronts[2],history:fronts.slice(0,2).map((time,region)=>({time,region}))});
+  run.stats.score=score;run.stats.bossKilled=true;run.t=fronts.reduce((sum,time)=>sum+time,0);finish(run,true);
+ };
+ const a=createOperation(23),first=beginProfile(emptyProfile(),a);complete(a,[50.25,33.4,25.3],9620);
+ const p=settleProfile(first,a),report=p.recent[0];
+ const firstHtml=reportView(report,p);
+ assert.match(firstHtml,/data-replay-from="1"[^>]*>같은 전장 · 기록 도전<small>1:49\.0 · 12,620점/);
+ for(const unsupported of [{...report,balanceRevision:'previous'}, {...report,operation:{...report.operation,requisition:'thermal'}}]){
+  const html=reportView(unsupported,p);
+  assert.match(html,/같은 전장 · 표준 작전/);
+  assert.doesNotMatch(html,/data-replay-from/);
+ }
+ const {run,next}=freshSortie(p,23,null,'fio',null,1);
+ assert.equal(gatePace(run.operation,null),'');
+ assert.match(gatePace({region:1,regionTime:43.3},next.active.reference),/#1 대비 · 지금 전진 시.*9\.9초 지연/);
+ assert.match(gatePace({region:1,regionTime:10.049},{sequence:1,fronts:[0,9.951]}),/기록과 동일/);
+ complete(run,[50.25,43.3,23.9],10270);
+ const final=settleProfile(next,run),html=reportView(final.recent[0],final);
+ assert.match(html,/같은 전장 #1 대비.*전체 8\.5초 지연.*\+650점/);
+ assert.match(html,/항구 결전<\/span><small>돌파 · 0:23\.9<\/small><small class="front-pace" data-trend="ahead">1\.4초 단축/);
+ const early=reportView({...final.recent[0],won:false,operation:{...run.operation,region:1,extracted:false,cleared:1}},final);
+ assert.match(early,/같은 전장 #1 대비<\/span><b>미완주/);
+ assert.doesNotMatch(early,/전체 8\.5초 지연|\+650점/);
 });
 test('harbor reports show the part actions actually recorded during the sortie',()=>{
  const run=createOperation(18),active=beginProfile(emptyProfile(),run);

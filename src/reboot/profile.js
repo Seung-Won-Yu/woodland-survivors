@@ -2,6 +2,7 @@ import {RESEARCH,REQUISITION_FEE,operationPayout,sortieOrder} from './campaign.j
 import {VERSION,RULES} from './content.js';
 import {createOperation,restore,snapshot,finish,canResumeRun} from './model.js';
 import {operatorId} from './operator.js';
+import {replayReference,referenceMatches} from './replay.js';
 export const STORAGE_KEY='operation-rift-profile-v2';
 const pickedTrials=stats=>stats.researchTrialsPicked||[stats.researchTrialPicked].filter(Boolean);
 const copy=x=>JSON.parse(JSON.stringify(x));
@@ -21,13 +22,24 @@ export function parseProfile(raw){
   if(!canResumeRun(p.active.run)){const old=restore(p.active.run,{allowPrevious:true});p.recordScope??=old.balanceRevision||'b05-campaign';finish(old,false,'rules-updated');p=settleProfile(p,old);p.migrationNotice='작전 규칙이 바뀌어 저장 판의 확보 성과를 정산했습니다. 크레딧과 연구를 유지하고 새 작전에 출격할 수 있습니다.';}else p.active.run=restore(p.active.run);
  }
  if(p.recordScope!==RULES.balanceRevision){p.recordArchive??=[];p.recordArchive.push({scope:p.recordScope||'b05-campaign',records:copy(p.records)});p.records={score:0,time:null,challenge:0,wins:p.records.wins};p.recordScope=RULES.balanceRevision;}
+ if(p.active&&Object.hasOwn(p.active,'reference')&&(p.active.reference?.scope!==p.recordScope||!referenceMatches(p.active.reference,p.active.run,p.active.sequence)))delete p.active.reference;
 
  return p;
 }
-export function beginProfile(p,run){if(p.active)throw Error('이전 판을 먼저 정산하세요.');const n=copy(p);n.sequence++;n.migrationNotice=null;if(run.operator==='marco')n.lastOperator='marco';else delete n.lastOperator;run.runId=`${n.sequence}:${run.seed}`;n.active={version:VERSION,sequence:n.sequence,runId:run.runId,run:snapshot(run)};return n;}
+export function beginProfile(p,run,reference=null){
+ if(p.active)throw Error('이전 판을 먼저 정산하세요.');
+ const n=copy(p);n.sequence++;n.migrationNotice=null;
+ if(run.operator==='marco')n.lastOperator='marco';else delete n.lastOperator;
+ run.runId=`${n.sequence}:${run.seed}`;
+ n.active={version:VERSION,sequence:n.sequence,runId:run.runId,run:snapshot(run)};
+ if(referenceMatches(reference,run,n.sequence))n.active.reference=copy(reference);
+ return n;
+}
 export const canLaunchOrder=(p,id)=>{const order=sortieOrder(id);return !!order&&!p.active&&p.records.wins>0&&p.credits>=order.fee;};
 export const canReserveResearch=(p,id)=>Object.hasOwn(RESEARCH,id)&&!p.active&&p.research.includes(id)&&!p.trials.includes(id)&&p.credits>=REQUISITION_FEE;
-export function freshSortie(p,seed,order=null,operator='fio',requisition=null){
+export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null){
+ const priorReport=replayFrom===null?null:p.recent.find(report=>report?.sequence===replayFrom);
+ const reference=replayReference(priorReport,p.recordScope);
  if(requisition!==null){
   if(order!==null||!canReserveResearch(p,requisition))throw Error('정비대 예약 조건을 확인하세요.');
   p={...p,credits:p.credits-REQUISITION_FEE};
@@ -43,7 +55,7 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null){
  }
  const run=createOperation(seed,p.research,p.trials,order,operator);
  if(requisition)run.operation.requisition=requisition;
- return {run,next:beginProfile(p,run)};
+ return {run,next:beginProfile(p,run,reference)};
 }
 export function checkpointProfile(p,run){if(!p.active)throw Error('활성 전투가 없습니다.');if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');const n=copy(p);n.active.run=snapshot(run);n.trials=n.trials.filter(id=>!pickedTrials(run.stats).includes(id));return n;}
 export function settleProfile(p,run){
@@ -51,6 +63,8 @@ export function settleProfile(p,run){
  if(run.runId!==p.active.runId||run.result.runId!==p.active.runId)throw Error('다른 작전의 정산 결과입니다.');
  const n=copy(p),r=copy(run.result);if(n.active.sequence<=n.settled)return n;
  const order=sortieOrder(r.operation?.order),sameScope=r.balanceRevision===n.recordScope,marco=operatorId(r)==='marco';
+ delete r.reference;
+ if(sameScope&&r.reason!=='rules-updated'&&referenceMatches(n.active.reference,r,n.sequence))r.reference=n.active.reference;
  const {credits,lines}=operationPayout(r,!n.milestones.medic);
  r.credits=credits;r.creditBreakdown=lines;r.newScore=false;r.newTime=false;
  if(order){

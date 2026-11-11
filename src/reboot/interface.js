@@ -3,9 +3,11 @@ import {REGIONS,RESEARCH,REQUISITION_FEE,MANEUVERS,FRONT_SUPPORTS,COAST_STRIKES,
 import {GUNS,MODULES,RULES,bearing,distance,makeWeapon,weaponStats,capstoneName} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
+import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference} from './replay.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
 export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
+const splitClockText=t=>{const tenths=tenthsOfSecond(t);return `${clockText(tenths/10)}.${tenths%10}`;};
 const svg=(body,box='0 0 160 100')=>`<svg viewBox="${box}" aria-hidden="true" focusable="false">${body}</svg>`;
 export function itemArt(id,extra=''){return `<span class="kit-sprite kit-${id} ${extra}" aria-hidden="true"></span>`;}
 export function moduleIcon(id){
@@ -173,24 +175,37 @@ function payoutLines(r){
  if(entries.reduce((sum,[id])=>sum+lines[id],0)!==r.credits)return null;
  return entries.filter(([id])=>lines[id]>0).map(([id,label])=>({id,label,value:lines[id]}));
 }
-function debriefRoute(operation,stats){
+function debriefRoute(operation,stats,reference){
  if(!operation)return '';
  const history=Array.isArray(operation.history)?operation.history:[];
  const front=Number.isInteger(operation.region)?operation.region:-1;
  return `<ol class="debrief-route" aria-label="전선별 진행 기록">${REGIONS.map((d,i)=>{
   const entry=history.find(step=>step?.region===i);
-  const cleared=i<operation.cleared,elapsed=entry?.time??(front===i?operation.regionTime:null);
+  const cleared=i<operation.cleared,elapsed=frontElapsed(operation,i);
   const state=cleared?'돌파':front===i?'도달':'미도달';
-  const time=(cleared||front===i)&&Number.isFinite(elapsed)&&elapsed>=0?` · ${clockText(elapsed)}`:'';
+  const time=(cleared||front===i)&&Number.isFinite(elapsed)&&elapsed>=0?` · ${reference?splitClockText(elapsed):clockText(elapsed)}`:'';
   const part=Object.hasOwn(FRONT_SUPPORTS,entry?.nextSupport)?FRONT_SUPPORTS[entry.nextSupport]:null;
   const signal=i===2&&({recovered:stats.holdoutCargo?'차량 저지 · 통신 화물':'차량 저지 · 후송 구급낭',
    'left-cargo':'차량 저지 · 화물 미회수',aborted:'차량 추격 중단',escaped:'차량 이탈'})[stats.signalOutcome];
   const wager=signal||(entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'');
-  return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small>${wager?`<small class="debrief-wager">${e(wager)}</small>`:''}</li>`;
+  const pace=reference&&(entry||i===2&&operation.extracted)?timeDifference(elapsed,reference.fronts[i]):null;
+  return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small>${pace?`<small class="front-pace" data-trend="${pace.trend}">${pace.text}</small>`:''}${wager?`<small class="debrief-wager">${e(wager)}</small>`:''}</li>`;
  }).join('')}</ol>`;
 }
-function debriefNext(r,p,archived){
- if(archived)return {title:'다른 작전과 비교',label:'기록실로 돌아가기',target:'archive'};
+export function gatePace(operation,reference){
+ const pace=timeDifference(operation.regionTime,reference?.fronts?.[operation.region]);
+ if(!pace)return '';
+ const departure=operation.region===REGIONS.length-1?'귀환':'전진';
+ return `<div class="gate-pace" aria-label="같은 전장 구간 기록"><span>#${e(reference.sequence)} 대비 · 지금 ${departure} 시</span><b data-trend="${pace.trend}">${pace.text}</b></div>`;
+}
+function debriefPace(r,reference){
+ if(!reference)return '';
+ const time=r.won?timeDifference(r.seconds,reference.seconds):null;
+ const score=r.score-reference.score;
+ const points=score===0?'점수 동일':`${score>0?'+':'−'}${n(Math.abs(score))}점`;
+ return `<section class="debrief-pace" aria-label="같은 전장 기록 비교"><span>같은 전장 #${reference.sequence} 대비</span>${time?`<b data-trend="${time.trend}">전체 ${time.text}</b><b data-trend="${score>0?'ahead':score<0?'behind':'even'}">${points}</b>`:'<b>미완주</b>'}</section>`;
+}
+function debriefNext(r,p){
  const unlocked=Array.isArray(r.researchUnlocked)?r.researchUnlocked:[];
  const available=readyResearch(p);
  const gun=r.weapons.some(w=>w.fusion)?'r':r.weapons.some(w=>w.id==='f'&&w.evolved)?'f':null;
@@ -208,19 +223,22 @@ function debriefNext(r,p,archived){
  }
  return nextOrder(p);
 }
-function debriefActions(r,p,archived){
- const next=debriefNext(r,p,archived),support=r.operation?.region===2?r.operation.support:null;
+function debriefActions(r,p,archived,compared){
+ const support=r.operation?.region===2?r.operation.support:null;
  const parts=r.balanceRevision===p.recordScope?holdoutParts(r.seed,1):[];
  const other=parts.includes(support)?parts.find(id=>id!==support):null;
- return `<section class="debrief-actions" aria-labelledby="debrief-next">
-  <span class="section-index">다음 행동</span><h2 id="debrief-next">${e(next.title)}</h2>${next.text?`<p>${e(next.text)}</p>`:''}
-  <button class="primary" data-action="home" data-target="${next.target}">${e(next.label)} <span aria-hidden="true">▶</span></button>
-  <p class="report-footnote">${p.active?'진행 중인 작전을 정산한 뒤 출격합니다. ':''}표준 작전 · 현재 연구로 해안 LV.1 시작</p>
-  <div class="debrief-replays">
-   <button data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}">같은 전장 · 표준 작전${other?`<small>${FRONT_SUPPORTS[other].name} 노리기</small>`:''}</button>
+ const reference=replayReference(r,p.recordScope);
+ const target=reference?`${splitClockText(reference.seconds)} · ${n(reference.score)}점`:'';
+ const replay=`<div class="debrief-replays">
+   <button data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}"${reference?` data-replay-from="${reference.sequence}"`:''}>같은 전장 · ${reference?'기록 도전':'표준 작전'}${target?`<small>${target}</small>`:''}${other?`<small>${FRONT_SUPPORTS[other].name} 노리기</small>`:''}</button>
    <button data-action="launch" data-actor="${operatorId(r)}">새 전장 출격</button>
-  </div>
- </section>`;
+  </div>`;
+ const footnote=`<p class="report-footnote">${p.active?'진행 중인 작전을 정산한 뒤 출격합니다. ':''}표준 작전 · 현재 연구로 해안 LV.1 시작</p>`;
+ if(archived)return `<section class="debrief-actions" aria-label="재출격">${p.active?footnote+replay:replay+footnote}<button class="text-button" data-action="home" data-target="archive">기록실로 돌아가기</button></section>`;
+ const next=debriefNext(r,p);
+ const assignment=`<div class="debrief-next"><h2>${e(next.title)}</h2>${next.text?`<p>${e(next.text)}</p>`:''}
+  <button class="primary" data-action="home" data-target="${next.target}">${e(next.label)} <span aria-hidden="true">▶</span></button></div>`;
+ return `<section class="debrief-actions" aria-label="다음 작전">${compared?replay+footnote+assignment:assignment+footnote+replay}</section>`;
 }
 function debriefDetails(r,p,lines){
  const lensUses=r.operation?.region===2&&r.operation?.tactic==='lens'?r.stats.frontTactics?.[2]:0;
@@ -255,9 +273,10 @@ export function reportView(r,p,{archived=false}={}){
  const sameScope=r.balanceRevision===p.recordScope,lines=payoutLines(r);
  const legacyFirst=r.creditBreakdown==null&&r.won&&sameScope&&hasPayout(r)&&r.credits-operationCredits(r)===200;
  const first=lines?.find(line=>line.id==='firstClear')?.value??(legacyFirst?200:0);
+ const reference=referenceMatches(r.reference,r,r.sequence)?r.reference:null;
  return `<section class="sheet report-sheet" role="dialog" aria-modal="true" aria-labelledby="result-title">
   <header class="debrief-header"><div><span class="section-index">작전 보고${r.sequence?` / #${r.sequence}`:''}</span>
-   <h1 id="result-title">${title}</h1><p>${operatorOf(r).name} · ${clockText(r.seconds)} · LV.${r.level}${r.newTime&&sameScope?' · 최단 기록 갱신':''}</p></div>
+   <h1 id="result-title">${title}</h1><p>${operatorOf(r).name} · ${reference?splitClockText(r.seconds):clockText(r.seconds)} · LV.${r.level}${r.newTime&&sameScope?' · 최단 기록 갱신':''}</p></div>
    <span class="debrief-stamp ${r.won?'won':failed?'lost':''}">${r.won?'생존 귀환':failed?'전사':'중도 귀환'}</span>
   </header>
   <div class="debrief-overview">
@@ -266,9 +285,9 @@ export function reportView(r,p,{archived=false}={}){
      ${hasPayout(r)?`<div class="earned-pay"><span>지급 크레딧</span><b>+${n(r.credits)}<small>C</small></b>${first?`<small class="first-clear">첫 완주 +${n(first)}C 포함</small>`:''}</div>`:''}
      <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>일반 적 ${n(r.stats.kills)}명 · 잔류 D${r.stats.challenge}</small></div>
     </div>
-    ${debriefRoute(r.operation,r.stats)}${harborPayoff(r)}
+    ${debriefPace(r,reference)}${debriefRoute(r.operation,r.stats,reference)}${harborPayoff(r)}
    </section>
-   ${debriefActions(r,p,archived)}
+   ${debriefActions(r,p,archived,!!reference)}
   </div>
   ${debriefDetails(r,p,lines)}
  </section>`;
