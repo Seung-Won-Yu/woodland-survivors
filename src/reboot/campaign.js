@@ -188,11 +188,20 @@ export const railDisarmed=boss=>boss.parts.every(part=>part.hp<=0);
 // Fixed outer lanes in old checkpoints also belong to a gun.
 export const railGunOf=hazard=>hazard.railGun??(hazard.x===500?0:hazard.x===1100?1:null);
 export const railHasRelay=s=>s.sites.some(site=>site.kind==='relay'&&site.state==='done');
-export function railBarrageRounds(s,cycle){
- const {boss:b,player:p}=s,plan=RAIL_BARRAGE;
+export const railDecoyReady=s=>s.operation?.region===1&&s.stage==='boss'&&s.boss.active&&!s.boss.dead
+ &&s.boss.mode==='aim'&&!s.boss.railDecoy&&!railDisarmed(s.boss)&&railHasRelay(s);
+export const railDecoyLocked=s=>s.operation?.region===1&&s.boss.active&&s.boss.mode==='aim'
+ &&s.boss.railDecoy?.cycle===s.boss.cycle+1;
+export function railBarrageAim(s,cycle){
+ const {boss:b,player:p}=s;
  const near=p.x===b.x?cycle%2:p.x<b.x?0:1;
- const lead=b.parts[near]?.hp>0?near:1-near,wing=1-lead;
- const left=Math.max(FIELD.left,p.x-plan.width/2),right=Math.min(FIELD.right,p.x+plan.width/2);
+ return {x:p.x,lead:b.parts[near]?.hp>0?near:1-near};
+}
+export function railBarrageRounds(s,cycle){
+ const b=s.boss,plan=RAIL_BARRAGE;
+ const {x,lead}=b.railDecoy?.cycle===cycle?b.railDecoy:railBarrageAim(s,cycle);
+ const wing=1-lead;
+ const left=Math.max(FIELD.left,x-plan.width/2),right=Math.min(FIELD.right,x+plan.width/2);
  const round=(x,w,railGun,tracked)=>({x,y:plan.y,w,h:plan.depth,r:0,lane:true,railGun,tracked});
  const rounds=[];
  if(b.parts[lead]?.hp>0)rounds.push(round((left+right)/2,right-left,lead,true));

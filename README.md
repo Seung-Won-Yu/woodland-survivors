@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.91.0" src="https://img.shields.io/badge/RIFT-0.91.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.92.0" src="https://img.shields.io/badge/RIFT-0.92.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -99,6 +99,8 @@ npm run test:pages
 0.90에서는 철도 잔류에서 돌격 신관을 확보한 연료 살포 인페르노가 항구에서 코어를 열고 이동 불길로 측면 배관을 점화합니다. [항구 부품별 공략과 모바일 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#090-항구-잔류-부품과-이동-불길).
 
 0.91에서는 분화를 고르기 전에 완성 병기와 남은 재료를 비교할 수 있습니다. 작업대는 조립으로 닫히는 경로와 마지막 조율권을 쓰면 미뤄지는 조합을 보여 줍니다. [무기 분화와 조립 화면](docs/RIFT-GAMEPLAY-V1.md#091-분화와-조립-선택).
+
+0.92에서는 철도 중계기를 확보하고 포대가 조준할 때 유인 신호를 한 번 보낼 수 있습니다. 발사 전에 표시된 빈 사선으로 이동해 반격 위치를 잡으세요. [철도 포격 유인과 검증](docs/RIFT-GAMEPLAY-V1.md#092-철도-중계기의-조준-유인).
 
 0.88에서는 연료 살포 인페르노가 실제 이동 경로에 불길을 남깁니다. 밀집 보병을 불길로 끌어들이거나 항구의 냉각 배관을 점화할 수 있습니다. [인페르노 분화 검증](docs/RIFT-GAMEPLAY-V1.md#088-인페르노-이동-불길과-냉각-배관).
 

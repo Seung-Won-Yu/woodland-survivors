@@ -260,6 +260,7 @@
  .port-counter-aim :is(#banner[data-kind="heal"],#field-feedback){visibility:hidden}
  .rail-boss #banner[data-kind="boss-warning"]{opacity:0}
  .rail-boss .arsenal #synergy{display:none}
+ .rail-escape .arsenal #weapons{visibility:hidden}
  :is(.rail-boss,.harbor-boss) .arsenal :is(#modules,#support-status){display:none}
  :is(.rail-boss,.harbor-boss) .arsenal .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
  :is(.rail-boss,.harbor-boss) .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
@@ -658,6 +659,7 @@
  .coast-salvage .choice-footer>small{display:none}
 }
 .coast-options .choice-tools{margin-top:12px;margin-bottom:0}
+#interact[data-kind="rail-decoy"]{border-color:#b6d7bb;background:#294239;color:#e9f0c7}
 
 .draft-loadout{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .draft-loadout>b{padding:3px 6px;border:1px solid #6e806b;background:#1c2e29;color:#f0dfb7;white-space:nowrap}

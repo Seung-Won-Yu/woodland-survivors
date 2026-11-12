@@ -122,6 +122,9 @@ export function createAudio({fieldMix = false} = {}) {
     } else if (event === 'battery-suppress') {
       transient(now,.085,.043,2450);
       note(690,145,'triangle',now,.125,.040);
+    } else if (event === 'rail-decoy') {
+      transient(now,.036,.024,1780);
+      note(372,418,'triangle',now+.018,.086,.031);
     } else if (event === 'inferno-ready') {
       transient(now,.17,.05,630);
       note(105,220,'triangle',now,.20,.042);

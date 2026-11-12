@@ -407,6 +407,8 @@ test('RIFT keeps boss warnings over hit and pickup cues and distinguishes capsto
  assert.deepEqual(mix(['boss-down','shell-land','xp-pickup']),['armor-collapse']);
  assert.deepEqual(mix(['boss-charge','warning','armor-impact','xp-pickup']),['coast-charge','guard-block']);
  assert.deepEqual(mix(['warning','shell-land','explosion']),['mortar-lock','shell-land']);
+ assert.deepEqual(mix(['rail-decoy','shot','xp-pickup']),['rail-decoy']);
+ assert.deepEqual(mix(['rail-lock','rail-decoy','shot']),['rail-lock','rail-decoy']);
  assert.deepEqual(mix(['payload-impact','payload-relay','shot','xp-pickup']),['swarm-shot','conduit-transfer']);
  assert.deepEqual(mix(['flame','fire-spread','heat','kill'],{inferno:true}),['inferno-spread','heat-break']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'flame'}),['inferno-ready']);
@@ -669,6 +671,48 @@ test('rail relay forecasts the live lanes and the stop marker leaves room before
  assert.ok(!railEscapeSlot(blocked,blocked.hazards.filter(h=>h.lane)).slot
   ||railEscapeSlot(blocked,blocked.hazards.filter(h=>h.lane)).slot.x<=586);
  tick(s,1.71,{x:-1,y:0});assert.equal(s.player.hp,86);
+});
+test('a captured relay can pin one rail salvo and reward moving before the first shot',()=>{
+ const s=railEncounter();
+ Object.assign(s,regionLayout(mapSeed(s.seed,1),1));
+ s.boss.timer=1.3;
+ const relay=s.sites.find(site=>site.id==='rail-relay');
+ assert.equal(action(s,'interact'),false);
+ relay.state='done';
+ const baseline=restore(snapshot(s));
+ assert.equal(interaction(s)?.id,'rail-decoy');
+ assert.ok(action(s,'interact'));
+ assert.equal(action(s,'interact'),false);
+ const decoy=restore(snapshot(s)),pinned=railBarragePreview(decoy);
+ assert.equal(pinned.find(h=>h.tracked).x,800);
+ assert.equal(railEscapeSlot(decoy,pinned).slot.x,670);
+ for(const run of [baseline,decoy])tick(run,.68,{x:-1,y:0});
+ assert.ok(decoy.player.x<694);
+ assert.deepEqual(railBarragePreview(decoy),pinned);
+ assert.equal(railBarragePreview(baseline).find(h=>h.tracked).x,baseline.player.x);
+ for(const run of [baseline,decoy])tick(run,.65);
+ assert.deepEqual(decoy.hazards.map(({timer,duration,...h})=>h),pinned);
+ assert.equal(baseline.hazards.find(h=>h.tracked).x,baseline.player.x);
+ for(const run of [baseline,decoy])tick(run,1.7);
+ assert.equal(decoy.player.hp,100);assert.equal(baseline.player.hp,86);
+ assert.equal(decoy.stats.railDecoys,1);
+ for(let i=0;i<240&&decoy.boss.cycle<2;i++)step(decoy,dt);
+ assert.equal(decoy.boss.cycle,2);
+ assert.equal(decoy.hazards.find(h=>h.tracked).x,decoy.player.x);
+ assert.equal(decoy.stats.railDecoys,1);
+});
+test('a pinned rail salvo does not transfer a destroyed gun lock to the remaining gun',()=>{
+ const s=railEncounter();
+ s.sites=[{id:'rail-relay',kind:'relay',state:'done',x:1120,y:580,progress:5}];
+ assert.ok(action(s,'interact'));
+ const pinned=s.boss.railDecoy;
+ s.boss.parts[pinned.lead].hp=0;
+ const remaining=railBarragePreview(s);
+ assert.equal(remaining.length,1);
+ assert.equal(remaining[0].tracked,false);
+ assert.equal(remaining[0].railGun,1-pinned.lead);
+ step(s,dt);
+ assert.deepEqual(s.hazards.map(({timer,duration,...h})=>h),remaining);
 });
 test('direct hits cancel only the destroyed gun and leave the disarmed train open',()=>{
  const s=railEncounter();step(s,dt);
