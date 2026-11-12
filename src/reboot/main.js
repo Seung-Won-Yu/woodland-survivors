@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStagingPoint,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStagingPoint,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -457,8 +457,9 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast){
  if(dispatch)map+=orderPinSvg(dispatch,run.operation.order);
  if(reserved)map+=`<circle cx="${reserved.x}" cy="${reserved.y}" r="56" fill="none" stroke="#b6e1c5" stroke-width="12" aria-label="예약 장비 · 화차 정비대"/>`;
  if(run.stage==='field'){
-  const point=coastStagingPoint(run)||BOSS_ENTRY;
+  const point=coastStagingPoint(run)||BOSS_ENTRY,armor=portArmorStaging(run);
   map+=dot('map-boss-entry',point.x,point.y,34,point.color||'#ef8e64',point.name||'보스 진입');
+  if(armor)map+=dot('map-boss-entry',armor.x,armor.y,32,armor.color,`${armor.name} · 선제 사격 위치`);
  }
  if(run.boss.active){const b=run.boss;map+=dot('map-boss',b.x,b.y,50,'#ef8e64',run.operation?region(run).boss:'장갑 수송차')+`<line class="map-boss-facing" x1="${b.x}" y1="${b.y}" x2="${b.x+Math.cos(b.body)*120}" y2="${b.y+Math.sin(b.body)*120}" stroke="#ef8e64" stroke-width="16"/>`;}
  const boss=run.boss;
@@ -508,11 +509,12 @@ function fieldEntry(s){
   const routes=entry.routes.map(route=>{
    if(route.site==='port-control'&&inferno)return {...route,sign:'관제소 · F L6 또는 보스 전술'};
    if(route.site==='port-control'&&key)return {...route,sign:`관제소 · ${FRONT_TACTICS[2][key].name}`};
-   if(route.site==='port-landing'&&part==='breach'&&s.sites.find(site=>site.id===route.site)?.gantry)return {...route,sign:'측면 해치 · 철갑 포탑 사선'};
+   if(route.site==='port-landing'&&part==='breach'&&s.sites.find(site=>site.id===route.site)?.gantry)
+    return {...route,sign:`${portSideName(portTurretSide(s.boss))} 포탑 · 측면 해치`};
    return route;
   });
-  const sign={breach:'정면 · 포탑 또는 보조포 측면',overrun:'정면 · 재장전 때 코어 돌입',recovery:'정면 · 포격 예고와 측면 화물'}[part];
-  const direct=sign?{...entry.direct,sign}:entry.direct;
+  const sign={overrun:'정면 · 재장전 때 코어 돌입',recovery:'정면 · 포격 예고와 측면 화물'}[part];
+  const direct=sign&&!s.operation.jammed?{...entry.direct,sign}:entry.direct;
   return {...entry,routes,direct};
  }
  if(s.operation?.region!==1||!entry)return entry;
@@ -566,7 +568,8 @@ function updateHud(entry,focus=null){
  const gate=exitGate(run),holdout=!!(gate&&run.operation),interact=interaction(run);
  document.body.classList.toggle('gantry-near',!!interact?.gantry);
  const bossName=run.operation?region(run).boss:'장갑 수송차';
- const staging=coastStagingPoint(run),bossPoint=run.boss.active?run.boss:staging||BOSS_ENTRY;
+ const staging=coastStagingPoint(run),armorStaging=portArmorStaging(run);
+ const bossPoint=run.boss.active?run.boss:staging||armorStaging||BOSS_ENTRY;
  const bossTarget={name:entry?.direct?.name||bossName,x:bossPoint.x,y:bossPoint.y,path:entry?.direct?.path};
  const tactic=frontTactic(run);
  const orderSite=run.stage==='field'&&front>0&&!tactic
@@ -580,10 +583,12 @@ function updateHud(entry,focus=null){
  const prepared=run.stage==='field'&&claimedCoastLead(run),coastPlan=coastStrike(run),coastArmed=coastPlan&&coastStrikeArmed(run);
  const crossDone=primaryCoast?.coastApproach&&primaryCoast.coastApproach===run.firstNew&&run.sites.some(site=>
   site.coastApproach&&site.coastApproach!==run.firstNew&&site.state==='done'&&coastStrikeArmed(run,site.coastApproach));
- const next=convoy||gate||(front>0?entrance:null)||(coastSite?.opening?coastSite:dispatch||coastSite)||(prepared&&coastArmed?bossTarget:null)||localSite||reserved||gantry||(focusBoss?bossTarget:orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
+ const armorGap=armorStaging?distance(p,armorStaging):Infinity;
+ const nearArmor=armorGap<145&&(!localSite||armorGap<distance(p,localSite));
+ const next=convoy||gate||(front>0?entrance:null)||(nearArmor?bossTarget:null)||(coastSite?.opening?coastSite:dispatch||coastSite)||(prepared&&coastArmed?bossTarget:null)||localSite||reserved||gantry||(focusBoss?bossTarget:orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
  const choosingEntry=entry?.routes.length&&!raid&&!localSite&&!focusBoss&&!gantry;
  document.body.classList.toggle('rail-fork',front===1&&!!choosingEntry);
- document.body.classList.toggle('harbor-fork',front===2&&!!choosingEntry);
+ document.body.classList.toggle('harbor-fork',front===2&&(!!choosingEntry||!!armorStaging&&next===bossTarget));
  const trackedRoute=next.path?next:entry?.routes.find(route=>route.site===next.id);
  const direction=bearing(p,...(trackedRoute?entryWaypoint(trackedRoute.path,p):[next.x,next.y]));
  $('operation-track').textContent=run.operation?REGIONS.map((d,i)=>`${i<run.operation.region?'✓':i===run.operation.region?'▶':'○'} ${d.name}`).join('  /  '):'';
@@ -632,13 +637,15 @@ function updateHud(entry,focus=null){
  }
  else if(next===bossTarget&&workshopRoute)intel=`${bearing(p,...entryWaypoint(workshopRoute.path,p))} ${workshopRoute.summary}`;
  else if(dispatch&&next===dispatch)intel=`${order.name} · ${dispatch.state==='ready'?'접근해 회수':order.action}`;
- else if(next.site==='port-gantry')intel=part==='breach'?'철갑 · 예고 중 측면 사격으로 포탑탄 차단':'포탑 측면으로 기습 · 첫 포격은 세로';
+ else if(next.site==='port-gantry')intel=`${portSideName(portTurretSide(run.boss))} 포탑 측면 · 첫 포격은 세로`;
  else if(next.id==='port-landing'&&next.gantry)intel='방패병 뒤 박격포까지 제압하면 측면 해치가 열립니다.';
  else if(orderSite&&next===orderSite)intel=entry?.routes.find(route=>route.site==='port-control')?.sign||'확보하면 보스 공략을 고를 수 있습니다.';
  else if(staging&&next===bossTarget)intel=entrance&&distance(p,staging)<40
   ?`${staging.name} · 현재 위치에서 교전`:`${staging.name} · 위치를 잡고 교전 개시`;
  else if(prepared&&coastArmed&&next===bossTarget)intel=`${coastPlan.name} 준비 · ${coastPlan.hint}`;
  else if(prepared&&coastPlan&&!coastArmed)intel=`${coastPlan.name} · 필요한 무장 미장착`;
+ else if(armorStaging&&next===bossTarget)intel=interact?.armorStaging
+  ?'여기서 교전 · 조준 중 장갑 사격':`${armorStaging.name} 표식 · 도착 후 교전`;
  else if(tactic&&run.stage==='field')intel=`${tactic.name} 확보 · 보스전에 적용`;
  else if(next===bossTarget&&entry?.direct&&PORT_SUPPORT[part])intel=PORT_SUPPORT[part].hint;
  else if(coastSite&&next===coastSite){
@@ -714,7 +721,7 @@ function updateHud(entry,focus=null){
  if(p.maneuver)maneuver.textContent=`${MANEUVERS[p.maneuver].name} · ${active?'가동':p.maneuver==='assault'?'회피하며 이동':'정지해 조준'}`;
  const support=FRONT_SUPPORTS[run.operation?.support];
  $('support-status').hidden=!support;
- if(support)$('support-status').textContent=front===2&&Object.hasOwn(PORT_SUPPORT,run.operation.support)&&!run.boss.active&&run.stage==='field'
+ if(support)$('support-status').textContent=front===2&&part!=='breach'&&Object.hasOwn(PORT_SUPPORT,part)&&!run.boss.active&&run.stage==='field'
   ?supportTactic(run.operation.support,front):`${support.name} · ${support.role}`;
  $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
  const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion]),run.modules,run.tuning]);if(key!==inventoryStamp){inventoryStamp=key;$('weapons').innerHTML=run.weapons.map(w=>`<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}">${itemArt(w.id)}<b>${w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:GUNS[w.id].short}</b><small>${w.evolved?capstoneName(w):`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`}</small></div>`).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');$('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');}
@@ -922,8 +929,8 @@ function updateHud(entry,focus=null){
     const armor=portArmorExposed(run);
     const prepared=!recovering&&boss.armorSuppressedCycle===(boss.mode==='aim'?boss.cycle+1:boss.cycle);
     const jammed=boss.mode==='aim'&&portJamsSweep(run,boss.cycle+1);
-    const turretSide=portTurretSide(boss)<0?'왼쪽':'오른쪽';
-    const armorSide=turretSide==='왼쪽'?'오른쪽':'왼쪽';
+    const turretSide=portSideName(portTurretSide(boss));
+    const armorSide=portSideName(-portTurretSide(boss));
     if(armorHit)line.textContent=armorHit.text;
     else if(armor&&prepared)line.textContent=boss.mode==='aim'?'철갑 · 다음 보조 포격 차단':'철갑 · 보조포 차단 · 남은 포격 회피';
     else if(armorLine&&(turret.hp<=0||armorLine!=='flank')){

@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -191,7 +191,12 @@ export function choiceDetails(s,c){
   const index=s.operation.region+1;
   const effect=index===2?PORT_SUPPORT[c.key]||kit:kit;
   out.art=kit.art;out.impact=effect.impact.replaceAll('전탄',chargeLabel(s));out.detail=effect.detail.replaceAll('전탄',chargeLabel(s));out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
-  if(index===2&&c.key==='overrun'&&s.weapons.some(isFocusedInferno)){
+  if(index===2&&c.key==='breach'){
+   const turret=portTurretSide(regionBoss(2,s.seed));
+   out.impact=`${portSideName(turret)} 포탑 · ${portSideName(-turret)} 보조포`;
+   out.detail='보조포 표식에서 교전을 시작해 급탄을 끊거나, 해치로 포탑을 선점하세요.';
+   out.link=`포탑 측면 피해 +${pct(1,effect.boost)}%`;
+  }else if(index===2&&c.key==='overrun'&&s.weapons.some(isFocusedInferno)){
    out.detail=`압축 인페르노 장착 중 · 코어에서 ${portCompressionRange} 떨어져 좌우 회피한 뒤 멈춰 분사하세요.`;
    out.link='장갑 해제 · 재장전 +0.9초';
   }else if(index===2&&c.key==='overrun'&&s.weapons.some(isTrailInferno)){

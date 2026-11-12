@@ -1358,6 +1358,41 @@ function harborLanding(seed){
  for(const site of s.sites)if(site.id!=='port-landing')site.state='done';
  return s;
 }
+test('rail breach parts reveal a mirrored harbor firing position that keeps the launch coordinates',()=>{
+ for(const seed of [24,27]){
+  const s=harborLanding(seed);
+  s.operation.support='breach';s.operation.harborPayoff={};
+  const entry=activeEntry(s).direct,side=seed%2===0?-1:1;
+  const [x,y]=entry.path.at(-1);
+  assert.equal(Math.sign(x-s.boss.x),side);
+  assert.equal(entry.name,side<0?'왼쪽 보조포':'오른쪽 보조포');
+  const draft={...s,operation:{...s.operation,region:1}};
+  const card=choiceDetails(draft,{kind:'front-support',key:'breach'});
+  assert.ok(card.impact.endsWith(entry.name));
+  assert.equal(card.link,'포탑 측면 피해 +65%');
+  for(let i=0;i<=10;i++)assert.ok(!overlapsCover(s,{x:800+(x-800)*i/10,y:350+(y-350)*i/10},16));
+  const start={x:x-side*9,y:y+12};
+  const jammed=restore(snapshot(s));jammed.operation.jammed=true;
+  Object.assign(jammed.player,start);
+  assert.equal(interaction(jammed),null);
+  assert.deepEqual(activeEntry(jammed).direct.path.at(-1),[800,350]);
+  const other=restore(snapshot(s));other.operation.support='recovery';
+  Object.assign(other.player,start);
+  assert.equal(interaction(other),null);
+
+  Object.assign(s.player,start);
+  assert.equal(interaction(s).armorStaging,true);
+  assert.ok(action(s,'interact'));
+  assert.deepEqual([s.player.x,s.player.y],[start.x,start.y]);
+  assert.equal(s.operation.portEntry,undefined);
+  assert.ok(portTurretShutter(s));
+  s.weapons=[{...makeWeapon('f'),uid:'staged-flame',level:6,branch:'trail',evolved:true,cd:0}];
+  const resumed=restore(snapshot(s));
+  tick(resumed,1.34);
+  assert.equal(resumed.operation.harborPayoff.armorPreps,1);
+  assert.deepEqual(resumed.hazards.map(h=>h.portRound),['lock','turret','turret']);
+ }
+});
 test('the harbor landing opens a mirrored, traversable hatch only after its defenders are cleared',()=>{
  for(const seed of [17,18]){
   const s=harborLanding(seed),dock=s.sites[0];

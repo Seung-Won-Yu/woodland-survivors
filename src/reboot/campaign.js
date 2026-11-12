@@ -125,7 +125,13 @@ export const PORT_SUPPORT={
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
+export const portSideName=side=>side<0?'왼쪽':'오른쪽';
 export const portFlankPoint=(boss,side=portTurretSide(boss))=>({x:boss.x+side*142,y:boss.y+95});
+export function portArmorStaging(s){
+ if(s.operation?.region!==2||s.operation.support!=='breach'||s.stage!=='field'||!portAuxiliaryRound(s,1))return null;
+ const b=s.boss,side=-portTurretSide(b);
+ return {x:b.x+side*164,y:b.y+144,r:44,name:`${portSideName(side)} 보조포`,color:'#f0cf9c'};
+}
 export const portWakePoint=boss=>({x:boss.x-portTurretSide(boss)*134,y:boss.y+86,r:12});
 const portOpeningShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
 const portTurretFlank=s=>(s.player.x-s.boss.x)*portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
@@ -524,6 +530,11 @@ export function activeEntry(s){
   const origin=control&&(!dock||distance(s.player,control)<distance(s.player,dock))?'control':dock?'dock':'arrival';
   const direct=portCenterRoute(s.seed,origin);
   if(s.operation.jammed)direct.sign='정면 · 첫 장갑탄 차단';
+  const armor=portArmorStaging(s);
+  if(armor){
+   direct.name=armor.name;direct.sign=`${armor.name} · 선제 사격`;direct.color=armor.color;
+   direct.path=[...direct.path,[armor.x,armor.y]];
+  }
   return {...entry,routes,direct};
  }
  const origin=s.sites.filter(site=>['rail-cache','rail-relay'].includes(site.id)&&site.state==='done')

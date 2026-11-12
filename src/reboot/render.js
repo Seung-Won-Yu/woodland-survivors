@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,BOSS_ENTRY,coastStagingPoint,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {exitGate,BOSS_ENTRY,coastStagingPoint,portArmorStaging,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
@@ -66,7 +66,7 @@ function paintChargeLane(c,b,lane,outline=false){
  }
  c.restore();
 }
-function paintCoastStaging(c,s,point){
+function paintStaging(c,s,point){
  const {x,y,color,name}=point;
  c.save();
  c.fillStyle='#293c34';
@@ -811,8 +811,9 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   for(const g of s.gems)if(!g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   if(s.stage==='field'){
-   const staging=coastStagingPoint(s);
-   if(staging)paintCoastStaging(c,s,staging);
+   const staging=coastStagingPoint(s),armor=portArmorStaging(s);
+   if(armor&&visible(armor.x,armor.y,54))paintStaging(c,s,armor);
+   if(staging)paintStaging(c,s,staging);
    else{
     c.fillStyle='#293c34';c.fillRect(718,326,42,16);c.fillRect(840,326,42,16);
     c.fillStyle='#d8b471';
