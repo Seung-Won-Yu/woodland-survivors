@@ -1,10 +1,9 @@
-import {RESEARCH,REQUISITION_FEE,operationPayout,sortieOrder,orderRecordScope} from './campaign.js';
+import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,restore,snapshot,finish,canResumeRun} from './model.js';
 import {operatorId} from './operator.js';
 import {replayReference,referenceMatches} from './replay.js';
 export const STORAGE_KEY='operation-rift-profile-v2';
-const pickedTrials=stats=>stats.researchTrialsPicked||[stats.researchTrialPicked].filter(Boolean);
 const copy=x=>JSON.parse(JSON.stringify(x));
 const validOrderRecords=records=>records&&typeof records==='object'&&!Array.isArray(records)&&Object.entries(records).every(([id,r])=>sortieOrder(id)&&r&&typeof r.scope==='string'&&Number.isSafeInteger(r.wins)&&r.wins>=1&&[r.score,r.time].every(v=>Number.isFinite(v)&&v>=0));
 export const marcoRecord=p=>p.marcoRecords?.scope===p.recordScope?p.marcoRecords:null;
@@ -59,7 +58,13 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
  if(requisitionAt)run.operation.requisitionAt=requisitionAt;
  return {run,next:beginProfile(p,run,reference)};
 }
-export function checkpointProfile(p,run){if(!p.active)throw Error('활성 전투가 없습니다.');if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');const n=copy(p);n.active.run=snapshot(run);n.trials=n.trials.filter(id=>!pickedTrials(run.stats).includes(id));return n;}
+export function checkpointProfile(p,run){
+ if(!p.active)throw Error('활성 전투가 없습니다.');
+ if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');
+ const n=copy(p);n.active.run=snapshot(run);
+ if(!run.operation?.trialProof)n.trials=n.trials.filter(id=>!pickedResearchTrials(run.stats).includes(id));
+ return n;
+}
 export function settleProfile(p,run){
  if(!run.result)throw Error('아직 끝나지 않은 전투입니다.');if(!p.active){if(p.settled===p.sequence)return copy(p);throw Error('정산할 전투를 찾지 못했습니다.');}
  if(run.runId!==p.active.runId||run.result.runId!==p.active.runId)throw Error('다른 작전의 정산 결과입니다.');
@@ -67,7 +72,9 @@ export function settleProfile(p,run){
  const order=sortieOrder(r.operation?.order),sameScope=r.balanceRevision===n.recordScope,marco=operatorId(r)==='marco';
  delete r.reference;
  if(sameScope&&r.reason!=='rules-updated'&&referenceMatches(n.active.reference,r,n.sequence))r.reference=n.active.reference;
- const {credits,lines}=operationPayout(r,!n.milestones.medic);
+ const proofs=completedResearchProofs(r).filter(id=>n.trials.includes(id));
+ const {credits,lines}=operationPayout(r,!n.milestones.medic,proofs);
+ if(proofs.length)r.researchProven=proofs;
  r.credits=credits;r.creditBreakdown=lines;r.newScore=false;r.newTime=false;
  if(order){
   r.orderFee=order.fee;r.orderBonus=lines.order;
@@ -90,7 +97,8 @@ export function settleProfile(p,run){
  if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;
  if(r.stats.flameBosses>0)n.milestones.thermal=true;
  r.researchUnlocked=Object.keys(RESEARCH).filter(id=>n.milestones[id]&&!p.milestones[id]);
- n.credits+=r.credits;n.trials=n.trials.filter(id=>!pickedTrials(r.stats).includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
+ const clearedTrials=r.operation?.trialProof?proofs:pickedResearchTrials(r.stats);
+ n.credits+=r.credits;n.trials=n.trials.filter(id=>!clearedTrials.includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
 }
 export function buyResearch(p,id){const d=RESEARCH[id];if(!d||p.active||p.research.includes(id)||!p.milestones[id]||p.credits<d.cost)return null;const n=copy(p);n.credits-=d.cost;n.research.push(id);n.trials.push(id);return n;}
 export function createStore(storage,lock=null){

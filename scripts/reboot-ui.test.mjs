@@ -160,6 +160,8 @@ test('reports distinguish this sortie unlocks from prior availability and show f
 test('settled reports lead to affordable research and preserve exact replay seed',()=>{
  const run=createOperation(17);let p=beginProfile(emptyProfile(),run);run.operation.cleared=3;run.operation.extracted=true;run.stats.bossKilled=true;finish(run,true);p=settleProfile(p,run);
  const html=reportView(p.recent[0],p);assert.match(html,/data-target="research"/);assert.match(html,/data-action="replay-brief" data-replay-from="1"/);assert.match(replayBriefingView(p.recent[0],p),/data-action="same-seed" data-seed="17"/);assert.match(html,/첫 완주 \+200C 포함/);
+ assert.match(html,/data-research="medic" data-debrief-research[^>]*>300C · 응급 주사기 연구/);
+ assert.ok(html.indexOf('debrief-actions')<html.indexOf('debrief-summary'));
  assert.match(html,/전선 보스 격파<\/dt><dd>\+390C/);
  assert.match(html,/이번에 지급<\/dt><dd>\+710C/);
  assert.ok(html.indexOf('debrief-actions')<html.indexOf('debrief-details'));
@@ -173,6 +175,32 @@ test('settled reports lead to affordable research and preserve exact replay seed
  assert.match(reportView(p.recent[0],p,{archived:true}),/data-target="archive"/);
  const withActive=beginProfile(p,createOperation(18)),archived=reportView(p.recent[0],withActive,{archived:true});
  assert.match(archived,/data-action="replay-brief" data-replay-from="1"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
+ assert.doesNotMatch(archived,/data-debrief-research|data-trial-focus|data-dispatch="requisition/);
+});
+test('the research experiment follows one module through trial briefing, payout and optional reservation',()=>{
+ const base=emptyProfile();base.credits=500;base.research=['shrapnel'];base.trials=['shrapnel'];
+ const run=createOperation(23,base.research,base.trials),active=beginProfile(base,run);
+ run.stats.researchTrialsPicked=['shrapnel'];run.stats.shrapnelHits=7;
+ finish(run,false);
+ const pending=settleProfile(active,run),r=pending.recent[0];
+ assert.match(reportView(r,pending),/이번 판 7\/8 · 파편 적중 8회/);
+ assert.match(reportView(r,pending),/data-trial-focus="shrapnel"/);
+ const briefing=replayBriefingView(r,pending,'standard','shrapnel');
+ assert.match(briefing,/id="replay-brief-title">분열 수류탄/);
+ assert.match(briefing,/파편 적중 8회 · 실증 \+120C/);
+ assert.match(briefing,/data-action="same-seed" data-seed="23"/);
+ assert.doesNotMatch(briefing,/data-requisition=/);
+ const wonTrial=createOperation(23,base.research,base.trials),newActive=beginProfile(pending,wonTrial);
+ wonTrial.stats.researchTrialsPicked=['shrapnel'];wonTrial.stats.shrapnelHits=8;
+ finish(wonTrial,false);
+ const tested=settleProfile(newActive,wonTrial),report=tested.recent[0];
+ const html=reportView(report,tested);
+ assert.match(html,/data-dispatch="requisition:shrapnel:coast"/);
+ assert.match(html,/연구 실증<\/dt><dd>\+120C/);
+ assert.match(html,/실증 \+120C<\/em>/);
+ const reservation=replayBriefingView(report,tested,'requisition:shrapnel:coast');
+ assert.match(reservation,/data-requisition="shrapnel" data-requisition-at="coast"/);
+ assert.match(reservation,/재출격 · 120C/);
 });
 test('a comparable repeat shows independent time and score changes and the actual sector splits',()=>{
  const complete=(run,fronts,score)=>{

@@ -912,7 +912,8 @@ test('a settled fusion unlocks shrapnel in a fresh sortie and its payload uses t
  assert.deepEqual(run.weapons.map(w=>[w.id,w.level]),[['h',1]]);assert.equal(run.modules.length,0);
  assert.ok(supply(run).every(c=>c.id!=='module:shrapnel'));assert.ok(choose(run,'gun:r'));
  assert.equal(supply(run,'supply-b').find(c=>c.id==='module:shrapnel')?.label,'새 연구 · 첫 실전');assert.ok(choose(run,'module:shrapnel'));
- const checkpoint=checkpointProfile(next,run);assert.deepEqual(checkpoint.research,['shrapnel']);assert.deepEqual(checkpoint.trials,[]);
+ const checkpoint=checkpointProfile(next,run);assert.deepEqual(checkpoint.research,['shrapnel']);assert.deepEqual(checkpoint.trials,['shrapnel']);
+ assert.deepEqual(checkpoint.active.run.trials,[]);
  Object.assign(run.weapons[0],{level:4,branch:'ricochet',cd:999});Object.assign(run.weapons[1],{level:4,branch:'homing',cd:999});run.modules.push({id:'coil',rank:2});assert.ok(action(run,'gear'));assert.ok(choose(run,'fusion:h:r'));
  const dummy=enemy('fused-hit',run.player.x,run.player.y-100,'rifle',1000);run.enemies=[dummy];run.shots=[bullet(run,dummy,1)];step(run,dt);
  assert.equal(run.stats.payloadBursts,1);assert.equal(run.stats.shrapnelBursts,1);assert.equal(run.effects.filter(f=>f.type==='shrapnel').length,3);
@@ -3445,7 +3446,7 @@ test('harbor armor parts change actual body vulnerability and rare unique banish
 });
 
 test('research trial selection checkpoints atomically and two holdout completions add exactly forty credits',async()=>{
- const {operationCredits}=await import('../src/reboot/campaign.js');const s=createOperation(17,['medic'],'medic'),base=emptyProfile();base.research=['medic'];base.trials=['medic'];const p=beginProfile(base,s);s.sites.forEach(n=>n.state='done');s.enemies=[];s.spawnClock=999;supply(s);choose(s,'module:medic');const next=checkpointProfile(p,s);assert.deepEqual(next.trials,[]);assert.deepEqual(p.trials,['medic']);
+ const {operationCredits}=await import('../src/reboot/campaign.js');const s=createOperation(17,['medic'],'medic'),base=emptyProfile();base.research=['medic'];base.trials=['medic'];const p=beginProfile(base,s);s.sites.forEach(n=>n.state='done');s.enemies=[];s.spawnClock=999;supply(s);choose(s,'module:medic');const next=checkpointProfile(p,s);assert.deepEqual(next.active.run.trials,[]);assert.deepEqual(next.trials,['medic']);assert.deepEqual(p.trials,['medic']);
  const r={operation:{cleared:1},stats:{kills:0,elites:0,sitesCleared:0,raidSuccess:0,challenge:2,challengeWins:2},won:false};assert.equal(operationCredits(r),130);r.stats.challengeWins=0;r.stats.challenge=0;assert.equal(operationCredits(r),90);
 });
 function directorFixture(index){const s=quietOperation();for(let i=0;i<index;i++){clearRegion(s);choose(s,'advance');}s.enemies=[];s.sites.forEach(n=>n.state='done');s.blocks=[];s.player.x=800;s.player.y=800;s.player.invuln=1000;s.weapons[0].cd=999;s.spawnClock=0;s.pendingLevels=0;return s;}
@@ -3469,8 +3470,38 @@ test('previous active revisions settle secured rewards once without entering the
 test('record revision changes preserve credits, research and lifetime wins without repeating first-win cash',()=>{
  const old=emptyProfile();old.recordScope='previous';old.records={score:1234,time:100,challenge:2,wins:1};old.sequence=1;old.settled=1;old.credits=500;old.milestones.medic=true;old.research=['medic'];const p=parseProfile(JSON.stringify(old));assert.equal(p.records.score,0);assert.equal(p.records.wins,1);assert.equal(p.recordArchive[0].records.score,1234);assert.equal(p.credits,500);assert.deepEqual(p.research,['medic']);const s=quietOperation();let next=beginProfile(p,s);for(let i=0;i<3;i++){clearRegion(s);if(i<2)choose(s,'advance');}choose(s,'extract');next=settleProfile(next,s);assert.equal(next.credits,1010);assert.equal(next.records.wins,2);
 });
-test('multiple new researches each appear at their first compatible supply and checkpoint independently',()=>{
- const s=createOperation(17,['thermal','medic'],['thermal','medic']),base=emptyProfile();base.research=['thermal','medic'];base.trials=['thermal','medic'];let p=beginProfile(base,s);s.sites.forEach(n=>n.state='done');s.enemies=[];s.spawnClock=999;supply(s);assert.ok(s.choices.some(c=>c.module==='medic'));assert.ok(choose(s,'module:medic'));p=checkpointProfile(p,s);assert.deepEqual(p.trials,['thermal']);s.weapons.push({...makeWeapon('f'),uid:'fire'});s.modules.push({id:'coil',rank:1});supply(s,'supply-b');assert.ok(s.choices.some(c=>c.module==='thermal'));assert.ok(choose(s,'module:thermal'));p=checkpointProfile(p,s);assert.deepEqual(p.trials,[]);assert.deepEqual(s.stats.researchTrialsPicked,['medic','thermal']);
+test('multiple research trials retain their own completion state through checkpoint and settlement',()=>{
+ const base=emptyProfile();base.research=['thermal','medic'];base.trials=['thermal','medic'];
+ const {run:s,next}=freshSortie(base,17);
+ s.sites.forEach(n=>n.state='done');s.enemies=[];s.spawnClock=999;
+ supply(s);assert.ok(choose(s,'module:medic'));
+ assert.deepEqual(s.trials,['thermal']);
+ s.weapons.push({...makeWeapon('f'),uid:'fire'});s.modules.push({id:'coil',rank:1});
+ supply(s,'supply-b');assert.ok(choose(s,'module:thermal'));
+ assert.deepEqual(s.trials,[]);
+ assert.deepEqual(s.stats.researchTrialsPicked,['medic','thermal']);
+ const p=checkpointProfile(next,s);
+ assert.deepEqual(p.trials,base.trials);
+ const before=restore(p.active.run);
+ const old=restore(p.active.run);delete old.operation.trialProof;
+ assert.deepEqual(checkpointProfile(p,old).trials,[]);
+ finish(before,false);assert.deepEqual(settleProfile(p,before).trials,base.trials);
+ Object.assign(s.stats,{medicRecovered:1,thermalRecovered:7.9});
+ const saved=checkpointProfile(p,s),resumed=restore(saved.active.run);
+ finish(resumed,false);
+ const settled=settleProfile(saved,resumed),report=settled.recent[0];
+ assert.deepEqual(settled.trials,['thermal']);
+ assert.deepEqual(report.researchProven,['medic']);
+ assert.equal(report.creditBreakdown.trial,120);
+ assert.equal(settleProfile(settled,resumed).credits,settled.credits);
+ assert.equal(freshSortie(saved,18).next.credits,settled.credits);
+ const {run:retry,next:trial}=freshSortie(settled,18);
+ Object.assign(retry.stats,{researchTrialsPicked:['thermal'],thermalRecovered:8,medicRecovered:12});
+ finish(retry,false);
+ const final=settleProfile(trial,retry);
+ assert.deepEqual(final.trials,[]);
+ assert.deepEqual(final.recent[0].researchProven,['thermal']);
+ assert.equal(final.recent[0].creditBreakdown.trial,120);
 });
 test('boss telegraphs render safely from their first warning frame through impact',async()=>{
  const {createRenderer}=await import('../src/reboot/render.js'),saved={innerWidth:globalThis.innerWidth,innerHeight:globalThis.innerHeight,devicePixelRatio:globalThis.devicePixelRatio};let arcs=0;

@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -238,9 +238,11 @@ function closeArchivedReport(){
 function openReplayBriefing(source){
  const p=profile(),sequence=Number(source.dataset.replayFrom);
  const report=p.recent.find(r=>r?.sequence===sequence&&isReport(r));
- const html=report&&replayBriefingView(report,p);
+ const trial=source.dataset.trialFocus;
+ const html=report&&replayBriefingView(report,p,source.dataset.dispatch,trial);
  if(!html){notice('지난 전장의 작전 보고서를 읽지 못했습니다.');return;}
- subpanel={type:'replay-briefing',report,origin:{scroll:ui.scrollTop,selector:'[data-action="replay-brief"]'}};
+ const selector=source.hasAttribute('data-experiment')?'[data-experiment]':'[data-action="replay-brief"]:not([data-experiment])';
+ subpanel={type:'replay-briefing',report,trial,origin:{scroll:ui.scrollTop,selector}};
  panel(html);
 }
 function closeReplayBriefing(){
@@ -405,7 +407,7 @@ ui.addEventListener('change',async e=>{
  if(e.target.id==='replay-dispatch'&&subpanel?.type==='replay-briefing'){
   if(busy||pending)return;
   nextPanelFocus={scroll:ui.scrollTop,selector:'#replay-dispatch'};
-  panel(replayBriefingView(subpanel.report,profile(),e.target.value));
+  panel(replayBriefingView(subpanel.report,profile(),e.target.value,subpanel.trial));
   return;
  }
  const key=e.target.dataset.setting;
@@ -454,7 +456,19 @@ ui.addEventListener('click',async e=>{
   if(isReport(r)){reportOrigin={scroll:ui.scrollTop,selector:`[data-report="${index}"]`};mode='report';showResult(r,true);}
   return;
  }
- if(button.dataset.research){const next=buyResearch(profile(),button.dataset.research);if(!next)return;setBusy(true);try{await store.commit(next);setBusy(false);lobbyTab='research';nextPanelFocus={selector:'#trial-dispatch-title'};showHome();}catch(error){notice(error.message);}finally{setBusy(false);}return;}
+ if(button.dataset.research){
+  const fromReport=button.hasAttribute('data-debrief-research');
+  if(fromReport&&(mode!=='battle'||run?.phase!=='result'))return;
+  const next=buyResearch(profile(),button.dataset.research);
+  if(!next)return;
+  setBusy(true);
+  try{
+   await store.commit(next);setBusy(false);
+   if(fromReport){nextPanelFocus={selector:'[data-experiment]'};showResult();}
+   else{lobbyTab='research';nextPanelFocus={selector:'#trial-dispatch-title'};showHome();}
+  }catch(error){notice(error.message);}finally{setBusy(false);}
+  return;
+ }
  if(button.dataset.choice){await selectCard(button.dataset.choice);return;}
  if(button.dataset.refit){const w=refitWeapons(run).find(w=>w.id===button.dataset.refit);if(w)await selectCard(subpanel.card.id,{weapon:w.id,branch:Object.keys(GUNS[w.id].branches).find(id=>id!==w.branch)});return;}
  if(button.dataset.branch){const {card,args}=subpanel;await selectCard(card.id,{...args,branch:button.dataset.branch});return;}
@@ -853,8 +867,15 @@ function updateHud(entry,focus=null,coast={}){
  const fusion=run.weapons.find(w=>w.fusion),focused=run.weapons.find(isFocusedInferno),synergy=$('synergy');
  synergy.classList.toggle('conductive',!!fusion);
  synergy.textContent=fusion?.fusion.branch==='incendiary'?`화약탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 유폭 ${run.stats.emberBursts||0}회`:fusion?`연쇄탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 도약 ${run.stats.payloadRelays||0}회`:moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
- if(moduleRank(run,'shrapnel'))synergy.textContent+=`${synergy.textContent?' · ':''}파쇄 ${run.stats.shrapnelBursts||0}회`;
- if(moduleRank(run,'thermal')&&run.stats.thermalRecovered>=1)synergy.textContent+=`${synergy.textContent?' · ':''}흡열 +${Math.floor(run.stats.thermalRecovered)}충전`;
+ const trial=run.modules.map(m=>researchProofProgress(run,m.id)).find(proof=>proof&&!proof.done);
+ const proved=completedResearchProofs(run).length;
+ if(trial||proved){
+  const status=trial?`${trial.short} 실증 ${Math.floor(trial.progress)}/${trial.amount}`:`실증 완료 · 정산 +${proved*RESEARCH_PROOF_CREDITS}C`;
+  synergy.textContent=[synergy.textContent,status].filter(Boolean).join(' · ');
+ }else{
+  if(moduleRank(run,'shrapnel'))synergy.textContent+=`${synergy.textContent?' · ':''}파쇄 ${run.stats.shrapnelBursts||0}회`;
+  if(moduleRank(run,'thermal')&&run.stats.thermalRecovered>=1)synergy.textContent+=`${synergy.textContent?' · ':''}흡열 +${Math.floor(run.stats.thermalRecovered)}충전`;
+ }
  const options=assemblyOptions(run),ready=(run.firstNew==='f'&&options.find(o=>o.id==='evolve:f'))||options.find(o=>['evolve','fusion'].includes(o.kind));
  const heatReady=heatSynergyReady(run,2)&&moduleRank(run,'catalyst')===2&&options.some(o=>o.id==='tune:catalyst');
  const upgrade=$('field-upgrade');

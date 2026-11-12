@@ -670,9 +670,24 @@ export function regionBoss(index,seed=1){const d=REGIONS[index],turretSide=index
 export const RESEARCH={
  medic:{name:'응급 주사기',cost:300,condition:'첫 작전 완주',detail:'정예를 잡으면 체력12 회복 · 재사용12초. 보급 후보로 추가되며 모듈 한 칸을 씁니다.',fieldBrief:'포로 구출 보상에서 장착하고, 정예를 제압해 체력을 회복하세요.',fitting:'정예 제압으로 발동'},
  shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'유탄·로켓·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.',fieldGun:'r',fieldBrief:'로켓을 확보하세요. 박격포 진지에서 분열 수류탄과 축전 코일이 함께 후보에 오릅니다.',fitting:'유탄·로켓·합체 연쇄탄에서 발동'},
- thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'F를 확보하고 박격포 진지에서 축전 코일을 고르세요. 다음 호환 보급에 시험품이 나옵니다.',fitting:'축전 코일과 연소 무장 필요'}
+ thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'F와 박격포 진지의 축전 코일을 챙기세요. 시험품 장착 후 스킬을 써서 충전할 자리를 만드세요.',fitting:'축전 코일과 연소 무장 필요'}
 };
 export const REQUISITION_FEE=120;
+export const RESEARCH_PROOF_CREDITS=REQUISITION_FEE;
+export const RESEARCH_PROOFS={
+ medic:{counter:'medicRecovered',amount:1,label:'정예 제압으로 체력 회복',short:'회복'},
+ shrapnel:{counter:'shrapnelHits',amount:8,label:'파편 적중 8회',short:'파편 적중'},
+ thermal:{counter:'thermalRecovered',amount:8,label:'연소·전기로 충전 +8',short:'흡열 충전'}
+};
+export const pickedResearchTrials=stats=>Array.isArray(stats.researchTrialsPicked)?stats.researchTrialsPicked:[stats.researchTrialPicked].filter(Boolean);
+export function researchProofProgress(s,id){
+ const proof=RESEARCH_PROOFS[id];
+ if(s.operation?.trialProof!==true||!proof||!pickedResearchTrials(s.stats).includes(id))return null;
+ const value=s.stats[proof.counter];
+ const progress=Number.isFinite(value)?Math.max(0,value):0;
+ return {...proof,progress,done:progress>=proof.amount};
+}
+export const completedResearchProofs=s=>Object.keys(RESEARCH_PROOFS).filter(id=>researchProofProgress(s,id)?.done);
 export const requisitionFront=operation=>operation?.requisitionAt==='coast'?0:1;
 export const requisitionDestination=op=>requisitionFront(op)===0?COAST_APPROACHES[RESEARCH[op.requisition]?.fieldGun]?.name||'해안 보급':'화차 정비대';
 export function requisitionStation(s){
@@ -688,7 +703,7 @@ export function requisitionSite(s){
  return station?.state!=='done'?station:null;
 }
 export const CARGO_CREDITS=70;
-export function operationPayout(r,firstWin=false){
+export function operationPayout(r,firstWin=false,proofs=completedResearchProofs(r)){
  if(!r.operation)return {credits:0,lines:{}};
  const s=r.stats,lines={
   fronts:[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0),
@@ -701,6 +716,7 @@ export function operationPayout(r,firstWin=false){
   firstClear:firstWin&&r.won?200:0,
   order:orderBonus(r)
  };
+ if(proofs.length)lines.trial=proofs.length*RESEARCH_PROOF_CREDITS;
  return {credits:Object.values(lines).reduce((total,value)=>total+value,0),lines};
 }
 export const operationCredits=(r,firstWin=false)=>operationPayout(r,firstWin).credits;

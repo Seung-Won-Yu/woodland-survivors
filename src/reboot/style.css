@@ -600,11 +600,12 @@
 .report-sheet>.debrief-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 17px}
 .debrief-header .section-index{color:var(--gold)}
 .debrief-header h1{margin:4px 0 5px;font-size:clamp(25px,4vw,38px);line-height:1.12}
-.debrief-header p{margin:0;color:#ced8be;font-size:12px;line-height:1.5}
+.debrief-header p{margin:0;color:#ced8be;font-size:12px;line-height:1.5;word-break:keep-all}
 .debrief-stamp{padding:6px 8px;border:2px solid var(--gold);color:var(--gold);font-size:13px;transform:rotate(-5deg);white-space:nowrap}
 .debrief-stamp.won{border-color:#bcd79c;color:#c1dda5}
 .debrief-stamp.lost{border-color:#d9a491;color:#eab6a3}
-.debrief-overview{display:grid;grid-template-columns:1.1fr 1fr;align-items:start;gap:20px}
+.debrief-overview{display:grid;grid-template-columns:1.1fr 1fr;grid-template-areas:"score next" "details next";align-items:start;gap:0 20px}
+.debrief-scorecard{grid-area:score}.debrief-summary{grid-area:details}.debrief-actions{grid-area:next}
 .debrief-summary,.debrief-actions{min-width:0}
 .debrief-scorecard{display:flex;align-items:stretch;background:#ded2a9;color:#2e3f34;clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%)}
 .earned-pay,.debrief-points{display:grid;align-content:start;flex:1;min-width:0;gap:4px;padding:12px 15px}
@@ -636,6 +637,10 @@
 .debrief-actions .primary{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:48px;font-size:14px}
 .debrief-actions .report-footnote{margin:9px 0 5px}
 .debrief-actions .text-button{min-height:44px}
+.debrief-next:has([data-experiment]){padding-left:9px;border-left:2px solid var(--gold)}
+.debrief-next [data-experiment]{line-height:1.4;text-align:left;word-break:keep-all}
+.replay-trial-order{display:grid;gap:4px;padding:8px 10px;border-left:2px solid var(--gold);background:#354437;color:#f1db9d;font-size:12px;line-height:1.45}
+.replay-trial-order small{color:#e0e6d3}
 .debrief-actions .report-footnote+.debrief-next{margin-top:10px;padding-top:8px;border-top:1px solid #657560}
 .debrief-replays{display:grid;grid-template-columns:1.25fr 1fr;gap:6px}
 .debrief-replays button{min-width:0;min-height:48px;padding:6px 7px;text-align:left;background:#32423a;color:#f1e7cb;font-size:12px;line-height:1.35;word-break:keep-all}
@@ -692,6 +697,7 @@
  .sheet.replay-briefing{padding:13px 12px}
  .report-sheet>.debrief-header{margin-bottom:11px}
  .debrief-overview,.debrief-detail-grid{grid-template-columns:1fr;gap:10px}
+ .debrief-overview{grid-template-areas:"score" "next" "details"}
  .earned-pay,.debrief-points{padding:9px 10px}
  .debrief-actions{padding:10px}
  .debrief-actions h2{font-size:16px}

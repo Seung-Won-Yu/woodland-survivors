@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
+import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -156,6 +156,8 @@ export function choiceDetails(s,c){
   }
   if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
   out.cost=c.kind==='tune'?'조율권 1개 사용':g.current?`${g.current} → ${g.next}강화 · 같은 칸 유지${g.charge?` · 초과 충전 +${g.charge}`:''}`:`새 모듈 ${g.next}강화 · ${s.modules.length<4?'모듈 한 칸 사용':'기존 모듈 교체'}`;
+  const proof=s.operation?.trialProof&&s.trials.includes(c.module)&&RESEARCH_PROOFS[c.module];
+  if(proof)out.link=`${proof.label} · 실증 +${RESEARCH_PROOF_CREDITS}C`;
   if(c.id?.startsWith('requisition:')&&!compatible(s,c.module))out.link=`장착 후 대기 · ${RESEARCH[c.module].fitting}`;
  }else if(c.id==='utility:health'||c.kind==='repair'||c.id==='resupply:medical'){
   const extra=c.kind==='repair'?15:c.kind==='utility'?6:0,heal=c.kind==='repair'?35:c.kind==='utility'?6:c.heal;out.art='medic';out.impact=extra?`최대 체력 +${extra}`:`체력 +${Math.min(heal,s.player.maxHp-s.player.hp)}`;out.detail=`${Math.ceil(s.player.hp)}/${s.player.maxHp} → ${Math.ceil(Math.min(s.player.maxHp+extra,s.player.hp+heal))}/${s.player.maxHp+extra}`;out.link=c.kind==='repair'?'최대 체력과 체력을 함께 정비':'';out.cost=c.kind==='repair'?'조율권 1개 사용':'';

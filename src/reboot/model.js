@@ -31,6 +31,7 @@ export function createOperation(seed=17,research=[],trial=null,order=null,operat
  const s=createRun(seed);s.operation={region:0,cleared:0,regionTime:0,history:[],jammed:false,...(dispatch?{order,orderDone:false}:{})};
  if(dispatch?.recordRevision)s.operation.orderRevision=dispatch.recordRevision;
  s.research=[...research];s.trials=(Array.isArray(trial)?[...trial]:[trial]).filter(Boolean);s.trial=s.trials[0]||null;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[0]};for(const e of s.enemies)e.cohort='ambient';s.stats.sitesCleared=0;s.stats.fusionBosses=0;s.stats.flameBosses=0;Object.assign(s,regionLayout(seed,0,order));s.boss=regionBoss(0);
+ if(s.trials.length)s.operation.trialProof=true;
  if(operator==='marco'){
   s.operator=operator;
   Object.assign(s.player,{charge:RULES.marco.initialCharge,doctrine:OPERATORS.marco.start,moveAim:-Math.PI/2,focusChargeAt:0});
@@ -128,6 +129,7 @@ export function restore(raw,{allowPrevious=false}={}){
    if(!site||site.kind!==(order==='wire'?'relay':'armory')||s.operation.orderDone&&site.state!=='done')fail();
   }
   s.trials??=s.trial?[s.trial]:[];
+  if(s.operation.trialProof!==undefined&&s.operation.trialProof!==true)fail();
   const {requisition,requisitionAt,requisitionClaimed}=s.operation;
   if(requisition!==undefined&&(order!==undefined||!Object.hasOwn(RESEARCH,requisition)||!s.research.includes(requisition)||s.trials?.includes(requisition)))fail();
   if(requisitionAt!==undefined&&(requisitionAt!=='coast'||!RESEARCH[requisition]?.fieldGun))fail();
