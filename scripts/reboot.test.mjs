@@ -2059,11 +2059,39 @@ test('harbor aid intercepts the center of a vertical salvo and leaves the other 
  Object.assign(s.player,s.boss.harborSupply);
  step(s,dt);
  const before=s.hazards.find(h=>h.portRound==='lock');
+ const armor=s.boss.parts[1],hullHp=s.boss.hp;
+ armor.hp=100;
  assert.equal(before.portAxis,'vertical');
  assert.ok(action(s,'skill'));
+ assert.ok(s.boss.hp<hullHp);
+ assert.equal(armor.hp,100);
  assert.deepEqual(s.hazards.map(h=>h.portRound),['battery','turret','battery','turret']);
  assert.equal(s.operation.harborPayoff.locks,1);
+ assert.equal(s.operation.harborPayoff.counterHull,1);
  assert.ok(s.effects.some(e=>e.type==='aid-counter'&&e.x===before.x&&e.y===before.y));
+});
+test('harbor aid can cut the vertical battery from the edge while the lock and turret remain',()=>{
+ const s=supportArena(2,'recovery','aim');
+ Object.assign(s.operation,{portEntry:'gantry',portDock:true});
+ s.sites=[{id:'port-landing',state:'done'}];
+ Object.assign(s.boss,{cycle:0,timer:0});
+ Object.assign(s.player,{x:800,y:435,charge:100});
+ step(s,dt);
+ Object.assign(s.player,s.boss.harborSupply);
+ step(s,dt);
+
+ const [upper,lower]=s.hazards.filter(h=>h.portRound==='battery');
+ Object.assign(s.player,{x:lower.x,y:lower.y+85});
+ assert.equal(portAidCounterRound(s),lower);
+ const armed=restore(snapshot(s));
+ assert.ok(action(armed,'skill'));
+ assert.deepEqual(armed.hazards.map(h=>h.portRound),['lock','turret','turret']);
+ assert.deepEqual(armed.operation.harborPayoff,{safeAid:1,counterfire:1,batteries:1});
+ assert.equal(armed.boss.harborCounter,undefined);
+ const impact=armed.effects.find(e=>e.type==='aid-counter');
+ assert.equal(impact.y,lower.y);
+ assert.deepEqual(impact.secondary,[{x:upper.x,y:upper.y}]);
+ assert.equal(restore(snapshot(armed)).operation.harborPayoff.batteries,1);
 });
 test('harbor aid intercepts the threatening round before an outlying rake',()=>{
  const s=supportArena(2,'recovery','aim');

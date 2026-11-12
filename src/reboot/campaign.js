@@ -130,7 +130,7 @@ export const PORT_LANDING={range:215,guards:[
 export const PORT_SUPPORT={
  breach:{impact:'포탑 쪽은 탄막 차단 · 장갑 쪽은 보조포 차단',detail:'포탑 측면 피해 +65%. 반대편 장갑의 급탄부는 조준 중 선제 타격하거나 착탄 전에 끊을 수 있습니다.',hint:'끊고 싶은 포대 쪽으로 돌아 사선 확보',flank:105,boost:1.65},
  overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,focusedReach:260,sideStep:48,damage:320,delay:.9,arcDamage:210,wakeDamage:320},
- recovery:{impact:'측면 화물 회수 → 스킬로 위협탄 차단',detail:'화물로 체력 +12, 전탄 +20. 경고 중 안전 회수는 전탄 +45와 회피 재정비. 지원 포격은 현재 위치를 덮는 차단 가능 탄을 우선합니다.',hint:'측면 화물 회수 → 스킬로 표시된 포격 차단',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
+ recovery:{impact:'측면 화물 → 포격 차단과 반격',detail:'화물로 체력 +12, 전탄 +20. 경고 중 안전 회수는 전탄 +45와 회피 재정비. 스킬로 초록 표식의 탄을 끊고, 발밑탄이면 차체에, 가로·세로탄이면 측면 장갑에 반격합니다.',hint:'측면 화물 회수 → 초록 표식의 포격 차단',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,interceptMargin:24,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
@@ -172,12 +172,26 @@ export const portCoreReach=s=>s.weapons.some(isFocusedInferno)?PORT_SUPPORT.over
 export const portCompressionBand=(s,gap=distance(s.player,s.boss))=>s.weapons.some(isFocusedInferno)&&gap>=INFERNO_CORE_DISTANCE&&gap<=PORT_SUPPORT.overrun.focusedReach;
 export const portCompressionRange=`${INFERNO_CORE_DISTANCE/10}~${PORT_SUPPORT.overrun.focusedReach/10}m`;
 export const portAidCounterReady=s=>s.operation?.region===2&&s.operation.support==='recovery'&&s.boss.active&&!s.boss.dead&&s.boss.harborCounter===true;
+export const PORT_AID_INTERCEPT={
+ lock:{key:'locks',label:'발밑 조준탄 차단',short:'발밑탄 차단'},
+ rake:{key:'rakes',label:'가로 장갑탄 차단',short:'가로탄 차단'},
+ battery:{key:'batteries',label:'세로 장갑탄 차단',short:'세로탄 차단'}
+};
 export function portAidCounterRound(s){
  if(!portAidCounterReady(s))return null;
- const rounds=s.hazards.filter(h=>!h.hit&&(h.portRound==='rake'||h.portRound==='lock'));
+ const rounds=s.hazards.filter(h=>!h.hit&&Object.hasOwn(PORT_AID_INTERCEPT,h.portRound));
  const threatened=rounds.filter(h=>roundThreatens(h,s.player));
  if(threatened.length)return threatened.sort((a,b)=>a.timer-b.timer||distance(a,s.player)-distance(b,s.player)||Number(a.portRound==='lock')-Number(b.portRound==='lock'))[0];
- return rounds.find(h=>h.portRound==='rake')||rounds[0]||null;
+ // Let the pilot select the vertical line from just outside its blast circle.
+ const battery=rounds.filter(h=>h.portRound==='battery'&&distance(h,s.player)<blastContactRadius(h)+PORT_SUPPORT.recovery.interceptMargin)
+  .sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];
+ return battery||rounds.find(h=>h.portRound==='rake')||rounds.find(h=>h.portRound==='lock')||null;
+}
+export function portAidCounterTarget(s,round=portAidCounterRound(s)){
+ if(!portAidCounterReady(s))return null;
+ const b=s.boss;
+ if(round?.portRound==='lock')return b;
+ return b.parts[1].hp>0?b.parts[1]:null;
 }
 export function portAidPoint(boss,cycle){
  const kit=PORT_SUPPORT.recovery,side=(cycle%2?-1:1)*portTurretSide(boss);

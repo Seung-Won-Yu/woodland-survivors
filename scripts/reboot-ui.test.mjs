@@ -208,6 +208,7 @@ test('harbor reports show the part actions actually recorded during the sortie',
  const p=settleProfile(active,run),saved=p.recent[0];
  const render=operation=>reportView({...saved,operation},p,{archived:true});
  assert.match(render(saved.operation),/회수 의무 장비.*경고 중 안전 회수 1회 \/ 일반 회수 2회/);
+ assert.match(render({...saved.operation,harborPayoff:{batteries:1}}),/회수 의무 장비.*세로 장갑탄 차단 1회/);
  assert.match(render({...saved.operation,support:'overrun',harborPayoff:{dives:2,sidesteps:1}}),/코어 돌입 2회 \/ 측면 회피 1회/);
  assert.match(render({...saved.operation,support:'overrun',harborPayoff:{compressionHits:5}}),/장갑 해제 중 중거리 압축 직격 5회/);
  assert.match(render({...saved.operation,support:'overrun',harborPayoff:{wakeHits:1,wakeBreaks:1,wakeHull:2}}),/배관 점화로 측면 장갑 타격 1회 \/ 배관 점화로 측면 장갑 파괴 1회 \/ 배관 점화로 차체 직격 2회/);

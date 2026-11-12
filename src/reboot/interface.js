@@ -1,5 +1,5 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
-import {REGIONS,RESEARCH,REQUISITION_FEE,requisitionDestination,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderRecordScope,orderBonus,operationCredits} from './campaign.js';
+import {REGIONS,RESEARCH,REQUISITION_FEE,requisitionDestination,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderRecordScope,orderBonus,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,bearing,distance,makeWeapon,weaponStats,capstoneName} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
@@ -183,7 +183,7 @@ function harborPayoff(r){
  const labels={
   breach:[['turrets','측면 포탑 파괴'],['salvos','포탑탄 차단'],['fans','후속 탄막 차단'],['armorPreps','보조포 선제 급탄 차단'],['armorSalvos','예고 중 보조 포격 차단']],
   overrun:[['dives','코어 돌입'],['sidesteps','측면 회피'],['compressionHits','장갑 해제 중 중거리 압축 직격'],['wakeHits','배관 점화로 측면 장갑 타격'],['wakeBreaks','배관 점화로 측면 장갑 파괴'],['wakeHull','배관 점화로 차체 직격'],['arcArmor','측면 장갑 역송'],['arcTurret','포탑 역송'],['arcFanClears','발사된 포탑 탄막 제거'],['arcArmorCuts','전도 보조 포격 차단'],['arcTurretCuts','전도 포탑 사격 차단'],['arcBreaks','역송으로 부위 파괴']],
-  recovery:[['locks','발밑 조준탄 차단'],['rakes','가로 포격 차단'],['counterfire','측면 장갑 타격'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
+  recovery:[...Object.values(PORT_AID_INTERCEPT).map(({key,label})=>[key,label]),['counterHull','차체 반격'],['counterfire','측면 장갑 타격'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
  };
  if(!log||!Object.hasOwn(labels,part))return '';
  const results=labels[part].filter(([key])=>Number.isSafeInteger(log[key])&&log[key]>0)

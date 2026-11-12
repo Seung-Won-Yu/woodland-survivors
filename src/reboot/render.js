@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,BOSS_ENTRY,coastStagingPoint,portArmorStaging,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {exitGate,BOSS_ENTRY,coastStagingPoint,portArmorStaging,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
@@ -325,10 +325,11 @@ function paintPortCue(c,s,aid){
   c.strokeStyle=color;c.lineWidth=2.5;c.beginPath();
   c.moveTo(p.x+3,p.y-45);c.lineTo(p.x-4,p.y-38);c.lineTo(p.x+3,p.y-38);c.lineTo(p.x-2,p.y-31);c.stroke();
  }
- if(portAidCounterReady(s)&&b.parts[1].hp>0){
-  const p=partPosition(s,b.parts[1]);
-  c.setLineDash([5,4]);circle(c,p.x,p.y,31,null,'#d7f0b8',2);c.setLineDash([]);
-  c.fillStyle='#d7f0b8';c.fillRect(p.x-9,p.y-34,18,3);c.fillRect(p.x-2,p.y-41,4,10);
+ const counterTarget=portAidCounterTarget(s);
+ if(counterTarget){
+  const p=counterTarget===b?b:partPosition(s,counterTarget),r=counterTarget.r+5;
+  c.setLineDash([5,4]);circle(c,p.x,p.y,r,null,'#d7f0b8',2);c.setLineDash([]);
+  c.fillStyle='#d7f0b8';c.fillRect(p.x-9,p.y-r-3,18,3);c.fillRect(p.x-2,p.y-r-10,4,10);
  }
  if(aid&&!aid.preview){
   const {x,y}=aid.point,blocked=aid.state==='blocked',early=aid.state==='safe';
@@ -1044,9 +1045,12 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    }
    else if(f.type==='aid-counter'){
     const r=68*(.4+t*.65),edge='#d7f0b8';
-    circle(c,f.x,f.y,r,'#b2d59928',edge,3);
-    circle(c,f.x,f.y,r*.48,null,edge,2);
-    if(!reduced)for(let i=0;i<8;i++){const a=i*TAU/8;circle(c,f.x+Math.cos(a)*r,f.y+Math.sin(a)*r,5,edge);}
+    for(const {x,y} of [f,...(f.secondary||[])]){
+     if(!visible(x,y,r))continue;
+     circle(c,x,y,r,'#b2d59928',edge,3);
+     circle(c,x,y,r*.48,null,edge,2);
+     if(!reduced)for(let i=0;i<8;i++){const a=i*TAU/8;circle(c,x+Math.cos(a)*r,y+Math.sin(a)*r,5,edge);}
+    }
    }
    else if(f.type==='pierce'){c.translate(f.x,f.y-18);c.rotate(f.angle);c.fillStyle='#fff2ae';c.fillRect(-12,-2,34+t*24,4);}
    else if(f.type==='lightning'||f.type==='ricochet'){c.strokeStyle=f.type==='lightning'?'#a1f5ef':'#f8dc8f';c.lineWidth=f.type==='lightning'?3:1.5;c.beginPath();c.moveTo(f.x,f.y);c.lineTo((f.x+f.x2)/2+Math.sin(s.t*40)*10,(f.y+f.y2)/2);c.lineTo(f.x2,f.y2);c.stroke();}
@@ -1101,13 +1105,15 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     circle(c,h.x,h.y,h.r,null,'#ffada0',3);
    }
    circle(c,h.x,h.y,(h.portRound?24:h.r)*clamp(1-h.timer/(h.duration||.9),0,1),null,'#fff0bb',h.timer<.25?3:1);
-   if(h.portRound==='rake'){
+   if(h.portRound==='rake'||h.portRound==='battery'){
+    c.save();c.translate(h.x,h.y);
+    if(h.portRound==='battery')c.rotate(Math.PI/2);
     c.strokeStyle='#ffd1a4';c.lineWidth=2;c.beginPath();
     for(const side of [-1,1]){
-     const x=h.x+side*(h.r-10);
-     c.moveTo(x,h.y-9);c.lineTo(x+side*5,h.y);c.lineTo(x,h.y+9);
+     const x=side*(h.r-10);
+     c.moveTo(x,-9);c.lineTo(x+side*5,0);c.lineTo(x,9);
     }
-    c.stroke();
+    c.stroke();c.restore();
    }
    if(h.portRound==='lock'){
     c.strokeStyle='#ffe1bc';c.lineWidth=3;c.beginPath();
