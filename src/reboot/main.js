@@ -6,7 +6,7 @@ import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.j
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
-import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
+import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
@@ -124,10 +124,11 @@ function gatePreparationView(){
  const prep=gatePreparation(run);
  if(!prep)return '';
  const recipes=buildPaths(run);
- const target=recipes.find(p=>p.id===(run.firstNew==='f'?'evolve:f':run.firstNew==='r'?'fusion:h:r':'evolve:h'));
+ const targetId=(run.stats.railRebuild||run.firstNew==='r')?'fusion:h:r':run.firstNew==='f'?'evolve:f':'evolve:h';
+ const target=recipes.find(p=>p.id===targetId);
  const equipped=run.weapons.find(w=>w.evolved&&(w.id===run.firstNew||w.fusion?.secondary===run.firstNew));
  const installed=equipped?.fusion?fusionTitle(equipped.id,equipped.fusion.secondary,equipped.fusion.branch):equipped?capstoneName(equipped):recipes.find(p=>p.complete&&p.id!=='heat')?.title;
- const remaining=!equipped&&target?.missing&&(target.remaining===1&&target.status==='progress'||target.status==='permit')?target:null;
+ const remaining=!equipped&&target?.missing&&['progress','permit'].includes(target.status)?target:null;
  const capstones=prep.capstones;
  const build=capstones.length
   ?`<button data-action="gate-assemble" aria-keyshortcuts="G"><small>조립 가능 · 조율권 1개</small><b>${esc(capstones.length===1?capstones[0].title:`완성 병기 ${capstones.length}종`)} <span aria-hidden="true">→</span></b></button>`
@@ -222,13 +223,13 @@ function branchOutcome(c,branch,args){
 }
 function showBranches(c,args){
  subpanel={type:'branch',card:c,args};
- const gun=GUNS[c.weapon],rank=c.kind==='rank',level=rank?4:gunEquipLevel(run,c,run.weapons[args.slot]);
+ const gun=GUNS[c.weapon],rank=c.kind==='rank',current=rank&&run.weapons.find(w=>w.id===c.weapon&&!w.fusion),level=rank?rankChoiceLevel(current,c):gunEquipLevel(run,c,run.weapons[args.slot]);
  const branches=Object.entries(gun.branches).map(([id,[name,desc]])=>
   `<button data-branch="${id}" data-branch-style="${id}">
    <strong>${name}</strong><small>${desc}</small>${branchOutcome(c,id,args)}
   </button>`).join('');
  panel(`<section class="sheet branch-sheet" role="dialog" aria-modal="true" aria-labelledby="branch-title">
-  <header class="branch-heading">${itemArt(c.weapon)}<div><span class="eyebrow">${rank?'L3 → L4':`개장 · L${level}`}</span><h2 id="branch-title">${gun.name} 분화</h2></div><span class="paused">Ⅱ 정비 중</span></header>
+  <header class="branch-heading">${itemArt(c.weapon)}<div><span class="eyebrow">${rank?`L${current.level} → L${level}${c.railDonor?' · F 분해':''}`:`개장 · L${level}`}</span><h2 id="branch-title">${gun.name} 분화</h2></div><span class="paused">Ⅱ 정비 중</span></header>
   <div class="branch-list branch-compare">${branches}</div>
   <footer class="branch-footer"><button data-action="choice-back">← 후보로 돌아가기</button></footer>
  </section>`);
@@ -344,7 +345,8 @@ async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie
 }
 async function selectCard(id,args={}){const c=run.choices.find(c=>c.id===id);if(!c)return;const details=choiceDetails(run,c);if(details.blocked)return;if(!subpanel)choiceOrigin={scroll:ui.scrollTop,selector:`[data-choice="${CSS.escape(c.id)}"]`};
  if(c.kind==='refit'&&!args.weapon){showRefits(c);return;}
- if(c.kind==='rank'&&run.weapons.find(w=>w.id===c.weapon&&!w.fusion)?.level===3&&!args.branch){showBranches(c,args);return;}
+ const ranked=c.kind==='rank'&&run.weapons.find(w=>w.id===c.weapon&&!w.fusion);
+ if(ranked&&rankChoiceLevel(ranked,c)===4&&!args.branch){showBranches(c,args);return;}
  if(c.kind==='gun'&&!c.salvageLevel&&args.slot===undefined&&(run.weapons.length>=3||!run.choice.opening&&run.refits>0&&run.weapons.some(w=>w.level>1&&!w.evolved))){showSlots(c);return;}
  if(c.kind==='module'&&!moduleRank(run,c.module)&&run.modules.length>=4&&args.slot===undefined){showSlots(c);return;}
  const before=run.stats.choices.length,hadHeat=heatSynergyReady(run);
@@ -552,17 +554,23 @@ function fieldEntry(s){
  if(!plan){plan=railWorkshopPlan(s);workshopForecasts.set(s,plan);}
  const {cards,finish}=plan,reserved=cards.find(c=>c.id.startsWith('requisition:'));
  const calibration=cards.find(c=>c.kind==='calibrate');
+ const rebuild=cards.find(c=>c.railDonor),stock=cards.find(c=>c.kind==='module'&&c!==reserved);
  const investment=finish?.card||cards.find(c=>c.kind==='rank')||cards.find(c=>c.kind==='module');
  const ranked=investment?.kind==='rank'?s.weapons.find(w=>w.id===investment.weapon&&!w.fusion):null;
- const material=ranked?`${GUNS[ranked.id].short} L${ranked.level+1}`
+ const material=ranked?`${investment.railDonor?'F 분해 → ':''}${GUNS[ranked.id].short} L${rankChoiceLevel(ranked,investment)}`
   :investment?.kind==='module'?`${MODULES[investment.module].name} +1`:'';
  const target=finish?.recipe.title;
  let sign='정비대 · 응급 보급',summary='정비대 · 체력·충전 회복',note='응급 보급으로 체력과 충전을 회복합니다.';
  if(finish){
   sign='정비대 · 조립 재료';
   summary=`정비대 · ${material} → ${target}`;
-  const condition=[ranked?.level===3?'분화 선택':'',finish.needsPermit?'조율권 필요':''].filter(Boolean).join(' · ')||'조립 가능';
+  const condition=[ranked&&rankChoiceLevel(ranked,investment)===4?'분화 선택':'',finish.needsPermit?'조율권 필요':''].filter(Boolean).join(' · ')||'조립 가능';
   note=`${material} → ${target} · ${condition}`;
+  if(stock&&stock.id!==finish.card.id){
+   const other=MODULES[stock.module].name;
+   summary+=` / ${other}`;
+   note+=`\n${other} 보급 가능`;
+  }
  }else if(calibration){
   const w=s.weapons.find(gun=>gun.uid===calibration.uid),change=railCalibration(s,w);
   const title=capstoneName(w);
@@ -571,7 +579,14 @@ function fieldEntry(s){
   summary=`정비대 · ${branch} 개장`;
   note=`${title} · ${branch} 전환`;
  }else if(investment){
-  sign='정비대 · 무장 강화';summary=`정비대 · ${material}${ranked?.id==='f'&&inferno===5?' → 인페르노 준비':''}`;note=`${material} 또는 응급 보급`;
+  const stockLabel=stock&&stock!==investment?MODULES[stock.module].name:'';
+  const options=[material,stockLabel].filter(Boolean).join(' · ');
+  sign='정비대 · 무장 강화';summary=`정비대 · ${options}`;note=`${options} · 응급 보급`;
+ }
+ if(rebuild&&finish?.card.id!==rebuild.id){
+  const strip=`F 분해 → ${GUNS[rebuild.weapon].short} L${rebuild.railLevel}`;
+  if(!finish){sign='정비대 · 보조 무장 분해';summary=`정비대 · ${strip}${stock?` / ${MODULES[stock.module].name}`:''}`;}
+  note+=`\n${strip}`;
  }
  if(reserved){
   sign='정비대 · 예약품';
@@ -589,6 +604,7 @@ function updateHud(entry,focus=null){
  $('kills').textContent=`${run.stats.kills} K.O.`;$('score').textContent=`${run.stats.score.toLocaleString()}점 · 확보 ${operationCredits({operation:run.operation,stats:run.stats,won:false})}C`;$('time').textContent=fmt(run.t);$('xp-fill').style.width=`${run.xp/xpNeeded(run)*100}%`;
  const front=run.operation?.region;
  const localSite=run.stage!=='boss'?run.sites.filter(n=>['active','ready'].includes(n.state)&&distance(n,p)<260).sort((a,b)=>distance(a,p)-distance(b,p))[0]:null;
+ document.body.classList.toggle('rail-contact',front===1&&localSite?.state==='active');
  const gate=exitGate(run),holdout=!!(gate&&run.operation),interact=interaction(run);
  document.body.classList.toggle('gantry-near',!!interact?.gantry);
  const bossName=run.operation?region(run).boss:'장갑 수송차';
@@ -671,6 +687,7 @@ function updateHud(entry,focus=null){
   const fireRank=infernoControlRank(run);
   intel=`확보 시 조준 유인 1회${fireRank?` · F L${fireRank} 보급 후보`:''}\n${cue}`;
  }
+ else if(next.id==='rail-ammo')intel=next.state==='ready'?'추가 보급 · 접근해 회수':'경비 제압 후 무장 강화·모듈 보급';
  else if(next===bossTarget&&wireReady)intel='교신 암호 · 열차 조준 유인 1회';
  else if(next===bossTarget&&workshopRoute)intel=`${bearing(p,...entryWaypoint(workshopRoute.path,p))} ${workshopRoute.summary}`;
  else if(dispatch&&next===dispatch){

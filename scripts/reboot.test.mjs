@@ -1251,6 +1251,7 @@ test('the remaining coast site offers a one-rank trade for the other gun and car
   assert.deepEqual(restore(snapshot(excluded)).choices,excluded.choices);
   for(const orphan of s.choices.filter(c=>c.weapon===other.coastApproach)){
    const old=snapshot(excluded);
+   old.balanceRevision='b40-coast-field-replan';
    old.choices.splice(1,0,orphan);
    assert.deepEqual(restore(old).choices,excluded.choices);
   }
@@ -2453,7 +2454,15 @@ test('marked later-front approaches and actual guard formations clear collision 
      origin.state='done';Object.assign(s.player,{x:origin.x,y:origin.y});
      const returnRoute=activeEntry(s).direct;
      assert.deepEqual(returnRoute.path[0],[origin.x,origin.y]);
-     routes.push(returnRoute);origin.state='waiting';
+     const ammo=activeEntry(s).routes.find(route=>route.site==='rail-ammo');
+     const p={x:origin.x,y:origin.y},[ax,ay]=ammo.path.at(-1);
+     for(let i=0;i<700&&Math.hypot(ax-p.x,ay-p.y)>3;i++){
+      const [x,y]=entryWaypoint(ammo.path,p),gap=Math.hypot(x-p.x,y-p.y);
+      if(gap>0){p.x+=(x-p.x)*Math.min(1,2/gap);p.y+=(y-p.y)*Math.min(1,2/gap);}
+      assert.ok(clear(s,p.x,p.y,16),`${origin.id} → rail-ammo`);
+     }
+     assert.ok(Math.hypot(ax-p.x,ay-p.y)<=3);
+     routes.push(returnRoute,ammo);origin.state='waiting';
     }
    }else{
     const control=s.sites.find(site=>site.id==='port-control');
@@ -2545,8 +2554,10 @@ test('route bearings advance past traversed corners and unfinished routes remain
  const relay=entry.routes.find(route=>route.site==='rail-relay');
  assert.deepEqual(entryWaypoint(relay.path,s.player),[1120,835]);
  s.sites.find(site=>site.id==='rail-cache').state='done';
- assert.deepEqual(activeEntry(s).routes,[relay]);
+ assert.deepEqual(activeEntry(s).routes.map(route=>route.site),[relay.site,'rail-ammo']);
  s.sites.find(site=>site.id==='rail-relay').state='done';
+ assert.deepEqual(activeEntry(s).routes.map(route=>route.site),['rail-ammo']);
+ s.weapons[0].evolved=true;
  assert.deepEqual(activeEntry(s).routes,[]);
  assert.equal(activeEntry(s).direct.site,'rail-center');
 });
@@ -3025,6 +3036,31 @@ test('rail workshop previews and offers the missing H branch for a rocket-first 
  assert.equal(assemblyOptions(noPermit).some(c=>c.id==='fusion:h:r'),false);
  clearRegion(noPermit);
  assert.ok(gatePreparation(noPermit).capstones.some(c=>c.id==='fusion:h:r'));
+});
+test('the railway rebuild trades F for two ranks and uses the real L4 branch before saving',()=>{
+ const s=quietRailWorkshop();s.firstNew='f';
+ s.weapons[0].level=2;
+ s.weapons.push({...makeWeapon('r'),uid:'rocket',level:4,branch:'homing',cd:999},{...makeWeapon('f'),uid:'flame',level:2,cd:999});
+ s.modules=[{id:'coil',rank:2}];
+ const workshop=railWorkshopPlan(s);
+ assert.equal(workshop.finish?.card.id,'rail-strip:h');
+ const rebuild=supply(s,'rail-cache').find(c=>c.id==='rail-strip:h');
+ assert.ok(rebuild);
+ assert.match(choiceDetails(s,rebuild).cost,/화염방사기 소모/);
+ const forged=snapshot(s);forged.choices.find(c=>c.id===rebuild.id).railDonor='rocket';
+ assert.equal(choose(forged,rebuild.id,{branch:'ricochet'}),false);
+ assert.throws(()=>restore(forged),/체크포인트/);
+ const kept=restore(snapshot(s));assert.ok(choose(kept,'resupply:rail-workshop'));
+ assert.equal(kept.weapons.length,3);
+ const loaded=restore(snapshot(s));
+ assert.equal(choose(loaded,rebuild.id),false);
+ assert.equal(loaded.weapons.length,3);
+ assert.ok(choose(loaded,rebuild.id,{branch:'ricochet'}));
+ assert.deepEqual(loaded.weapons.map(w=>[w.id,w.level]),[['h',4],['r',4]]);
+ assert.deepEqual(loaded.modules,s.modules);
+ assert.equal(loaded.tuning,s.tuning);
+ assert.deepEqual(restore(snapshot(loaded)).stats.railRebuild,{weapon:'h',from:2,to:4,donor:'f',donorLevel:2});
+ assert.ok(assemblyOptions(loaded).some(c=>c.id==='fusion:h:r'));
 });
 test('a paid rail reservation competes with workshop supplies and survives checkpoint and settlement',()=>{
  const base=emptyProfile();Object.assign(base,{credits:500,research:['thermal'],trials:['thermal']});base.records.wins=1;

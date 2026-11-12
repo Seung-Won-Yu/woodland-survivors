@@ -162,7 +162,10 @@ function researchFieldReport(r){
 function railWorkshopReport(stats){
  const change=stats.railCalibration,branches=GUNS[change?.gun]?.branches;
  const from=branches?.[change?.from]?.[0],to=branches?.[change?.to]?.[0];
- return from&&to?`<p class="rail-workshop-record"><span>화차 개장</span><b>${e(from)} → ${e(to)}</b></p>`:'';
+ const rebuild=stats.railRebuild,gun=['h','r'].includes(rebuild?.weapon)&&GUNS[rebuild.weapon];
+ const rebuilt=gun&&rebuild.donor==='f'&&[rebuild.from,rebuild.to,rebuild.donorLevel].every(Number.isSafeInteger)
+  ?`<p class="rail-workshop-record"><span>화차 정비 · F L${rebuild.donorLevel} 분해</span><b>${gun.short} L${rebuild.from} → L${rebuild.to}</b></p>`:'';
+ return (from&&to?`<p class="rail-workshop-record"><span>화차 개장</span><b>${e(from)} → ${e(to)}</b></p>`:'')+rebuilt;
 }
 function orderReceipt(r){
  const order=sortieOrder(r.operation?.order);

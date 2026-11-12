@@ -256,11 +256,11 @@
  .port-holdout .field-workbench{display:grid;gap:4px}
  .port-holdout .field-workbench #gear[data-view]{display:grid;gap:2px;width:100%;padding:5px 6px;font-size:9px}
  .port-holdout #field-upgrade:not([hidden]){padding-inline:5px;font-size:9px}
- :is(.rail-fork,.harbor-fork) .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
- :is(.rail-fork,.harbor-fork) .objective{width:100%}
- :is(.rail-fork,.harbor-fork) .objective #stage{display:none}
- :is(.rail-fork,.harbor-fork) #map-panel{width:84px;justify-self:end}
- .rail-fork #field-feedback{visibility:hidden}
+ :is(.rail-fork,.rail-contact,.harbor-fork) .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
+ :is(.rail-fork,.rail-contact,.harbor-fork) .objective{width:100%}
+ :is(.rail-fork,.rail-contact,.harbor-fork) .objective #stage{display:none}
+ :is(.rail-fork,.rail-contact,.harbor-fork) #map-panel{width:84px;justify-self:end}
+ :is(.rail-fork,.rail-contact) #field-feedback,.rail-contact #banner[data-kind="region-entry"]{visibility:hidden}
  .rail-fork #banner[data-kind="region-entry"]{top:max(232px,36vh);width:min(284px,calc(100% - 32px))}
  .harbor-fork #banner[data-kind="region-entry"]{clip-path:inset(50%)}
  .boss-active #combo{top:auto;bottom:130px;right:16px}
@@ -458,6 +458,10 @@
 .upgrade-card[data-trial="true"] .upgrade-category{color:#bde5cb}
 .research-page .paper-tag{white-space:nowrap}
 .rail-workshop .upgrade-card[data-choice^="calibrate:"]{--accent:#99c6c8;border-color:#7ea9ad;background:linear-gradient(125deg,#354948,#263839)}
+.rail-workshop .upgrade-card[data-choice^="rail-strip:"]{--accent:#edcf91;border-color:#b89a67}
+@media(min-width:701px){
+ .rail-workshop:has([data-choice^="rail-strip:"]) .upgrade-deck{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
 .rail-workshop .upgrade-card[data-finish]{--accent:#efd498;border-color:#ccad78;background:linear-gradient(125deg,#494b36,#283d31)}
 .rail-workshop .upgrade-card[data-finish] .upgrade-category{color:#f1d599}
 .rail-workshop-record{display:flex;gap:8px 14px;flex-wrap:wrap;margin:12px 0;color:#d7dfc4;font-size:11px;line-height:1.5}

@@ -590,6 +590,12 @@ export function activeEntry(s){
  }
  const origin=s.sites.filter(site=>['rail-cache','rail-relay'].includes(site.id)&&site.state==='done')
   .sort((a,b)=>distance(s.player,a)-distance(s.player,b))[0]?.id;
+ const ammo=s.sites.find(site=>site.id==='rail-ammo'&&site.state!=='done');
+ if(ammo&&origin&&!s.weapons.some(w=>w.evolved||w.fusion)){
+  const [x,y]=entry.routes.find(route=>route.site===origin).path.at(-1);
+  const path=origin==='rail-relay'?[[x,y],[ammo.x,y],[ammo.x,ammo.y]]:[[x,y],[x,588],[x,583],[ammo.x,583],[ammo.x,ammo.y]];
+  routes.push({site:ammo.id,sign:'포대 탄약고 · 추가 보급',color:'#ecd197',path});
+ }
  return {...entry,routes,direct:railCenterRoute(s.seed,origin)};
 }
 export function entryWaypoint(path,p){
