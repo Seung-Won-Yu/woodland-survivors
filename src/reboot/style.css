@@ -340,17 +340,17 @@
  .boss-active #boss-state{font-size:11px}
  .boss-active #boss-hud small{line-height:1.4}
  .boss-active #boss-hud :is(#boss-tactic,#boss-support){padding:0;margin:0;border:0}
- :is(.boss-active,.coast-contact) .arsenal{right:16px;max-width:none;flex-direction:row;align-items:center;gap:8px}
- :is(.boss-active,.coast-contact) .arsenal #weapons{min-width:0;justify-content:flex-end;gap:3px}
- :is(.boss-active,.coast-contact) .arsenal #weapons .weapon{width:82px;flex:0 1 82px;min-width:0;overflow:hidden}
- :is(.boss-active,.coast-contact) .arsenal #weapons .weapon :is(b,small){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
- :is(.boss-active,.coast-contact) .arsenal :is(#synergy,#maneuver-status){position:absolute;right:0;bottom:calc(100% + 4px);text-align:right}
- :is(.boss-active,.coast-contact) .arsenal #maneuver-status{left:0;right:auto}
- :is(.boss-active,.coast-contact) .field-workbench{flex:none;order:-1;margin-right:auto}
- :is(.boss-active,.coast-contact) .field-workbench #gear[data-view]{min-width:54px;padding:5px 7px;font-size:10px;text-align:center}
- :is(.boss-active,.coast-contact) #gear :is(b:not(.gear-short),small){display:none}
- :is(.boss-active,.coast-contact) #gear .gear-short{display:block;margin:auto}
- :is(.boss-active,.coast-contact) #field-upgrade .field-upgrade-prefix{display:none}
+ :is(.boss-active,.coast-contact,.coast-insertion) .arsenal{right:16px;max-width:none;flex-direction:row;align-items:center;gap:8px}
+ :is(.boss-active,.coast-contact,.coast-insertion) .arsenal #weapons{min-width:0;justify-content:flex-end;gap:3px}
+ :is(.boss-active,.coast-contact,.coast-insertion) .arsenal #weapons .weapon{width:82px;flex:0 1 82px;min-width:0;overflow:hidden}
+ :is(.boss-active,.coast-contact,.coast-insertion) .arsenal #weapons .weapon :is(b,small){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ :is(.boss-active,.coast-contact,.coast-insertion) .arsenal :is(#synergy,#maneuver-status){position:absolute;right:0;bottom:calc(100% + 4px);text-align:right}
+ :is(.boss-active,.coast-contact,.coast-insertion) .arsenal #maneuver-status{left:0;right:auto}
+ :is(.boss-active,.coast-contact,.coast-insertion) .field-workbench{flex:none;order:-1;margin-right:auto}
+ :is(.boss-active,.coast-contact,.coast-insertion) .field-workbench #gear[data-view]{min-width:54px;padding:5px 7px;font-size:10px;text-align:center}
+ :is(.boss-active,.coast-contact,.coast-insertion) #gear :is(b:not(.gear-short),small){display:none}
+ :is(.boss-active,.coast-contact,.coast-insertion) #gear .gear-short{display:block;margin:auto}
+ :is(.boss-active,.coast-contact,.coast-insertion) #field-upgrade .field-upgrade-prefix{display:none}
  .boss-active #combo{visibility:hidden}
  .boss-active:has(#controls:not([hidden]) #interact:not([hidden])) :is(.arsenal #weapons,#field-feedback){visibility:hidden}
 }
@@ -410,6 +410,7 @@
 }
 @media(max-width:700px) and (orientation:portrait){
  .coast-contact .arsenal{bottom:max(108px,calc(env(safe-area-inset-bottom) + 90px))}
+ .coast-insertion .arsenal{bottom:max(134px,calc(env(safe-area-inset-bottom) + 106px))}
  .coast-contact .arsenal :is(#modules,#support-status){display:none}
  .coast-warning .field-stack{top:calc(max(12px,env(safe-area-inset-top)) + 70px)}
  .coast-warning :is(#operation-track,#combo){visibility:hidden}

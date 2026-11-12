@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.117.0" src="https://img.shields.io/badge/RIFT-0.117.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.118.0" src="https://img.shields.io/badge/RIFT-0.118.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -19,7 +19,7 @@
 
 레벨업에서는 다음 강화 한 번으로 진화나 합체를 열 수 있는 카드를 확인할 수 있습니다. 조립을 앞당길지, 다른 총이나 전술 보조에 투자할지 고릅니다.
 
-해안에서는 포로를 구출해 화염 F와 로켓 R 중 고르거나, 가까운 거점을 기관총 H로 기습해 해당 무기를 L2로 노획합니다. 기습 거점은 시드에 따라 보급차와 박격포 진지로 달라집니다. 포로 구출로 시작하면 이후 맞춤 거점에서 특화 모듈과 수송차 공략을 노릴 수 있습니다.
+해안에서는 포로를 구출해 화염 F와 로켓 R 중 고르거나, 가까운 거점을 기관총 H로 기습해 해당 무기를 L2로 노획합니다. 작전도와 전장 바닥에 구조와 기습으로 갈라지는 길이 표시됩니다. 기습 거점은 시드에 따라 보급차와 박격포 진지로 달라집니다. 포로 구출로 시작하면 이후 맞춤 거점에서 특화 모듈과 수송차 공략을 노릴 수 있습니다.
 
 철도에서는 시드에 따라 정비대와 중계기에 방패 검문 또는 박격포 경계가 배치됩니다. 선택 거점과 보스 직행은 전장의 목표판에서 각각 확인할 수 있습니다. 항구에서는 정면과 측면 해치의 첫 포격 방향이 다르고, 관제소 교란을 고르면 첫 가로 포격의 장갑탄을 끊습니다.
 

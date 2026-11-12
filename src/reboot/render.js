@@ -1,5 +1,5 @@
-import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {paintTerrain,paintTerrainMargins,paintCoastOpening,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
+import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,COAST_SALVAGE_LEVEL,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue} from './model.js';
@@ -126,7 +126,7 @@ function paintEscapeLane(c,path,color,dashes,visible){
  }
  c.restore();
 }
-function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale,hud){
+function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale,hud,opening=false){
  const prefix=site.coastApproach?.toUpperCase();
  const name=site.opening?'포로 구출':site.name;
  const screen=coastShieldImpact(s,site);
@@ -154,10 +154,13 @@ function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale,hud){
   c.restore();return;
  }
  c.save();
- const label=screen?'방패 옆으로':escaping?'옆으로 이동':reply?'반격탄':coastEncounterCue(s,site,volley,counter)||(site.state==='ready'&&site.opening?'접근해 구출':prefix?`${prefix} · ${name}`:name);
+ const alternate=opening&&!site.opening;
+ const label=alternate?`${prefix} L${COAST_SALVAGE_LEVEL} · 기습`:screen?'방패 옆으로':escaping?'옆으로 이동':reply?'반격탄':coastEncounterCue(s,site,volley,counter)||(site.state==='ready'&&site.opening?'접근해 구출':prefix?`${prefix} · ${name}`:name);
  c.font='bold 11px Galmuri, sans-serif';
  const width=Math.min(size.w-16,Math.ceil(c.measureText(label).width)+32);
- const spot=coastCuePosition(size,point,width,hud,warnings,Math.max(46,76*scale));
+ const lift=Math.max(46,76*scale);
+ const spot=opening&&site.opening?clearBearingPosition(size,{x:targetX,y:targetY-lift},width,[...hud,...warnings],13)
+  :coastCuePosition(size,point,width,hud,warnings,lift);
  if(!spot){c.restore();return;}
  const {x,y}=spot;
  c.fillStyle='#152a28f2';
@@ -169,16 +172,17 @@ function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale,hud){
  c.textAlign='left';
  c.textBaseline='middle';
  c.fillText(label,x-width/2+23,y+1,width-28);
+ const bounds={left:x-width/2,right:x+width/2,top:y-13,bottom:y+13};
  if(site.coastApproach==='r'&&coastMortarThreatens(s,site)){
   c.fillRect(x-width/2+11,y-5,2,6);
   c.fillRect(x-width/2+11,y+3,2,2);
-  c.restore();return;
+  c.restore();return bounds;
  }
  c.translate(x-width/2+12,y);
- c.rotate(Math.atan2(targetY-y,targetX-x));
+ c.rotate(alternate?Math.atan2(target.y-s.player.y,target.x-s.player.x):Math.atan2(targetY-y,targetX-x));
  c.beginPath();
  c.moveTo(5,0);c.lineTo(-4,-4);c.lineTo(-2,0);c.lineTo(-4,4);c.closePath();c.fill();
- c.restore();
+ c.restore();return bounds;
 }
 function paintCoastVolley(c,volley){
  const {x,y,state}=volley,aligned=state==='ready'||state==='inflight';
@@ -808,7 +812,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
  const missileTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
- function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s)){
+ function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s),opening=null){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
   const gate=exitGate(s),aid=portAidCue(s),conduit=conduitMortarCue(s);
   const harborWarnings=s.operation?.region===2&&s.boss.active?s.hazards.filter(h=>!h.lane&&!h.hit):[];
@@ -892,6 +896,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(edgeMargin)paintTerrainMargins(c,index,edgeMargin);
   if(canvas.ownerDocument&&key!==terrainKey){terrainKey=key;siteStates.clear();terrainCache=canvas.ownerDocument.createElement('canvas');terrainCache.width=1600;terrainCache.height=1200;const tc=terrainCache.getContext('2d');tc.imageSmoothingEnabled=false;paintTerrain(tc,index,s.seed,art);}
   if(terrainCache)c.drawImage(terrainCache,0,0);else paintTerrain(c,index,s.seed,art);
+  if(opening)paintCoastOpening(c,opening);
   const visible=(x,y,padding=48)=>Math.abs(x-cx)<=view.w/2+padding&&Math.abs(y-cy)<=view.h/2+padding;
   for(const b of s.blocks)if(b.hp===0&&visible(b.x,b.y,220))paintBlock(c,b,index,art);
   const gateNear=gate&&distance(gate,s.player)<(s.operation?92:140);
@@ -1256,7 +1261,13 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   paintPortWakeCue(c,s);
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
-  if(lead)paintCoastCue(c,s,lead,guns,volley,counter,size,cx-shake,cy,scale,combatHud.rects);
+  if(lead){
+   const marker=paintCoastCue(c,s,lead,guns,volley,counter,size,cx-shake,cy,scale,combatHud.rects,!!opening&&lead.opening);
+   if(opening&&lead.opening&&Math.hypot(s.player.x-800,s.player.y-1040)<330){
+    const target=opening.preempt,hud=marker?[...combatHud.rects,marker]:combatHud.rects;
+    paintCoastCue(c,s,target,[],null,null,size,cx-shake,cy,scale,hud,true);
+   }
+  }
   if(mobile&&showAid)paintAidBearing(c,s,aid,size,cx,cy,scale,combatHud.rects);
   if(mobile&&size.h>size.w&&combatHud.passive?.length&&s.phase==='playing'){
    const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});

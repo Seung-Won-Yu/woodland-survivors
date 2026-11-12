@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -49,14 +49,23 @@ const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
 });
 const coastScenes=Array.from({length:4},(_,index)=>{
  const [rescue,truck,,battery]=beachRoute(index).points,scene=scenes[0];
- const tracks=[[[800,1040],rescue],[rescue,truck],[rescue,battery]];
- return {...scene,tracks,shapes:[
+ const arrival=[800,1040];
+ const {sites}=regionLayout(index,0),preempt=sites.find(site=>site.coastApproach===coastPreemptGun(index));
+ const routes=[sites[0],preempt].map(site=>({site:site.id,kind:site.opening?'rescue':'preempt',
+  sign:site.opening?'포로 구출':`${site.name} 기습`,color:coastLeadColor(site),path:[arrival,[site.x,site.y]]}));
+ const tracks=[routes[0].path,[rescue,truck],[rescue,battery],routes[1].path];
+ return {...scene,tracks,opening:{routes},shapes:[
   ...scene.shapes,...tracks.map(points=>line(points,'#65563831',46)),
   rect(0,0,FIELD.left,1200,scene.water),rect(0,FIELD.bottom,1600,1200-FIELD.bottom,scene.water),
   line([[FIELD.left,0],[FIELD.left,FIELD.bottom],[1600,FIELD.bottom]],'#8faca0',3)
  ]};
 });
 export const fieldScene=(index,seed=17)=>index===0?coastScenes[(seed>>>0)%coastScenes.length]:(mapSeed(seed,index)%2===0?mirrored:scenes)[index]||scenes[0];
+export function coastOpeningGuide(s){
+ const preempt=coastPreemptSite(s),rescue=preempt&&s.sites[0];
+ if(rescue?.state!=='waiting'||preempt.state!=='waiting'||preempt.preempt||s.raid?.state==='active')return null;
+ return {...fieldScene(0,s.seed).opening,preempt};
+}
 export function previewLayout(seed,index,order=null){return regionLayout(mapSeed(seed,index),index,order);}
 export function sitePresentation(n){
  if(n.kind==='relay')return{icon:'relay',name:n.name,verb:'범위 안에서 해킹'};
@@ -81,7 +90,7 @@ export function gateSymbol({x,y,name}){
 export function entryRouteSvg(entry){
  if(!entry)return '';
  const routes=entry.direct?[entry.direct,...entry.routes]:entry.routes;
- return routes.map(route=>`<polyline data-approach="${route.site}" points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="22 18" aria-label="${route.sign} 경로"/>`).join('');
+ return routes.map(route=>`<polyline data-approach="${route.site}"${route.kind?` data-coast-opening="${route.kind}"`:''} points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="${route.kind?23:13}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${route.kind==='preempt'?'33 14':route.kind==='rescue'?'5 31':'22 18'}" aria-label="${route.sign} 경로"/>`).join('');
 }
 export function escapeRouteSvg(route,marker,color,name,dash='12 16'){
  const start=route[0],end=route.at(-1),previous=route.at(-2);
@@ -100,17 +109,17 @@ export function orderPinSvg(site,id){
  const order=sortieOrder(id);
  return order&&site?`<path data-order-pin="${id}" d="M${site.x} ${site.y-57}l57 57 -57 57 -57 -57Z" fill="none" stroke="${order.color}" stroke-width="11" aria-label="${order.name} · ${order.site}"/>`:'';
 }
-export function regionPreview(index,seed=17,current=null,order=null){
+export function regionPreview(index,seed=17,current=null,order=null,showPreempt=!order){
  const front=frontEntry(mapSeed(seed,index),index);
  const entry=front?{...front,direct:index===2?portCenterRoute(seed):railCenterRoute(seed)}:null;
  const map=current||previewLayout(seed,index,order),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
  const stops=index===0&&!current?map.sites.filter(n=>n.opening||n.coastApproach):[];
- const tracks=stops.length?fieldScene(0,seed).tracks:null;
- const coastRoutes=tracks&&{routes:stops.map((site,i)=>({
-  site:site.id,sign:sitePresentation(site).name,color:coastLeadColor(site),path:tracks[i]
- }))};
+ const coast=stops.length?fieldScene(0,seed):null;
+ const coastRoutes=coast&&(showPreempt?coast.opening:{routes:stops.map((site,i)=>({
+  site:site.id,sign:sitePresentation(site).name,color:coastLeadColor(site),path:coast.tracks[i]
+ }))});
  const insertion=entryRouteSvg(entry||coastRoutes)||'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';
- const numbers=stops.map(site=>`<g transform="translate(${site.x+52} ${site.y-55})" aria-hidden="true"><circle r="43" fill="${coastLeadColor(site)}" stroke="#263d35" stroke-width="8"/><text y="20" text-anchor="middle" fill="#263d35" font-size="60" font-weight="bold">${site.coastApproach?.toUpperCase()||'1'}</text></g>`).join('');
+ const numbers=stops.filter(site=>!showPreempt||site.coastApproach).map(site=>`<g transform="translate(${site.x+52} ${site.y-55})" aria-hidden="true"><circle r="43" fill="${coastLeadColor(site)}" stroke="#263d35" stroke-width="8"/><text y="20" text-anchor="middle" fill="#263d35" font-size="60" font-weight="bold">${site.coastApproach?.toUpperCase()||'1'}</text></g>`).join('');
  const orderPin=index===0?orderPinSvg(map.sites.find(site=>site.id==='arsenal'),order):'';
  return `<svg class="sector-preview" viewBox="0 0 1600 1200" role="img" aria-label="${REGIONS[index].name} · 전장과 같은 지형과 보급 위치">${terrainSvg(index,seed)}${map.blocks.filter(b=>b.hp!==0).map(b=>`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#354a40" stroke="#b6b394" stroke-width="10"/>`).join('')}${gate?gateSymbol(gate):`${insertion}<path d="m800 315-40 60h80Z" fill="#e6a36a"/>`}${map.sites.map(n=>siteSymbol(n,n.x,n.y,40)).join('')}${numbers}${orderPin}<circle cx="${player.x}" cy="${player.y}" r="22" fill="#fff1bf" stroke="#263d35" stroke-width="10"/></svg>`;
 }

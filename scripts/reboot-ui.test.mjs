@@ -110,6 +110,18 @@ test('mission briefing does not select a later starting map, and saved operation
  assert.match(view,/data-action="launch"><span>피오 · 새 출격<small class="launch-checkpoint">이전 판 정산 후 시작/);
  assert.doesNotMatch(view,/data-action="resume-run"/);
 });
+test('the next coast map reflects research that will settle when the active run ends',()=>{
+ const p={...emptyProfile(),research:['thermal'],trials:['thermal']};
+ for(const recovered of [7,8]){
+  const run=createOperation(17,p.research,p.trials);
+  Object.assign(run.stats,{researchTrialPicked:'thermal',thermalRecovered:recovered});
+  const active=beginProfile(p,run),next=freshSortie(active,19).run;
+  const map=lobbyView(active,{seed:19});
+  assert.equal(map.includes('data-coast-opening="preempt"'),recovered===8);
+  assert.equal(!!coastOpeningGuide(next),recovered===8);
+  assert.deepEqual(active.trials,['thermal']);
+ }
+});
 test('research makes condition, funds, active-run block and owned trial explicit',()=>{
  const p=emptyProfile();let html=lobbyView(p,{tab:'research'});assert.match(html,/실증 조건 미달/);
  p.milestones.medic=true;p.credits=299;html=lobbyView(p,{tab:'research'});assert.match(html,/1C 부족/);
@@ -315,7 +327,7 @@ test('unreadable historical reports cannot crash archive or report navigation',(
 });
 
 import {choiceDetails,isQuickMod} from '../src/reboot/choice-details.js';
-import {fieldScene,sitePresentation,regionPreview,previewLayout} from '../src/reboot/field-scene.js';
+import {fieldScene,sitePresentation,regionPreview,previewLayout,coastOpeningGuide,entryRouteSvg} from '../src/reboot/field-scene.js';
 import {paintBlock} from '../src/reboot/field-art.js';
 import {FIELD} from '../src/reboot/content.js';
 import {snapshot} from '../src/reboot/model.js';
@@ -361,20 +373,29 @@ test('briefings share distinct field terrain and recognizable site symbols',()=>
 });
 test('coastal tracks connect the actual sites through clear ground and water starts at the field edge',()=>{
  for(let seed=16;seed<20;seed++){
-  const {tracks,shapes,water}=fieldScene(0,seed),{sites,blocks}=previewLayout(seed,0),html=regionPreview(0,seed);
+  const {tracks,shapes,water}=fieldScene(0,seed),{sites,blocks}=previewLayout(seed,0),html=regionPreview(0,seed),run=createOperation(seed);
   const [rescue,truck,,battery]=sites.map(({x,y})=>[x,y]);
-  assert.deepEqual(tracks,[[[800,1040],rescue],[rescue,truck],[rescue,battery]]);
+  const preempt=seed%4<2?battery:truck;
+  assert.deepEqual(tracks,[[[800,1040],rescue],[rescue,truck],[rescue,battery],[[800,1040],preempt]]);
+  const live=coastOpeningGuide(run),brief=entryRouteSvg(live);
+  assert.deepEqual(live.routes.map(route=>route.path),[tracks[0],tracks[3]]);
+  assert.ok(html.includes(brief));
+  assert.equal((html.match(/data-coast-opening=/g)||[]).length,2);
+  assert.doesNotMatch(regionPreview(0,seed,null,null,false),/data-coast-opening=/);
   assert.ok(shapes.some(s=>s.type==='rect'&&s.y===FIELD.bottom&&s.fill===water&&s.w===1600));
   assert.ok(shapes.some(s=>s.type==='rect'&&s.x===0&&s.fill===water&&s.w===FIELD.left));
-  for(const [index,track] of tracks.entries()){
-   assert.ok(html.includes(`data-approach="${sites[[0,1,3][index]].id}" points="${track.map(p=>p.join(',')).join(' ')}"`));
+  for(const track of tracks){
    const [[ax,ay],[bx,by]]=track,steps=Math.ceil(Math.hypot(bx-ax,by-ay)/8);
    for(let i=0;i<=steps;i++){
     const x=ax+(bx-ax)*i/steps,y=ay+(by-ay)*i/steps;
     assert.ok(!blocks.some(b=>x+23>b.x&&x-23<b.x+b.w&&y+23>b.y&&y-23<b.y+b.h),`track on seed ${seed}`);
    }
   }
-  assert.doesNotMatch(regionPreview(0,seed,createOperation(seed)),/data-approach=/);
+  assert.doesNotMatch(regionPreview(0,seed,run),/data-approach=/);
+  run.sites[0].state='active';
+  assert.equal(coastOpeningGuide(run),null);
+  run.sites[0].state='waiting';live.preempt.preempt=true;
+  assert.equal(coastOpeningGuide(run),null);
  }
 });
 test('the launch briefing offers rescue and the seeded nearby outpost before the start button',()=>{

@@ -37,6 +37,12 @@ export function beginProfile(p,run,reference=null){
 export const canLaunchOrder=(p,id)=>{const order=sortieOrder(id);return !!order&&!p.active&&p.records.wins>0&&p.credits>=order.fee;};
 export const canReserveResearch=(p,id,at=null)=>Object.hasOwn(RESEARCH,id)&&!p.active&&p.research.includes(id)
  &&!p.trials.includes(id)&&p.credits>=REQUISITION_FEE&&(at===null||at==='coast'&&!!RESEARCH[id].fieldGun);
+const clearedResearchTrials=(run,proofs)=>run.operation?.trialProof?proofs??completedResearchProofs(run):pickedResearchTrials(run.stats);
+export function sortieResearchTrials(p){
+ if(!p.active)return p.trials;
+ const cleared=clearedResearchTrials(p.active.run);
+ return p.trials.filter(id=>!cleared.includes(id));
+}
 export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null){
  const priorReport=replayFrom===null?null:p.recent.find(report=>report?.sequence===replayFrom);
  const reference=replayReference(priorReport,p.recordScope);
@@ -97,7 +103,7 @@ export function settleProfile(p,run){
  if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;
  if(r.stats.flameBosses>0)n.milestones.thermal=true;
  r.researchUnlocked=Object.keys(RESEARCH).filter(id=>n.milestones[id]&&!p.milestones[id]);
- const clearedTrials=r.operation?.trialProof?proofs:pickedResearchTrials(r.stats);
+ const clearedTrials=clearedResearchTrials(r,proofs);
  n.credits+=r.credits;n.trials=n.trials.filter(id=>!clearedTrials.includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
 }
 export function buyResearch(p,id){const d=RESEARCH[id];if(!d||p.active||p.research.includes(id)||!p.milestones[id]||p.credits<d.cost)return null;const n=copy(p);n.credits-=d.cost;n.research.push(id);n.trials.push(id);return n;}

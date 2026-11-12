@@ -114,6 +114,29 @@ function paintCoastGround(c,scene,seed,art){
   environmentProp(c,art,3,0,0,0,w,.48);c.restore();
  }
 }
+export function paintCoastOpening(c,{routes}){
+ for(const {path,kind,color} of routes){
+  const [[ax,ay],[bx,by]]=path,dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
+  c.save();c.translate(ax,ay);c.rotate(Math.atan2(dy,dx));
+  // Scuffed paint sits on the sand. The footsteps and tire marks stay distinct without color.
+  const footsteps=kind==='rescue',start=footsteps?48:52,stride=footsteps?28:34;
+  for(let d=start,i=0;d<length-61;d+=stride,i++){
+   c.fillStyle='#3d413269';
+   if(footsteps){
+    const y=i%2===0?-6:6;
+    c.fillRect(d-5,y-2,16,8);c.fillStyle=color+'c7';
+    c.fillRect(d-4,y,5,4);c.fillRect(d+3,y-1,7,6);
+   }else for(const y of [-13,10]){
+    c.fillStyle='#3d413269';c.fillRect(d-3,y-1,17,6);
+    c.fillStyle=color+'b3';c.fillRect(d,y,5,4);c.fillRect(d+7,y,5,4);
+   }
+  }
+  c.fillStyle='#283b335e';c.fillRect(82,-11,24,22);
+  c.strokeStyle=color;c.lineWidth=3;c.beginPath();
+  c.moveTo(89,-6);c.lineTo(97,0);c.lineTo(89,6);c.stroke();
+  c.restore();
+ }
+}
 export function paintTerrain(c,index,seed,art){
  const scene=fieldScene(index,seed);c.fillStyle=scene.ground;c.fillRect(0,0,1600,1200);
  for(const s of scene.shapes){c.beginPath();if(s.type==='rect'){c.fillStyle=s.fill;c.fillRect(s.x,s.y,s.w,s.h);continue;}s.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));if(s.fill){c.closePath();c.fillStyle=s.fill;c.fill();}if(s.stroke){c.strokeStyle=s.stroke;c.lineWidth=s.width;c.setLineDash(s.dash||[]);c.stroke();c.setLineDash([]);}}
