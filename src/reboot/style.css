@@ -97,7 +97,16 @@
 }
 
 .field-stack{position:absolute;left:20px;top:124px;display:grid;gap:10px;justify-items:start}
-.field-stack .objective,.field-stack #map-panel{position:static}
+.field-stack :is(.objective,#map-panel,#boss-hud){position:static}
+.boss-active .field-stack .objective{display:none}
+.field-stack #boss-hud{display:grid;gap:4px;width:240px;transform:none;text-align:left;border-bottom:0;border-left:2px solid var(--gold);word-break:keep-all;overflow-wrap:anywhere}
+.boss-active #banner:is([data-kind="boss-arrival"],[data-kind="boss-warning"],[data-kind="skill"],[data-kind="weakpoint"],[data-kind="break"],[data-kind="barrage-cancel"],[data-kind="heal"]){clip-path:inset(50%)}
+.boss-active:has(#boss-state.salvo-danger) #field-feedback{visibility:hidden}
+#boss-hud:has(#boss-state.salvo-danger){border-left-color:var(--red)}
+.boss-meter{grid-row:1;display:flex;align-items:center;gap:8px;min-width:0}
+#boss-name{flex:none;color:#e7dbc0;font-size:10px;line-height:1.4}
+#boss-hud #boss-hp{height:7px;margin:0;min-width:0;border:1px solid #aa987b}
+#boss-state{grid-row:2;font-weight:700;line-height:1.4}
 #holdout-intel{display:grid;gap:8px;padding-top:7px;border-top:1px solid #74927d66}
 #holdout-steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
 #holdout-steps i{height:4px;background:#435953;border:1px solid #758982}
@@ -125,7 +134,7 @@
 }
 @media(max-width:700px){
  .field-stack{left:12px;top:112px;gap:8px}
- .boss-active .field-stack,.raid-active .field-stack{top:222px}
+ .raid-active .field-stack{top:222px}
  #holdout-intel{gap:6px;padding-top:6px}
  #pursuit-intel{font-size:9px}
 }
@@ -153,6 +162,7 @@
 #boss-support[data-part="breach"]{color:#c6e6f3}#boss-support[data-part="overrun"]{color:#ffc9a0}#boss-support[data-part="recovery"]{color:#c7f1bd}
 #boss-support.aid-alert{color:#ffc19b}
 #boss-state.salvo-danger{color:#ffccaa;font-weight:700}
+.gear-short{display:none}
 .harbor-boss #banner[data-kind="boss-warning"]{opacity:0}
 #skill[data-counter="ready"]:not(:disabled){background:#c7e4a8;border-color:#eef6ce;color:#253a28}
 #dash.ember-ready{background:#e7b678;border-color:#ffdfa3;color:#36291f}
@@ -256,11 +266,9 @@
  .coast-danger :is(#banner[data-kind="boss-arrival"],#field-feedback){visibility:hidden}
  .boss-active #field-feedback{left:auto;right:14px;bottom:max(102px,calc(env(safe-area-inset-bottom) + 80px));transform:none;min-width:0;max-width:60%;padding-right:10px}
  .boss-active:has(#field-feedback:not([hidden])) #combo{visibility:hidden}
- :is(.coast-boss,.rail-boss,.harbor-boss){--boss-map-width:84px}
- :is(.coast-boss,.rail-boss,.harbor-boss) .field-stack{top:112px;left:auto;right:12px}
- :is(.coast-boss,.rail-boss,.harbor-boss) #map-panel{width:var(--boss-map-width)}
- :is(.coast-boss,.rail-boss,.harbor-boss) #boss-hud{left:12px;right:calc(var(--boss-map-width) + 20px);width:auto;max-width:none;transform:none;padding:7px 10px 8px;text-align:left;line-height:1.35}
- :is(.coast-boss,.rail-boss,.harbor-boss) #boss-hp{height:7px;margin:5px 0}
+ .boss-active .field-stack{--boss-map-width:84px;top:112px;right:12px;grid-template-columns:minmax(0,1fr) var(--boss-map-width);align-items:start;justify-items:stretch}
+ .boss-active .field-stack #map-panel{width:var(--boss-map-width)}
+ .boss-active .field-stack #boss-hud{width:auto;max-width:none;padding:7px 10px 8px;line-height:1.35}
  :is(.coast-boss,.rail-boss,.harbor-boss) #boss-tactic:not([hidden]){padding-top:3px;margin-top:3px}
  .harbor-boss #banner[data-kind="supply-ready"]{opacity:0}
  .port-counter-aim :is(#banner[data-kind="heal"],#field-feedback){visibility:hidden}
@@ -277,6 +285,35 @@
  .arsenal:has(.weapon.evolved) .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
  .arsenal:has(.weapon.evolved) .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
  .harbor-warning .arsenal :is(#weapons,#synergy,#maneuver-status){display:none}
+}
+@media(max-width:700px) and (orientation:portrait){
+ .boss-active{--boss-rail-top:calc(max(12px,env(safe-area-inset-top)) + 70px)}
+ .boss-active :is(.vitals,.score){top:max(12px,env(safe-area-inset-top))}
+ .boss-active .vitals{width:min(44vw,168px);padding:6px 8px}
+ .boss-active .vitals .hp-track{height:15px;margin-top:5px}
+ .boss-active .vitals .hp-track span{line-height:13px}
+ .boss-active .vitals small{margin-top:3px}
+ .boss-active #operation-track{clip-path:inset(50%)}
+ .boss-active .field-stack{--boss-map-width:clamp(76px,22vw,84px);top:var(--boss-rail-top)}
+ .boss-active .field-stack #boss-hud{gap:3px;padding:6px 8px}
+ .boss-active #boss-name{font-size:9px}
+ .boss-active #boss-hud #boss-hp{height:5px}
+ .boss-active #boss-state{font-size:11px}
+ .boss-active #boss-hud small{line-height:1.4}
+ .boss-active #boss-hud :is(#boss-tactic,#boss-support){padding:0;margin:0;border:0}
+ .boss-active .arsenal{right:16px;max-width:none;flex-direction:row;align-items:center;gap:8px}
+ .boss-active .arsenal #weapons{min-width:0;justify-content:flex-end;gap:3px}
+ .boss-active .arsenal #weapons .weapon{width:82px;flex:0 1 82px;min-width:0;overflow:hidden}
+ .boss-active .arsenal #weapons .weapon :is(b,small){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .boss-active .arsenal :is(#synergy,#maneuver-status){position:absolute;right:0;bottom:calc(100% + 4px);text-align:right}
+ .boss-active .arsenal #maneuver-status{left:0;right:auto}
+ .boss-active .field-workbench{flex:none;order:-1;margin-right:auto}
+ .boss-active .field-workbench #gear[data-view]{min-width:54px;padding:5px 7px;font-size:10px;text-align:center}
+ .boss-active #gear :is(b:not(.gear-short),small){display:none}
+ .boss-active #gear .gear-short{display:block;margin:auto}
+ .boss-active #field-upgrade .field-upgrade-prefix{display:none}
+ .boss-active #combo{visibility:hidden}
+ .boss-active:has(#controls:not([hidden]) #interact:not([hidden])) :is(.arsenal #weapons,#field-feedback){visibility:hidden}
 }
 @media(max-width:700px){
  .front-intel{grid-template-columns:1fr 1fr}

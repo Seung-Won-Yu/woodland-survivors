@@ -20,8 +20,13 @@ const touchLayout=matchMedia('(max-width:700px), (pointer:coarse)');
 const combatHud={rects:[],get analog(){return touchLayout.matches;}};
 function watchCombatHud(){
  if(typeof ResizeObserver!=='function')return;
- const panels=[$('boss-hud'),$('map-panel'),document.querySelector('.arsenal'),$('stick'),document.querySelector('.action-buttons')];
- const measure=()=>{combatHud.rects=panels.map(panel=>panel.getBoundingClientRect()).filter(rect=>rect.width&&rect.height);};
+ const panels=[...document.querySelectorAll('.vitals,.score,#boss-hud,#map-panel,#weapons,#synergy,#maneuver-status,.field-workbench,#stick,#dash,#skill,#interact')];
+ const measure=()=>{
+  combatHud.rects=panels.flatMap(panel=>{
+   const rect=panel.getBoundingClientRect();
+   return rect.width&&rect.height&&getComputedStyle(panel).visibility==='visible'?[rect]:[];
+  });
+ };
  const observer=new ResizeObserver(measure);
  panels.forEach(panel=>observer.observe(panel));
  window.addEventListener('resize',measure);
@@ -774,7 +779,8 @@ function updateHud(entry,focus=null){
   gear.dataset.mode=gearMode;
   gear.setAttribute('aria-label',`${gearTitle} · ${gearHint}`);
   gear.setAttribute('aria-keyshortcuts','G');
-  gear.innerHTML=`<b>${esc(gearTitle)}</b><small>${gearHint}</small><kbd class="key-hint" aria-hidden="true">G</kbd>`;
+  const short=ready?'조립':heatReady?'조율':gearMode==='maneuver'?'교범':'작업대';
+  gear.innerHTML=`<b>${esc(gearTitle)}</b><small>${gearHint}</small><b class="gear-short" aria-hidden="true">${short}</b><kbd class="key-hint" aria-hidden="true">G</kbd>`;
  }
  const railLocked=railDecoyLocked(run);
  for(const el of $('weapons').children)el.classList.toggle('just-equipped',performance.now()<equippedUntil&&el.dataset.weaponId===equippedWeapon);
@@ -830,7 +836,10 @@ function updateHud(entry,focus=null){
   const counterCovers=readyCounter&&dangerousRounds.some(h=>h.portRound===counterRound.portRound);
   const counterLeavesDanger=counterCovers&&dangerousRounds.some(h=>h.portRound!==counterRound.portRound);
   const bossState=$('boss-state');
-  bossState.classList.toggle('salvo-danger',portDanger||!!railDodge?.danger);
+  const chargeDanger=!(front>0)&&(boss.mode==='windup'||boss.mode==='charge');
+  bossState.classList.toggle('salvo-danger',portDanger||!!railDodge?.danger||chargeDanger);
+  const bossName=$('boss-name'),name=region(run).boss;
+  if(bossName.textContent!==name)bossName.textContent=name;
   const railOpen=front===1&&recovering&&railDisarmed(boss);
   $('boss-hp').max=boss.maxHp;$('boss-hp').value=boss.hp;
   if(front===1){
@@ -840,7 +849,7 @@ function updateHud(entry,focus=null){
    const dodge=railDodge?.danger?slot?`${slot.x<p.x?'왼쪽':'오른쪽'} 표식에서 멈추기`:'차선 범위 밖으로':stray?'박격포 범위 밖으로':'차선 밖 · 착탄 대기';
    bossState.textContent=railOpen?'양쪽 포대 파괴 · 차체 노출':recovering?'재장전 · 반격 기회':countdown?`${dodge} · ${countdown}초`
     :railLocked?railDodge?.danger||stray?`유인 고정 · ${dodge}`:'조준선 밖 · 반격 준비'
-    :boss.mode==='salvo'?'포격 종료 · 반격 준비':interact?.id==='rail-decoy'?'조준 중 · 현재 위치에 유인 가능':railHasRelay(run)?'중계기 · 조준 예상선':'포격 열차 · 조준 준비';
+    :boss.mode==='salvo'?'포격 종료 · 반격 준비':interact?.id==='rail-decoy'?'조준 중 · 현재 위치에 유인 가능':railHasRelay(run)?'중계기 · 조준 예상선':'포격 조준 준비';
   }else if(front===2){
    const lock=rounds.find(h=>h.portRound==='lock');
    const timed=portDanger?dangerousRounds:rounds;
@@ -857,7 +866,7 @@ function updateHud(entry,focus=null){
    bossState.textContent=countdown?`${lead} · ${countdown}초`:recovering?'코어 노출 · 집중 공격':boss.mode==='salvo'?'포격 종료 · 반격 준비':ready;
   }
   else $('boss-state').textContent=recovering
-   ?coastArmed&&run.operation.coastStrike==='r'&&!run.operation.coastStrikeUsed?'수송차 재장전 · 다음 돌진 준비':'후면 엔진 노출 · 주황 표식으로':boss.mode==='windup'?`옆으로 회피 · ${(Math.ceil(boss.timer*10)/10).toFixed(1)}초`:boss.mode==='charge'?'돌진 중 · 진행선 밖으로':'장갑 수송차 · 측후면을 노려라';
+   ?coastArmed&&run.operation.coastStrike==='r'&&!run.operation.coastStrikeUsed?'수송차 재장전 · 다음 돌진 준비':'후면 엔진 노출 · 주황 표식으로':boss.mode==='windup'?`옆으로 회피 · ${(Math.ceil(boss.timer*10)/10).toFixed(1)}초`:boss.mode==='charge'?'돌진 중 · 진행선 밖으로':'측후면을 노려라';
   const names=front===1?[railGunLabel(0),railGunLabel(1)]:front===2?['포탑','측면 장갑']:['포탑','궤도'];
   const turretCut=rounds.length&&(boss.emberCycle===boss.cycle||boss.turretSuppressedCycle===boss.cycle);
   const relayCycle=boss.mode==='salvo'?boss.cycle:boss.cycle+1;

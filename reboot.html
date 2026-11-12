@@ -14,11 +14,11 @@
     <button id="pursuit" hidden><span id="pursuit-label"></span><kbd>Q</kbd></button>
    </div>
   </section>
- <aside id="map-panel"><span>전장 · 보급 / 보스</span><svg id="tactical-map" viewBox="0 0 1600 1200" role="img" aria-label="전장 지도: 흰색 대원, 금색 보급, 보라색 무기고, 주황색 적"></svg></aside>
+  <section id="boss-hud" aria-label="보스 전투" hidden><span id="boss-state"></span><div class="boss-meter"><b id="boss-name"></b><progress aria-label="보스 남은 내구" id="boss-hp" max="6000" value="6000"></progress></div><small id="boss-parts"></small><small id="boss-tactic" hidden></small><small id="boss-support" hidden></small></section>
+  <aside id="map-panel"><span>전장 · 보급 / 보스</span><svg id="tactical-map" viewBox="0 0 1600 1200" role="img" aria-label="전장 지도: 흰색 대원, 금색 보급, 보라색 무기고, 주황색 적"></svg></aside>
  </div>
  <section id="raid-hud" hidden><div><b id="raid-hp"></b><span id="raid-time"></span></div><progress aria-label="수송대 남은 내구" id="raid-progress" max="1" value="0"></progress><small id="raid-angle"></small></section>
- <section id="boss-hud" hidden><span id="boss-state"></span><progress aria-label="보스 남은 내구" id="boss-hp" max="6000" value="6000"></progress><small id="boss-parts"></small><small id="boss-tactic" hidden></small><small id="boss-support" hidden></small></section>
- <section class="arsenal"><div id="weapons"></div><div id="modules"></div><small id="synergy"></small><small id="maneuver-status" hidden></small><small id="support-status" hidden></small><div class="field-workbench"><button id="gear">조율권 1 · 장비 G</button><button id="field-upgrade" aria-keyshortcuts="R" hidden><b>야전 개조</b><strong id="field-upgrade-count"></strong><kbd class="key-hint" aria-hidden="true">R</kbd></button></div></section>
+ <section class="arsenal"><div id="weapons"></div><div id="modules"></div><small id="synergy"></small><small id="maneuver-status" hidden></small><small id="support-status" hidden></small><div class="field-workbench"><button id="gear">조율권 1 · 장비 G</button><button id="field-upgrade" aria-keyshortcuts="R" hidden><b><span class="field-upgrade-prefix">야전 </span>개조</b><strong id="field-upgrade-count"></strong><kbd class="key-hint" aria-hidden="true">R</kbd></button></div></section>
  <div class="xp"><i id="xp-fill"></i></div><div id="combo"></div><div id="banner" aria-live="polite"></div>
 </div>
 <div id="controls" hidden><div id="stick" role="group" aria-label="이동 스틱"><i></i></div><div class="action-buttons"><button id="interact" hidden><span id="interact-label">상호작용</span><kbd>F</kbd></button><button id="dash">회피<small>SPACE</small></button><button id="skill">전탄 보급<small>E</small></button></div></div>
