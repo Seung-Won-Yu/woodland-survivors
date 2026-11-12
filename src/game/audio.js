@@ -77,13 +77,13 @@ export function createAudio({fieldMix = false} = {}) {
     const now = context.currentTime;
     const bossSignal = RIFT_BOSS_CUES.includes(event);
     const mortar = event === 'mortar-lock';
-    const powerImpact = fieldMix && ['heat-break','conduit-hop','conduit-impact','conduit-transfer'].includes(event);
+    const powerImpact = fieldMix && ['heat-break','conduit-hop','conduit-impact','conduit-transfer','conduit-arrival','inferno-embers'].includes(event);
     const impact = powerImpact || IMPACTS.includes(event);
     const lane = bossSignal?'boss-signal':mortar?'mortar':powerImpact?'power-impact':impact?'impact':IMPORTANT.includes(event)?'important':CASTS.includes(event)?'cast':'background';
     const laneGap = impact ? .085 : .045;
     // A short foreground window separates being hit from dealing damage in a crowd.
     if (event !== 'hurt' && !bossSignal && !mortar && !['boss-warning','boss-charge'].includes(event) && now < dangerUntil) return;
-    const cooldown = mortar ? .28 : event==='relic-proc' ? .35 : event==='rifle-hit' ? .18 : impact ? .085 : lane==='cast' ? .11 : ['xp', 'kill'].includes(event) ? .16 : .06;
+    const cooldown = mortar ? .28 : event==='relic-proc' ? .35 : event==='inferno-embers' ? .20 : event==='rifle-hit' ? .18 : impact ? .085 : lane==='cast' ? .11 : ['xp', 'kill'].includes(event) ? .16 : .06;
     if ((event !== 'hurt' && now - (lastLane.get(lane) ?? -1) < laneGap) || now - (lastEvent.get(event) ?? -1) < cooldown) return;
     lastLane.set(lane, now);
     lastEvent.set(event, now);
@@ -140,6 +140,14 @@ export function createAudio({fieldMix = false} = {}) {
       transient(now,.044,.041,1850);
       note(290,110,'triangle',now,.095,.036);
       note(880,1390,'sine',now+.043,.075,.025);
+    } else if (event === 'conduit-arrival') {
+      transient(now,.055,.04,2240);
+      note(370,138,'triangle',now,.102,.035);
+      note(1060,610,'sine',now+.018,.067,.026);
+    } else if (event === 'inferno-embers') {
+      transient(now,.063,.032,840);
+      transient(now+.048,.049,.023,1530);
+      note(132,59,'triangle',now,.13,.024);
     } else if (event === 'rifle-hit') {
       transient(now,.027,.020,1680);
       note(186,70,'triangle',now,.052,.014);

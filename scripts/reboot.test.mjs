@@ -79,6 +79,17 @@ test('two payload kills send a single relay into another pack without feeding th
  s.enemies=[trigger,...groups.flat()];s.shots=[bullet(s,trigger,2)];tick(s,1.1);
  assert.ok(groups.slice(0,2).flat().every(e=>e.dead));assert.ok(groups[2].every(e=>!e.dead));
  assert.equal(s.stats.payloadRelays,1);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
+ assert.equal(takeEvents(s).filter(event=>event==='payload-arrival').length,1);
+});
+test('a relay that bursts against cover has no contact accent',()=>{
+ const s=quiet();
+ s.blocks=[{x:924,y:750,w:40,h:100,hp:-1}];
+ s.shots=[{...bullet(s,{id:'target',x:915,y:800},80),vx:700,rocket:true,radius:130,source:'payload',relay:true}];
+ step(s,dt);
+ const burst=s.effects.find(effect=>effect.type==='payload-impact');
+ assert.ok(burst);
+ assert.equal(burst.relayArrival,undefined);
+ assert.ok(!takeEvents(s).includes('payload-arrival'));
 });
 test('a conductive relay prefers the unhit third pack and can leave the impact pack',()=>{
  for(const scenario of ['open','blocked','legacy','retarget']){
@@ -137,6 +148,8 @@ test('evolved sweeping fire leaves a wake on the route while focused fire builds
  assert.equal(patch.source,'wake');assert.equal(patch.x,800);assert.ok(patch.x<sweep.player.x);assert.equal(patch.r,INFERNO_WAKE.radius);
  assert.equal(jet.zones.length,0);assert.ok(jet.enemies[0].burnDps>sweep.enemies[0].burnDps);
  const victim=enemy('crossing',patch.x,patch.y+50,'rifle',10);sweep.enemies.push(victim);sweep.weapons[0].cd=999;tick(sweep,.3);assert.equal(sweep.stats.wakeKills,1);
+ assert.ok(sweep.effects.some(f=>f.type==='kill'&&f.wake&&f.x===victim.x&&f.y===victim.y));
+ assert.ok(takeEvents(sweep).includes('wake-kill'));
 });
 test('Inferno wake spacing follows movement through empty ground and never builds against a wall',()=>{
  const s=quiet();s.weapons=[{...makeWeapon('f'),uid:'flame',cd:999,level:6,evolved:true,branch:'trail'}];
@@ -453,7 +466,13 @@ test('RIFT keeps boss warnings over hit and pickup cues and distinguishes capsto
  assert.deepEqual(mix(['rail-decoy','shot','xp-pickup']),['rail-decoy']);
  assert.deepEqual(mix(['rail-lock','rail-decoy','shot']),['rail-lock','rail-decoy']);
  assert.deepEqual(mix(['payload-impact','payload-relay','shot','xp-pickup']),['swarm-shot','conduit-transfer']);
+ assert.deepEqual(mix(['warning','shot','payload-impact']),['mortar-lock','conduit-impact']);
+ assert.deepEqual(mix(['warning','armor-impact','payload-impact']),['mortar-lock','guard-block']);
+ assert.deepEqual(mix(['warning','shot','payload-impact','payload-arrival']),['mortar-lock','conduit-arrival']);
+ assert.deepEqual(mix(['payload-impact','payload-arrival','shot']),['conduit-arrival']);
  assert.deepEqual(mix(['flame','fire-spread','heat','kill'],{inferno:true}),['inferno-spread','heat-break']);
+ assert.deepEqual(mix(['fire-spread','shot','kill','impact'],{inferno:true}),['inferno-embers']);
+ assert.deepEqual(mix(['wake-kill','kill'],{inferno:true}),['inferno-embers']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'flame'}),['inferno-ready']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'fusion'}),['conduit-ready']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'rocket'}),['salvo-ready']);

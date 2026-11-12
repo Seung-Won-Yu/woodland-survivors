@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.106.0" src="https://img.shields.io/badge/RIFT-0.106.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.107.0" src="https://img.shields.io/badge/RIFT-0.107.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -115,6 +115,8 @@ npm run test:pages
 0.97에서는 철갑 급탄을 확보하면 항구의 보조포 쪽으로 먼저 돌아 현재 위치에서 교전을 시작할 수 있습니다. 보상 카드와 작전도가 같은 방향을 표시합니다. [항구 측면 교전과 첫 포격 비교](docs/RIFT-GAMEPLAY-V1.md#097-항구-측면-교전-위치).
 
 0.98에서는 실전 장착을 마친 분열 수류탄과 흡열 코일을 해안이나 철도에 예약할 수 있습니다. 해안 예약은 첫 보스 전부터 쓸 수 있고, 같은 거점의 축전 코일이나 촉매와 함께 한 가지를 고릅니다. [연구 장비의 배치와 실제 발동](docs/RIFT-GAMEPLAY-V1.md#098-연구-장비의-해안-배치).
+
+0.107에서는 전도탄의 연쇄 궤적과 실제 명중을 구분해 보여 주고, 인페르노가 불을 옮기거나 잔불로 적을 쓰러뜨릴 때 전용음과 불씨가 남습니다. [완성 무장 연쇄와 타격 검증](docs/RIFT-GAMEPLAY-V1.md#0107-연쇄탄-명중과-인페르노-불씨).
 
 0.106에서는 철도 정비대에서 화염방사기를 분해해 뒤처진 H 또는 R을 두 단계 올릴 수 있습니다. 무장을 유지하는 판은 포대 탄약고에 들러 추가 보급을 받을 수 있습니다. [철도 재정비와 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#0106-철도-재정비와-포대-탄약고).
 

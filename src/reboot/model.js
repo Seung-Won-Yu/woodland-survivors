@@ -7,7 +7,12 @@ const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
 const pick=(s,key,items)=>items[Math.floor(rng(s,key)*items.length)];
 const alive=s=>s.enemies.filter(e=>!e.dead);
-const emit=(s,type,x=s.player.x,y=s.player.y,extra={})=>{s.events.push(type);s.effects.push({type,x,y,age:0,life:.45,...extra});if(s.effects.length>180)s.effects.shift();};
+const emit=(s,type,x=s.player.x,y=s.player.y,extra={})=>{
+ const effect={type,x,y,age:0,life:.45,...extra};
+ s.events.push(type);s.effects.push(effect);
+ if(s.effects.length>180)s.effects.shift();
+ return effect;
+};
 function emitBossWarning(s,signal,x,y,extra){
  emit(s,'boss-warning',x,y,extra);
  s.events.push(signal);
@@ -890,7 +895,9 @@ function scoreKill(s,e,source,kind,ignitedPayload){
  const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);
  const flavor=ignitedPayload||kind==='fire'?'fire':source==='payload'?'arc':null;
  if(flavor)e.deathFlavor=flavor;
- emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{})});
+ const wake=source==='wake';
+ emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{}),...(wake?{wake:true}:{})});
+ if(wake)s.events.push('wake-kill');
  const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
 }
 function recordFrontTactic(s){
@@ -1063,11 +1070,17 @@ function launchPayload(s,w,origin,target,amount,relay,breachLane,relayGroup){
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal,armorCycle){
  const charge=ignite&&effect==='payload-impact';
  const reach=charge?r*EMBER_CHARGE.impactScale:r;
- emit(s,effect,x,y,{r:reach,life:.4,...(charge?{incendiary:true}:{})});let budget=2;
+ const burst=emit(s,effect,x,y,{r:reach,life:.4,...(charge?{incendiary:true}:{})}),center={x,y};
+ let budget=2,contactGap=Infinity;
  for(const e of (source==='support'?alive(s):targets(s,breachLane,true,armorCycle))){
-  if(e.hp<=0||distance(e,{x,y})>reach+e.r||(effect==='ember-burst'?!groundLineClear(s,{x,y},e):lineBlocked(s,{x,y},e)))continue;
+  if(e.hp<=0)continue;
+  const gap=distance(e,center);
+  if(gap>reach+e.r||(effect==='ember-burst'?!groundLineClear(s,center,e):lineBlocked(s,center,e)))continue;
   const w=source==='native'?Math.min(.5,budget):0,before=e.hp;
   budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane,coastSignal,source==='payload'&&ignite,armorCycle);
+  if(effect==='payload-impact'&&e.hp<before&&gap<contactGap){
+   burst.contact={x:e.x,y:e.y};contactGap=gap;
+  }
   if(effect==='shrapnel'&&e.hp<before){
    s.stats.shrapnelHits=(s.stats.shrapnelHits||0)+1;
    if(e.dead&&Object.hasOwn(RULES.enemies,e.type))s.stats.shrapnelKills=(s.stats.shrapnelKills||0)+1;
@@ -1077,11 +1090,12 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=sou
  for(const b of s.blocks)if(b.hp>0&&Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<reach+Math.max(b.w,b.h)/2)b.hp=Math.max(0,b.hp-amount);
  if((source==='native'||source==='payload')&&moduleRank(s,'shrapnel')&&!(s.shrapnelCd>0)){s.shrapnelCd=.65;s.stats.shrapnelBursts=(s.stats.shrapnelBursts||0)+1;for(let i=0;i<3;i++){const a=i*TAU/3;blast(s,x+Math.cos(a)*50,y+Math.sin(a)*50,42,20,'module',null,false,'shrapnel');}}
  if(charge){
-  if(blocked(s,x,y,6))return;
+  if(blocked(s,x,y,6))return burst;
   const charges=s.zones.filter(z=>z.source==='ember-charge'&&z.owner===owner);
   if(charges.length>=3)s.zones.splice(s.zones.indexOf(charges[0]),1);
   if(s.zones.length<RULES.limits.zones)s.zones.push({x,y,r,life:EMBER_CHARGE.life,tick:EMBER_CHARGE.arm,source:'ember-charge',owner,breachLane});
  }else if(ignite&&effect!=='ember-burst'&&s.zones.length<RULES.limits.zones)s.zones.push({x,y,r:r*.65,dps:12,life:2,tick:.3,source:'dot'});
+ return burst;
 }
 function updateZones(s,dt,dashOrigin){
  for(const z of s.zones){
@@ -1291,7 +1305,12 @@ function detonate(s,q,impact){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
  const mortars=q.coastFuse&&s.enemies.filter(e=>!e.dead&&e.cohort==='coast-guard'&&e.type==='mortar'&&e.hp>0);
- blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal,q.armorCycle);q.life=0;
+ const burst=blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal,q.armorCycle);
+ q.life=0;
+ if(q.relay&&burst.contact){
+  burst.relayArrival=true;
+  s.events.push('payload-arrival');
+ }
  if(mortars?.length===2&&mortars.every(e=>e.dead)){
   s.levelReadyAt=Math.max(s.levelReadyAt||0,s.t+COAST_MORTAR.volleyBeat);
   emit(s,'coast-volley',q.x,q.y,{life:.85});

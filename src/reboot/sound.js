@@ -8,6 +8,8 @@ const fieldCues={
  'port-hatch':'front-entry','port-ambush':'front-entry','region-entry':'front-entry','hunt-reserve':'front-entry','signal-down':'armor-collapse','challenge-clear':'rampage','raid-success':'forge-evolve',
  heal:'heal',break:'crowd-break','xp-pickup':'xp'
 };
+const capstoneContacts=new Set(['heat-break','conduit-hop','conduit-impact','conduit-transfer']);
+const weaponCasts=new Set(['focus-shot','inferno-jet','flame-loop','scatter-shot','swarm-shot']);
 
 export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  const warning=events.has('boss-charge')?'coast-charge':RIFT_BOSS_CUES.find(cue=>events.has(cue))||(events.has('warning')?'mortar-lock':null);
@@ -21,6 +23,12 @@ export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  else if(events.has('shell-land'))foreground='shell-land';
  else if(events.has('rail-decoy'))foreground='rail-decoy';
  if(foreground)return warning?[warning,foreground]:[foreground];
+ if(events.has('payload-arrival'))return warning?[warning,'conduit-arrival']:['conduit-arrival'];
+ if(inferno&&(events.has('fire-spread')||events.has('wake-kill'))){
+  const contact=events.has('flame')?'inferno-spread':events.has('heat')?'heat-break':'inferno-embers';
+  if(warning)return [warning,contact];
+  return contact==='inferno-spread'&&events.has('heat')?[contact,'heat-break']:[contact];
+ }
 
  const cues=new Set();
  for(const event of events)if(Object.hasOwn(fieldCues,event))cues.add(fieldCues[event]);
@@ -28,6 +36,9 @@ export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  if(cues.has('heat-break')){cues.delete('power-kill');cues.delete('wood-kill');}
  const selected=selectAudioEvents(cues);
  const transfer=cues.has('conduit-impact')&&cues.has('conduit-hop');
- const contact=selected.map(cue=>cue==='conduit-hop'&&transfer?'conduit-transfer':cue==='inferno-jet'&&cues.has('fire-spread')?'inferno-spread':cue);
- return warning?[warning,...contact.slice(0,1).filter(cue=>cue!=='xp')]:contact;
+ const contact=selected.map(cue=>cue==='conduit-hop'&&transfer?'conduit-transfer':cue);
+ if(!warning)return contact;
+ const [first]=contact;
+ const attack=weaponCasts.has(first)?contact.find(cue=>capstoneContacts.has(cue))||first:first;
+ return attack&&attack!=='xp'?[warning,attack]:[warning];
 }
