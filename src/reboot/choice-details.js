@@ -205,8 +205,9 @@ export function choiceDetails(s,c){
    out.detail='연료 살포 인페르노 · 회피로 코어를 연 뒤 냉각 배관 옆을 달려 불길을 남기세요.';
    out.link=`장갑 또는 차체 피해 ${effect.wakeDamage} · 재장전마다 한 번`;
   }else if(index===2&&c.key==='overrun'&&s.weapons.some(isConductiveFusion)){
-   out.detail='회피로 코어를 열고 전도 격발망으로 맞히면 측면 장갑이나 포탑에 역송합니다.';
-   out.link=`기본 피해 ${effect.arcDamage} · 재장전마다 한 번`;
+   const side=portTurretSide(regionBoss(2,s.seed));
+   out.detail=`회피로 코어를 열고 원하는 포대 쪽에서 맞히세요. ${portSideName(side)}은 포탑, ${portSideName(-side)}은 보조포입니다.`;
+   out.link='포탑 탄막 소거 · 선택한 포대의 다음 사격 차단';
   }
  }else if(c.kind==='cargo'){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';

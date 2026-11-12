@@ -178,7 +178,7 @@ function harborPayoff(r){
  const part=r.operation?.support,log=r.operation?.harborPayoff;
  const labels={
   breach:[['turrets','측면 포탑 파괴'],['salvos','포탑탄 차단'],['fans','후속 탄막 차단'],['armorPreps','보조포 선제 급탄 차단'],['armorSalvos','예고 중 보조 포격 차단']],
-  overrun:[['dives','코어 돌입'],['sidesteps','측면 회피'],['compressionHits','장갑 해제 중 중거리 압축 직격'],['wakeHits','배관 점화로 측면 장갑 타격'],['wakeBreaks','배관 점화로 측면 장갑 파괴'],['wakeHull','배관 점화로 차체 직격'],['arcArmor','측면 장갑 역송'],['arcTurret','포탑 역송'],['arcBreaks','역송으로 부위 파괴']],
+  overrun:[['dives','코어 돌입'],['sidesteps','측면 회피'],['compressionHits','장갑 해제 중 중거리 압축 직격'],['wakeHits','배관 점화로 측면 장갑 타격'],['wakeBreaks','배관 점화로 측면 장갑 파괴'],['wakeHull','배관 점화로 차체 직격'],['arcArmor','측면 장갑 역송'],['arcTurret','포탑 역송'],['arcFanClears','발사된 포탑 탄막 제거'],['arcArmorCuts','전도 보조 포격 차단'],['arcTurretCuts','전도 포탑 사격 차단'],['arcBreaks','역송으로 부위 파괴']],
   recovery:[['locks','발밑 조준탄 차단'],['rakes','가로 포격 차단'],['counterfire','측면 장갑 타격'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
  };
  if(!log||!Object.hasOwn(labels,part))return '';

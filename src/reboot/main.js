@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStagingPoint,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStagingPoint,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -847,7 +847,7 @@ function updateHud(entry,focus=null){
    const rake=rounds.some(h=>h.portRound==='rake');
    const cut=boss.armorSuppressedCycle===boss.cycle;
    const warning=!lock?'포격 범위 밖 · 착탄 대기':rake?'가로 포격':rounds.some(h=>h.portRound==='battery')?'세로 포격'
-    :lock.jammed?'관제소 · 발밑 포격':cut?'철갑 · 발밑 포격':'발밑 조준 고정';
+    :lock.jammed?'관제소 · 발밑 포격':portRelayCuts(run,boss.cycle,'armor')?'전도 · 발밑 포격':cut?'철갑 · 발밑 포격':'발밑 조준 고정';
    const lanes=portDanger?portEscapeLanes(run,harborWarnings,combatHud.analog):[];
    const escape=lanes.length?`${lanes.map(lane=>lane.label).join('·')}${lanes[0].dy?'로':'으로'} 회피`:'탄착 범위 밖으로';
    const lead=counterCovers&&!counterLeavesDanger?`스킬 · ${counterShort}`:portDanger?escape:warning;
@@ -859,8 +859,10 @@ function updateHud(entry,focus=null){
    ?coastArmed&&run.operation.coastStrike==='r'&&!run.operation.coastStrikeUsed?'수송차 재장전 · 다음 돌진 준비':'후면 엔진 노출 · 주황 표식으로':boss.mode==='windup'?`옆으로 회피 · ${(Math.ceil(boss.timer*10)/10).toFixed(1)}초`:boss.mode==='charge'?'돌진 중 · 진행선 밖으로':'장갑 수송차 · 측후면을 노려라';
   const names=front===1?[railGunLabel(0),railGunLabel(1)]:front===2?['포탑','측면 장갑']:['포탑','궤도'];
   const turretCut=rounds.length&&(boss.emberCycle===boss.cycle||boss.turretSuppressedCycle===boss.cycle);
+  const relayCycle=boss.mode==='salvo'?boss.cycle:boss.cycle+1;
   $('boss-parts').textContent=names.map((name,i)=>{
    if(boss.parts[i].hp<=0)return `${name} 파괴`;
+   if(front===2&&portRelayCuts(run,relayCycle,i===0?'turret':'armor'))return `${i===0?'포탑':'보조포'} ${boss.mode==='salvo'?'전도 차단':'다음 사격 정지'}`;
    if(i===0&&turretCut)return '포탑탄 차단';
    if(front===2&&i===1&&!recovering&&boss.armorSuppressedCycle===(boss.mode==='aim'?boss.cycle+1:boss.cycle))return '보조포 급탄 차단';
    const lane=railLanes.find(h=>railGunOf(h)===i);
@@ -974,10 +976,13 @@ function updateHud(entry,focus=null){
      :armor?`철갑 · ${turretSide} 포탑 / ${armorSide} 보조포`:`철갑 · ${turretSide} 포탑 사선으로`;
    }else if(supportId==='overrun'){
     const arc=run.weapons.some(isConductiveFusion);
+    const relay=arc?harborArcTarget(run):null;
+    const relayName=relay===boss.parts[0]?'포탑':'보조포';
     if(portWakeMode(run)==='overrun')line.textContent=`장갑 해제 · ${portTurretSide(boss)<0?'오른쪽':'왼쪽'} 배관 옆을 달려 점화`;
     else if(portCoreDisrupted(run)&&boss.harborWakeCycle===boss.cycle)line.textContent=run.effects.findLast(f=>f.portWake)?.text||'배관 점화 완료 · 열린 코어 집중 사격';
-    else if(arc&&harborArcTarget(run))line.textContent='장갑 해제 · 코어 명중으로 전도 역송';
-    else if(arc&&portCoreDisrupted(run)&&boss.harborArcCycle===boss.cycle)line.textContent='전도 역송 완료 · 열린 코어 집중 사격';
+    else if(relay&&portCoreDisrupted(run))line.textContent=`코어 명중 → ${relayName} 역송`;
+    else if(relay&&p.dashCd<=0&&coreGap<=110)line.textContent=`${coreGap<=0?'↔ 회피':'코어 쪽 회피'} → ${relayName} 역송`;
+    else if(arc&&portCoreDisrupted(run)&&boss.harborArcCycle===boss.cycle)line.textContent='전도 역송 완료 · 코어 집중 사격';
     else if(coreOpen){
      line.textContent=infernoCoreLine(run,focused)?'장갑 해제 · 압축 분사 직격'
       :distance(p,boss)<INFERNO_CORE_DISTANCE?`장갑 해제 · 코어에서 ${INFERNO_CORE_DISTANCE/10}m 거리 확보`
@@ -1033,7 +1038,7 @@ function processEvents(){
  const counter=!priority&&events.has('aid-counter')&&run.effects.findLast(f=>f.type==='aid-counter');
  const fx=counter||run.effects.findLast(f=>priority?f.type===priority:!f.interrupted&&f.railCounter===undefined&&(f.type!=='complete'||!capstone)
   &&events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
- if(!fx||fx.coastTactic||fx.portWake||fx.type==='aid-counter')return;
+ if(!fx||fx.coastTactic||fx.portWake||fx.portRelay||fx.type==='aid-counter')return;
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
  bannerUntil=run.t+(bannerPriority.includes(fx.type)?2.1:1.5);
  if(fx.type==='region-entry'){

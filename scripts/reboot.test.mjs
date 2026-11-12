@@ -1862,7 +1862,64 @@ test('conductive hits relay from a dash-opened harbor core once per reload',()=>
  const card=choiceDetails({...s,operation:{region:1}},{
   id:'support:overrun',key:'overrun',kind:'front-support',title:'돌격 신관'
  });
- assert.match(card.detail,/회피로 코어를 열고 전도 격발망으로 맞히면/);
+ assert.match(card.detail,/원하는 포대 쪽에서 맞히세요.*왼쪽은 포탑, 오른쪽은 보조포/);
+});
+test('harbor conductive relay cuts the chosen side on the next volley only, including after restore',()=>{
+ for(const turretSide of [-1,1])for(const selected of ['turret','armor']){
+  const s=supportArena(2,'overrun','recover'),b=s.boss;
+  b.parts[0].ox=60*turretSide;b.parts[1].ox=-60*turretSide;
+  b.harborStrikeCycle=b.cycle;
+  s.operation.harborPayoff={};
+  s.weapons=[{...makeWeapon('h'),uid:'fused',level:6,fusion:{secondary:'r',branch:'homing',overflow:0},cd:999}];
+  const turret=selected==='turret',index=turret?0:1;
+  Object.assign(s.player,{x:b.x+(turret?1:-1)*turretSide*75,y:400});
+  const ambient={x:500,y:500,vx:0,vy:0,r:5,life:3};
+  s.enemyShots=[ambient,{...ambient,x:540,portFan:true}];
+  s.shots=[bullet(s,b,1)];step(s,dt);
+  assert.equal(b.harborRelayPart,selected);
+  assert.equal(b.parts[index].hp,b.parts[index].maxHp-210);
+  assert.equal(b.parts[1-index].hp,b.parts[1-index].maxHp);
+  assert.deepEqual(s.enemyShots.map(q=>q.x),turret?[500]:[500,540]);
+  assert.equal(s.operation.harborPayoff.arcFanClears,turret?1:undefined);
+  const loaded=restore(snapshot(s));
+  loaded.enemyShots=[];
+  const fire=()=>{Object.assign(loaded.boss,{mode:'aim',timer:0});step(loaded,dt);};
+  const rounds=()=>loaded.hazards.filter(h=>!h.hit).map(h=>h.portRound).sort();
+  fire();
+  assert.deepEqual(rounds(),turret?['battery','battery','lock']:['lock','turret','turret']);
+  const key=turret?'arcTurretCuts':'arcArmorCuts';
+  assert.equal(loaded.operation.harborPayoff[key],1);
+  loaded.boss.timer=0;step(loaded,dt);
+  assert.equal(loaded.enemyShots.length,turret?0:9);
+  assert.ok(loaded.enemyShots.every(q=>q.portFan));
+  loaded.hazards=[];fire();
+  assert.deepEqual(rounds(),['lock','rake','rake','turret','turret']);
+  assert.equal(loaded.operation.harborPayoff[key],1);
+ }
+});
+test('harbor relay preserves old checkpoints and gives shared attack cuts to the right source',()=>{
+ const arena=(part,plan)=>{
+  const s=supportArena(2,'overrun','aim');
+  Object.assign(s.operation,{harborPayoff:{},...plan});
+  Object.assign(s.boss,{timer:0,harborArcCycle:1,harborRelayPart:part});
+  return s;
+ };
+ const old=arena('turret');
+ old.balanceRevision='b36-counterbattery';delete old.boss.harborRelayPart;
+ old.sites=regionLayout(mapSeed(old.seed,2),2).sites;
+ const loaded=restore(snapshot(old));step(loaded,dt);
+ assert.equal(loaded.hazards.filter(h=>h.portRound==='turret').length,2);
+ const ember=arena('turret',{tactic:'ember'});ember.boss.emberCycle=2;
+ step(ember,dt);
+ assert.equal(ember.hazards.filter(h=>h.portRound==='turret').length,0);
+ assert.equal(ember.operation.harborPayoff.arcTurretCuts,undefined);
+ ember.boss.timer=0;step(ember,dt);
+ assert.equal(ember.enemyShots.length,0);
+ assert.equal(ember.operation.harborPayoff.arcTurretCuts,1);
+ const jammed=arena('armor',{jammed:true,portEntry:'gantry'});step(jammed,dt);
+ assert.equal(jammed.hazards.filter(h=>h.portRound==='rake').length,0);
+ assert.equal(jammed.operation.harborPayoff.arcArmorCuts,undefined);
+ assert.ok(jammed.hazards.find(h=>h.portRound==='lock').jammed);
 });
 test('harbor medical crates alternate flanks, survive saving and require a physical pickup',()=>{
  const s=supportArena(2,'recovery','aim');Object.assign(s.boss,{cycle:0,timer:0});Object.assign(s.player,{x:700,y:335,hp:80,charge:40});

@@ -2,7 +2,7 @@ import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,pa
 import {exitGate,BOSS_ENTRY,coastStagingPoint,portArmorStaging,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
-import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
@@ -317,6 +317,13 @@ function paintPortCue(c,s,aid){
   }
  }else if(portCoreDisrupted(s)){
   circle(c,b.x,b.y-21,25,'#faab573d','#ffe2a3',3);
+ }
+ const relay=harborArcTarget(s);
+ if(relay){
+  const p=partPosition(s,relay),color='#a6edf9';
+  c.setLineDash([5,4]);circle(c,p.x,p.y,relay.r+5,null,color,2);c.setLineDash([]);
+  c.strokeStyle=color;c.lineWidth=2.5;c.beginPath();
+  c.moveTo(p.x+3,p.y-45);c.lineTo(p.x-4,p.y-38);c.lineTo(p.x+3,p.y-38);c.lineTo(p.x-2,p.y-31);c.stroke();
  }
  if(portAidCounterReady(s)&&b.parts[1].hp>0){
   const p=partPosition(s,b.parts[1]);

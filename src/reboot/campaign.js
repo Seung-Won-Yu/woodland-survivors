@@ -50,8 +50,11 @@ export function portBarrageAxis(s,cycle){
  return (cycle%2===0)===gantry?'horizontal':'vertical';
 }
 export const portJamsSweep=(s,cycle)=>s.operation.jammed&&cycle===(s.operation.portEntry==='gantry'?2:1);
+export const portRelayCuts=(s,cycle,part)=>s.operation?.region===2&&s.operation.support==='overrun'
+ &&s.boss.harborRelayPart===part&&s.boss.harborArcCycle+1===cycle
+ &&(part!=='armor'||portBarrageAxis(s,cycle)!=='horizontal'||!portJamsSweep(s,cycle));
 export function portAuxiliaryRound(s,cycle){
- if(s.boss.parts[1].hp<=0||s.boss.armorSuppressedCycle===cycle)return null;
+ if(s.boss.parts[1].hp<=0||s.boss.armorSuppressedCycle===cycle||portRelayCuts(s,cycle,'armor'))return null;
  if(portBarrageAxis(s,cycle)==='vertical')return 'battery';
  return portJamsSweep(s,cycle)?null:'rake';
 }
@@ -65,7 +68,7 @@ export function portBarrageRounds(s,cycle){
  for(const side of [-1,1]){
   if(auxiliary==='rake')push(side*plan.batteryOffset,0,auxiliary);
   else if(auxiliary==='battery')push(0,side*plan.batteryOffset,auxiliary);
-  if(b.parts[0].hp>0&&b.emberCycle!==cycle)push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
+  if(b.parts[0].hp>0&&b.emberCycle!==cycle&&!portRelayCuts(s,cycle,'turret'))push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
  }
  return rounds;
 }
