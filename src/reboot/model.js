@@ -1,5 +1,5 @@
 import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
-import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
+import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
 import {OPERATORS,operatorOf,skillRules,canUseSkill,focusLane,aimFromInput,chargeLabel} from './operator.js';
@@ -91,7 +91,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -117,6 +117,10 @@ export function restore(raw,{allowPrevious=false}={}){
   ||!Number.isFinite(q.coastFuse?.x)||!Number.isFinite(q.coastFuse?.y))))fail();
  if(s.shots.some(q=>q?.relayGroup!==undefined&&(!q.relay||q.source!=='payload'
   ||!Number.isSafeInteger(q.wavePulse)||!Number.isSafeInteger(q.relayGroup))))fail();
+ const conduitRounds=s.hazards.filter(h=>h?.conduitGun!==undefined);
+ if(conduitRounds.length>1||conduitRounds.some(h=>typeof h.conduitGun!=='string'||!h.conduitGun||h.lane
+  ||![h.x,h.y,h.fromX,h.fromY,h.r,h.duration,h.timer].every(Number.isFinite)||h.r!==CONDUIT_MORTAR.radius||h.duration<=0))fail();
+ if(s.shots.some(q=>q?.conduitGun!==undefined&&(typeof q.conduitGun!=='string'||!q.conduitGun||q.source!=='payload'||!q.relay||!q.homing)))fail();
  if(s.zones.some(z=>z?.source==='ember-charge'&&(![z.x,z.y,z.r,z.life,z.tick].every(Number.isFinite)||z.r<=0||z.life<=0||typeof z.owner!=='string')))fail();
  if(new Set(s.modules.map(m=>m.id)).size!==s.modules.length||s.modules.some(m=>RULES.modules[m.id].unique&&m.rank!==1)||new Set(s.weapons.map(w=>w.uid)).size!==s.weapons.length||s.weapons.some(w=>typeof w.uid!=='string'))fail();
  if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
@@ -1082,6 +1086,13 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
 function feed(s,owner,weight,target,breachLane){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}
  const w=s.weapons.find(w=>w.uid===owner);if(w?.fusion){const cfg=RULES.fusion;w.payload=Math.min(cfg.hitsPerPayload,w.payload+weight);if(w.payload>=cfg.hitsPerPayload&&w.payloadCd<=0){w.payload-=cfg.hitsPerPayload;w.payloadCd=cfg.payloadCooldown;
+  const cut=isConductiveFusion(w)&&conduitCutTarget(s,target);
+  if(cut&&launchPayload(s,w,target,cut,cfg.payloadDamage,true,breachLane,cut.waveGroup,true)){
+   s.stats.payloadBursts=(s.stats.payloadBursts||0)+1;
+   s.stats.payloadRelays=(s.stats.payloadRelays||0)+1;
+   emit(s,'payload-relay',target.x,target.y,{x2:cut.x,y2:cut.y,life:.32,conduitCut:true});
+   return;
+  }
   const near=payloadTargets(s,target,42);
   const opposite=target.waveGroup==null?null:near.find(e=>e.waveGroup!=null&&(e.waveGroup^1)===target.waveGroup);
   const next=opposite||near.find(e=>distance(e,target)>=100)||near[0];
@@ -1091,10 +1102,24 @@ function feed(s,owner,weight,target,breachLane){
  }}
 }
 function payloadTargets(s,origin,min){return targets(s).filter(e=>e.hp>0&&distance(e,origin)>=min&&distance(e,origin)<300&&!lineBlocked(s,origin,e)).sort((a,b)=>distance(a,origin)-distance(b,origin));}
-function launchPayload(s,w,origin,target,amount,relay,breachLane,relayGroup){
+export function conduitMortarCue(s){
+ const round=s.hazards.find(h=>h.conduitGun&&!h.hit&&h.timer>0);
+ if(!round)return null;
+ const gun=s.enemies.find(e=>e.id===round.conduitGun&&!e.dead&&e.hp>0);
+ const safe=distance(s.player,round)>=blastContactRadius(round);
+ return {round,gun,safe,clear:safe&&!!gun&&!lineBlocked(s,s.player,gun)};
+}
+function conduitCutTarget(s,origin){
+ const cue=conduitMortarCue(s),gun=cue?.gun;
+ if(!cue?.clear||gun===origin||lineBlocked(s,origin,gun))return null;
+ const gap=distance(origin,gun),time=(gap-gun.r-7)/RULES.fusion.payloadSpeed;
+ if(gap>=CONDUIT_MORTAR.relayReach||time>=cue.round.timer)return null;
+ return s.shots.some(q=>q.conduitGun===gun.id&&q.life>0)?null:gun;
+}
+function launchPayload(s,w,origin,target,amount,relay,breachLane,relayGroup,cut=false){
  const angle=Math.atan2(target.y-origin.y,target.x-origin.x);
  const incendiary=!relay&&w.fusion.branch==='incendiary';
- return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane,relayGroup});
+ return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane,relayGroup,conduitGun:cut?target.id:undefined});
 }
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal,armorCycle){
  const charge=ignite&&effect==='payload-impact';
@@ -1258,14 +1283,17 @@ function fire(s,w,target,a,amount,opts={}){
  )):undefined;
  const armorCycle=source==='native'&&target===s.boss.parts[1]&&portArmorFlank(s)
   &&!lineBlocked(s,s.player,partPosition(s,target))?portArmorOpportunity(s):undefined;
+ const wavePulse=opts.conduitGun?target.wavePulse:origin?.wavePulse;
  const payload=source==='payload'?{
   speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null,
-  ...(Number.isSafeInteger(origin?.wavePulse)?{wavePulse:origin.wavePulse}:{}),
-  ...(opts.relayGroup!==undefined?{relayGroup:opts.relayGroup}:{})
+  ...(Number.isSafeInteger(wavePulse)?{wavePulse}:{}),
+  ...(opts.relayGroup!==undefined?{relayGroup:opts.relayGroup}:{}),
+  ...(opts.conduitGun?{conduitGun:opts.conduitGun}:{})
  }:null;
+ const range=opts.conduitGun?Math.max(d.range,distance(origin,target)+48):d.range;
  s.shots.push({
   x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,
-  vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,
+  vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,
   source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',
   bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],
   ...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),
@@ -1366,8 +1394,15 @@ function detonate(s,q,impact){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
  const mortars=q.coastFuse&&s.enemies.filter(e=>!e.dead&&e.cohort==='coast-guard'&&e.type==='mortar'&&e.hp>0);
+ const cut=q.conduitGun&&conduitMortarCue(s);
+ const cutHit=cut?.gun&&cut.gun.id===q.conduitGun&&distance(q,cut.gun)<=q.radius+cut.gun.r&&!lineBlocked(s,q,cut.gun);
  const burst=blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal,q.armorCycle);
  q.life=0;
+ if(cutHit){
+  s.hazards=s.hazards.filter(h=>h!==cut.round);
+  s.stats.conduitMortarCuts=(s.stats.conduitMortarCuts||0)+1;
+  emit(s,'barrage-cancel',cut.round.x,cut.round.y,{x2:cut.gun.x,y2:cut.gun.y,life:.55,conduitCut:true});
+ }
  if(q.relay&&burst.contact){
   burst.relayArrival=true;
   s.events.push('payload-arrival');
@@ -1380,14 +1415,16 @@ function detonate(s,q,impact){
  const owner=s.weapons.find(w=>w.uid===q.owner&&w.fusion),eligible=payloadTargets(s,q,q.radius+22);
  const struck=impact?.waveGroup,origin=q.avoidGroup,pulse=impact?.wavePulse;
  // Only a confirmed cross-pack hit within the same pulse can seek its remaining pack.
- const third=Number.isSafeInteger(pulse)&&pulse===q.wavePulse&&Number.isSafeInteger(origin)&&Number.isSafeInteger(struck)&&struck!==origin
-  ?eligible.find(e=>e.wavePulse===pulse&&Number.isSafeInteger(e.waveGroup)&&e.waveGroup!==struck&&e.waveGroup!==origin)
-  :null;
+ const crossPack=Number.isSafeInteger(pulse)&&pulse===q.wavePulse&&Number.isSafeInteger(origin)&&Number.isSafeInteger(struck)&&struck!==origin;
+ const remainingPack=e=>crossPack&&e.wavePulse===pulse&&Number.isSafeInteger(e.waveGroup)&&e.waveGroup!==struck&&e.waveGroup!==origin;
+ const gun=crossPack&&conduitCutTarget(s,q);
+ const direct=!!gun&&remainingPack(gun);
+ const third=direct?gun:eligible.find(remainingPack);
  const next=third||eligible[0];
  const launch=third?{x:q.x,y:q.y,id:impact.id,waveGroup:struck,wavePulse:pulse}:q;
- if(owner&&next&&launchPayload(s,owner,launch,next,RULES.fusion.payloadDamage*.8,true,q.breachLane,third?.waveGroup)){
+ if(owner&&next&&launchPayload(s,owner,launch,next,RULES.fusion.payloadDamage*.8,true,q.breachLane,third?.waveGroup,direct)){
   s.stats.payloadRelays=(s.stats.payloadRelays||0)+1;
-  emit(s,'payload-relay',q.x,q.y,{x2:next.x,y2:next.y,life:.32,...(third?{thirdPack:true}:{})});
+  emit(s,'payload-relay',q.x,q.y,{x2:next.x,y2:next.y,life:.32,...(third?{thirdPack:true}:{}),...(direct?{conduitCut:true}:{})});
  }
 }
 function homingTarget(s,q){
@@ -1764,6 +1801,9 @@ function spawnShowcaseWave(s,pulse,showcase,remaining){
  const approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x):wake?Math.atan2(wake.y-p.y,wake.x-p.x):p.aim;
  const pair=flame?[[0,190],[0,264]]:[[-.34,205],[.48,248]];
  const plans=!flame&&remaining-(pulse-1)*8>=12?[[[-.75,208],[.1,224],[.93,242]],pair]:[pair];
+ const canDeployMortar=s.operation&&s.stage==='field'&&showcase==='fusion'&&!s.stats.conduitMortarDeployed&&s.weapons.some(isConductiveFusion);
+ const fits=q=>q.x>=65&&q.x<=1535&&q.y>=65&&q.y<=1135&&distance(p,q)>=155&&!blocked(s,q.x,q.y,22)
+  &&!lineBlocked(s,p,q)&&(!s.boss.active||distance(q,s.boss)>=s.boss.r+28)&&!crowd.some(e=>distance(q,e)<32);
  for(const lanes of plans){
   const count=lanes.length*4;
   if(crowd.length+count>160)continue;
@@ -1773,9 +1813,26 @@ function spawnShowcaseWave(s,pulse,showcase,remaining){
    const centers=lanes.map(([offset,reach])=>({x:p.x+Math.cos(heading+offset)*reach,y:p.y+Math.sin(heading+offset)*reach}));
    const cos=flame?Math.cos(heading):1,sin=flame?Math.sin(heading):0;
    const packs=centers.map(({x,y})=>[[-18,-20],[18,-20],[-18,20],[18,20]].map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
-   if(centers.some((q,j)=>j>0&&lineBlocked(s,centers[j-1],q))||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||s.boss.active&&distance(q,s.boss)<s.boss.r+28||crowd.some(e=>distance(q,e)<32)))continue;
+   if(centers.some((q,j)=>j>0&&lineBlocked(s,centers[j-1],q))||!packs.flat().every(fits))continue;
+   let mortar=null;
+   if(canDeployMortar&&packs.length===3){
+    const [offset,reach]=lanes[2],a=heading+offset;
+    const point={x:p.x+Math.cos(a)*(reach+CONDUIT_MORTAR.setback),y:p.y+Math.sin(a)*(reach+CONDUIT_MORTAR.setback)};
+    if(fits(point)&&centers.slice(0,2).some(center=>distance(center,point)<CONDUIT_MORTAR.relayReach&&!lineBlocked(s,center,point))){
+     mortar=point;packs[2][3]=point;
+    }
+   }
    const formationHeading=heading+Math.PI;
-   for(let group=0;group<packs.length;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',showcase,formationHeading,...(flame?{}:{waveGroup:pulse*4+group,wavePulse:pulse})});
+   for(let group=0;group<packs.length;group++)for(const q of packs[group]){
+    const extra={cohort:'ambient',showcase,formationHeading,...(flame?{}:{waveGroup:pulse*4+group,wavePulse:pulse})};
+    if(q!==mortar){spawnEnemy(s,'rifle',q.x,q.y,null,extra);continue;}
+    const gun=spawnEnemy(s,'mortar',q.x,q.y,null,{...extra,timer:2.8});
+    const {warning:duration,radius:r}=CONDUIT_MORTAR;
+    s.hazards.push({x:p.x,y:p.y,r,timer:duration,duration,age:0,conduitGun:gun.id,fromX:gun.x,fromY:gun.y});
+    s.stats.conduitMortarDeployed=true;
+    emit(s,'warning',p.x,p.y,{r,life:duration});
+    emit(s,'mortar-fire',gun.x,gun.y,{life:.21});
+   }
    for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase,angle:formationHeading});
    return count;
   }

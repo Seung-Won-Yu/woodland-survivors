@@ -353,7 +353,7 @@ function debriefDetails(r,p,lines){
  const lensUses=r.operation?.region===2&&r.operation?.tactic==='lens'?r.stats.frontTactics?.[2]:0;
  const wakeUses=r.operation?.region===2&&r.operation?.tactic==='wake'?r.stats.frontTactics?.[2]:0;
  const procs=[['도탄 적중',r.stats.ricochetHits],['전기 연쇄',r.stats.coilBursts],['열압 폭발',r.stats.heatBursts],
-  ['합체 격발',r.stats.payloadBursts],['연쇄 도약',r.stats.payloadRelays],['합체 탄약 처치',r.stats.payloadKills],
+  ['합체 격발',r.stats.payloadBursts],['연쇄 도약',r.stats.payloadRelays],['전도 박격포 차단',r.stats.conduitMortarCuts],['합체 탄약 처치',r.stats.payloadKills],
   ['화약 유폭',r.stats.emberBursts],['회피 유폭',r.stats.emberDashBursts],['철도 병기 유폭',r.stats.emberRailBursts],['화약 유폭 처치',r.stats.emberKills],['압축 코어 직격',r.stats.infernoCoreHits],
   ['코어 재장전 지연',lensUses],['냉각 배관 점화',wakeUses],['화약 포탑탄 차단',r.stats.emberIntercepts],
   ['인페르노 장판 처치',r.stats.wakeKills],['잔불 연결 점화',r.stats.wakeFlashes],['연결 점화 처치',r.stats.wakeFlashKills],

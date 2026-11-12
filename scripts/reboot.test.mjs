@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
-import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan} from '../src/reboot/model.js';
+import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} from '../src/reboot/choice-details.js';
@@ -92,7 +92,7 @@ test('a relay that bursts against cover has no contact accent',()=>{
  assert.ok(!takeEvents(s).includes('payload-arrival'));
 });
 test('a conductive relay prefers the unhit third pack and can leave the impact pack',()=>{
- for(const scenario of ['open','blocked','legacy','retarget']){
+ for(const scenario of ['open','blocked','legacy','retarget','mortar']){
   const s=quiet(),w=s.weapons[0],legacy=scenario==='legacy';
   const blocked=scenario==='blocked',fallback=blocked||legacy;
   if(legacy)s.balanceRevision='b31-harbor-counterattack';
@@ -103,6 +103,12 @@ test('a conductive relay prefers the unhit third pack and can leave the impact p
   const impact=unit('impact',980,800,60,17),wing=unit('wing',1008,834,60,17);
   const survivor=unit('survivor',1045,800,1000,17);
   const third=unit('third',1190,800,60,18),partner=unit('partner',1215,835,60,18);
+  if(scenario==='mortar'){
+   s.player.y=900;
+   Object.assign(third,{x:1290,type:'mortar'});partner.x=1315;
+   const {radius:r,warning:duration}=CONDUIT_MORTAR;
+   s.hazards=[{x:800,y:800,r,timer:duration,duration,conduitGun:third.id,fromX:third.x,fromY:third.y}];
+  }
   s.enemies=[origin,impact,wing,survivor,third,partner];
   if(blocked)s.blocks=[{x:1110,y:755,w:42,h:105,hp:-1}];
   s.shots=[bullet(s,origin,2)];
@@ -121,7 +127,58 @@ test('a conductive relay prefers the unhit third pack and can leave the impact p
   assert.equal(resumed.stats.payloadRelays,1);
   assert.equal(resumed.enemies.some(e=>e.id===third.id&&!e.dead),fallback);
   assert.equal(resumed.enemies.some(e=>e.id===partner.id&&!e.dead),fallback);
+  assert.equal(resumed.stats.conduitMortarCuts,scenario==='mortar'?1:undefined);
  }
+});
+test('a conductive sortie stages a single marked mortar while its round is visibly locked on the pilot',()=>{
+ const s=quietOperation();
+ Object.assign(s.weapons[0],{level:4,branch:'ricochet'});
+ s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});
+ s.modules=[{id:'coil',rank:2}];
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));
+ tick(s,.72);
+ const cue=conduitMortarCue(s);
+ assert.equal(cue.gun.type,'mortar');
+ assert.equal(cue.round.duration,CONDUIT_MORTAR.warning);
+ assert.equal(cue.round.conduitGun,cue.gun.id);
+ assert.deepEqual([cue.round.x,cue.round.y],[s.player.x,s.player.y]);
+ assert.equal(cue.safe,false);
+ assert.equal(s.enemies.filter(e=>e.showcase==='fusion').length,12);
+ assert.equal(s.powerWave.remaining,48);
+ s.player.hp=999;s.player.maxHp=999;
+ tick(s,4);
+ assert.equal(s.enemies.filter(e=>e.showcase==='fusion'&&e.type==='mortar').length,1);
+});
+test('a charged transfer interrupts only its live marked round after the pilot escapes with a clear shot',()=>{
+ const setup=(y,wall=false)=>{
+  const s=quietOperation(),contact=enemy('contact',855,800,'rifle',1000);
+  Object.assign(s.weapons[0],{level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0},payload:9});
+  const gun={...enemy('marked',1185,800,'mortar',45),waveGroup:18,wavePulse:4};
+  s.enemies=[contact,gun];s.shots=[bullet(s,contact,1)];s.player.y=y;
+  const {radius:r,warning:duration}=CONDUIT_MORTAR;
+  s.hazards=[{x:800,y:800,r,duration,timer:duration,conduitGun:gun.id,fromX:gun.x,fromY:gun.y},{x:850,y:700,r:48,timer:2}];
+  if(wall)s.blocks=[{x:910,y:856,w:80,h:26,hp:-1}];
+  return s;
+ };
+ const inside=setup(800),blocked=setup(900,true),outside=setup(900);
+ for(const s of [inside,blocked]){
+  step(s,dt);
+  assert.ok(!s.shots.some(q=>q.conduitGun));
+  tick(s,1.4);
+  assert.equal(s.stats.conduitMortarCuts,undefined);
+ }
+ assert.equal(inside.stats.damageTaken,14);assert.equal(blocked.stats.damageTaken,0);
+ step(outside,dt);
+ const shot=outside.shots.find(q=>q.conduitGun);
+ assert.equal(shot?.target,'marked');
+ assert.equal(shot.wavePulse,4);
+ const resumed=restore(snapshot(outside)),late=restore(snapshot(outside));
+ late.hazards[0].timer=.1;
+ tick(resumed,.6);tick(late,.6);
+ assert.equal(resumed.stats.conduitMortarCuts,1);
+ assert.deepEqual(resumed.hazards.map(h=>h.x),[850]);
+ assert.equal(late.stats.conduitMortarCuts,undefined);
+ assert.ok(resumed.effects.some(f=>f.type==='barrage-cancel'&&f.conduitCut));
 });
 test('first fusion primes the launcher and stages three legal packs when there is room',()=>{
  const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});s.modules=[{id:'coil',rank:2}];

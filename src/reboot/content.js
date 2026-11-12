@@ -7,6 +7,7 @@ export const isFocusedInferno=w=>w?.id==='f'&&w.evolved&&w.branch==='focused';
 export const isTrailInferno=w=>w?.id==='f'&&w.evolved&&w.branch==='trail';
 export const INFERNO_WAKE={spacing:96,radius:70,life:2.3,dps:56,limit:4,flashDamage:42};
 export const isConductiveFusion=w=>w?.id==='h'&&w.fusion?.secondary==='r'&&w.fusion.branch==='homing';
+export const CONDUIT_MORTAR={warning:1.35,radius:52,setback:84,relayReach:370};
 export const EMBER_CHARGE={impactScale:.65,arm:.45,life:3.2,damage:105};
 export const GUNS={
  h:{name:'기관총 H',short:'H',color:'#ffcf75',branches:{ricochet:['산개 도탄','탄이 다른 적에게 한 번 더 튕깁니다.'],grenade:['유탄 급탄','8번 발사마다 폭발 유탄을 함께 발사합니다.']},evolution:'사중 기관포'},

@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.115.0" src="https://img.shields.io/badge/RIFT-0.115.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.116.0" src="https://img.shields.io/badge/RIFT-0.116.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -50,6 +50,8 @@
 | 열압 연계 | 서로 다른 연소·폭발 총 L4 + 촉매3 | 화염으로 점화하고 유탄·로켓으로 연쇄 기폭 |
 
 공격3칸·모듈4칸. L4에서 총마다 두 발사 방식 중 하나를 고릅니다. 조율권은 진화·합체·모듈 조율·응급 정비가 공유합니다. 완성 직후에는 증원 무리가 투입되어 강해진 화력을 사용할 수 있습니다.
+
+전도 격발망을 완성하면 증원 편대 뒤에 박격포가 나타날 수 있습니다. 탄착원 밖으로 회피해 포대와 사선을 열면 보병에 맞은 연쇄탄이 박격포에 도약합니다. 탄이 포대에 닿으면 떨어지던 포격이 끊기고 정산에 차단 횟수가 남습니다.
 
 무기고에서는 현재 보급을 확정하거나, 상자를 걸고 수송대를 습격합니다. **보급차는 분화 개장**, **장갑 수송대는 미완성 경로 부품**을 노리는 계약입니다. 실패하면 걸었던 상자만 잃습니다. 품질 확률·위험·결과를 공개하고 재추첨2·후보 제외1로 무작위에 대응합니다.
 

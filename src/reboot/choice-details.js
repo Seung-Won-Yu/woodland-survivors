@@ -194,7 +194,7 @@ export function choiceDetails(s,c){
  }else if(c.kind==='fusion'){
   const branch=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch,incendiary=branch==='incendiary';
   out.title=fusionTitle(c.primary,c.secondary,branch);
-  out.art=c.primary;out.impact=incendiary?'보병 둘이 모이면 자동 유폭':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'보병 한 명이면 화약 원 안을 이동하며 회피해 점화':'합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
+  out.art=c.primary;out.impact=incendiary?'보병 둘이 모이면 자동 유폭':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'보병 한 명이면 화약 원 안을 이동하며 회피해 점화':'첫 연쇄탄 장전 · 탄착원 밖에서 박격포에 도약';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
   out.consequence=assemblyConsequence(s,c);
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';

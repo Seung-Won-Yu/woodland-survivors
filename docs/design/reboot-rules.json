@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b46-inferno-wake-links",
+  "balanceRevision": "b47-conduit-mortar",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",
