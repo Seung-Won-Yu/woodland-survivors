@@ -423,8 +423,13 @@ window.addEventListener('keydown',e=>{
  if(run.phase!=='playing')return;if(k===' ')e.preventDefault();const a=({' ':'dash',e:'skill',f:'interact',g:'gear',r:'upgrade',q:'challenge'})[k];if(a||moving)unlockSound();if(a)mutate(d=>action(d,a,a==='skill'?movementInput():undefined));
 });
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
-document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();if(run&&mode==='battle'&&run.phase==='playing')mutate(d=>{pause(d);return true;});}});
-window.addEventListener('blur',()=>{keys.clear();controls?.reset();if(run&&mode==='battle'&&run.phase==='playing'&&!busy)mutate(d=>{pause(d);return true;});});
+function pauseWhenAway(){
+ if(mode!=='battle'||!run||pending)return;
+ if(busy){if(committingPlay)pauseQueued=true;return;}
+ if(run.phase==='playing')pauseButton();
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();pauseWhenAway();}});
+window.addEventListener('blur',()=>{keys.clear();controls?.reset();pauseWhenAway();});
 function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast){
  const warnings=run.hazards.filter(h=>!h.hit);
  const railLocked=railDecoyLocked(run);
