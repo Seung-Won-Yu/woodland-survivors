@@ -125,10 +125,13 @@ export function choiceDetails(s,c){
  }else if(c.kind==='gun'){
   out.title=GUNS[c.weapon].name;out.impact=c.weapon==='r'?'무리째 날리는 광역 폭발':c.weapon==='f'?'가까운 적을 태우는 부채 화염':'끊임없이 쏟는 실탄 연사';out.detail=c.weapon==='r'?'높은 한 발 피해 · 느린 발사':c.weapon==='f'?'연소를 남겨 폭발 연계를 준비':'도탄 또는 유탄으로 분화';out.link=`L4 · ${Object.values(GUNS[c.weapon].branches).map(b=>b[0]).join(' / ')}`;out.cost=s.weapons.length<3?`새 총 L${1+(s.operation?.region||0)} · 공격 한 칸 사용`:s.refits>0&&s.stage==='field'?'기존 총 교체 · 무료 개장으로 L5까지 유지':'기존 총 교체 · 투자 일부 이전';
   if(c.salvageLevel){
-   const other=s.weapons.find(gun=>gun.id===s.firstNew);
-   out.detail=c.weapon==='r'?'화염에 로켓 폭발 추가':'로켓에 연소를 더해 열압 재료 확보';
-   out.link='';
-   if(other)out.cost=`빈칸에 L${gunEquipLevel(s,c)} · ${GUNS[other.id].short} 유지`;
+   const plan=c.id===`coast-loot:${c.weapon}`?COAST_STRIKES[c.weapon]:null;
+   const level=gunEquipLevel(s,c);
+   out.title=plan?`${GUNS[c.weapon].short} L${level} · ${plan.name}`:`${GUNS[c.weapon].name} L${level}`;
+   out.detail=plan?.hint||(c.weapon==='r'?'화염에 로켓 폭발 추가':'로켓에 연소를 더해 열압 재료 확보');
+   out.link=plan?'수송차에서 성공 시 철도 노획 보급':'';
+   out.cost=`빈칸에 L${level} 장착`;
+   if(plan)out.impact=plan.impact;
   }
   if(s.choice?.opening&&s.operation?.region===0)Object.assign(out,openingGunRoute(s,c.weapon));
  }else if(c.module){

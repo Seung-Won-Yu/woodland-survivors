@@ -432,16 +432,24 @@ export function coastStrike(s){
  return s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,id)?COAST_STRIKES[id]:null;
 }
 export const coastStrikeArmed=(s,id=s.operation?.coastStrike)=>s.weapons.some(w=>w.id===id||id==='r'&&w.fusion?.secondary==='r');
+export function coastStrikeForSite(s,site){
+ const gun=site?.coastApproach;
+ if(s.operation?.region!==0||s.stage!=='field'||s.operation.coastStrike||!Object.hasOwn(COAST_STRIKES,gun))return null;
+ return coastStrikeArmed(s,gun)?COAST_STRIKES[gun]:null;
+}
 export const BOSS_ENTRY={x:800,y:350,r:130};
 export function coastStagingPoint(s){
- const gun=s.firstNew;
+ const gun=s.operation?.coastStrike||s.firstNew;
  if(s.operation?.region!==0||s.stage!=='field'||!Object.hasOwn(COAST_STRIKES,gun)||!coastStrikeArmed(s,gun))return null;
  const side=s.seed%2?1:-1,cover=s.blocks.some(b=>b.id==='b2'&&b.hp>0);
  return gun==='f'
   ?{x:BOSS_ENTRY.x+side*86,y:300,name:cover?'엄폐 유인 위치':'근접 측면',color:'#ffd0a0'}
   :{x:BOSS_ENTRY.x+(side>0?-55:100),y:side>0?424:367,name:'원거리 사선',color:'#bcece4'};
 }
-export const claimedCoastLead=s=>s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,s.firstNew)&&s.sites.find(site=>site.coastApproach===s.firstNew&&site.state==='done');
+export function claimedCoastLead(s){
+ const gun=s.operation?.coastStrike||s.firstNew;
+ return s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,gun)&&s.sites.find(site=>site.coastApproach===gun&&site.state==='done');
+}
 export function coastLead(s){
  if(s.operation?.region!==0||s.stage!=='field')return null;
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
@@ -461,13 +469,15 @@ export function coastCrossGun(s,site){
   &&Object.hasOwn(COAST_APPROACHES,s.firstNew)&&s.weapons.some(w=>w.id===s.firstNew)
   &&!s.excluded.includes(id)&&!coastStrikeArmed(s,id)?id:null;
 }
+export const coastTacticalLootAvailable=(s,site)=>!!coastCrossGun(s,site)&&!s.operation.coastStrike
+ &&(s.operation.requisitionClaimed||site!==requisitionStation(s));
 export function coastFork(s,primary=coastLead(s)){
- if(!primary?.coastApproach||primary.coastApproach!==s.firstNew||orderTarget(s))return null;
- const cross=s.sites.find(site=>site.state!=='done'&&coastCrossGun(s,site));
+ if(primary&&primary.coastApproach!==s.firstNew||s.operation?.region!==0||s.stage!=='field'||orderTarget(s))return null;
+ const cross=s.sites.find(site=>site!==primary&&site.state!=='done'&&(coastCrossGun(s,site)||coastStrikeForSite(s,site)));
  if(!cross)return null;
- const engaged=site=>site.state!=='waiting'&&distance(site,s.player)<=coastApproach(site).range+24;
+ const engaged=site=>site&&site.state!=='waiting'&&distance(site,s.player)<=coastApproach(site).range+24;
  const followingCross=engaged(cross)&&(!engaged(primary)||distance(cross,s.player)<distance(primary,s.player));
- return {lead:followingCross?cross:primary,other:followingCross?primary:cross,cross};
+ return {lead:followingCross?cross:primary,other:followingCross?primary:cross};
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';
 export function coastShieldImpact(s,site){
@@ -481,12 +491,13 @@ export function coastEncounterCue(s,site,volley,counter){
  if(site.state==='ready'){
   if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'))return '로켓 한 발 · 두 문 제압';
   const salvage=coastCrossGun(s,site);
-  if(salvage)return `접근해 회수 · ${salvage.toUpperCase()} L${COAST_SALVAGE_LEVEL}`;
+  if(salvage)return `접근해 회수 · ${salvage.toUpperCase()} L${COAST_SALVAGE_LEVEL}${coastTacticalLootAvailable(s,site)?' / L1 전술':''}`;
   return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
  }
  if(site.state!=='active')return null;
  const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id);
  if(site.coastApproach==='f'){
+  if(!coastStrikeArmed(s,'f'))return `${coastStrikeArmed(s,'r')?'거리 유지 · 호위를 모아 폭발':'호위를 따라 측면 사격'} · 경비 ${guards.length}명`;
   const wings=new Set(guards.map(e=>e.coastWing).filter(Boolean)).size;
   const screened=coastShieldImpact(s,site);
   const move=screened?'방패에 막힘 · 측면 분사':site.coastPlan!=='split'?'붙어서 분사':wings===1?'남은 호위 추격':'바깥에서 한쪽부터';

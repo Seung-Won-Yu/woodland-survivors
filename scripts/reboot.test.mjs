@@ -1213,6 +1213,7 @@ test('opposite coast routes offer a saved L2 salvage choice alongside the live f
   bad.choice.siteId=main.id;
   assert.throws(()=>restore(bad));
   const old=snapshot(s);
+  old.choices=old.choices.filter(c=>c.id!==`coast-loot:${native}`);
   delete old.choices.find(c=>c.id===card.id).salvageLevel;
   const legacy=restore(old);
   assert.ok(choose(legacy,card.id));
@@ -1227,6 +1228,34 @@ test('opposite coast routes offer a saved L2 salvage choice alongside the live f
   assert.equal(loaded.refits,1);
   assert.equal(coastFork(loaded),null);
   assert.ok(supply(loaded,main.id).some(c=>c.id===`coast:${first}`));
+ }
+});
+test('the remaining coast site offers a one-rank trade for the other gun and carrier plan',()=>{
+ for(const first of ['f','r']){
+  const s=quietOperation();
+  supply(s);assert.ok(choose(s,`gun:${first}`));
+  const match=s.sites.find(n=>n.coastApproach===first),other=s.sites.find(n=>n.coastApproach&&n!==match);
+  supply(s,match.id);assert.ok(choose(s,`module:${match.module}`));
+  other.state='waiting';
+  assert.equal(coastLead(s),null);
+  assert.equal(coastFork(s).other,other);
+  const id=`coast-loot:${other.coastApproach}`;
+  supply(s,other.id);
+  const card=s.choices.find(c=>c.id===id);
+  assert.equal(card.salvageLevel,1);
+  assert.match(choiceDetails(s,card).title,/L1/);
+  const invalid=snapshot(s);
+  invalid.choices.find(c=>c.id===id).salvageLevel=2;
+  assert.throws(()=>restore(invalid));
+  const loaded=restore(snapshot(s));
+  assert.equal(choose(loaded,id,{slot:1}),false);
+  assert.ok(choose(loaded,id));
+  const armed=restore(snapshot(loaded));
+  assert.equal(armed.firstNew,first);
+  assert.equal(armed.operation.coastStrike,other.coastApproach);
+  assert.equal(armed.weapons.at(-1).level,1);
+  assert.equal(coastStagingPoint(armed).color,first==='f'?'#bcece4':'#ffd0a0');
+  assert.ok(!supply(armed,match.id).some(c=>c.kind==='coast-strike'));
  }
 });
 test('a coastal strike trades the first matching supply for a single attack window',()=>{
@@ -2604,8 +2633,8 @@ test('a clear standoff shot bursts between clustered mortars and preserves its a
  const [left,right]=s.enemies;
  const point={x:(left.x+right.x)/2,y:left.y};
  assert.deepEqual(coastRocketVolley(s),{...point,state:'ready'});
- const backup=restore(snapshot(s));backup.firstNew='f';
- assert.equal(coastRocketVolley(backup),null);
+ const backup=restore(snapshot(s));backup.firstNew='f';backup.weapons.unshift({...makeWeapon('f'),uid:'f',cd:999});
+ assert.deepEqual(coastRocketVolley(backup),{...point,state:'ready'});
  const close=restore(snapshot(s));close.player.y=point.y+100;
  assert.equal(coastRocketVolley(close).state,'close');
  const outside=restore(snapshot(s));Object.assign(outside.player,{x:point.x-260,y:point.y+85});
