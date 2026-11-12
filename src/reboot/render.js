@@ -3,12 +3,24 @@ import {exitGate,BOSS_ENTRY,coastStagingPoint,portArmorStaging,portCoreWindow,po
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
-import {DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo} from './campaign.js';
+import {DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
 import {operatorOf,focusLane,canUseSkill} from './operator.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
+const relaySet={x:DEFENSE_ZONE.x,y:DEFENSE_ZONE.y-13};
+function paintRelayGround(c,s,round){
+ const {x,y,r}=DEFENSE_ZONE;
+ const connected=distance(s.player,DEFENSE_ZONE)<=r&&(!round||distance(s.player,round)>=blastContactRadius(round));
+ c.save();c.setLineDash([10,7]);
+ circle(c,x,y,r,'#a9ba9011','#c9d6a78c',2);
+ c.setLineDash([]);c.lineWidth=4;c.strokeStyle=connected?'#deedbb':'#b7be99';
+ c.beginPath();c.arc(x,y,r,-Math.PI/2,-Math.PI/2+TAU*s.challenge.progress/s.challenge.duration);c.stroke();
+ c.strokeStyle='#c9c49b90';c.lineWidth=3;
+ c.beginPath();c.moveTo(x-40,y+5);c.lineTo(x-40,y+16);c.lineTo(x-26,y+16);
+ c.moveTo(x+40,y+5);c.lineTo(x+40,y+16);c.lineTo(x+26,y+16);c.stroke();c.restore();
+}
 function paintFocusSight(c,s,plan){
  const p=s.player,lane=plan?.lane||focusLane(s),end=plan?lane.length:Math.min(118,lane.length);
  if(!plan&&end<24)return;
@@ -882,12 +894,8 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   const cargo=signalCargo(s);
   if(s.operator==='marco'&&s.phase==='playing'&&canUseSkill(s))paintFocusSight(c,s,focus);
   for(const f of s.effects)if(f.type==='formation'&&visible(f.x,f.y,48))paintFormationEntry(c,f,reduced);
-  if(s.challenge?.state==='active'&&s.challenge.type==='defend'){
-   const {x,y,r}=DEFENSE_ZONE,inside=distance(s.player,DEFENSE_ZONE)<=r;
-   circle(c,x,y,r,'#a085c023',inside?'#e6c4f2':'#a98ebd',2);
-   c.strokeStyle='#f4d1ff';c.lineWidth=4;c.beginPath();c.arc(x,y,r,-Math.PI/2,-Math.PI/2+TAU*s.challenge.progress/s.challenge.duration);c.stroke();
-   c.fillStyle='#34263b';c.fillRect(x-53,y-11,106,22);c.fillStyle='#f4d1ff';c.font='11px Galmuri';c.textAlign='center';c.fillText('중계기 방어',x,y+4);
-  }
+  const relayDefense=s.challenge?.state==='active'&&s.challenge.type==='defend'&&!s.challenge.secured;
+  if(relayDefense)paintRelayGround(c,s,relayDefenseRound(s));
   if(signal)paintEscapeLane(c,signalRoute(s),SIGNAL_COLOR,[9,12],visible);
   if(cargo&&visible(cargo.x,cargo.y,SIGNAL_CARGO_REACH)){
    c.save();
@@ -911,6 +919,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    }
   }
   const entities=[...s.sites.map(e=>({y:e.y,kind:'site',e})),...s.blocks.filter(e=>e.hp!==0).map(e=>({y:e.y+e.h,kind:'block',e})),...s.enemies.map(e=>({y:e.y,kind:'enemy',e})),{y:s.player.y,kind:'player',e:s.player}];
+  if(relayDefense)entities.push({y:relaySet.y,kind:'relay-defense',e:relaySet});
   if(gate)entities.push({y:gate.y,kind:'gate',e:gate});
   if(signal)entities.push({y:signal.y,kind:'courier',e:signal});
   if(cargo)entities.push({y:cargo.y,kind:'signal-cargo',e:cargo});
@@ -919,6 +928,11 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    const e=item.e;if(!visible(e.x,e.y,220))continue;c.save();
    if(item.kind==='gate'){if(s.operation)paintGate(c,e,s.holdTime,reduced);else if(art)prop(c,art,2,3,e.x,e.y,112);c.restore();continue;}
    if(item.kind==='site'){paintSite(c,e,s,art,s.t-(siteStates.get(e.id)?.collected??-99));c.restore();continue;}
+   if(item.kind==='relay-defense'){
+    if(art)prop(c,art,3,3,e.x,e.y,62);
+    else{c.fillStyle='#303a31';c.fillRect(e.x-21,e.y-25,42,25);c.fillStyle='#c6d49e';c.fillRect(e.x-12,e.y-20,18,6);c.fillRect(e.x+14,e.y-39,2,16);}
+    c.restore();continue;
+   }
    if(item.kind==='block'){paintBlock(c,e,index,art);if(e.hp>0&&e.hp<e.maxHp)bar(c,e.x+e.w/2,e.y-34,e.w,e.hp/e.maxHp,'#dfbc78');c.restore();continue;}
    if(item.kind==='enemy'){
     const guard=!e.dead&&e.cohort==='coast-guard'&&index===0&&s.stage==='field';
@@ -1152,7 +1166,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   for(const h of railForecast)if(visible(h.x,s.player.y,h.w))paintRailWarning(c,h,s.player.y,true,railLocked);
   if(portRounds.length)paintPortPerimeter(c,portRounds.filter(h=>visible(h.x,h.y,blastContactRadius(h))));
   for(const h of s.hazards){
-   const wide=h.portRound||h.coastMortar||h.signalCut||h.portBattery||portBoss&&!h.lane;
+   const wide=h.portRound||h.coastMortar||h.signalCut||h.portBattery||h.relayDefense||portBoss&&!h.lane;
    if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:wide?blastContactRadius(h):h.r))continue;
    if(h.lane){paintRailWarning(c,h,s.player.y);continue;}
    if(h.coastMortar||h.signalCut||h.portBattery){

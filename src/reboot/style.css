@@ -115,6 +115,8 @@
 .holdout-readout strong{color:#f7d38a;font-size:13px}
 .holdout-readout span:last-child{margin-left:auto;color:#bddcaf}
 #pursuit-intel{color:#e1c7ed;font-size:10px;line-height:1.5}
+.rail-defense #pursuit-intel{color:#dbebc6}
+.relay-interrupted #pursuit-intel{color:#ffcfaa}
 #pursuit{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left}
 #pursuit-label{font:inherit;color:inherit}
 #pursuit kbd,#interact kbd{display:none}
@@ -244,6 +246,11 @@
  .field-menu:not(.quick-mod) .upgrade-illustration .kit-sprite{width:86px;height:86px}
 }
 @media(max-width:700px) and (orientation:portrait){
+ .rail-defense .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
+ .rail-defense .objective{width:100%}
+ .rail-defense .objective :is(#stage,#holdout-steps,.holdout-readout,#pursuit-goal){display:none}
+ .holdout-active.rail-defense #map-panel{display:block;width:84px;justify-self:end}
+ .rail-defense #banner:is([data-kind="gate-open"],[data-kind="challenge-start"]),.relay-interrupted #field-feedback{visibility:hidden}
  .port-holdout .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
  .port-holdout .objective{width:100%}
  .port-holdout .objective #stage{display:none}

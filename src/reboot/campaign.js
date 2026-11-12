@@ -10,7 +10,7 @@ export const region=s=>REGIONS[s.operation?.region||0];
 export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6,rareKills:8,coastReserveDelay:2.25};
 export const HOLDOUT_CONTRACTS=[
  {id:'hunt',name:'지휘부 소탕',goal:'지휘관 2명 제압',risk:'양쪽에서 오는 장교의 부채꼴 사격'},
- {id:'defend',name:'중계기 방어',goal:'중계기 반경 안에서 8초 버티기',risk:'범위 안에 포격이 떨어집니다.'},
+ {id:'defend',name:'중계기 방어',goal:'안전한 방어 범위에서 8초 송신',risk:'포격 원 안에서는 송신 중단'},
  {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'하역장 바깥 굽이에서 차량의 진로를 끊으세요.'}
 ];
 export const SORTIE_ORDERS={
@@ -348,7 +348,9 @@ export const SIGNAL_ESCORT_COUNT=SIGNAL_SCREEN.length;
 export const signalEscortPlan=lane=>SIGNAL_SCREEN.map(([type,x,y])=>({type,x:lane==='east'?1600-x:x,y}));
 export const signalGuardCount=s=>s.enemies.filter(e=>!e.dead&&e.cohort==='signal-guard').length;
 export const DEFENSE_ZONE={x:800,y:560,r:108,seconds:8};
+export const RELAY_SHELL={radius:42,warning:.95,interval:2.7};
 export const defenseSeconds=tier=>DEFENSE_ZONE.seconds+Math.min(8,(tier-1)*2);
+export const relayDefenseRound=s=>s.hazards.find(h=>h.relayDefense&&!h.hit);
 export const SIGNAL_SECONDS=18;
 export const SIGNAL_COLOR='#e6bcf6';
 const YARD_ROUTE=[[420,940],[425,804],[435,640],[410,540],[200,510],[200,325],[325,235],[330,105]];

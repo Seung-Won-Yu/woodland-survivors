@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -526,9 +526,11 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast){
   const {contract,target}=run.raid;
   map+=raidRouteSvg(raidAhead(run.raid),contract)+dot('map-courier',target.x,target.y,34,RAID_MARKS[contract].color,RAID_MARKS[contract].name);
  }
- if(run.challenge?.state==='active'&&run.challenge.type==='defend'){
+ if(run.challenge?.state==='active'&&run.challenge.type==='defend'&&!run.challenge.secured){
   const {x,y,r}=DEFENSE_ZONE;
-  map+=`<circle class="map-defense" cx="${x}" cy="${y}" r="${r}" fill="#cfa5e344" stroke="#f1c8fb" stroke-width="12" aria-label="중계기 방어 구역"/>`;
+  map+=`<circle class="map-defense" cx="${x}" cy="${y}" r="${r}" fill="#b6cba638" stroke="#dcebc4" stroke-width="12" aria-label="중계기 송신 범위"/>`;
+  const round=relayDefenseRound(run);
+  if(round)map+=`<circle cx="${round.x}" cy="${round.y}" r="${blastContactRadius(round)}" fill="#e87555a0" stroke="#ffc097" stroke-width="9" aria-label="포격으로 송신이 끊기는 범위"/>`;
  }
  const signal=signalCourier(run);
  const cargo=signalCargo(run);
@@ -745,8 +747,13 @@ function updateHud(entry,focus=null){
  fieldIntel.hidden=!intel||holdout;fieldIntel.textContent=intel;
  document.body.classList.toggle('holdout-active',holdout);
  const portHoldout=holdout&&front===2;
+ const relayDefense=holdout&&run.challenge?.type==='defend'&&run.challenge.state==='active'&&!run.challenge.secured;
+ const relayRound=relayDefense&&relayDefenseRound(run);
+ const relayInterrupted=relayRound&&distance(p,relayRound)<blastContactRadius(relayRound);
  const signalWarning=portHoldout&&run.hazards.some(h=>(h.signalCut||h.portBattery)&&!h.hit&&distance(p,h)<blastContactRadius(h));
  document.body.classList.toggle('port-holdout',portHoldout);
+ document.body.classList.toggle('rail-defense',!!relayDefense);
+ document.body.classList.toggle('relay-interrupted',!!relayInterrupted);
  document.body.classList.toggle('signal-warning',signalWarning);
  $('holdout-intel').hidden=!holdout;
  const pursuit=$('pursuit');
@@ -762,14 +769,17 @@ function updateHud(entry,focus=null){
   const rare=!finalFront&&rewardTier===1;
   const kills=Math.min(run.operation.holdoutKills||0,HOLDOUT.rareKills);
   let detail=contract.risk;
-  const defending=active&&challenge.type==='defend'&&!challenge.secured;
+  const defending=relayDefense;
   const quarry=active&&challenge.type==='hunt'&&!challenge.secured?run.enemies.filter(e=>!e.dead&&challenge.targets.includes(e.id)).sort((a,b)=>distance(p,a)-distance(p,b))[0]:null;
   const batteries=portBatteries(run),battery=batteries.reduce((best,gun)=>!best||distance(p,gun)<distance(p,best)?gun:best,null);
   const courier=signalCourier(run);
   const cargo=signalCargo(run),escort=active&&challenge.recoverCargo?signalGuardCount(run):0;
   const relayGap=defending?distance(p,DEFENSE_ZONE):0;
+  const relayTime=defending?`${challenge.progress.toFixed(1)} / ${challenge.duration}초`:'';
+  const relayComplete=defending&&challenge.progress>=challenge.duration;
   if(defending){
-   detail=`${relayGap<=DEFENSE_ZONE.r?'방어 중':'범위 진입 시 방어 계속'} · ${Math.min(challenge.progress,challenge.duration).toFixed(1)} / ${challenge.duration}초`;
+   detail=relayInterrupted?`${relayComplete?'송신 완료':'송신 끊김'} · 탄착원 밖으로`:relayComplete?'송신 완료 · 착탄 대기'
+    :relayGap<=DEFENSE_ZONE.r?'송신 중':'방어 범위로 이동';
   }else if(cargo){
    detail=interact?.id==='signal-cargo'?'화물 회수 가능 · 행동 버튼':'잔해에 접근해 화물 회수';
   }else if(courier){
@@ -787,13 +797,13 @@ function updateHud(entry,focus=null){
   if(run.raid?.state==='active')detail='습격 종료 후 잔류 도전 가능';
   const target=defending?DEFENSE_ZONE:cargo||courier||battery||quarry;
   const targetName=defending?'중앙 중계기':cargo?'통신 화물':courier?'통신 차량':battery?`${portBatterySide(battery)} 포대`:'지휘관';
-  $('objective').textContent=target?`${bearing(p,target.x,target.y)} ${targetName} · ${Math.round(distance(p,target)/10)}m`:nearGate?finalFront?'게이트 · 귀환 또는 잔류':'게이트 · 전진 또는 잔류':`${direction} ${finalFront?'귀환':'전진'} 게이트 · ${Math.round(distance(p,gate)/10)}m`;
+  $('objective').textContent=defending&&(relayGap<=DEFENSE_ZONE.r||relayComplete)?`중계기 송신 · ${relayTime}`:target?`${bearing(p,target.x,target.y)} ${targetName} · ${Math.round(distance(p,target)/10)}m`:nearGate?finalFront?'게이트 · 귀환 또는 잔류':'게이트 · 전진 또는 잔류':`${direction} ${finalFront?'귀환':'전진'} 게이트 · ${Math.round(distance(p,gate)/10)}m`;
   const reserveAt=active?challenge.reserveAt:null;
-  $('threat').textContent=reserveAt>run.holdTime?`지휘부 역습까지 ${Math.ceil(reserveAt-run.holdTime)}초`:tier===0?`${active&&challenge.type==='hunt'?'정규 공세':'첫 증원'}까지 ${nextWave}초`:tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대 증원`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${nextWave}초`;
+  $('threat').textContent=relayRound&&(relayInterrupted||relayComplete)?`착탄까지 ${(Math.ceil(relayRound.timer*10)/10).toFixed(1)}초`:reserveAt>run.holdTime?`지휘부 역습까지 ${Math.ceil(reserveAt-run.holdTime)}초`:tier===0?`${active&&challenge.type==='hunt'?'정규 공세':'첫 증원'}까지 ${nextWave}초`:tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대 증원`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${nextWave}초`;
   const steps=$('holdout-steps');
   for(let i=0;i<steps.children.length;i++)steps.children[i].classList.toggle('active',i<tier);
   $('ground-xp').textContent=groundXp(run);
-  $('pursuit-goal').textContent=cargo?'D1 · 차량 정지, 화물 미회수':active?`D${challenge.tier} · ${contract.name}`:contract.id==='defend'?`중계기 반경 안에서 ${defenseSeconds(contractTier)}초 버티기`:contract.goal;
+  $('pursuit-goal').textContent=cargo?'D1 · 차량 정지, 화물 미회수':active?`D${challenge.tier} · ${contract.name}`:contract.id==='defend'?`안전한 방어 범위에서 ${defenseSeconds(contractTier)}초 송신`:contract.goal;
   $('pursuit-intel').textContent=detail;
   const parts=rare?holdoutParts(run.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / '):'';
   const earned=run.operation.nextSupport;

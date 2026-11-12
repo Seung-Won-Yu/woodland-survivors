@@ -25,7 +25,7 @@ function openingGunRoute(s,gun){
 export function gateContractDetails(s){
  const front=s.operation.region,tier=(s.operation.challengeTier||0)+1,contract=holdoutContract(s);
  const rare=front<2&&tier===1;
- const goal=contract.id==='defend'?`중계기 방어 ${defenseSeconds(tier)}초`:contract.id==='intercept'?`${signalLaneLabel[signalLane(s.seed)]} · ${SIGNAL_SECONDS}초 안에 차량 저지`:contract.goal;
+ const goal=contract.id==='defend'?`포격 원 밖에서 중계기 송신 ${defenseSeconds(tier)}초`:contract.id==='intercept'?`${signalLaneLabel[signalLane(s.seed)]} · ${SIGNAL_SECONDS}초 안에 차량 저지`:contract.goal;
  const quota=rare?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
  const reward=rare?holdoutParts(s.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / ')
   :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:`완료 점수 +${tier*500}`;

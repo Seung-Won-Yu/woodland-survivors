@@ -2279,9 +2279,58 @@ test('claiming the rail relay extends the actual attack warning by 0.4 seconds',
  const warning=state=>{const s=quietOperation();s.operation.region=1;s.sites=[{kind:'relay',state}];s.stage='boss';Object.assign(s.boss,{active:true,timer:0});step(s,dt);return s.hazards.find(h=>h.lane).timer;};
  assert.ok(Math.abs(warning('done')-warning('waiting')-.4)<1e-9);
 });
+test('rail relay fire halts transmission until the player reaches safe ground in range',()=>{
+ const rail=quietOperation();rail.operation.region=1;downBoss(rail);
+ rail.spawnClock=999;
+ Object.assign(rail.player,{x:DEFENSE_ZONE.x,y:DEFENSE_ZONE.y,invuln:0});
+ assert.ok(action(rail,'challenge'));
+ tick(rail,.82);
+ const round=rail.hazards.find(h=>h.relayDefense);
+ assert.ok(round&&!round.hit);
+ assert.ok(takeEvents(rail).includes('warning'));
+ const initial=rail.challenge.progress,still=restore(snapshot(rail)),safe=restore(snapshot(rail));
+ tick(still,.15);
+ assert.equal(still.challenge.progress,initial);
+ tick(safe,.38,{x:0,y:1});
+ assert.ok(safe.challenge.progress>initial);
+ assert.ok(Math.hypot(safe.player.x-DEFENSE_ZONE.x,safe.player.y-DEFENSE_ZONE.y)<DEFENSE_ZONE.r);
+ assert.ok(safe.hazards.some(h=>h.relayDefense&&!h.hit));
+ tick(safe,.58);tick(still,.84);
+ assert.equal(safe.player.hp,100);
+ assert.equal(still.player.hp,86);
+ const bad=snapshot(rail);
+ delete bad.challenge.safeTransmission;
+ assert.throws(()=>restore(bad),/체크포인트/);
+ bad.challenge.safeTransmission=true;
+ bad.challenge.type='hunt';
+ assert.throws(()=>restore(bad),/체크포인트/);
+ bad.challenge.type='defend';
+ bad.hazards.find(h=>h.relayDefense).x+=120;
+ assert.throws(()=>restore(bad),/체크포인트/);
+
+ const closing=restore(snapshot(rail));
+ closing.challenge.progress=closing.challenge.duration-dt/2;
+ closing.operation.holdoutKills=HOLDOUT.rareKills;
+ closing.player.y+=70;
+ step(closing,dt);
+ assert.equal(closing.challenge.progress,closing.challenge.duration);
+ assert.equal(closing.phase,'playing');
+ assert.equal(closing.challenge.secured,undefined);
+ const loaded=restore(snapshot(closing));
+ loaded.player.y+=55;
+ tick(loaded,1);
+ assert.equal(loaded.challenge.secured,true);
+ assert.equal(loaded.choice.type,'pursuit-reward');
+ assert.equal(loaded.player.hp,100);
+ assert.ok(loaded.hazards.every(h=>!h.relayDefense||h.hit));
+});
 test('rail defense pauses outside the zone and harbor interception can fail and retry',()=>{
  const rail=quietOperation();rail.operation.region=1;downBoss(rail);
  rail.spawnClock=999;rail.player.invuln=999;assert.ok(action(rail,'challenge'));
+ // Older defense checkpoints continue their original timing rules.
+ rail.balanceRevision='b42-harbor-counter-aim';
+ rail.sites=regionLayout(mapSeed(rail.seed,1),1).sites.map(site=>({...site,state:'done'}));
+ delete rail.challenge.safeTransmission;
  tick(rail,1);assert.equal(rail.challenge.progress,0);assert.equal(rail.phase,'playing');
  Object.assign(rail.player,{x:DEFENSE_ZONE.x,y:DEFENSE_ZONE.y});
  const saved=restore(snapshot(rail));tick(saved,8.2);assert.ok(saved.challenge.secured);assert.equal(saved.phase,'playing');

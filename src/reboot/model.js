@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portArmorStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portArmorStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -83,7 +83,7 @@ function validCoastSalvage(s,c){
  if(isCoastTacticalLoot(c))return c.salvageLevel===1&&coastTacticalLootAvailable(s,site);
  return c.id===`gun:${c.weapon}`&&c.salvageLevel===COAST_SALVAGE_LEVEL;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -239,7 +239,15 @@ export function restore(raw,{allowPrevious=false}={}){
    if(s.choice?.type==='clear'){s.choice=null;s.choices=[];if(s.phase==='choice')s.phase='playing';if(s.resumePhase==='choice')s.resumePhase='playing';}
   }
  }
- if(s.challenge?.type==='defend'&&(!Number.isFinite(s.challenge.progress)||!Number.isFinite(s.challenge.duration)||!Number.isFinite(s.challenge.strike)))fail();
+ const defense=s.challenge?.type==='defend'?s.challenge:null;
+ if(s.challenge?.safeTransmission!==undefined&&(!defense||defense.safeTransmission!==true||s.operation?.region!==1||s.stage!=='holdout'))fail();
+ if(defense&&(![defense.progress,defense.duration,defense.strike].every(Number.isFinite)
+  ||s.balanceRevision===RULES.balanceRevision&&!defense.safeTransmission))fail();
+ const relayRounds=s.hazards.filter(h=>h?.relayDefense!==undefined);
+ const liveDefense=defense?.state==='active'&&!defense.secured||defense?.state==='withdrawn'&&s.phase==='result';
+ if(relayRounds.length>1||relayRounds.some(h=>h.relayDefense!==true||!defense?.safeTransmission||h.lane
+  ||![h.x,h.y,h.timer].every(Number.isFinite)||distance(h,DEFENSE_ZONE)>DEFENSE_ZONE.r||h.r!==RELAY_SHELL.radius||h.duration!==RELAY_SHELL.warning
+  ||(h.hit?h.hit!==true||h.timer>0||h.timer<=-.3:!liveDefense||h.timer<=0||h.timer>RELAY_SHELL.warning)))fail();
  if(s.challenge?.reserveAt!==undefined&&(s.operation?.region!==0||s.challenge.type!=='hunt'||s.challenge.tier!==1||s.challenge.state!=='active'
   ||!Number.isFinite(s.challenge.reserveAt)||s.challenge.reserveAt<0||s.challenge.reserveAt>=HOLDOUT.grace))fail();
  if(s.challenge?.type==='battery'){
@@ -1759,16 +1767,21 @@ function pursuitReward(s){
 }
 function challengeObjectiveDone(s,challenge,dt){
  if(challenge.type==='defend'){
-  if(s.player.hp<=0||distance(s.player,DEFENSE_ZONE)>DEFENSE_ZONE.r)return false;
-  challenge.progress+=dt;challenge.strike-=dt;
-  if(challenge.progress<challenge.duration){
-   if(challenge.strike<=0){
-    const {x,y}=s.player;
-    s.hazards.push({x,y,r:42,timer:.95,duration:.95});
-    challenge.strike=2.7;
-   }
-   return false;
+  if(s.player.hp<=0)return false;
+  const round=challenge.safeTransmission&&relayDefenseRound(s);
+  if(challenge.progress>=challenge.duration)return !round;
+  if(distance(s.player,DEFENSE_ZONE)>DEFENSE_ZONE.r)return false;
+  if(!round||distance(s.player,round)>=blastContactRadius(round))challenge.progress=Math.min(challenge.duration,challenge.progress+dt);
+  if(challenge.progress>=challenge.duration)return !round;
+  challenge.strike-=dt;
+  if(challenge.strike<=0){
+   const {x,y}=s.player;
+   const {radius:r,warning:duration,interval}=RELAY_SHELL;
+   s.hazards.push({x,y,r,timer:duration,duration,...(challenge.safeTransmission?{relayDefense:true}:{})});
+   challenge.strike=interval;
+   if(challenge.safeTransmission)emit(s,'warning',x,y,{r,life:duration});
   }
+  return false;
  }else if(challenge.type==='intercept'){
   const target=challenge.target;
   updateBurn(s,target,dt);
@@ -1842,7 +1855,7 @@ function startChallenge(s){
  const tier=(s.operation?.challengeTier||0)+1;
  const contract=holdoutContract(s);
  if(contract.id==='defend'){
-  s.challenge={type:'defend',state:'active',tier,progress:0,strike:.8,duration:defenseSeconds(tier)};
+  s.challenge={type:'defend',state:'active',tier,progress:0,strike:.8,duration:defenseSeconds(tier),safeTransmission:true};
  }else if(contract.id==='battery'){
   const hp=Math.round(920*1.16**Math.min(16,(tier-2)/2));
   const targets=portBatteryPositions(s.seed).map(({x,y},index)=>{

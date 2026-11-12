@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.109.0" src="https://img.shields.io/badge/RIFT-0.109.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.110.0" src="https://img.shields.io/badge/RIFT-0.110.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -115,6 +115,8 @@ npm run test:pages
 0.97에서는 철갑 급탄을 확보하면 항구의 보조포 쪽으로 먼저 돌아 현재 위치에서 교전을 시작할 수 있습니다. 보상 카드와 작전도가 같은 방향을 표시합니다. [항구 측면 교전과 첫 포격 비교](docs/RIFT-GAMEPLAY-V1.md#097-항구-측면-교전-위치).
 
 0.98에서는 실전 장착을 마친 분열 수류탄과 흡열 코일을 해안이나 철도에 예약할 수 있습니다. 해안 예약은 첫 보스 전부터 쓸 수 있고, 같은 거점의 축전 코일이나 촉매와 함께 한 가지를 고릅니다. [연구 장비의 배치와 실제 발동](docs/RIFT-GAMEPLAY-V1.md#098-연구-장비의-해안-배치).
+
+0.110에서는 철도 중계기 방어 중 포격 원에 들어가면 송신이 멈춥니다. 중계기 범위 안의 안전한 자리로 옮겨 송신을 이어가고, 증원을 제압해 다음 전선의 희귀 부품을 획득합니다. [철도 중계기 방어 검증](docs/RIFT-GAMEPLAY-V1.md#0110-철도-중계기-송신과-회피).
 
 0.109에서는 항구에서 회수 의무 장비를 장착하면 위치로 지원 포격 대상을 고릅니다. 장갑탄 원 가장자리에 접근하면 측면 장갑에, 열린 공간으로 빠지면 발밑탄을 끊고 차체에 반격합니다. [항구 부품과 반격 검증](docs/RIFT-GAMEPLAY-V1.md#0109-항구-지원-포격-표적-선택).
 
