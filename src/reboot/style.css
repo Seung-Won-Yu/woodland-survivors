@@ -241,12 +241,13 @@
  .signal-pursuit .field-workbench{display:grid;gap:4px}
  .signal-pursuit .field-workbench #gear[data-view]{display:grid;gap:2px;width:100%;padding:5px 6px;font-size:9px}
  .signal-pursuit #field-upgrade:not([hidden]){padding-inline:5px;font-size:9px}
- .rail-fork .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
- .rail-fork .objective{width:100%}
- .rail-fork .objective #stage{display:none}
- .rail-fork #map-panel{width:84px;justify-self:end}
+ :is(.rail-fork,.harbor-fork) .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
+ :is(.rail-fork,.harbor-fork) .objective{width:100%}
+ :is(.rail-fork,.harbor-fork) .objective #stage{display:none}
+ :is(.rail-fork,.harbor-fork) #map-panel{width:84px;justify-self:end}
  .rail-fork #field-feedback{visibility:hidden}
  .rail-fork #banner[data-kind="region-entry"]{top:max(232px,36vh);width:min(284px,calc(100% - 32px))}
+ .harbor-fork #banner[data-kind="region-entry"]{clip-path:inset(50%)}
  .boss-active #combo{top:auto;bottom:130px;right:16px}
  .boss-active .arsenal .weapon.empty{display:none}
  .boss-active #banner:is([data-kind="weakpoint"],[data-kind="break"],[data-kind="heal"],[data-kind="supply-ready"]){top:244px;font-size:13px}

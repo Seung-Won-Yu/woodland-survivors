@@ -703,6 +703,41 @@ test('rail artillery locks the first position, leaves a path out and clips the m
  assert.equal(clipped.x-clipped.w/2,FIELD.left);
  assert.equal(clipped.x+clipped.w/2,edge.player.x+RAIL_BARRAGE.width/2);
 });
+test('rail reverse signal waits for a clear lane and cuts the committed gun once per salvo',()=>{
+ for(const side of [-1,1]){
+  const s=railEncounter(800+side*40);
+  s.operation.tactic='signal';
+  s.weapons=[{...makeWeapon('r'),uid:'reverse-rocket',cd:999}];
+  const hitHull=()=>{
+   s.shots=[{...bullet(s,s.boss,10),rocket:true,radius:4}];
+   step(s,dt);
+  };
+  s.boss.timer=.2;
+  hitHull();
+  assert.equal(s.boss.tacticCycle,undefined);
+  s.boss.timer=0;
+  step(s,dt);
+  const tracked=s.hazards.find(h=>h.tracked),outer=s.hazards.find(h=>!h.tracked);
+  assert.equal(tracked.railGun,side<0?0:1);
+  hitHull();
+  assert.deepEqual(s.hazards,[tracked,outer]);
+  assert.equal(s.boss.tacticCycle,undefined);
+  s.player.x=800-side*100;
+  hitHull();
+  assert.deepEqual(s.hazards,[outer]);
+  assert.equal(s.boss.parts[tracked.railGun].hp,430);
+  assert.equal(s.boss.parts[outer.railGun].hp,650);
+  assert.equal(s.stats.frontTactics[1],1);
+  assert.equal(s.effects.find(f=>f.type==='barrage-cancel').railCounter,tracked.railGun);
+  hitHull();
+  assert.deepEqual(s.hazards,[outer]);
+  const loaded=restore(snapshot(s));
+  loaded.player.x=outer.x;
+  tick(loaded,1.3);
+  assert.equal(loaded.player.hp,86);
+  assert.equal(loaded.stats.frontTactics[1],1);
+ }
+});
 test('rail relay forecasts the live lanes and the stop marker leaves room before the outer shell',()=>{
  const s=railEncounter();
  const map=regionLayout(mapSeed(17,1),1);
@@ -1528,6 +1563,59 @@ test('harbor breach stops the auxiliary rounds from the opposite flank and keeps
   assert.equal(resumed.stats.supportUses[2],1);
   tick(resumed,.98-flight);
   assert.ok(resumed.hazards.some(h=>h.portRound==='lock'&&h.hit));
+ }
+});
+test('harbor breach can sever the next auxiliary salvo during aim from either mirrored flank',()=>{
+ for(const [seed,prior] of [[17,0],[18,1]]){
+  const s=supportArena(2,'breach','aim');
+  Object.assign(s.boss,regionBoss(2,seed),{active:true,mode:'aim',cycle:prior,timer:.9,spawnClock:999});
+  s.operation.harborPayoff={};
+  const {boss:b}=s,armor=b.parts[1],side=Math.sign(armor.ox);
+  const flank={x:b.x+side*150,y:b.y+108};
+  s.weapons=[{...makeWeapon('h'),uid:'aim-breach',cd:999}];
+  Object.assign(s.player,{x:b.x,y:flank.y});
+  assert.equal(portArmorLine(s),'flank');
+  Object.assign(s.player,flank);
+  assert.equal(portArmorLine(s),'ready');
+  s.weapons[0].cd=0;
+  step(s,dt);
+  assert.equal(s.shots[0].target,armor.id);
+  assert.equal(s.shots[0].armorCycle,prior+1);
+  const loaded=restore(snapshot(s));
+  loaded.weapons[0].cd=999;
+  tick(loaded,.35);
+  assert.equal(loaded.boss.armorSuppressedCycle,prior+1);
+  assert.deepEqual(loaded.operation.harborPayoff,{armorPreps:1});
+  assert.ok(loaded.boss.parts[1].hp>0);
+  const ready=restore(snapshot(loaded));
+  ready.boss.timer=0;
+  step(ready,dt);
+  assert.deepEqual(ready.hazards.map(h=>h.portRound),['lock','turret','turret']);
+  const invalid=snapshot(ready);
+  invalid.boss.armorSuppressedCycle=invalid.boss.cycle+1;
+  assert.throws(()=>restore(invalid),/체크포인트/);
+  delete invalid.boss.armorSuppressedCycle;
+  invalid.shots=[{...bullet(ready,armor),armorCycle:invalid.boss.cycle+1}];
+  assert.throws(()=>restore(invalid),/체크포인트/);
+  const jammed=restore(snapshot(s));jammed.operation.jammed=true;
+  if(prior===0)assert.equal(portArmorLine(jammed),null);
+ }
+});
+test('destroying harbor side armor clears live vertical shells and leaves future lock and turret rounds',()=>{
+ const s=supportArena(2,null,'aim');
+ Object.assign(s.boss,regionBoss(2,18),{active:true,mode:'aim',cycle:1,timer:0,spawnClock:999});
+ step(s,dt);
+ assert.equal(s.hazards.filter(h=>h.portRound==='battery').length,2);
+ const armor=s.boss.parts[1],point=partPosition(s,armor);
+ s.shots=[bullet(s,{...point,x:point.x+Math.sign(armor.ox)*22},10000)];
+ step(s,dt);
+ assert.equal(armor.hp,0);
+ assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','turret','turret']);
+ for(const cycle of [2,3]){
+  s.hazards=[];
+  Object.assign(s.boss,{mode:'aim',timer:0,cycle});
+  step(s,dt);
+  assert.deepEqual(s.hazards.map(h=>h.portRound),['lock','turret','turret']);
  }
 });
 test('a flank shot after the shell impacts still stops the live turret follow-up',()=>{
@@ -2821,14 +2909,14 @@ test('a ranged signal arcs once to the other part and changes the next boss acti
  for(const index of [1,2]){
   const s=quietOperation();s.operation.region=index;s.operation.tactic='signal';s.stage='boss';
   Object.assign(s.player,{x:800,y:445});
-  Object.assign(s.boss,{active:true,mode:index===1?'aim':'recover',timer:99,spawnClock:1,parts:s.boss.parts.map(p=>({...p,hp:500,maxHp:500}))});
+  Object.assign(s.boss,{active:true,mode:index===1?'salvo':'recover',cycle:1,timer:99,spawnClock:1,parts:s.boss.parts.map(p=>({...p,hp:500,maxHp:500}))});
   s.weapons[0].fusion={secondary:'r',branch:'homing',overflow:0};
   const hit=()=>{s.shots=[bullet(s,s.boss,20)];step(s,dt);};
   hit();hit();
   assert.equal(s.stats.frontTactics[index],1);
   assert.equal(s.boss.parts[0].hp,index===1?280:220);
   assert.equal(s.boss.parts[1].hp,500);
-  if(index===1){Object.assign(s.boss,{mode:'salvo',cycle:1,timer:0});step(s,dt);assert.equal(s.boss.timer,3);}
+  if(index===1){s.boss.timer=0;step(s,dt);assert.equal(s.boss.timer,3);}
   else assert.ok(s.boss.spawnClock>2.9);
  }
 });

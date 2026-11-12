@@ -50,18 +50,21 @@ export function portBarrageAxis(s,cycle){
  return (cycle%2===0)===gantry?'horizontal':'vertical';
 }
 export const portJamsSweep=(s,cycle)=>s.operation.jammed&&cycle===(s.operation.portEntry==='gantry'?2:1);
-export const portRakeReady=(s,cycle)=>s.boss.parts[1].hp>0&&portBarrageAxis(s,cycle)==='horizontal'&&!portJamsSweep(s,cycle);
+export function portAuxiliaryRound(s,cycle){
+ if(s.boss.parts[1].hp<=0||s.boss.armorSuppressedCycle===cycle)return null;
+ if(portBarrageAxis(s,cycle)==='vertical')return 'battery';
+ return portJamsSweep(s,cycle)?null:'rake';
+}
 export const portBarrageMark=(axis,side)=>axis==='horizontal'?'↑↓':side>0?'←':side<0?'→':'←→';
 export function portBarrageRounds(s,cycle){
- const {boss:b,player:p}=s,plan=PORT_BARRAGE,axis=portBarrageAxis(s,cycle);
- const rake=portRakeReady(s,cycle),rounds=[];
+ const {boss:b,player:p}=s,plan=PORT_BARRAGE,auxiliary=portAuxiliaryRound(s,cycle),rounds=[];
  const push=(dx,dy,portRound)=>rounds.push({
   x:clamp(p.x+dx,FIELD.left,FIELD.right),y:clamp(p.y+dy,FIELD.top,FIELD.bottom),r:plan.radius,portRound
  });
  push(0,0,'lock');
  for(const side of [-1,1]){
-  if(rake)push(side*plan.batteryOffset,0,'rake');
-  else if(axis==='vertical')push(0,side*plan.batteryOffset,'battery');
+  if(auxiliary==='rake')push(side*plan.batteryOffset,0,auxiliary);
+  else if(auxiliary==='battery')push(0,side*plan.batteryOffset,auxiliary);
   if(b.parts[0].hp>0&&b.emberCycle!==cycle)push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
  }
  return rounds;
@@ -116,7 +119,7 @@ export const PORT_LANDING={range:215,guards:[
  ['mortar',-45,-180],['mortar',-83,-130]
 ]};
 export const PORT_SUPPORT={
- breach:{impact:'측면 사격 · 포탑탄 또는 보조 포격 차단',detail:'포탑 측면 피해 +65%. 반대편 장갑을 착탄 전에 맞히면 가로·세로 보조 포격을 끊습니다. 남은 탄착원은 직접 피하세요.',hint:'포격 예고 중 끊을 포대의 측면으로',flank:105,boost:1.65},
+ breach:{impact:'포탑 쪽은 탄막 차단 · 장갑 쪽은 보조포 차단',detail:'포탑 측면 피해 +65%. 반대편 장갑의 급탄부는 조준 중 선제 타격하거나 착탄 전에 끊을 수 있습니다.',hint:'끊고 싶은 포대 쪽으로 돌아 사선 확보',flank:105,boost:1.65},
  overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,focusedReach:260,sideStep:48,damage:320,delay:.9,arcDamage:210,wakeDamage:320},
  recovery:{impact:'측면 화물 회수 → 스킬로 위협탄 차단',detail:'화물로 체력 +12, 전탄 +20. 경고 중 안전 회수는 전탄 +45와 회피 재정비. 지원 포격은 현재 위치를 덮는 차단 가능 탄을 우선합니다.',hint:'측면 화물 회수 → 스킬로 표시된 포격 차단',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
 };
@@ -134,6 +137,12 @@ export const portArmorExposed=s=>s.operation?.region===2&&s.operation.support===
 export const portArmorRound=s=>portArmorExposed(s)&&s.boss.mode==='salvo'
  ?s.hazards.find(h=>!h.hit&&(h.portRound==='rake'||h.portRound==='battery'))?.portRound
  :null;
+export function portArmorOpportunity(s){
+ if(!portArmorExposed(s))return;
+ const b=s.boss;
+ if(b.mode==='aim'&&portAuxiliaryRound(s,b.cycle+1))return b.cycle+1;
+ if(portArmorRound(s))return b.cycle;
+}
 export const portArmorFlank=s=>(s.player.x-s.boss.x)*-portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
 export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
 export const portCoreDisrupted=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle===s.boss.cycle;
@@ -193,6 +202,8 @@ export const RAIL_BARRAGE={width:180,depth:900,y:600,outerOffset:300,warning:1.2
 export const railDisarmed=boss=>boss.parts.every(part=>part.hp<=0);
 // Fixed outer lanes in old checkpoints also belong to a gun.
 export const railGunOf=hazard=>hazard.railGun??(hazard.x===500?0:hazard.x===1100?1:null);
+export const railGunLabel=index=>index===0?'좌포':index===1?'우포':'포대';
+export const railLaneLabel=(h,locked=false)=>`${railGunLabel(railGunOf(h))} · ${h.tracked?(locked?'유인':'추적'):'측면'}`;
 export const railHasRelay=s=>s.sites.some(site=>site.kind==='relay'&&site.state==='done');
 export const railDecoyReady=s=>s.operation?.region===1&&s.stage==='boss'&&s.boss.active&&!s.boss.dead
  &&s.boss.mode==='aim'&&!s.boss.railDecoy&&!railDisarmed(s.boss)&&railHasRelay(s);
@@ -220,6 +231,10 @@ export function railBarragePreview(s){
 export function railLaneBounds(h){
  const width=h.w+32,height=h.h+32;
  return {left:h.x-width/2,right:h.x+width/2,top:h.y-height/2,bottom:h.y+height/2,width,height};
+}
+export function railLaneContains(h,p){
+ const lane=railLaneBounds(h);
+ return p.x>lane.left&&p.x<lane.right&&p.y>lane.top&&p.y<lane.bottom;
 }
 export function railEscapeSlot(s,rounds){
  const {player:p,boss}=s;
@@ -264,7 +279,7 @@ export function railEscapeSlot(s,rounds){
 export const FRONT_TACTICS={
  1:{
   heat:{name:'냉각 밸브 차단',role:'화염 · 측면 진입',impact:'재장전 중 측면에 붙어 분사하면 포대와 차체 피해 +45%',hint:'고정된 조준선을 피한 뒤 열차 옆에 붙어 불을 쏘세요.',range:176,side:55,boost:1.45},
-  signal:{name:'포대 신호 역송',role:'전도 · 원거리 연쇄',impact:'원거리 적중으로 포대 사이 전류 도약 · 재장전 +0.8초',hint:'차선 밖에서 전류를 이어 조준 중인 포대를 끊으세요.',range:220,hop:220,delay:.8}
+  signal:{name:'포대 신호 역송',role:'전도 · 원거리 연쇄',impact:'원거리 역송 · 담당 포격 차단 · 재장전 +0.8초',hint:'포격선 밖에서 22m 이상 거리를 두고 역송하세요.',range:220,hop:220,delay:.8}
  },
  2:{
   heat:{name:'코어 냉각 차단',role:'화염 · 근접 돌파',impact:'근접 분사 · 코어·장갑 피해 +55%',hint:'붉은 포격 범위를 피해 노출 코어에 붙으세요.',range:168,boost:1.55},

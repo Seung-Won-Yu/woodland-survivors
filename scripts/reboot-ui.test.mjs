@@ -185,6 +185,7 @@ test('harbor reports show the part actions actually recorded during the sortie',
  assert.match(render({...saved.operation,support:'overrun',harborPayoff:{wakeHits:1,wakeBreaks:1,wakeHull:2}}),/배관 점화로 측면 장갑 타격 1회 \/ 배관 점화로 측면 장갑 파괴 1회 \/ 배관 점화로 차체 직격 2회/);
  assert.match(render({...saved.operation,support:'breach',harborPayoff:{salvos:1,fans:0}}),/포탑탄 차단 1회/);
  assert.match(render({...saved.operation,support:'breach',harborPayoff:{turrets:1}}),/철갑 급탄.*측면 포탑 파괴 1회/);
+ assert.match(render({...saved.operation,support:'breach',harborPayoff:{armorPreps:1,armorSalvos:2}}),/보조포 선제 급탄 차단 1회 \/ 예고 중 보조 포격 차단 2회/);
  assert.match(render({...saved.operation,harborPayoff:{locks:1,safeAid:1}}),/발밑 조준탄 차단 1회 \/ 경고 중 안전 회수 1회/);
  assert.doesNotMatch(render({...saved.operation,harborPayoff:undefined}),/harbor-payoff/);
  assert.doesNotMatch(render({...saved.operation,harborPayoff:{safeAid:'<img>',aid:-1}}),/harbor-payoff/);

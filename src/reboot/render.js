@@ -1,5 +1,5 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,BOSS_ENTRY,coastStagingPoint,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {exitGate,BOSS_ENTRY,coastStagingPoint,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
@@ -257,6 +257,13 @@ function paintAidBearing(c,s,aid,size,cx,cy,scale,hud){
  }
  c.restore();
 }
+function paintPortFlank(c,b,side,label,color){
+ const {x,y}=portFlankPoint(b,side);
+ c.strokeStyle=color;c.lineWidth=3;
+ c.beginPath();c.moveTo(x+side*12,y-12);c.lineTo(x,y);c.lineTo(x+side*12,y+12);c.stroke();
+ c.font='bold 11px Galmuri, sans-serif';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#223033';
+ c.strokeText(label,x,y+26);c.fillStyle=color;c.fillText(label,x,y+26);
+}
 function paintPortCue(c,s,aid){
  const b=s.boss;
  if(s.operation?.region!==2||!b.active||b.dead)return;
@@ -271,9 +278,7 @@ function paintPortCue(c,s,aid){
   c.setLineDash([7,5]);circle(c,p.x,p.y,30,null,'#b6e1c5',2);c.setLineDash([]);
  }
  if(s.operation.support==='breach'&&turret?.hp>0){
-  const side=portTurretSide(b),{x,y}=portFlankPoint(b);
-  c.strokeStyle=flank?'#c8f4ff':'#a9d6e9b0';c.lineWidth=3;
-  c.beginPath();c.moveTo(x+side*12,y-12);c.lineTo(x,y);c.lineTo(x+side*12,y+12);c.stroke();
+  paintPortFlank(c,b,portTurretSide(b),'포탑',flank?'#d1f7ff':'#a9d6e9');
   const suppressed=b.turretSuppressedCycle===b.cycle&&b.mode!=='aim';
   if(suppressed){
    const p=partPosition(s,turret);
@@ -287,11 +292,11 @@ function paintPortCue(c,s,aid){
   }
  }
  if(portArmorExposed(s)){
-  const lane=portArmorLine(s),side=-portTurretSide(b),{x,y}=portFlankPoint(b,side);
-  const color=lane==='ready'?'#d0f7ff':lane?'#a9d6e9':'#a9d6e974';
-  c.strokeStyle=color;c.lineWidth=3;
-  c.beginPath();c.moveTo(x+side*12,y-12);c.lineTo(x,y);c.lineTo(x+side*12,y+12);c.stroke();
-  if(lane){
+  const lane=portArmorLine(s),side=-portTurretSide(b);
+  const prepared=b.mode!=='recover'&&b.armorSuppressedCycle===(b.mode==='aim'?b.cycle+1:b.cycle);
+  const color=prepared?'#d7edb4':lane==='ready'?'#fff1c5':lane?'#f0cc9c':'#c4b491';
+  paintPortFlank(c,b,side,prepared?'급탄 차단':'보조포',color);
+  if(lane||prepared){
    const p=partPosition(s,b.parts[1]);
    if(lane!=='ready')c.setLineDash([5,4]);
    circle(c,p.x,p.y,28,null,color,2.5);c.setLineDash([]);
@@ -610,23 +615,20 @@ function paintRailWarning(c,h,y,forecast=false,locked=false){
  if(forecast){
   c.fillStyle=locked?'#e7c39326':'#92c3a914';c.fillRect(left,top,width,height);
   c.strokeStyle=locked?'#ffe0a9':'#b9ddc4';c.lineWidth=locked?3:2;c.setLineDash([8,12]);c.strokeRect(left,top,width,height);c.setLineDash([]);
-  if(locked&&h.tracked){
-   const labelY=clamp(y-59,top+18,bottom-8);
-   c.fillStyle='#332b24e8';c.fillRect(h.x-34,labelY-16,68,22);
-   c.fillStyle='#ffe0a9';c.font='bold 12px Galmuri';c.textAlign='center';c.fillText('유인 고정',h.x,labelY);
+  if(!locked)return;
+ }else{
+  c.fillStyle=h.tracked?'#da783b4a':'#b5843a2c';c.fillRect(left,top,width,height);
+  c.strokeStyle='#3e2e24';c.lineWidth=6;c.strokeRect(left,top,width,height);
+  c.strokeStyle=h.tracked?'#ffc07a':'#d9aa6f';c.lineWidth=h.tracked?3:2;c.strokeRect(left,top,width,height);
+  if(h.tracked){
+   c.setLineDash([9,15]);c.beginPath();c.moveTo(h.x,top);c.lineTo(h.x,bottom);c.stroke();c.setLineDash([]);
   }
-  return;
  }
- c.fillStyle=h.tracked?'#da783b4a':'#b5843a2c';c.fillRect(left,top,width,height);
- c.strokeStyle='#3e2e24';c.lineWidth=6;c.strokeRect(left,top,width,height);
- c.strokeStyle=h.tracked?'#ffc07a':'#d9aa6f';c.lineWidth=h.tracked?3:2;c.strokeRect(left,top,width,height);
- if(h.tracked){
-  c.setLineDash([9,15]);c.beginPath();c.moveTo(h.x,top);c.lineTo(h.x,bottom);c.stroke();c.setLineDash([]);
- }
- const labelY=clamp(y-59,top+18,bottom-8);
- c.fillStyle='#3b2c26e8';c.fillRect(h.x-38,labelY-16,76,22);
- c.fillStyle='#ffdfac';c.font='bold 12px Galmuri';c.textAlign='center';
- c.fillText(h.tracked?'조준 고정':h.railGun!=null?'측면 포격':'포격 예고',h.x,labelY);
+ const labelY=clamp(y-59,top+18,bottom-8),label=railLaneLabel(h,forecast&&locked);
+ c.font='bold 12px Galmuri';c.textAlign='center';
+ const labelWidth=c.measureText(label).width+16;
+ c.fillStyle='#332b24e8';c.fillRect(h.x-labelWidth/2,labelY-16,labelWidth,22);
+ c.fillStyle='#ffdfac';c.fillText(label,h.x,labelY);
 }
 function paintRailStop(c,p,slot){
  const {x,y,left,right}=slot,side=Math.sign(x-p.x);
