@@ -1244,6 +1244,16 @@ test('the remaining coast site offers a one-rank trade for the other gun and car
   const card=s.choices.find(c=>c.id===id);
   assert.equal(card.salvageLevel,1);
   assert.match(choiceDetails(s,card).title,/L1/);
+  const excluded=restore(snapshot(s));
+  assert.deepEqual(banishOptions(excluded).filter(c=>c.weapon===other.coastApproach).map(c=>c.id),[`gun:${other.coastApproach}`]);
+  assert.ok(banish(excluded,`gun:${other.coastApproach}`));
+  assert.ok(!excluded.choices.some(c=>c.weapon===other.coastApproach));
+  assert.deepEqual(restore(snapshot(excluded)).choices,excluded.choices);
+  for(const orphan of s.choices.filter(c=>c.weapon===other.coastApproach)){
+   const old=snapshot(excluded);
+   old.choices.splice(1,0,orphan);
+   assert.deepEqual(restore(old).choices,excluded.choices);
+  }
   const invalid=snapshot(s);
   invalid.choices.find(c=>c.id===id).salvageLevel=2;
   assert.throws(()=>restore(invalid));

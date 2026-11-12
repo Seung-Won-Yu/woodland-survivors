@@ -189,6 +189,14 @@ export function restore(raw,{allowPrevious=false}={}){
  if(reservations.length>1||reservations.some(c=>!validReservation(s,c)))fail();
  const strikes=s.choices.filter(c=>c?.kind==='coast-strike');
  if(strikes.length>1||strikes.some(c=>!validCoastStrike(s,c)))fail();
+ // The initial b40 draft could save the other card for an excluded weapon.
+ if(s.balanceRevision==='b40-coast-field-replan'&&s.operation?.region===0&&s.stage==='field'
+  &&s.choice?.type==='supply'&&s.banishes===0&&s.choices.length===4){
+  const site=s.sites.find(n=>n.id===s.choice.siteId&&n.state==='done'&&n.coastApproach);
+  const gun=site?.coastApproach;
+  if(gun&&s.excluded.includes(gun))s.choices=s.choices.filter(c=>!(c.kind==='gun'&&c.weapon===gun
+   &&(c.id===`gun:${gun}`&&c.salvageLevel===COAST_SALVAGE_LEVEL||isCoastTacticalLoot(c)&&c.salvageLevel===1)));
+ }
  const salvage=s.choices.filter(c=>c?.salvageLevel!==undefined||typeof c?.id==='string'&&c.id.startsWith('coast-loot:'));
  if(new Set(salvage.map(c=>c.id)).size!==salvage.length||salvage.some(c=>!validCoastSalvage(s,c)))fail();
  if(s.choice?.coastRecovery===true&&(s.choice.type!=='supply'||s.choice.source!=='장갑 수송차 노획'||!coastRecovery(s)||s.stage!=='field'||s.operation.regionTime!==0))fail();
@@ -563,8 +571,10 @@ export function reroll(s){
  }
  return true;
 }
-export function banishOptions(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&(!moduleRank(s,id)||c.support)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
-export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)return false;const target=c.kind==='gun'?c.weapon:c.module,index=s.choices.indexOf(c);if(!moduleRank(s,target))s.excluded.push(target);s.banishes--;
+export function banishOptions(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!isCoastTacticalLoot(c)&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&(!moduleRank(s,id)||c.support)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
+export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)return false;const target=c.kind==='gun'?c.weapon:c.module;if(!moduleRank(s,target))s.excluded.push(target);s.banishes--;
+ if(c.kind==='gun')s.choices=s.choices.filter(card=>!(isCoastTacticalLoot(card)&&card.weapon===target));
+ const index=s.choices.indexOf(c);
  const used=new Set([...s.choices.filter(card=>card!==c).map(card=>card.id),c.id]);let replacement;
  if(c.kind==='gun'){const pool=['h','r','f'].filter(g=>!s.excluded.includes(g)&&!s.weapons.some(w=>w.id===g&&!w.fusion)&&!used.has(`gun:${g}`));if(pool.length){const g=pick(s,'supply',pool);replacement={id:`gun:${g}`,kind:'gun',weapon:g,title:`${GUNS[g].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label:'새 무기'};}}
  const rank=['armory','raid-reward'].includes(s.choice.type)?({common:1,rare:2,prototype:3})[s.choice.quality]:c.kind==='module'?c.rank:1;
