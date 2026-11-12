@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} from '../src/reboot/choice-details.js';
@@ -1418,6 +1418,61 @@ test('harbor breach suppresses a live turret for one barrage and leaves the main
   assert.deepEqual(resumed.operation.harborPayoff,{salvos:1,fans:1});
  }
 });
+test('harbor breach stops the auxiliary rounds from the opposite flank and keeps the other guns active',()=>{
+ for(const [seed,cycle,turretAlive,round,gun,flight] of [[17,0,false,'rake','h',.22],[18,1,true,'battery','r',.5]]){
+  const s=supportArena(2,'breach','aim');
+  s.operation.harborPayoff={};
+  Object.assign(s.boss,regionBoss(2,seed),{active:true,x:800,y:250,cycle,timer:0,spawnClock:999});
+  if(!turretAlive)s.boss.parts[0].hp=0;
+  Object.assign(s.player,{x:800,y:450});
+  step(s,dt);
+  const armor=s.boss.parts[1],side=Math.sign(armor.ox),flank={x:800+side*160,y:360};
+  const rounds=state=>state.hazards.filter(h=>!h.hit).map(h=>h.portRound);
+  const hit=state=>{
+   state.shots=[bullet(state,partPosition(state,state.boss.parts[1]),15)];
+   step(state,dt);
+  };
+  const keep=['lock',...(turretAlive?['turret','turret']:[])];
+  const before=rounds(s);
+  assert.deepEqual(before.filter(id=>id===round),[round,round]);
+  assert.equal(portArmorLine(s),'flank');
+  hit(s);
+  assert.deepEqual(rounds(s),before);
+  Object.assign(s.player,flank);
+  const blocked=restore(snapshot(s));
+  blocked.blocks=[{x:Math.min(flank.x,800),y:280,w:160,h:32,hp:-1}];
+  assert.equal(portArmorLine(blocked),'blocked');
+  hit(blocked);
+  assert.deepEqual(rounds(blocked),before);
+
+  const ordinary=restore(snapshot(s));ordinary.operation.support='overrun';
+  assert.equal(portArmorLine(ordinary),null);
+  hit(ordinary);
+  assert.deepEqual(rounds(ordinary),before);
+
+  assert.equal(portArmorLine(s),'ready');
+  s.enemies=[enemy('closer',flank.x+side*52,flank.y)];
+  s.weapons=[{...makeWeapon(gun),uid:'breach-shot',cd:0}];
+  step(s,dt);
+  assert.equal(s.shots[0].target,armor.id);
+  assert.equal(s.shots[0].armorCycle,s.boss.cycle);
+  const tagged=restore(snapshot(s));
+  tagged.player.x=800-side*160;
+  tagged.weapons[0].cd=999;
+  tick(tagged,flight);
+  assert.deepEqual(rounds(tagged),keep);
+  assert.ok(tagged.boss.parts[1].hp>0);
+  assert.equal(portArmorLine(tagged),null);
+  const stale=restore(snapshot(s));stale.boss.cycle++;
+  stale.weapons[0].cd=999;tick(stale,flight);
+  assert.deepEqual(rounds(stale),before);
+  const resumed=restore(snapshot(tagged));hit(resumed);
+  assert.deepEqual(resumed.operation.harborPayoff,{armorSalvos:1});
+  assert.equal(resumed.stats.supportUses[2],1);
+  tick(resumed,.98-flight);
+  assert.ok(resumed.hazards.some(h=>h.portRound==='lock'&&h.hit));
+ }
+});
 test('a flank shot after the shell impacts still stops the live turret follow-up',()=>{
  const s=supportArena(2,'breach','aim');
  s.operation.harborPayoff={};
@@ -1432,6 +1487,19 @@ test('a flank shot after the shell impacts still stops the live turret follow-up
  assert.equal(s.boss.mode,'recover');
  assert.equal(s.enemyShots.length,0);
  assert.deepEqual(s.operation.harborPayoff,{fans:1});
+});
+test('Marco previews the boss part left after a harbor support strike',()=>{
+ const s=supportArena(2,'recovery','recover');
+ s.operator='marco';
+ Object.assign(s.player,{x:800,y:470,charge:60,doctrine:'focus',moveAim:-Math.PI/2});
+ s.boss.parts[0].hp=0;s.boss.parts[1].hp=100;s.boss.harborCounter=true;
+ s.operation.harborPayoff={};
+ const before=snapshot(s),plan=focusPlan(s);
+ assert.deepEqual(plan.impacts.map(({enemy,weak})=>[enemy.id,weak]),[[s.boss.id,true]]);
+ assert.deepEqual(snapshot(s),before);
+ assert.equal(action(s,'skill'),true);
+ assert.equal(s.boss.parts[1].hp,0);
+ assert.equal(s.stats.focusWeakHits,1);
 });
 test('a lethal armor-piercing hit records the turret and only a salvo it actually cancels',()=>{
  const s=supportArena(2,'breach','aim');
@@ -2961,6 +3029,11 @@ test('Marco shoots along movement, clips the first cover and pays charge even on
  s.enemies=[front,side,behind,rear];
  s.blocks=[{id:'cover',x:985,y:770,w:40,h:60,hp:-1}];
  step(s,dt,{x:1,y:0});p.aim=Math.PI;p.charge=60;
+ const before=snapshot(s),preview=focusPlan(s);
+ assert.equal(preview.lane.blocked,true);
+ assert.equal(preview.lane.length,985-p.x);
+ assert.deepEqual(preview.impacts.map(hit=>hit.enemy.id),['front']);
+ assert.deepEqual(snapshot(s),before);
  assert.ok(action(s,'skill'));assert.equal(p.charge,0);assert.equal(p.overdrive,0);
  assert.equal(front.hp,0);assert.equal(side.hp,100);assert.equal(behind.hp,100);assert.equal(rear.hp,100);
  const shot=s.effects.find(f=>f.type==='focus-shot');assert.equal(shot.angle,0);assert.ok(Math.abs(shot.x+shot.length-985)<1e-9);
@@ -2991,6 +3064,10 @@ test('focused aim hits one exposed boss plate and sweep covers a wider infantry 
   Object.assign(s.boss,regionBoss(1,19),{active:true,mode,x:800,y:620});
   Object.assign(s.player,{x,y:800,charge:60,doctrine});
   const before=s.boss.hp,gun=s.boss.parts[0],gunHp=gun.hp;
+  const saved=snapshot(s),preview=focusPlan(s,{x:0,y:-1});
+  assert.equal(preview.impacts.length,1);
+  assert.equal(preview.impacts[0].enemy,x===800?s.boss:gun);
+  assert.deepEqual(snapshot(s),saved);
   assert.ok(action(s,'skill',{x:0,y:-1}));
   return [before-s.boss.hp,gunHp-gun.hp,s.stats.focusWeakHits];
  };

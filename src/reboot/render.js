@@ -1,20 +1,41 @@
 import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintPortGantry} from './field-art.js';
-import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {exitGate,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,railGunOf,COAST_MORTAR,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
-import {activeManeuver,partPosition,pickupReach,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
 import {DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
 import {operatorOf,focusLane,canUseSkill} from './operator.js';
 const TAU=Math.PI*2;
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
-function paintFocusSight(c,s){
- const p=s.player,lane=focusLane(s),end=Math.min(118,lane.length);
- if(end<24)return;
+function paintFocusSight(c,s,plan){
+ const p=s.player,lane=plan?.lane||focusLane(s),end=plan?lane.length:Math.min(118,lane.length);
+ if(!plan&&end<24)return;
  c.save();c.translate(p.x,p.y);c.rotate(lane.angle);
+ if(plan){
+  c.fillStyle='#f2ce931c';c.fillRect(0,-lane.width,end,lane.width*2);
+  c.strokeStyle='#e4c396';c.lineWidth=2;c.setLineDash([7,8]);
+  c.beginPath();c.moveTo(0,-lane.width);c.lineTo(end,-lane.width);c.moveTo(0,lane.width);c.lineTo(end,lane.width);c.stroke();c.setLineDash([]);
+  c.strokeStyle=lane.blocked?'#fff0c6':'#bdab8c';c.lineWidth=lane.blocked?3:1;
+  c.beginPath();c.moveTo(end,-lane.width-3);c.lineTo(end,lane.width+3);c.stroke();
+  c.restore();return;
+ }
  c.strokeStyle='#efd09b';c.lineWidth=2;c.setLineDash([7,7]);c.beginPath();c.moveTo(22,0);c.lineTo(end-3,0);c.stroke();c.setLineDash([]);
  c.beginPath();c.moveTo(end-12,-6);c.lineTo(end,0);c.lineTo(end-12,6);c.stroke();c.restore();
+}
+function paintFocusTargets(c,plan,visible){
+ for(const {enemy,point,weak} of plan.impacts){
+  if(!visible(point.x,point.y,36))continue;
+  const x=point.x,y=point.y-13,r=clamp(enemy.r+4,19,38);
+  c.save();c.strokeStyle=weak?'#ffe09e':'#d5ebc7';c.lineWidth=weak?3:2;c.beginPath();
+  for(const side of [-1,1]){
+   c.moveTo(x+side*r,y-8);c.lineTo(x+side*r,y+8);
+   c.moveTo(x+side*r,y-8);c.lineTo(x+side*(r-6),y-8);
+   c.moveTo(x+side*r,y+8);c.lineTo(x+side*(r-6),y+8);
+  }
+  c.stroke();c.restore();
+ }
 }
 function paintFocusShot(c,f,t,reduced){
  c.save();c.translate(f.x,f.y);c.rotate(f.angle);
@@ -234,6 +255,17 @@ function paintPortCue(c,s,aid){
   }else if(flank){
    const p=partPosition(s,turret);
    circle(c,p.x,p.y,25,null,'#c8f4ff',3);c.fillStyle='#c8f4ff';c.fillRect(p.x-2,p.y-30,4,10);
+  }
+ }
+ if(portArmorExposed(s)){
+  const lane=portArmorLine(s),side=-portTurretSide(b),{x,y}=portFlankPoint(b,side);
+  const color=lane==='ready'?'#d0f7ff':lane?'#a9d6e9':'#a9d6e974';
+  c.strokeStyle=color;c.lineWidth=3;
+  c.beginPath();c.moveTo(x+side*12,y-12);c.lineTo(x,y);c.lineTo(x+side*12,y+12);c.stroke();
+  if(lane){
+   const p=partPosition(s,b.parts[1]);
+   if(lane!=='ready')c.setLineDash([5,4]);
+   circle(c,p.x,p.y,28,null,color,2.5);c.setLineDash([]);
   }
  }else if(portCoreWindow(s)){
   const reach=portCoreReach(s),p=s.player;
@@ -623,7 +655,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
  const conduitTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
- function draw(s,reduced=false,approach=activeEntry(s)){
+ function draw(s,reduced=false,approach=activeEntry(s),focus=null){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
   const gate=exitGate(s),primaryCoast=coastLead(s),lead=coastFork(s,primaryCoast)?.lead||primaryCoast,aid=portAidCue(s);
   const harborWarnings=s.operation?.region===2&&s.boss.active?s.hazards.filter(h=>!h.lane&&!h.hit):[];
@@ -723,7 +755,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   const reach=pickupReach(s);
   const signal=signalCourier(s);
   const cargo=signalCargo(s);
-  if(s.operator==='marco'&&canUseSkill(s))paintFocusSight(c,s);
+  if(s.operator==='marco'&&s.phase==='playing'&&canUseSkill(s))paintFocusSight(c,s,focus);
   for(const f of s.effects)if(f.type==='formation'&&visible(f.x,f.y,48))paintFormationEntry(c,f,reduced);
   if(s.challenge?.state==='active'&&s.challenge.type==='defend'){
    const {x,y,r}=DEFENSE_ZONE,inside=distance(s.player,DEFENSE_ZONE)<=r;
@@ -876,6 +908,15 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    }
    else if(f.type==='barrage'){c.fillStyle=reduced?'#df985325':'#ffd39345';c.fillRect(f.x-f.w/2,f.y-f.h/2,f.w,f.h);for(let y=f.y-f.h/2;y<f.y+f.h/2;y+=80)circle(c,f.x,y,20+t*30,'#f3ae6944','#ffcc87',2);}
    else if(f.type==='explosion'||f.type==='break'||f.type==='shrapnel'){const r=(f.r||80)*(.35+t*.7);circle(c,f.x,f.y,r,'#ec963b30','#ffd384',2);circle(c,f.x,f.y,r*.45,'#ffe0a178');for(let i=0;i<7;i++){const a=i*TAU/7;c.fillStyle='#efbd76';c.fillRect(f.x+Math.cos(a)*r,f.y+Math.sin(a)*r,4,4);}}
+   else if(f.interrupted&&t<.4){
+    c.globalAlpha=1-t/.4;
+    c.strokeStyle='#c8f4ff';c.lineWidth=3;
+    circle(c,f.x,f.y,reduced?26:24+t*28,null,'#c8f4ff',3);
+    for(const {x,y} of f.interrupted){
+     c.beginPath();c.moveTo(x-9,y-9);c.lineTo(x+9,y+9);
+     c.moveTo(x+9,y-9);c.lineTo(x-9,y+9);c.stroke();
+    }
+   }
    else if(f.type==='barrage-cancel'&&f.coastSignal){
     const radius=28+t*68;
     circle(c,f.x,f.y,radius,null,'#bce5cf',3);
@@ -1000,6 +1041,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    c.strokeStyle='#d8e9b8';c.lineWidth=3;
    c.beginPath();c.moveTo(x-6,y-27);c.lineTo(x,y-21);c.lineTo(x+6,y-27);c.stroke();
   }
+  if(focus)paintFocusTargets(c,focus,visible);
   paintPortWakeCue(c,s);
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);

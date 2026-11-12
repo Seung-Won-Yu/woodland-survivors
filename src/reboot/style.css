@@ -660,6 +660,8 @@
 }
 .coast-options .choice-tools{margin-top:12px;margin-bottom:0}
 #interact[data-kind="rail-decoy"]{border-color:#b6d7bb;background:#294239;color:#e9f0c7}
+#skill[data-aim="marco"]{touch-action:none}
+#skill[data-aim="marco"].pressed{background:#485542;border-color:#e4c396;color:#fff0cd}
 
 .draft-loadout{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .draft-loadout>b{padding:3px 6px;border:1px solid #6e806b;background:#1c2e29;color:#f0dfb7;white-space:nowrap}

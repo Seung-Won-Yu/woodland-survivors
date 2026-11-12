@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railDecoyReady,railBarrageAim,railBarrageRounds,railLaneBounds} from './campaign.js';
+import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,PORT_LANDING,railGarrison,railCrewLeft,portGantry,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railDecoyReady,railBarrageAim,railBarrageRounds,railLaneBounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -122,6 +122,8 @@ export function restore(raw,{allowPrevious=false}={}){
    ||!Number.isFinite(decoy.x)||decoy.x<FIELD.left||decoy.x>FIELD.right||![0,1].includes(decoy.lead)
    ||!Number.isSafeInteger(decoy.cycle)||decoy.cycle<1||decoy.cycle>s.boss.cycle+1))fail();
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
+  if(s.shots.some(q=>q?.armorCycle!==undefined&&(s.operation.region!==2||s.operation.support!=='breach'||q.source!=='native'
+   ||!Number.isSafeInteger(q.armorCycle)||q.armorCycle<1||q.armorCycle>s.boss.cycle)))fail();
   const payoff=s.operation.harborPayoff;
   if(payoff!=null&&(typeof payoff!=='object'||Array.isArray(payoff)||s.operation.region!==2||!Object.hasOwn(PORT_SUPPORT,s.operation.support)||Object.values(payoff).some(n=>!Number.isSafeInteger(n)||n<0)))fail();
   const supply=s.boss.harborSupply;
@@ -546,7 +548,21 @@ function buildCompleted(s,kind,{weapon,incendiary=false}={}){
  }
 }
 export function partPosition(s,part){const b=s.boss;if(s.operation?.region===1)return{x:b.x+part.ox,y:b.y};return{x:b.x+Math.cos(b.body-Math.PI/2)*part.ox,y:b.y+Math.sin(b.body-Math.PI/2)*part.ox};}
-function targets(s,breachLane){const list=alive(s),signal=signalCourier(s);if(signal?.hp>0)list.push(signal);if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);if(s.boss.active&&!s.boss.dead){const breach=s.operation?.region===2?(breachLane??portBreachFlank(s)):s.operation?.support==='breach';if(!breach)list.push(s.boss);for(const part of s.boss.parts)if(part.hp>0){Object.assign(part,partPosition(s,part));list.push(part);}if(breach)list.push(s.boss);}return list;}
+function targets(s,breachLane,syncParts=true,armorCycle){
+ const list=alive(s),signal=signalCourier(s);
+ if(signal?.hp>0)list.push(signal);
+ if(s.raid?.state==='active'&&s.raid.target.hp>0)list.push(s.raid.target);
+ if(s.boss.active&&!s.boss.dead){
+  const breach=s.operation?.region===2?((breachLane??portBreachFlank(s))||armorCycle===s.boss.cycle):s.operation?.support==='breach';
+  if(!breach)list.push(s.boss);
+  for(const part of s.boss.parts)if(part.hp>0){
+   if(syncParts)Object.assign(part,partPosition(s,part));
+   list.push(part);
+  }
+  if(breach)list.push(s.boss);
+ }
+ return list;
+}
 const blocked=(s,x,y,r=0)=>s.blocks.find(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
 function clearCoastOverlap(s,entity,r,fallback){
  const {x,y}=entity;
@@ -660,6 +676,13 @@ export function portTurretInSight(s){
  const turret=s.boss.parts[0],point=partPosition(s,turret);
  return s.weapons.some(w=>distance(s.player,point)<weaponStats(w).range+turret.r)&&!lineBlocked(s,s.player,point);
 }
+export function portArmorLine(s){
+ if(!portArmorRound(s))return null;
+ if(!portArmorFlank(s))return 'flank';
+ const armor=s.boss.parts[1],point=partPosition(s,armor);
+ if(lineBlocked(s,s.player,point))return 'blocked';
+ return s.weapons.some(w=>distance(s.player,point)<weaponStats(w).range+armor.r)?'ready':'range';
+}
 export function infernoCoreLine(s,w){
  const {player:p,boss:b}=s;
  if(!isFocusedInferno(w)||s.operation?.region!==2||!b.active||b.dead||b.mode!=='recover'||p.moving)return false;
@@ -673,7 +696,9 @@ export function infernoCoreLine(s,w){
  return true;
 }
 function targetFor(s,w,d,candidates,lance){
- const priority=portBreachFlank(s)?s.boss.parts[0]:portCoreDisrupted(s)?s.boss:null;
+ const priority=portBreachFlank(s)?s.boss.parts[0]
+  :portArmorRound(s)&&portArmorFlank(s)?s.boss.parts[1]
+  :portCoreDisrupted(s)?s.boss:null;
  if(priority&&candidates.includes(priority))return priority;
  if(lance)return s.boss;
  const strike=coastStrike(s);
@@ -815,7 +840,7 @@ function coastStrikeDamage(s,target,kind,source,owner,coastSignal){
  s.operation.coastStrikeUsed=true;
  return plan.damage;
 }
-function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,breachLane,coastSignal,ignitedPayload){
+function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,breachLane,coastSignal,ignitedPayload,armorCycle){
  if(e.hp<=0||e.dead)return;
  const catalyst=moduleRank(s,'catalyst');if(kind==='blast'&&e.burn>0&&catalyst)amount*=1+RULES.modules.catalyst.blastBonusOnBurn[catalyst-1];
  amount*=1+s.boosts.power*.01;
@@ -835,6 +860,16 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
     emit(s,'weakpoint',e.x,e.y,{life:1.2,text:'철갑 급탄 · 포탑 파괴'});
    }
   }else if(portTurretShutter(s))amount*=PORT_TURRET.shutterDamage;
+ }else if(e===s.boss.parts[1]&&s.operation?.region===2&&(source==='native'||source==='focus')){
+  const round=portArmorRound(s);
+  const instant=kind==='fire'||source==='focus';
+  if(round&&(armorCycle===s.boss.cycle||instant&&portArmorFlank(s)&&!lineBlocked(s,s.player,partPosition(s,e)))){
+   const interrupted=s.hazards.filter(h=>h.portRound===round&&!h.hit).map(({x,y})=>({x,y}));
+   clearPortRounds(s,round);
+   recordSupportUse(s);
+   recordHarborPayoff(s,'armorSalvos');
+   emit(s,'barrage-cancel',e.x,e.y,{life:1.2,text:`철갑 명중 · ${round==='rake'?'가로':'세로'} 보조 포격 차단`,interrupted});
+  }
  }else if(e.type==='part'&&breach&&s.operation.region!==2){
   amount*=1.55;recordSupportUse(s);
  }
@@ -911,14 +946,14 @@ function launchPayload(s,w,origin,target,amount,relay,breachLane){
  const incendiary=!relay&&w.fusion.branch==='incendiary';
  return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane});
 }
-function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal){
+function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal,armorCycle){
  const charge=ignite&&effect==='payload-impact';
  const reach=charge?r*EMBER_CHARGE.impactScale:r;
  emit(s,effect,x,y,{r:reach,life:.4,...(charge?{incendiary:true}:{})});let budget=2;
- for(const e of (source==='support'?alive(s):targets(s,breachLane))){
+ for(const e of (source==='support'?alive(s):targets(s,breachLane,true,armorCycle))){
   if(e.hp<=0||distance(e,{x,y})>reach+e.r||(effect==='ember-burst'?!groundLineClear(s,{x,y},e):lineBlocked(s,{x,y},e)))continue;
   const w=source==='native'?Math.min(.5,budget):0,before=e.hp;
-  budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane,coastSignal,source==='payload'&&ignite);
+  budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane,coastSignal,source==='payload'&&ignite,armorCycle);
   if(effect==='shrapnel'&&e.hp<before){
    s.stats.shrapnelHits=(s.stats.shrapnelHits||0)+1;
    if(e.dead&&Object.hasOwn(RULES.enemies,e.type))s.stats.shrapnelKills=(s.stats.shrapnelKills||0)+1;
@@ -1032,7 +1067,9 @@ function fire(s,w,target,a,amount,opts={}){
  const breachLane=s.operation?.region===2&&s.operation.support==='breach'?(opts.breachLane??(
   portBreachFlank(s)&&!lineBlocked(s,s.player,partPosition(s,s.boss.parts[0]))
  )):undefined;
- s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),...(opts.coastSignal?{coastSignal:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
+ const armorCycle=source==='native'&&target===s.boss.parts[1]&&portArmorRound(s)&&portArmorFlank(s)
+  &&!lineBlocked(s,s.player,partPosition(s,target))?s.boss.cycle:undefined;
+ s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),...(opts.coastSignal?{coastSignal:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(armorCycle!==undefined?{armorCycle}:{}),...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
 }
 export function activeManeuver(p){
  if(p.maneuver==='assault'&&p.moving&&p.assaultTime>0)return 'assault';
@@ -1107,7 +1144,7 @@ function detonate(s,q){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
  const mortars=q.coastFuse&&s.enemies.filter(e=>!e.dead&&e.cohort==='coast-guard'&&e.type==='mortar'&&e.hp>0);
- blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal);q.life=0;
+ blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal,q.armorCycle);q.life=0;
  if(mortars?.length===2&&mortars.every(e=>e.dead)){
   s.levelReadyAt=Math.max(s.levelReadyAt||0,s.t+COAST_MORTAR.volleyBeat);
   emit(s,'coast-volley',q.x,q.y,{life:.85});
@@ -1132,13 +1169,13 @@ function updateShots(s,dt){
    else{if(wall.hp>0)wall.hp=Math.max(0,wall.hp-q.damage);emit(s,'impact',q.x,q.y);}
    q.life=0;continue;
   }
-  for(const e of targets(s,q.breachLane)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
+  for(const e of targets(s,q.breachLane,true,q.armorCycle)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
    if(q.arming>0&&q.target!==e.id||q.avoidGroup!=null&&q.avoidGroup===e.waveGroup)continue;
    q.hitIds.push(e.id);if(q.rocket){detonate(s,q);break;}
    const wasBounce=q.pierce===undefined?q.hitIds.length>1:!!q.reflected;
   const angle=e===s.raid?.target?Math.atan2(-q.vy,-q.vx):null,screened=angle!=null&&raidOnNose(s,angle);
    const amount=screened?q.damage*RULES.raidContracts.armored.bulletFrontMultiplier:q.damage;
-   damage(s,e,amount,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1,q.breachLane);
+   damage(s,e,amount,'bullet',q.source,q.owner,q.hitIds.length>1?.35:1,q.breachLane,undefined,undefined,q.armorCycle);
    if(wasBounce)s.stats.ricochetHits++;
    emit(s,screened?'armor-impact':'impact',screened?q.x:e.x,screened?q.y:e.y,{life:.12,angle});
    if(q.pierce>0){q.pierce--;q.damage*=.72;emit(s,'pierce',e.x,e.y,{angle:Math.atan2(q.vy,q.vx),life:.18});break;}
@@ -1644,7 +1681,7 @@ export function interaction(s){
  return cargo&&distance(s.player,cargo)<=SIGNAL_CARGO_REACH&&!lineBlocked(s,s.player,cargo)?{id:'signal-cargo',label:'통신 화물 회수'}:null;
 }
 function focusWeakPoint(s,target){
- const b=s.boss,front=s.operation.region;
+ const b=s.boss,front=s.operation?.region;
  if(b.mode!=='recover')return false;
  if(target.type==='part')return true;
  if(target!==b)return false;
@@ -1652,15 +1689,26 @@ function focusWeakPoint(s,target){
  const angle=Math.atan2(s.player.y-b.y,s.player.x-b.x);
  return Math.cos(angle-b.body)<COAST_CHARGE.rearDot;
 }
-function fireFocus(s,cfg){
- const p=s.player,lane=focusLane(s),hits=[];
- for(const enemy of targets(s)){
-  const x=enemy.x-p.x,y=enemy.y-p.y,depth=x*lane.dx+y*lane.dy,side=Math.abs(x*lane.dy-y*lane.dx);
-  if(enemy.hp>0&&depth>0&&depth<=lane.length&&side<=lane.width+enemy.r&&!lineBlocked(s,p,enemy))hits.push({enemy,depth,side,weak:focusWeakPoint(s,enemy)});
+export function focusPlan(s,input,candidates){
+ // The support strike resolves before Marco fires and can remove the last armor plate.
+ if(!candidates&&portAidCounterReady(s)&&s.boss.parts[1].hp>0){
+  s=snapshot(s);
+  fireHarborAidCounter(s);
+ }
+ const p=s.player,lane=focusLane(s,aimFromInput(input,p.moveAim)),hits=[];
+ for(const enemy of candidates??targets(s,undefined,false)){
+  const point=enemy.type==='part'?partPosition(s,enemy):enemy;
+  const x=point.x-p.x,y=point.y-p.y,depth=x*lane.dx+y*lane.dy,side=Math.abs(x*lane.dy-y*lane.dx);
+  if(enemy.hp>0&&depth>0&&depth<=lane.length&&side<=lane.width+enemy.r&&!lineBlocked(s,p,point))hits.push({enemy,point,depth,side,weak:focusWeakPoint(s,enemy)});
  }
  const isArmor=hit=>hit.enemy.type==='boss'||hit.enemy.type==='part';
  const armor=hits.filter(isArmor).sort((a,b)=>Number(b.weak)-Number(a.weak)||a.side-b.side||a.depth-b.depth)[0];
- const impacts=hits.filter(hit=>!isArmor(hit)||hit===armor).sort((a,b)=>a.depth-b.depth).slice(0,cfg.targets);
+ const impacts=hits.filter(hit=>!isArmor(hit)||hit===armor).sort((a,b)=>a.depth-b.depth).slice(0,skillRules(s).targets);
+ return {lane,impacts};
+}
+function fireFocus(s,cfg,input){
+ const p=s.player,{lane,impacts}=focusPlan(s,input,targets(s));
+ p.moveAim=lane.angle;
  s.stats.focusUses=(s.stats.focusUses||0)+1;
  s.stats.focusHits=(s.stats.focusHits||0)+impacts.length;
  s.stats.focusWeakHits=(s.stats.focusWeakHits||0)+impacts.filter(hit=>hit.weak).length;
@@ -1704,7 +1752,7 @@ export function action(s,kind,input){
   if(!canUseSkill(s))return false;
   if(portAidCounterReady(s))fireHarborAidCounter(s);
   const cfg=skillRules(s);p.charge-=cfg.cost;p.skillCd=cfg.cooldown;
-  if(s.operator==='marco'){p.moveAim=aimFromInput(input,p.moveAim);fireFocus(s,cfg);}
+  if(s.operator==='marco')fireFocus(s,cfg,input);
   else{p.overdrive=cfg.duration;emit(s,'skill',p.x,p.y,{text:'전탄 보급',life:.7});}
   return true;
  }

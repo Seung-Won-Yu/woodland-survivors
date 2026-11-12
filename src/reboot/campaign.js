@@ -116,19 +116,25 @@ export const PORT_LANDING={range:215,guards:[
  ['mortar',-45,-180],['mortar',-83,-130]
 ]};
 export const PORT_SUPPORT={
- breach:{impact:'포탑 측면 피해 +65% · 후속 탄막 차단',detail:'예고 중에는 포탑탄도 끊습니다. 포탄이 떨어진 뒤에는 재장전 전까지 후속 탄막을 끊을 수 있습니다.',hint:'포격 예고 중 포탑 쪽 사선 확보',flank:105,boost:1.65},
+ breach:{impact:'측면 사격 · 포탑탄 또는 보조 포격 차단',detail:'포탑 측면 피해 +65%. 반대편 장갑을 착탄 전에 맞히면 가로·세로 보조 포격을 끊습니다. 남은 탄착원은 직접 피하세요.',hint:'포격 예고 중 끊을 포대의 측면으로',flank:105,boost:1.65},
  overrun:{impact:'재장전 중 회피로 코어 직격 320 · 장갑 해제',detail:'코어 원 밖에서는 안으로, 안에서는 좌우로 회피하세요. 코어 장갑이 풀리고 재장전이 0.9초 늘어납니다.',hint:'포격 뒤 재장전 · 이동하며 회피',reach:100,focusedReach:260,sideStep:48,damage:320,delay:.9,arcDamage:210,wakeDamage:320},
  recovery:{impact:'측면 화물 회수 → 스킬로 위협탄 차단',detail:'화물로 체력 +12, 전탄 +20. 경고 중 안전 회수는 전탄 +45와 회피 재정비. 지원 포격은 현재 위치를 덮는 차단 가능 탄을 우선합니다.',hint:'측면 화물 회수 → 스킬로 표시된 포격 차단',heal:12,charge:20,warningCharge:45,dashDelay:.35,counterDamage:360,reach:36,limit:3,lanes:[625,975],y:335}
 };
 export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRONT_SUPPORTS[id]?.tactics[index-1]||'';
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
-export const portFlankPoint=boss=>({x:boss.x+portTurretSide(boss)*142,y:boss.y+95});
+export const portFlankPoint=(boss,side=portTurretSide(boss))=>({x:boss.x+side*142,y:boss.y+95});
 export const portWakePoint=boss=>({x:boss.x-portTurretSide(boss)*134,y:boss.y+86,r:12});
 const portOpeningShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
 const portTurretFlank=s=>(s.player.x-s.boss.x)*portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
 export const portGantryBypass=s=>s.operation?.portEntry==='gantry'&&portOpeningShutter(s)&&portTurretFlank(s);
 export const portTurretShutter=s=>portOpeningShutter(s)&&!portGantryBypass(s);
 export const portBreachFlank=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&portTurretFlank(s);
+export const portArmorExposed=s=>s.operation?.region===2&&s.operation.support==='breach'&&s.boss.active&&!s.boss.dead
+ &&s.boss.parts[1]?.hp>0;
+export const portArmorRound=s=>portArmorExposed(s)&&s.boss.mode==='salvo'
+ ?s.hazards.find(h=>!h.hit&&(h.portRound==='rake'||h.portRound==='battery'))?.portRound
+ :null;
+export const portArmorFlank=s=>(s.player.x-s.boss.x)*-portTurretSide(s.boss)>=PORT_SUPPORT.breach.flank;
 export const portCoreWindow=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle!==s.boss.cycle;
 export const portCoreDisrupted=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.boss.active&&!s.boss.dead&&s.boss.mode==='recover'&&s.boss.harborStrikeCycle===s.boss.cycle;
 export const portWakeBreach=s=>s.operation?.region===2&&s.operation.support==='overrun'&&s.weapons.some(isTrailInferno);

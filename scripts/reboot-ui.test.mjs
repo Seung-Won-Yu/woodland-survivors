@@ -389,6 +389,6 @@ test('the sortie board exposes both operators and the selected specialist and av
  const marco=lobbyView(p,{operator:'marco',order:'wire'});
  assert.match(marco,/data-pilot="marco" aria-pressed="true"/);
  assert.ok(marco.indexOf('data-pilot=')<marco.indexOf('data-action="launch"'));
- assert.match(marco,/마르코 · 지령 출격/);assert.match(marco,/마지막 방향을 유지/);
+ assert.match(marco,/마르코 · 지령 출격/);assert.match(marco,/사격 버튼을 끌어 조준한 뒤 놓으세요/);
  assert.match(marco,/관통 사격 E/);assert.match(marco,/마르코 출격 준비 모습/);
 });

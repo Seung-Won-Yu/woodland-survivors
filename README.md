@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.92.0" src="https://img.shields.io/badge/RIFT-0.92.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.93.0" src="https://img.shields.io/badge/RIFT-0.93.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -101,6 +101,10 @@ npm run test:pages
 0.91에서는 분화를 고르기 전에 완성 병기와 남은 재료를 비교할 수 있습니다. 작업대는 조립으로 닫히는 경로와 마지막 조율권을 쓰면 미뤄지는 조합을 보여 줍니다. [무기 분화와 조립 화면](docs/RIFT-GAMEPLAY-V1.md#091-분화와-조립-선택).
 
 0.92에서는 철도 중계기를 확보하고 포대가 조준할 때 유인 신호를 한 번 보낼 수 있습니다. 발사 전에 표시된 빈 사선으로 이동해 반격 위치를 잡으세요. [철도 포격 유인과 검증](docs/RIFT-GAMEPLAY-V1.md#092-철도-중계기의-조준-유인).
+
+0.93에서는 마르코의 관통 사격 버튼을 끌어 이동과 별도로 조준할 수 있습니다. 사선과 표적을 확인한 뒤 놓으면 발사합니다. [마르코의 이동과 조준](docs/RIFT-GAMEPLAY-V1.md#093-마르코의-이동과-조준).
+
+철도 잔류에서 철갑 급탄을 확보하면 항구에서 어느 측면을 노릴지 고를 수 있습니다. 포탑 쪽은 포탑탄, 반대편 장갑 쪽은 보조 포격을 끊습니다. [부품별 모바일 귀환 기록](docs/RIFT-GAMEPLAY-V1.md#철도-부품으로-항구-포격-차단).
 
 0.88에서는 연료 살포 인페르노가 실제 이동 경로에 불길을 남깁니다. 밀집 보병을 불길로 끌어들이거나 항구의 냉각 배관을 점화할 수 있습니다. [인페르노 분화 검증](docs/RIFT-GAMEPLAY-V1.md#088-인페르노-이동-불길과-냉각-배관).
 
