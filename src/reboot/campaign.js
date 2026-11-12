@@ -473,12 +473,16 @@ export function coastCrossGun(s,site){
 }
 export const coastTacticalLootAvailable=(s,site)=>!!coastCrossGun(s,site)&&!s.operation.coastStrike
  &&(s.operation.requisitionClaimed||site!==requisitionStation(s));
-export function coastFork(s,primary=coastLead(s)){
+const COAST_GUIDE_INSET=45,COAST_GUIDE_RETAIN=25;
+export function coastFork(s,primary=coastLead(s),previousLead=null){
  if(primary&&primary.coastApproach!==s.firstNew||s.operation?.region!==0||s.stage!=='field'||orderTarget(s))return null;
  const cross=s.sites.find(site=>site!==primary&&site.state!=='done'&&(coastCrossGun(s,site)||coastStrikeForSite(s,site)));
  if(!cross)return null;
  const engaged=site=>site&&site.state!=='waiting'&&distance(site,s.player)<=coastApproach(site).range+24;
- const followingCross=engaged(cross)&&(!engaged(primary)||distance(cross,s.player)<distance(primary,s.player));
+ const committed=cross.id===previousLead;
+ const approach=coastApproach(cross).range-COAST_GUIDE_INSET+(committed?COAST_GUIDE_RETAIN:0);
+ const followingCross=engaged(cross)&&(!primary||distance(cross,s.player)<=approach
+  &&(committed||!engaged(primary)||distance(cross,s.player)<distance(primary,s.player)));
  return {lead:followingCross?cross:primary,other:followingCross?primary:cross};
 }
 export const coastLeadColor=site=>site.coastApproach==='f'?'#ffd0a0':site.coastApproach==='r'?'#bcece4':'#f6d58b';

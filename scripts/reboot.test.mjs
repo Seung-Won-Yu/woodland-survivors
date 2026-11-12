@@ -1219,7 +1219,15 @@ test('opposite coast routes offer a saved L2 salvage choice alongside the live f
   main.state=other.state='waiting';
   assert.equal(coastFork(s).lead,main);
   assert.equal(coastFork(s).other,other);
-  other.state='active';Object.assign(s.player,{x:other.x,y:other.y});
+  const contact=other.coastApproach==='r'?255:170;
+  other.state='active';Object.assign(s.player,{x:other.x,y:other.y+contact+18});
+  assert.equal(coastFork(s).lead,main);
+  assert.equal(coastFork(s,main,other.id).lead,other);
+  s.player.y=other.y+contact+30;
+  assert.equal(coastFork(s,main,other.id).lead,main);
+  s.player.y=other.y+contact-4;
+  assert.equal(coastFork(s).lead,other);
+  s.player.y=other.y;
   assert.equal(coastFork(s).lead,other);
   assert.equal(coastFork(s).other,main);
   const native=other.coastApproach;

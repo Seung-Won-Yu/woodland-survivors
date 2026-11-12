@@ -52,9 +52,9 @@ function coastPlan(seed,order,suggested=null,researchNotes={}){
  const {sites}=previewLayout(seed,0,order),rescue=sites.find(site=>site.opening);
  const stops=sites.filter(site=>site.coastApproach).map(site=>{
   const id=site.coastApproach,approach=coastApproach(site);
-  return `<li data-coast="${id}"${id===suggested||researchNotes[id]?' data-suggested':''}><span class="coast-plan-mark">${GUNS[id].short}</span><div><strong>${approach.name}</strong><span>${bearing(rescue,site.x,site.y)} 약 ${Math.round(distance(rescue,site)/10)}m · ${approach.formation}</span><small>${researchNotes[id]||`${MODULES[approach.module].name} 후보`}</small></div></li>`;
+  return `<li data-coast="${id}"${id===suggested||researchNotes[id]?' data-suggested':''}><div><strong>${GUNS[id].name}</strong><span>${bearing(rescue,site.x,site.y)} 약 ${Math.round(distance(rescue,site)/10)}m · ${approach.name}</span><small>${researchNotes[id]||approach.formation}</small></div></li>`;
  }).join('');
- return `<section class="coast-plan" aria-label="해안 첫 보급"><header><b>포로 구출 → F / R 선택</b><span>${beachRoute(seed).name}</span></header><ul>${stops}</ul></section>`;
+ return `<section class="coast-plan" aria-label="해안 첫 보급"><header><b>포로 구출 후 무장 선택</b><span>${beachRoute(seed).name}</span></header><ul>${stops}</ul></section>`;
 }
 
 function frontIntel(index,seed){

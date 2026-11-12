@@ -54,13 +54,13 @@ function watchCombatHud(){
  schedule();
 }
 let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,requisitionSelection=null,requisitionAt=null,selectedOperator='fio',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,reportOrigin=null,equippedUntil=0,equippedWeapon=null;
-let focusGesture=null,queuedFocus=null;
+let focusGesture=null,queuedFocus=null,coastGuideId=null,panelPointerButton=null;
 let battleArt=null,portraitArt=null,marcoArt=null,marcoArtWork=null,artWork=null,launchPreparation=null,kitPreloaded=false,firstBattleFrame=false;
 const profile=()=>store.get();
 const unlockSound=()=>{if(store?.settings().sound)audio.unlock();};
 function notice(text){$('notice').textContent=text;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',4500);}
 function setBusy(on){busy=on;document.body.classList.toggle('is-saving',on);ui.setAttribute('aria-busy',String(on));for(const b of ui.querySelectorAll('button')){if(on&&!b.disabled){b.dataset.saving='true';b.disabled=true;}else if(!on&&b.dataset.saving){b.disabled=false;delete b.dataset.saving;}}}
-function panel(html){const origin=nextPanelFocus;nextPanelFocus=null;ui.innerHTML=html;ui.scrollTop=origin?.scroll||0;keys.clear();controls?.reset();requestAnimationFrame(()=>{const target=origin?.selector&&ui.querySelector(origin.selector)||ui.querySelector('h1,h2')||ui.querySelector('button:not(:disabled)');if(target){if(!target.matches('button,a,input,select,summary'))target.tabIndex=-1;target.focus({preventScroll:true});}});}
+function panel(html){const origin=nextPanelFocus;nextPanelFocus=null;panelPointerButton=null;ui.innerHTML=html;ui.scrollTop=origin?.scroll||0;keys.clear();controls?.reset();requestAnimationFrame(()=>{const target=origin?.selector&&ui.querySelector(origin.selector)||ui.querySelector('h1,h2')||ui.querySelector('button:not(:disabled)');if(target){if(!target.matches('button,a,input,select,summary'))target.tabIndex=-1;target.focus({preventScroll:true});}});}
 function settings(){const p=profile();return `<div class="settings"><label><input type="checkbox" data-setting="sound" ${p.settings.sound?'checked':''}><span>전투 효과음<small>사격 · 적중 · 보스 포격 예고</small></span></label><label><input type="checkbox" data-setting="reduced" ${p.settings.reduced?'checked':''}><span>플래시·흔들림 줄이기<small>강한 폭발 효과와 화면 반동을 줄입니다.</small></span></label></div>`;}
 function drawPortrait(){
  const canvas=$('portrait'),id=selectedOperator;
@@ -101,6 +101,26 @@ function choiceCards(cards){
 }
 function choiceDeck(cards){
  return `<div class="upgrade-deck${cards.length===2?' two-options':''}">${choiceCards(cards)}</div>`;
+}
+function openingChoiceDeck(cards){
+ const guns=cards.filter(c=>c.kind==='gun'&&Object.hasOwn(COAST_APPROACHES,c.weapon));
+ if(!guns.length)return choiceDeck(cards);
+ const rack=guns.map(c=>{
+  const d=choiceDetails(run,c);
+  return `<button class="opening-weapon" data-weapon="${c.weapon}" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}>
+   <span class="opening-weapon-tray">${itemArt(c.weapon)}${choiceKey(c)}</span>
+   <span class="opening-weapon-copy"><strong>${esc(d.title)}</strong><small>${c.weapon==='f'?'근접 분사':'원거리 폭발'}</small>
+   <b>${esc(d.impact)}</b><span>${esc(d.detail)}</span>${d.link?`<small>${esc(d.link)}</small>`:''}</span>
+  </button>`;
+ }).join('');
+ const alternatives=cards.filter(c=>!guns.includes(c)).map(c=>{
+  const d=choiceDetails(run,c);
+  const title=c.kind==='rank'?`${d.title} L${d.after} 강화`:d.title;
+  return `<button class="opening-alternative" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}>
+   ${d.art?itemArt(d.art):moduleIcon(c.module||'gear')}<span><strong>${esc(title)}</strong><small>${esc(d.impact)}</small>${c.trial&&d.detail?`<small>${esc(d.detail)}</small>`:''}</span>${choiceKey(c)}
+  </button>`;
+ }).join('');
+ return `<div class="opening-rack${guns.length===1?' single-weapon':''}" role="group" aria-label="노획 무장">${rack}</div>${alternatives?`<div class="opening-alternatives" role="group" aria-label="기타 구출 보급">${alternatives}</div>`:''}`;
 }
 function assemblyMaintenance(cards){
  if(!cards.length)return '';
@@ -193,10 +213,10 @@ function showChoices(){
  const tools=atGate?gateIntel+gatePace(run.operation,profile().active?.reference)+gatePreparationView():assembly||run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools">${currentKit}<div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>`:''}</div></div>`;
  const lead=gateLevel?'개조를 확정하면 게이트로 돌아갑니다.':type==='level'?(run.pendingLevels?`대기 개조 ${run.pendingLevels}회 · 전장에서 이어서 사용`:''):atGate?(run.operation.region<2?'전진하거나 현장에 남아 XP를 회수하세요.':'귀환하거나 남아서 추가 점수를 노리세요.'):workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':coastOptions?'무장을 강화하거나 보스 공략을 고르세요.':tacticalLoot?'L2 무장 또는 L1 무장과 수송차 전술':salvage?`${run.choice.source} · 빈 무기 칸에 L${salvage.salvageLevel} 장착`:assembly?'':type==='control'&&run.operation?.region===1&&run.stage==='field'?'중계기 확보 · 포대 조준 중 유인 신호 1회':run.choice.opening?`${beachRoute(run.seed).name} · 현재 위치 기준`:run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차');
  const gateNote=run.pendingLevels?run.operation?.region===2?`귀환 시 미사용 개조 ${run.pendingLevels}회 소멸`:`대기 개조 ${run.pendingLevels}회 · 전진하면 이월`:'잔류하면 증원군이 강해집니다. 게이트는 계속 열려 있습니다.';
- const deck=atGate?gateChoices():assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:choiceDeck(run.choices);
- const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
+ const deck=atGate?gateChoices():assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
+ const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
  panel(`<section class="sheet field-menu${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-  <header><div><span class="eyebrow">${type==='level'?`LV.${run.level} · 현장 정비`:assembly?`조율권 ${run.tuning}개`:type==='clear'?'게이트 통과':atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+  <header><div><span class="eyebrow">${run.choice.opening?'포로 구출 완료':type==='level'?`LV.${run.level} · 현장 정비`:assembly?`조율권 ${run.tuning}개`:type==='clear'?'게이트 통과':atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
   ${coastOptions?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${deck}${coastOptions?tools:''}
   <footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>
   ${capstones.length?paths:''}
@@ -397,8 +417,13 @@ ui.addEventListener('change',async e=>{
  }finally{setBusy(false);nextPanelFocus={selector:`[data-setting="${key}"]`};showSettings();}
 });
 ui.addEventListener('keydown',e=>{const dialog=ui.querySelector('[role="dialog"],[role="alertdialog"]');if(!dialog)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(launchPreparation){closePreparation(true);return;}if(busy||pending)return;if(subpanel?.type==='settings')closeSettings();else if(subpanel?.type==='replay-briefing')closeReplayBriefing();else if(subpanel?.type==='retreat'){if(subpanel.fromHome)showHome();else present(true);}else if(subpanel){nextPanelFocus=choiceOrigin;subpanel=null;present(true);}else if(run?.phase==='choice'&&run.choice.type==='assembly')selectCard('back');else if(mode==='report')closeArchivedReport();else if(run?.phase==='result'){lobbyTab='mission';showHome();}else if(run?.phase==='paused')pauseButton();return;}if(e.key==='Tab'){const nodes=[...dialog.querySelectorAll('button:not(:disabled),input,select,a[href],summary')].filter(n=>n.getClientRects().length);if(!nodes.length){e.preventDefault();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||!nodes.includes(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!nodes.includes(document.activeElement))){e.preventDefault();first.focus();}}});
+ui.addEventListener('pointerdown',e=>{panelPointerButton=e.target.closest('button');},true);
+ui.addEventListener('pointercancel',()=>{panelPointerButton=null;},true);
 ui.addEventListener('click',async e=>{
- const button=e.target.closest('button');if(!button||busy||pending&&!['retry','reload-latest'].includes(button.dataset.action))return;
+ const button=e.target.closest('button'),startedHere=button===panelPointerButton;
+ panelPointerButton=null;
+ // A stick release can land on a choice that opened during the gesture.
+ if(!button||e.isTrusted&&(e.detail>0||e.pointerType)&&!startedHere||busy||pending&&!['retry','reload-latest'].includes(button.dataset.action))return;
  if(launchPreparation){if(button.dataset.action==='cancel-launch')closePreparation(true);return;}
  if(button.dataset.action==='trial-brief'){
   lobbyTab='mission';briefRegion=0;nextPanelFocus={selector:'.command-nav [data-tab="mission"]'};showHome();return;
@@ -619,8 +644,10 @@ function fieldEntry(s){
  }
  return {...entry,routes:routes.map(route=>route.site==='rail-cache'?{...route,sign,summary,note}:route)};
 }
-function updateHud(entry,focus=null){
- const battle=mode==='battle'&&renderer&&run;$('hud').hidden=!battle;$('hud').inert=!!battle&&run.phase!=='playing';$('controls').hidden=!battle||run.phase!=='playing'||!!pending;if(!battle){$('field-feedback').hidden=true;return;}const p=run.player,actor=operatorOf(run),primaryCoast=coastLead(run),fork=coastFork(run,primaryCoast),coastSite=fork?.lead||primaryCoast,gantry=portGantry(run),dispatch=orderTarget(run),reserved=requisitionSite(run),order=sortieOrder(run.operation?.order);const aid=portAidCue(run);updateMap(coastSite,entry,gantry,dispatch,reserved,aid,fork?.other);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
+function updateHud(entry,focus=null,coast={}){
+ const battle=mode==='battle'&&renderer&&run;$('hud').hidden=!battle;$('hud').inert=!!battle&&run.phase!=='playing';$('controls').hidden=!battle||run.phase!=='playing'||!!pending;if(!battle){$('field-feedback').hidden=true;return;}
+ const {primary:primaryCoast,fork,lead:coastSite}=coast;
+ const p=run.player,actor=operatorOf(run),gantry=portGantry(run),dispatch=orderTarget(run),reserved=requisitionSite(run),order=sortieOrder(run.operation?.order);const aid=portAidCue(run);updateMap(coastSite,entry,gantry,dispatch,reserved,aid,fork?.other);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
  document.body.classList.toggle('coast-lead',!!coastSite);
  document.body.classList.toggle('coast-contact',!!coastSite?.coastApproach&&coastSite.state==='active');
  document.body.classList.toggle('coast-warning',run.operation?.region===0&&run.hazards.some(h=>h.coastMortar&&!h.hit));
@@ -743,7 +770,9 @@ function updateHud(entry,focus=null){
   else if(rescue?.gun)intel=`${route} · ${GUNS[rescue.gun].name} 보급`;
  }else if(front===1&&railHasRelay(run))intel='중계기 연결 · 고정 전 조준선 탐지';
  else if(front===2&&run.operation.jammed)intel='통신 교란 중 · 증원 6 → 3';
- if(!intel&&incoming&&next.state==='ready')intel='접근해 회수';
+ const otherMortar=front===0&&run.stage==='field'&&run.hazards.find(h=>h.coastMortar&&h.coastMortar!==coastSite?.id&&!h.hit&&distance(p,h)<blastContactRadius(h));
+ if(otherMortar)intel=`박격포 · 탄착원 밖으로 ${(Math.ceil(otherMortar.timer*10)/10).toFixed(1)}초`;
+ else if(!intel&&incoming&&next.state==='ready')intel='접근해 회수';
  fieldIntel.hidden=!intel||holdout;fieldIntel.textContent=intel;
  document.body.classList.toggle('holdout-active',holdout);
  const portHoldout=holdout&&front===2;
@@ -1140,13 +1169,15 @@ function frame(now){
   requestAnimationFrame(frame);return;
  }
  const starting=firstBattleFrame;
- if(starting){firstBattleFrame=false;accumulator=0;$('capstone-announcement').textContent='';}
+ if(starting){firstBattleFrame=false;accumulator=0;coastGuideId=null;$('capstone-announcement').textContent='';}
  if(!starting&&run.phase==='playing'&&!busy&&!pending){if(elapsed>.5){mutate(d=>{pause(d);return true;});accumulator=0;}else{const previousStage=run.stage;accumulator+=Math.min(.1,elapsed);const input=movementInput();while(accumulator>=1/60&&run.phase==='playing'){step(run,1/60,input,renderer.view());accumulator-=1/60;saveClock+=1/60;}if(run.phase!=='playing'){persistCurrent();accumulator=0;}else if(saveClock>=5||previousStage==='boss'&&run.stage==='holdout')persistCurrent();}}
  const entry=fieldEntry(run);
  const aiming=focusGesture&&!focusGesture.canceled&&run.phase==='playing'&&!busy&&!pending&&canUseSkill(run);
  const focus=aiming?focusPlan(run,focusGesture.input||movementInput()):null;
  const reduced=store.settings().reduced||reduceMotion.matches;
- const covered=renderer.draw(run,reduced,entry,focus);updateHud(entry,focus);
+ const primary=coastLead(run),fork=coastFork(run,primary,coastGuideId),lead=fork?.lead||primary;
+ coastGuideId=lead?.id||null;
+ const covered=renderer.draw(run,reduced,entry,focus,lead);updateHud(entry,focus,{primary,fork,lead});
  revealCombatHud(run.phase==='playing'?covered:null,now,reduced,run.stage);
  if(!busy&&!pending)processEvents();
  requestAnimationFrame(frame);

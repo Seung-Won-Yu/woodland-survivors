@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {lobbyView,reportView,replayBriefingView,gatePace} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
-import {aidBearingPosition,coveredCombatPanels} from '../src/reboot/render.js';
+import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
 import {portEscapeLanes} from '../src/reboot/campaign.js';
 
 test('portrait HUD clearance uses confirmed contact and live warning shapes without covering holdout actions',()=>{
@@ -88,6 +88,18 @@ test('mobile harbor cues move around HUD masks and live warning boxes',()=>{
  assert.equal(aidBearingPosition(size,{x:155,y:234},18,80,[map],[]),null);
  const above=aidBearingPosition(size,{x:180,y:192},18,80,[topHud],[]);
  assert.ok(above&&above.y-12>=topHud.bottom);
+});
+
+test('the coastal bearing stays on the goal side of the screen and clears the real HUD',()=>{
+ const size={w:320,h:568},target={x:-86,y:368},width=112;
+ const masks=[{left:12,right:95,top:324,bottom:378},{left:12,right:137,top:385,bottom:433}];
+ const cue=coastCuePosition(size,target,width,masks,[],46);
+ assert.ok(cue.x<90&&cue.y>290);
+ assert.ok(masks.every(box=>cue.y+13<=box.top||cue.y-13>=box.bottom));
+ assert.deepEqual(coastCuePosition(size,{x:244,y:342},width,masks,[],46),{x:244,y:296});
+ const warning={left:12,right:140,top:287,bottom:326};
+ const dodged=coastCuePosition(size,target,width,masks,[warning],46);
+ assert.ok(dodged.y+13<=warning.top||dodged.y-13>=warning.bottom||dodged.x-width/2>=warning.right);
 });
 
 test('mission briefing does not select a later starting map, and saved operations offer a fresh sortie',()=>{
@@ -339,10 +351,10 @@ test('coastal tracks connect the actual sites through clear ground and water sta
 test('the launch briefing names both coastal routes before the start button and reflects the seeded garrisons',()=>{
  const briefing=seed=>lobbyView(emptyProfile(),{seed}).match(/<section class="coast-plan"[\s\S]*?<\/section>/)[0];
  const seed22=briefing(22),seed25=briefing(25);
- assert.match(seed22,/→ 약 47m · 양갈래 호위/);
- assert.match(seed22,/↖ 약 36m · 집결 포대/);
- assert.match(seed25,/↗ 약 35m · 밀집 호위/);
- assert.match(seed25,/← 약 42m · 분산 포대/);
+ assert.match(seed22,/화염방사기 F<\/strong><span>→ 약 47m · 이동 보급차<\/span><small>양갈래 호위/);
+ assert.match(seed22,/로켓 R<\/strong><span>↖ 약 36m · 박격포 진지<\/span><small>집결 포대/);
+ assert.match(seed25,/↗ 약 35m · 이동 보급차<\/span><small>밀집 호위/);
+ assert.match(seed25,/← 약 42m · 박격포 진지<\/span><small>분산 포대/);
  const lobby=lobbyView(emptyProfile(),{seed:22});
  assert.ok(lobby.indexOf(seed22)<lobby.indexOf('data-action="launch"'));
  assert.doesNotMatch(lobbyView(emptyProfile(),{seed:22,brief:1}),/class="coast-plan"/);

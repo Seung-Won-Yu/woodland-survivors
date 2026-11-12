@@ -126,7 +126,7 @@ function paintEscapeLane(c,path,color,dashes,visible){
  }
  c.restore();
 }
-function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale){
+function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale,hud){
  const prefix=site.coastApproach?.toUpperCase();
  const name=site.opening?'포로 구출':site.name;
  const screen=coastShieldImpact(s,site);
@@ -137,10 +137,16 @@ function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale){
  const targetY=size.h/2+(target.y-cy)*scale;
  const mobile=size.w<=700;
  const color=coastLeadColor(site);
+ const point={x:targetX,y:targetY};
+ const warnings=s.hazards.filter(h=>!h.hit&&h.coastMortar).map(h=>{
+  const x=size.w/2+(h.x-cx)*scale,y=size.h/2+(h.y-cy)*scale,r=blastContactRadius(h)*scale;
+  return {left:x-r,right:x+r,top:y-r,bottom:y+r};
+ });
  if(mobile&&site.state==='active'&&site.coastApproach&&s.raid?.state!=='active'&&!orderTarget(s)){
   if(coastMortarThreatens(s,site))return;
-  const x=clamp(targetX,16,size.w-16);
-  const y=clamp(targetY-40,size.h<590?224:202,size.h-160);
+  const spot=coastCuePosition(size,point,18,hud,warnings,40,8);
+  if(!spot)return;
+  const {x,y}=spot;
   c.save();c.translate(x,y);c.rotate(Math.atan2(targetY-y,targetX-x));
   c.beginPath();c.moveTo(-5,-5);c.lineTo(0,0);c.lineTo(-5,5);
   c.strokeStyle='#192b29';c.lineWidth=6;c.stroke();
@@ -150,17 +156,10 @@ function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale){
  c.save();
  const label=screen?'방패 옆으로':escaping?'옆으로 이동':reply?'반격탄':coastEncounterCue(s,site,volley,counter)||(site.state==='ready'&&site.opening?'접근해 구출':prefix?`${prefix} · ${name}`:name);
  c.font='bold 11px Galmuri, sans-serif';
- const width=Math.ceil(c.measureText(label).width)+32;
- const compactMargin=mobile&&size.h<590?Math.min(114,size.w-width-12):12;
- const x=Math.round(clamp(targetX,width/2+compactMargin,size.w-width/2-12));
- const left=x-width/2<204;
- const top=mobile?(size.h<590?224:left?310:124):112;
- const bottom=mobile?Math.max(top+18,size.h-(left?324:155)):Math.max(top+18,size.h-112);
- const y=Math.round(clamp(targetY-Math.max(56,88*scale),top,bottom));
- const overlapsWarning=s.hazards.some(h=>!h.hit&&h.coastMortar
-  &&Math.abs(size.w/2+(h.x-cx)*scale-x)<width/2+(h.r+18)*scale
-  &&Math.abs(size.h/2+(h.y-cy)*scale-y)<15+(h.r+18)*scale);
- if(overlapsWarning){c.restore();return;}
+ const width=Math.min(size.w-16,Math.ceil(c.measureText(label).width)+32);
+ const spot=coastCuePosition(size,point,width,hud,warnings,Math.max(46,76*scale));
+ if(!spot){c.restore();return;}
+ const {x,y}=spot;
  c.fillStyle='#152a28f2';
  c.fillRect(x-width/2,y-13,width,26);
  c.strokeStyle=color;
@@ -169,7 +168,7 @@ function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale){
  c.fillStyle=color;
  c.textAlign='left';
  c.textBaseline='middle';
- c.fillText(label,x-width/2+23,y+1);
+ c.fillText(label,x-width/2+23,y+1,width-28);
  if(site.coastApproach==='r'&&coastMortarThreatens(s,site)){
   c.fillRect(x-width/2+11,y-5,2,6);
   c.fillRect(x-width/2+11,y+3,2,2);
@@ -246,14 +245,14 @@ export function coveredCombatPanels(s,panels,project,scale){
   (circles.some(circle=>touchesCircle(circle,rect))||lanes.some(lane=>
    lane.left<rect.right&&lane.right>rect.left&&lane.top<rect.bottom&&lane.bottom>rect.top))).map(({id})=>id);
 }
-const aidObscured=(size,{x,y},r,hud)=>x<r||x>size.w-r||y<r||y>size.h-r||hud.some(box=>overlapsBox(x,y,r,r,box));
-export function aidBearingPosition(size,target,radius,width,hud,warnings){
+const bearingObscured=(size,{x,y},r,hud)=>x<r||x>size.w-r||y<r||y>size.h-r||hud.some(box=>overlapsBox(x,y,r,r,box));
+function clearBearingPosition(size,target,width,blocked,hh){
  const {x,y}=target;
- if(!aidObscured(size,target,radius,hud))return null;
- const hw=width/2,hh=12,margin=8;
+ const hw=width/2,margin=8;
  const minX=hw+margin,maxX=size.w-hw-margin,minY=hh+margin,maxY=size.h-hh-margin;
  if(minX>maxX||minY>maxY)return null;
- const blocked=[...hud,...warnings],xs=[clamp(x,minX,maxX)],ys=[clamp(y,minY,maxY)];
+ const xs=[clamp(x,minX,maxX)],ys=[clamp(y,minY,maxY)];
+ if(!blocked.some(box=>overlapsBox(xs[0],ys[0],hw,hh,box)))return {x:xs[0],y:ys[0]};
  for(const box of blocked){
   xs.push(box.left-hw-margin,box.right+hw+margin);
   ys.push(box.top-hh-margin,box.bottom+hh+margin);
@@ -266,10 +265,17 @@ export function aidBearingPosition(size,target,radius,width,hud,warnings){
  }
  return position;
 }
+export function coastCuePosition(size,target,width,hud,warnings,lift,halfHeight=13){
+ const anchor=bearingObscured(size,target,12,hud)?target:{x:target.x,y:target.y-lift};
+ return clearBearingPosition(size,anchor,width,[...hud,...warnings],halfHeight);
+}
+export function aidBearingPosition(size,target,radius,width,hud,warnings){
+ return bearingObscured(size,target,radius,hud)?clearBearingPosition(size,target,width,[...hud,...warnings],12):null;
+}
 function paintAidBearing(c,s,aid,size,cx,cy,scale,hud){
  const screen=point=>({x:size.w/2+(point.x-cx)*scale,y:size.h/2+(point.y-cy)*scale});
  const target=screen(aid.point),radius=Math.max(14,27*scale);
- if(!aidObscured(size,target,radius,hud))return;
+ if(!bearingObscured(size,target,radius,hud))return;
  const warnings=s.hazards.filter(h=>h.portRound&&!h.hit).map(h=>{
   const {x,y}=screen(h),r=blastContactRadius(h)*scale;
   return {left:x-r,right:x+r,top:y-r,bottom:y+r};
@@ -789,9 +795,9 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
  const missileTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
- function draw(s,reduced=false,approach=activeEntry(s),focus=null){
+ function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s)){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
-  const gate=exitGate(s),primaryCoast=coastLead(s),lead=coastFork(s,primaryCoast)?.lead||primaryCoast,aid=portAidCue(s);
+  const gate=exitGate(s),aid=portAidCue(s);
   const harborWarnings=s.operation?.region===2&&s.boss.active?s.hazards.filter(h=>!h.lane&&!h.hit):[];
   const portRounds=harborWarnings.filter(h=>h.portRound);
   const intercept=portRounds.length&&canUseSkill(s)&&portAidCounterRound(s)?.portRound;
@@ -1218,7 +1224,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   paintPortWakeCue(c,s);
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
-  if(lead)paintCoastCue(c,s,lead,guns,volley,counter,size,cx,cy,scale);
+  if(lead)paintCoastCue(c,s,lead,guns,volley,counter,size,cx-shake,cy,scale,combatHud.rects);
   if(mobile&&showAid)paintAidBearing(c,s,aid,size,cx,cy,scale,combatHud.rects);
   if(mobile&&size.h>size.w&&combatHud.passive?.length&&s.phase==='playing'){
    const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
