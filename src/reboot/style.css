@@ -250,20 +250,20 @@
  .coast-danger :is(#banner[data-kind="boss-arrival"],#field-feedback){visibility:hidden}
  .boss-active #field-feedback{left:auto;right:14px;bottom:max(102px,calc(env(safe-area-inset-bottom) + 80px));transform:none;min-width:0;max-width:60%;padding-right:10px}
  .boss-active:has(#field-feedback:not([hidden])) #combo{visibility:hidden}
- :is(.rail-boss,.harbor-boss){--boss-map-width:84px}
- :is(.rail-boss,.harbor-boss) .field-stack{top:112px;left:auto;right:12px}
- :is(.rail-boss,.harbor-boss) #map-panel{width:var(--boss-map-width)}
- :is(.rail-boss,.harbor-boss) #boss-hud{left:12px;right:calc(var(--boss-map-width) + 20px);width:auto;max-width:none;transform:none;padding:7px 10px 8px;text-align:left;line-height:1.35}
- :is(.rail-boss,.harbor-boss) #boss-hp{height:7px;margin:5px 0}
- :is(.rail-boss,.harbor-boss) #boss-tactic:not([hidden]){padding-top:3px;margin-top:3px}
+ :is(.coast-boss,.rail-boss,.harbor-boss){--boss-map-width:84px}
+ :is(.coast-boss,.rail-boss,.harbor-boss) .field-stack{top:112px;left:auto;right:12px}
+ :is(.coast-boss,.rail-boss,.harbor-boss) #map-panel{width:var(--boss-map-width)}
+ :is(.coast-boss,.rail-boss,.harbor-boss) #boss-hud{left:12px;right:calc(var(--boss-map-width) + 20px);width:auto;max-width:none;transform:none;padding:7px 10px 8px;text-align:left;line-height:1.35}
+ :is(.coast-boss,.rail-boss,.harbor-boss) #boss-hp{height:7px;margin:5px 0}
+ :is(.coast-boss,.rail-boss,.harbor-boss) #boss-tactic:not([hidden]){padding-top:3px;margin-top:3px}
  .harbor-boss #banner[data-kind="supply-ready"]{opacity:0}
  .port-counter-aim :is(#banner[data-kind="heal"],#field-feedback){visibility:hidden}
  .rail-boss #banner[data-kind="boss-warning"]{opacity:0}
  .rail-boss .arsenal #synergy{display:none}
  .rail-escape .arsenal #weapons{visibility:hidden}
- :is(.rail-boss,.harbor-boss) .arsenal :is(#modules,#support-status){display:none}
- :is(.rail-boss,.harbor-boss) .arsenal .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
- :is(.rail-boss,.harbor-boss) .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
+ :is(.coast-boss,.rail-boss,.harbor-boss) .arsenal :is(#modules,#support-status){display:none}
+ :is(.coast-boss,.rail-boss,.harbor-boss) .arsenal .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
+ :is(.coast-boss,.rail-boss,.harbor-boss) .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
 }
 @media(max-width:700px) and (max-height:700px) and (orientation:portrait){
  .arsenal{bottom:max(135px,calc(env(safe-area-inset-bottom) + 108px));gap:3px}

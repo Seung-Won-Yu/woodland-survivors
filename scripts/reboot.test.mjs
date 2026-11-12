@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -569,6 +569,31 @@ test('coast boss entry is clear on both mirrored shores with live cover',()=>{
   assert.ok(action(s,'interact'));assert.equal(s.stage,'boss');
   assert.ok(!overlapsCover(s,s.player,16));
   assert.ok(s.blocks.find(b=>b.id==='b2').hp>0);
+ }
+});
+test('coast entry preserves the chosen approach and projects the first charge from it',()=>{
+ for(const seed of [17,18,22,71]){
+  for(const gun of ['f','r']){
+   const s=createOperation(seed);
+   s.firstNew=gun;s.weapons.push({...makeWeapon(gun),uid:'staged',cd:999});
+   const point=coastStagingPoint(s);
+   Object.assign(s.player,{x:s.boss.x,y:s.boss.y+50});
+   assert.equal(interaction(s),null);
+   assert.equal(action(s,'interact'),false);
+   Object.assign(s.player,{x:point.x+Math.sign(point.x-800)*20,y:point.y});
+   assert.equal(interaction(s)?.id,'boss');
+   Object.assign(s.player,{x:point.x,y:point.y});
+   assert.ok(!overlapsCover(s,s.player,16));
+   assert.equal(action(s,'interact'),true);
+   const resumed=restore(snapshot(s));
+   assert.deepEqual([resumed.player.x,resumed.player.y],[point.x,point.y]);
+   assert.equal(coastStagingPoint(resumed),null);
+   resumed.boss.timer=0;step(resumed,dt);
+   const lane=coastChargeLane(resumed);
+   assert.ok(Math.abs(Math.atan2(point.y-resumed.boss.y,point.x-resumed.boss.x)-resumed.boss.body)<1e-6);
+   assert.equal(lane.blockId,gun==='f'?'b2':null);
+   assert.equal(lane.length===300,gun==='r');
+  }
  }
 });
 test('a locked coast charge stops at its preview against permanent cover and leaves the rear open',()=>{

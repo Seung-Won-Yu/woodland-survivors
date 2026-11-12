@@ -375,6 +375,15 @@ export function coastStrike(s){
  return s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,id)?COAST_STRIKES[id]:null;
 }
 export const coastStrikeArmed=(s,id=s.operation?.coastStrike)=>s.weapons.some(w=>w.id===id||id==='r'&&w.fusion?.secondary==='r');
+export const BOSS_ENTRY={x:800,y:350,r:130};
+export function coastStagingPoint(s){
+ const gun=s.firstNew;
+ if(s.operation?.region!==0||s.stage!=='field'||!Object.hasOwn(COAST_STRIKES,gun)||!coastStrikeArmed(s,gun))return null;
+ const side=s.seed%2?1:-1,cover=s.blocks.some(b=>b.id==='b2'&&b.hp>0);
+ return gun==='f'
+  ?{x:BOSS_ENTRY.x+side*86,y:300,name:cover?'엄폐 유인 위치':'근접 측면',color:'#ffd0a0'}
+  :{x:BOSS_ENTRY.x+(side>0?-55:100),y:side>0?424:367,name:'원거리 사선',color:'#bcece4'};
+}
 export const claimedCoastLead=s=>s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,s.firstNew)&&s.sites.find(site=>site.coastApproach===s.firstNew&&site.state==='done');
 export function coastLead(s){
  if(s.operation?.region!==0||s.stage!=='field')return null;
