@@ -249,7 +249,7 @@
  .port-holdout .objective #stage{display:none}
  .holdout-active.port-holdout #map-panel{display:block;width:84px;justify-self:end}
  .port-holdout :is(#field-feedback,#combo),.port-holdout #banner:is([data-kind="challenge-start"],[data-kind="challenge-clear"],[data-kind="signal-down"]){visibility:hidden}
- .signal-warning .arsenal{visibility:hidden}
+ .signal-warning .arsenal :is(#weapons,#modules,#support-status,#synergy,#maneuver-status){visibility:hidden}
  .signal-warning #pursuit-intel{color:#ffd29e}
  .port-holdout .arsenal{top:201px;bottom:auto;left:auto;right:12px;width:84px}
  .port-holdout .arsenal :is(#weapons,#modules,#support-status,#synergy,#maneuver-status){display:none}
@@ -287,9 +287,19 @@
  .arsenal:has(.weapon.evolved) :is(.weapon.empty,#modules){display:none}
  .arsenal:has(.weapon.evolved) .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
  .arsenal:has(.weapon.evolved) .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
- :is(.coast-warning,.harbor-warning) .arsenal :is(#weapons,#synergy,#maneuver-status){display:none}
+ :is(.coast-warning,.harbor-warning) .arsenal :is(#synergy,#maneuver-status){display:none}
 }
 @media(max-width:700px) and (orientation:portrait){
+ #hud :is(#map-panel,#weapons){transition:opacity 140ms ease-out}
+ #field-objective{transition:background-color 140ms ease-out,border-color 140ms ease-out}
+ #field-objective :is(#stage,#threat,#field-direct){transition:opacity 140ms ease-out}
+ #hud[data-reduced-motion] :is(#map-panel,#weapons),#hud :is(#map-panel,#weapons)[data-field-clear]{transition:none}
+ #hud :is(#map-panel,#weapons)[data-field-clear]{opacity:.12}
+ #hud[data-reduced-motion] #field-objective,#hud[data-reduced-motion] #field-objective :is(#stage,#threat,#field-direct),
+ #field-objective[data-field-clear],#field-objective[data-field-clear] :is(#stage,#threat,#field-direct){transition:none}
+ #field-objective[data-field-clear]{background:#1d302b21;border-color:#7b917847;box-shadow:none}
+ #field-objective[data-field-clear] :is(#stage,#threat,#field-direct){opacity:.14}
+ #field-objective[data-field-clear] :is(#objective,#field-intel){text-shadow:0 1px 3px #172821,0 1px 2px #172821}
  .boss-active{--boss-rail-top:calc(max(12px,env(safe-area-inset-top)) + 70px)}
  .boss-active :is(.vitals,.score){top:max(12px,env(safe-area-inset-top))}
  .boss-active .vitals{width:min(44vw,168px);padding:6px 8px}

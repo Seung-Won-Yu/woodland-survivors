@@ -17,19 +17,41 @@ import {selectRiftAudioEvents} from './sound.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio({fieldMix:true}),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const touchLayout=matchMedia('(max-width:700px), (pointer:coarse)');
-const combatHud={rects:[],get analog(){return touchLayout.matches;}};
+const passiveHudIds=['map-panel','weapons','field-objective'];
+const combatHud={rects:[],passive:[],get analog(){return touchLayout.matches;}};
+const hudHold=new Map();
+function revealCombatHud(covered,now,reduced=false,stage){
+ $('hud').toggleAttribute('data-reduced-motion',reduced);
+ for(const id of passiveHudIds){
+  if(!covered||id==='field-objective'&&stage!=='field')hudHold.delete(id);
+  else if(covered.includes(id))hudHold.set(id,now+240);
+  else if((hudHold.get(id)||0)<=now)hudHold.delete(id);
+  $(id).toggleAttribute('data-field-clear',hudHold.has(id));
+ }
+}
 function watchCombatHud(){
  if(typeof ResizeObserver!=='function')return;
- const panels=[...document.querySelectorAll('.vitals,.score,#boss-hud,#map-panel,#weapons,#synergy,#maneuver-status,.field-workbench,#stick,#dash,#skill,#interact')];
+ const panels=[...document.querySelectorAll('.vitals,.score,#boss-hud,#map-panel,#weapons,#field-objective,#synergy,#maneuver-status,.field-workbench,#stick,#dash,#skill,#interact')];
+ let pendingMeasure=false,bodyClass=document.body.className;
  const measure=()=>{
-  combatHud.rects=panels.flatMap(panel=>{
+  pendingMeasure=false;
+  const measured=panels.flatMap(panel=>{
    const rect=panel.getBoundingClientRect();
-   return rect.width&&rect.height&&getComputedStyle(panel).visibility==='visible'?[rect]:[];
+   return rect.width&&rect.height&&getComputedStyle(panel).visibility==='visible'?[{id:panel.id,rect}]:[];
   });
+  combatHud.rects=measured.map(({rect})=>rect);
+  combatHud.passive=measured.filter(({id})=>passiveHudIds.includes(id));
  };
- const observer=new ResizeObserver(measure);
- panels.forEach(panel=>observer.observe(panel));
- window.addEventListener('resize',measure);
+ const schedule=()=>{if(!pendingMeasure){pendingMeasure=true;requestAnimationFrame(measure);}};
+ const observer=new ResizeObserver(schedule);
+ [...panels,...document.querySelectorAll('.field-stack,.arsenal,.action-buttons')].forEach(panel=>observer.observe(panel));
+ new MutationObserver(()=>{
+  const next=document.body.className;
+  if(next!==bodyClass){bodyClass=next;schedule();}
+ }).observe(document.body,{attributes:true,attributeFilter:['class']});
+ window.addEventListener('resize',schedule);
+ window.visualViewport?.addEventListener('resize',schedule);
+ schedule();
 }
 let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,requisitionSelection=null,requisitionAt=null,selectedOperator='fio',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,reportOrigin=null,equippedUntil=0,equippedWeapon=null;
 let focusGesture=null,queuedFocus=null;
@@ -833,10 +855,11 @@ function updateHud(entry,focus=null){
  const intercept=PORT_AID_INTERCEPT[counterRound?.portRound];
  const counterTarget=intercept?.label||'측면 장갑 타격';
  const counterShort=intercept?.short;
+ const counterPart=counterRound?.portRound==='lock'?'차체':'장갑';
  const readyCounter=counterRound&&!skillButton.disabled;
  const counterHit=front===2&&run.boss.active&&run.effects.findLast(f=>f.type==='aid-counter');
  document.body.classList.toggle('port-counter-aim',!!(readyCounter||counterHit));
- if(counterAvailable)skillButton.setAttribute('aria-label',`지원 포격 · ${counterTarget} · ${actor.skill} 동시 발동 · ${skillStatus}`);
+ if(counterAvailable)skillButton.setAttribute('aria-label',`지원 포격 · ${counterTarget}${intercept?` · ${counterPart} 반격`:''} · ${actor.skill} 동시 발동 · ${skillStatus}`);
  else if(aimReady)skillButton.setAttribute('aria-label',`${actor.skill} · ${aimHint} · 집중 ${skillStatus}`);
  else skillButton.removeAttribute('aria-label');
  skillButton.innerHTML=`${counterAvailable?'지원 포격':actor.skill}<small>${readyCounter?counterShort:aimReady&&!counterAvailable?aimHint:skillStatus}</small>`;
@@ -1045,7 +1068,7 @@ function updateHud(entry,focus=null){
    }else{
     const kit=PORT_SUPPORT.recovery;
     if(counterHit)line.textContent=counterHit.text;
-    else if(readyCounter)line.textContent=`스킬 · ${counterShort}${portDanger?' · 남은 포격 회피':''}`;
+    else if(readyCounter)line.textContent=`${counterShort} → ${counterPart} 반격${portDanger?' · 남은 포격 회피':''}`;
     else if(aid?.endangered)line.textContent='구급 · 피격 범위 밖으로 회피';
     else if(aid&&!aid.preview){
      const direction=bearing(p,aid.point.x,aid.point.y);
@@ -1103,6 +1126,7 @@ function frame(now){
  const elapsed=lastFrame?(now-lastFrame)/1000:0;lastFrame=now;
  if(mode!=='battle'||!renderer||!run){
   if(!$('hud').hidden)updateHud();
+  if(hudHold.size)revealCombatHud(null,now);
   requestAnimationFrame(frame);return;
  }
  const starting=firstBattleFrame;
@@ -1111,7 +1135,9 @@ function frame(now){
  const entry=fieldEntry(run);
  const aiming=focusGesture&&!focusGesture.canceled&&run.phase==='playing'&&!busy&&!pending&&canUseSkill(run);
  const focus=aiming?focusPlan(run,focusGesture.input||movementInput()):null;
- renderer.draw(run,store.settings().reduced||reduceMotion.matches,entry,focus);updateHud(entry,focus);
+ const reduced=store.settings().reduced||reduceMotion.matches;
+ const covered=renderer.draw(run,reduced,entry,focus);updateHud(entry,focus);
+ revealCombatHud(run.phase==='playing'?covered:null,now,reduced,run.stage);
  if(!busy&&!pending)processEvents();
  requestAnimationFrame(frame);
 }

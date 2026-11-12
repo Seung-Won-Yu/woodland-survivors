@@ -209,6 +209,31 @@ function paintCoastMortarFlight(c,h){
  c.restore();
 }
 const overlapsBox=(x,y,hw,hh,box)=>x+hw>box.left&&x-hw<box.right&&y+hh>box.top&&y-hh<box.bottom;
+const relayContactLife=.62,fireSpreadContactLife=.58;
+function touchesCircle({x,y,r},box){
+ const dx=x-clamp(x,box.left,box.right),dy=y-clamp(y,box.top,box.bottom);
+ return dx*dx+dy*dy<r*r;
+}
+export function coveredCombatPanels(s,panels,project,scale){
+ if(!panels.length)return [];
+ const circles=[],lanes=[];
+ const mark=(x,y,r)=>circles.push({...project(x,y),r:r*scale});
+ for(const f of s.effects){
+  if(f.relayArrival&&f.contact&&f.age<f.life*relayContactLife)mark(f.contact.x,f.contact.y-7,21);
+  else if(f.type==='fire-spread'&&f.age<f.life*fireSpreadContactLife)mark(f.x2,f.y2-4,13);
+  else if(f.type==='kill'&&f.wake&&f.age<f.life*.52)mark(f.x,f.y-3,13);
+ }
+ for(const h of s.hazards){
+  if(h.hit||h.timer<=0)continue;
+  if(h.lane){
+   const {left,top,right,bottom}=railLaneBounds(h),start=project(left,top),end=project(right,bottom);
+   lanes.push({left:start.x,top:start.y,right:end.x,bottom:end.y});
+  }else mark(h.x,h.y,blastContactRadius(h));
+ }
+ return panels.filter(({id,rect})=>(id!=='field-objective'||s.stage==='field')&&
+  (circles.some(circle=>touchesCircle(circle,rect))||lanes.some(lane=>
+   lane.left<rect.right&&lane.right>rect.left&&lane.top<rect.bottom&&lane.bottom>rect.top))).map(({id})=>id);
+}
 const aidObscured=(size,{x,y},r,hud)=>x<r||x>size.w-r||y<r||y>size.h-r||hud.some(box=>overlapsBox(x,y,r,r,box));
 export function aidBearingPosition(size,target,radius,width,hud,warnings){
  const {x,y}=target;
@@ -451,7 +476,7 @@ function paintArmorHeat(c,f,t){
 function paintConduitImpact(c,f,t,reduced){
  const reach=f.r*(reduced?.7:.4+t*.55);
  const embers=f.incendiary||f.type==='ember-burst';
- if(f.relayArrival&&f.contact&&t<.62){
+ if(f.relayArrival&&f.contact&&t<relayContactLife){
   const {x,y}=f.contact,radius=reduced?15:12+t*13;
   c.strokeStyle='#d1fff4';c.lineWidth=2;c.beginPath();
   for(const side of [-1,1]){
@@ -510,7 +535,7 @@ function paintTransfer(c,f,t,reduced){
  const at=reduced?[1]:[t*.68,t*.87,t];
  c.fillStyle='#ffae68';
  for(const u of at)c.fillRect(f.x+dx*u-2,f.y+dy*u-14-9*u,5,4);
- if(t<.58){
+ if(t<fireSpreadContactLife){
   c.fillStyle='#ffc681';
   c.fillRect(f.x2-10,f.y2-4,5,2);
   c.fillRect(f.x2+5,f.y2-4,5,2);
@@ -1181,6 +1206,10 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   if(lead)paintCoastCue(c,s,lead,guns,volley,counter,size,cx,cy,scale);
   if(mobile&&showAid)paintAidBearing(c,s,aid,size,cx,cy,scale,combatHud.rects);
+  if(mobile&&size.h>size.w&&combatHud.passive?.length&&s.phase==='playing'){
+   const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
+   return coveredCombatPanels(s,combatHud.passive,project,scale);
+  }
  }
  return{draw,view:()=>view,resize};
 }

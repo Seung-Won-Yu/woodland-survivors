@@ -2095,6 +2095,7 @@ test('a recovered harbor aid charge adds one counterstrike to the next operator 
 
  const loaded=restore(snapshot(s));
  loaded.player.charge=100;
+ loaded.player.y+=35;
  assert.ok(loaded.hazards.some(h=>h.portRound==='rake'));
  assert.ok(action(loaded,'skill'));
  assert.ok(loaded.player.overdrive>0);
@@ -2192,6 +2193,38 @@ test('harbor aid intercepts the threatening round before an outlying rake',()=>{
  assert.equal(dodged.player.hp,hp);
  tick(overlap,1);
  assert.equal(overlap.player.hp,hp-14);
+});
+test('harbor aid switches a safe counterstrike from hull to armor at the horizontal rim',()=>{
+ for(const seed of [23,32]){
+  const s=supportArena(2,'recovery','aim');
+  Object.assign(s.boss,regionBoss(2,seed),{active:true,cycle:0,timer:0,spawnClock:999});
+  Object.assign(s.player,{x:800,y:555,charge:100});
+  step(s,dt);
+  Object.assign(s.player,s.boss.harborSupply);
+  step(s,dt);
+  const side=-Math.sign(s.boss.parts[0].ox);
+  const rake=s.hazards.find(h=>h.portRound==='rake'&&(h.x-800)*side>0);
+  const assertSafe=state=>assert.ok(state.hazards.every(h=>Math.hypot(h.x-state.player.x,h.y-state.player.y)>h.r+16));
+  const far=restore(snapshot(s));
+  Object.assign(far.player,{x:rake.x,y:rake.y+104});
+  assertSafe(far);
+  assert.equal(portAidCounterRound(far)?.portRound,'lock');
+  assert.ok(action(far,'skill'));
+  assert.equal(far.boss.parts[1].hp,s.boss.parts[1].hp);
+  assert.ok(far.boss.hp<s.boss.hp);
+  assert.deepEqual(far.hazards.map(h=>h.portRound),['rake','turret','rake','turret']);
+  assert.deepEqual(far.operation.harborPayoff,{safeAid:1,locks:1,counterHull:1});
+
+  const edge=restore(snapshot(s));
+  Object.assign(edge.player,{x:rake.x,y:rake.y+85});
+  assertSafe(edge);
+  assert.equal(portAidCounterRound(edge),edge.hazards.find(h=>h.x===rake.x&&h.y===rake.y));
+  assert.ok(action(edge,'skill'));
+  assert.equal(edge.boss.parts[1].hp,s.boss.parts[1].hp-360);
+  assert.equal(edge.boss.hp,s.boss.hp);
+  assert.deepEqual(edge.hazards.map(h=>h.portRound),['lock','turret','turret']);
+  assert.deepEqual(restore(snapshot(edge)).operation.harborPayoff,{safeAid:1,rakes:1,counterfire:1});
+ }
 });
 test('aid charges collected after the armor breaks survive a save and a skill between salvos',()=>{
  const s=supportArena(2,'recovery','recover');
