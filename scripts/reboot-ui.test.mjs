@@ -8,7 +8,7 @@ import {portEscapeLanes} from '../src/reboot/campaign.js';
 
 test('portrait HUD clearance uses confirmed contact and live warning shapes without covering holdout actions',()=>{
  const box=(id,left,top,right,bottom)=>({id,rect:{left,top,right,bottom}});
- const panels=[box('map-panel',224,112,308,192),box('weapons',12,324,102,372),box('field-objective',12,112,202,208)];
+ const panels=[box('map-panel',224,112,308,192),box('weapons',12,324,102,372),box('field-objective',12,112,202,208),box('field-feedback',122,280,254,314)];
  const project=(x,y)=>({x,y});
  const relay={type:'payload-impact',relayArrival:true,contact:{x:306,y:190},age:.03,life:.4};
  const mortar={x:133,y:230,r:30,timer:.4};
@@ -19,6 +19,7 @@ test('portrait HUD clearance uses confirmed contact and live warning shapes with
  assert.deepEqual(covered([{...relay,relayArrival:false}],[]),[]);
  assert.deepEqual(covered([{...relay,contact:{x:328,y:207}}],[]),[]);
  assert.deepEqual(covered([{type:'fire-spread',x2:82,y2:364,age:.04,life:.25}],[]),['weapons']);
+ assert.deepEqual(covered([{type:'wake-flash',x:24,y:348,x2:136,y2:272,r:21,age:.02,life:.42}],[]),['weapons','field-feedback']);
  assert.deepEqual(covered([],[{x:280,y:230,w:20,h:220,lane:true,timer:.7}]),['map-panel']);
 });
 

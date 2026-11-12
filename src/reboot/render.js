@@ -2,7 +2,7 @@ import {paintTerrain,paintTerrainMargins,paintBlock,paintSiteGround,paintSite,pa
 import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp} from './content.js';
-import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue} from './model.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks} from './model.js';
 import {DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
@@ -233,6 +233,7 @@ export function coveredCombatPanels(s,panels,project,scale){
   if(f.relayArrival&&f.contact&&f.age<f.life*relayContactLife)mark(f.contact.x,f.contact.y-7,21);
   else if(f.type==='fire-spread'&&f.age<f.life*fireSpreadContactLife)mark(f.x2,f.y2-4,13);
   else if(f.type==='kill'&&f.wake&&f.age<f.life*.52)mark(f.x,f.y-3,13);
+  else if(f.type==='wake-flash'&&f.age<f.life*.65){mark(f.x,f.y,f.r);mark(f.x2,f.y2,f.r);}
  }
  for(const h of s.hazards){
   if(h.hit||h.timer<=0)continue;
@@ -473,6 +474,18 @@ function paintWake(c,z,time,reduced){
   if(!reduced&&i%2===0)flame(c,x,y,12+Math.sin(time*9+i)*3,time*8+i);
  }
  c.restore();
+}
+function paintWakeLink(c,a,b){
+ c.save();c.strokeStyle='#e2a369a8';c.lineWidth=3;c.setLineDash([6,6]);
+ c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();c.restore();
+}
+function paintWakeFlash(c,f,t,reduced){
+ c.strokeStyle='#ffcb82';c.lineWidth=reduced?3:4;
+ c.beginPath();c.moveTo(f.x,f.y);c.lineTo(f.x2,f.y2);c.stroke();
+ for(const [x,y] of [[f.x,f.y],[f.x2,f.y2]]){
+  circle(c,x,y,f.r,'#d87b3022','#ffd392',2);
+  if(!reduced)for(const offset of [-20,0,20])flame(c,x+offset,y-7,20*(1-t)+7,offset+t*8);
+ }
 }
 function paintHeatImpulse(c,f,t,reduced){
  const r=(f.r??100)*(reduced?.84:.48+t*.58);
@@ -818,16 +831,24 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(!mobile||reduced||follow>0)showcaseLead=0;
   else{
    const showcase=s.powerWave?.showcase;
-   const strike=showcase&&s.effects.findLast(f=>{
+   const wake=showcase==='flame'&&s.effects.findLast(f=>f.type==='wake-flash'&&f.age<.22);
+   const strike=wake||showcase&&s.effects.findLast(f=>{
     if(f.type==='formation')return true;
     if(showcase==='rocket')return f.type==='salvo-impact';
     return showcase==='flame'?f.type==='flame'&&f.evolved:f.type==='payload-impact'||f.type==='payload-relay';
    });
    const relay=showcase==='fusion'&&s.shots.findLast(q=>q.source==='payload'&&q.relay);
+   const arrival=showcase==='fusion'&&s.effects.findLast(f=>f.relayArrival&&f.contact&&f.age<.18);
    const salvo=showcase==='rocket'&&s.shots.findLast(q=>q.salvo);
-   const targetX=relay?relay.x:strike?.type==='payload-relay'?strike.x2
-    :salvo&&(!strike||strike.type==='formation')?salvo.x:strike?.x;
-   const nextLead=strike?.type==='flame'?Math.cos(strike.angle)*85:clamp(((targetX??s.player.x)-s.player.x)*.55,-85,85);
+   const destination=relay&&relay.relayGroup!==undefined&&s.enemies.find(e=>!e.dead&&e.id===relay.target);
+   let targetX=strike?.x;
+   if(wake)targetX=(wake.x+wake.x2)/2;
+   else if(relay)targetX=destination?(relay.x+destination.x*2)/3:relay.x;
+   else if(arrival)targetX=arrival.contact.x;
+   else if(strike?.type==='payload-relay')targetX=strike.x2;
+   else if(salvo&&(!strike||strike.type==='formation'))targetX=salvo.x;
+   const limit=wake||destination||arrival?116:85;
+   const nextLead=strike?.type==='flame'?Math.cos(strike.angle)*85:clamp(((targetX??s.player.x)-s.player.x)*.55,-limit,limit);
    showcaseLead+=(nextLead-showcaseLead)*(1-Math.exp(-elapsed*8));
   }
   const focusX=s.player.x+(s.boss.x-s.player.x)*.35*follow+rescueLead+showcaseLead;
@@ -888,6 +909,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   for(const n of s.sites){const previous=siteStates.get(n.id);siteStates.set(n.id,{state:n.state,collected:previous&&previous.state!=='done'&&n.state==='done'?s.t:previous?.collected});}
   for(const n of s.sites)paintSiteGround(c,n,distance(n,s.player)<185,n.state==='active');
   for(const n of s.sites)if(n.kind==='relay'&&n.state==='active'){circle(c,n.x,n.y,125,'#83c5a40b','#c7dfb566',1);c.strokeStyle='#e8d49a';c.lineWidth=2;c.beginPath();c.arc(n.x,n.y,125,-Math.PI/2,-Math.PI/2+n.progress/5*TAU);c.stroke();}
+  for(const [a,b] of infernoWakeLinks(s))if(visible(a.x,a.y,a.r)||visible(b.x,b.y,b.r))paintWakeLink(c,a,b);
   for(const z of s.zones){
    if(!visible(z.x,z.y,z.r+25))continue;
    if(z.source==='wake'){paintWake(c,z,s.t,reduced);continue;}
@@ -1105,6 +1127,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     c.stroke();
    }
    else if(f.type==='focus-shot')paintFocusShot(c,f,t,reduced);
+   else if(f.type==='wake-flash'&&(visible(f.x,f.y,f.r)||visible(f.x2,f.y2,f.r)))paintWakeFlash(c,f,t,reduced);
    else if(f.type==='payload'&&visible(f.x,f.y)){c.fillStyle='#bcf9e9';c.fillRect(f.x-7,f.y-18,14,3);c.fillRect(f.x-2,f.y-23,4,13);}
    else if(f.type==='payload-relay'||f.type==='fire-spread'){
     if(visible(f.x,f.y,100)||visible(f.x2,f.y2,60))paintTransfer(c,f,t,reduced);

@@ -6,7 +6,7 @@ import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.j
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
-import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
+import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
@@ -17,7 +17,7 @@ import {selectRiftAudioEvents} from './sound.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio({fieldMix:true}),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const touchLayout=matchMedia('(max-width:700px), (pointer:coarse)');
-const passiveHudIds=['map-panel','weapons','field-objective'];
+const passiveHudIds=['map-panel','weapons','field-objective','field-feedback'];
 const combatHud={rects:[],passive:[],get analog(){return touchLayout.matches;}};
 const hudHold=new Map();
 function revealCombatHud(covered,now,reduced=false,stage){
@@ -31,7 +31,7 @@ function revealCombatHud(covered,now,reduced=false,stage){
 }
 function watchCombatHud(){
  if(typeof ResizeObserver!=='function')return;
- const panels=[...document.querySelectorAll('.vitals,.score,#boss-hud,#map-panel,#weapons,#field-objective,#synergy,#maneuver-status,.field-workbench,#stick,#dash,#skill,#interact')];
+ const panels=[...document.querySelectorAll('.vitals,.score,#boss-hud,#map-panel,#weapons,#field-objective,#field-feedback,#synergy,#maneuver-status,.field-workbench,#stick,#dash,#skill,#interact')];
  let pendingMeasure=false,bodyClass=document.body.className;
  const measure=()=>{
   pendingMeasure=false;
@@ -703,7 +703,7 @@ function updateHud(entry,focus=null,coast={}){
  const showcase=forming||run.enemies.findLast(e=>e.showcase&&!e.dead&&e.hp>0)?.showcase;
  document.body.classList.toggle('capstone-approach',run.stage==='field'&&!!showcase);
  const mounted=showcase&&run.effects.some(f=>f.type==='complete'&&f.showcase);
- const response=showcase&&(showcase==='flame'?'밀집 보병까지 접근'
+ const response=showcase&&(showcase==='flame'?(run.weapons.some(isTrailInferno)?'이동해 잔불 연결 · 보병 유도':'밀집 보병까지 접근')
   :showcase==='rocket'?'엄폐 밖에서 분산 포격'
   :run.weapons.some(isConductiveFusion)?'두 편대 사선 확보':'화약 원으로 보병 유도');
  const incoming=showcase?`${mounted?(showcase==='rocket'?'폭풍 발사대 · ':'장착 완료 · '):''}${forming&&!showcaseWindow(run)?'재장전 때 후속 편대':response}`:'';

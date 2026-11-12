@@ -164,6 +164,40 @@ test('Inferno wake spacing follows movement through empty ground and never build
  assert.equal(s.weapons[0].shots,0);
  tick(s,2.4);assert.equal(s.zones.length,0);
 });
+test('linked Inferno wakes flash once when two groups enter the connected ground',()=>{
+ const arena=()=>{
+  const s=quiet();
+  s.weapons=[{...makeWeapon('f'),uid:'trail',level:6,branch:'trail',evolved:true,cd:999}];
+  s.zones=[{x:920,y:800,tick:.01},{x:1016,y:800,tick:.24}].map(point=>({
+   ...point,r:INFERNO_WAKE.radius,dps:INFERNO_WAKE.dps,life:2,source:'wake',owner:'trail'
+  }));
+  s.enemies=[enemy('a',910,800,'rifle',28),enemy('b',1026,800,'rifle',28),enemy('overlap',960,810,'rifle',100)];
+  return s;
+ };
+ const s=arena();
+ step(s,dt);
+ assert.equal(s.stats.wakeFlashes,1);
+ assert.equal(s.stats.wakeFlashKills,2);
+ assert.equal(s.stats.wakeKills,undefined);
+ assert.equal(s.enemies.find(e=>e.id==='overlap').hp,44);
+ assert.ok(s.zones.every(z=>z.flashed));
+ const pulse=s.effects.find(f=>f.type==='wake-flash');
+ assert.deepEqual([pulse.x,pulse.y,pulse.x2,pulse.y2],[920,800,1016,800]);
+ const resumed=restore(snapshot(s));
+ resumed.enemies=[enemy('second-a',910,800,'rifle',100),enemy('second-b',1026,800,'rifle',100)];
+ tick(resumed,.26);
+ assert.equal(resumed.stats.wakeFlashes,1);
+ assert.equal(resumed.stats.wakeFlashKills,2);
+ const one=arena(),blocked=arena(),swapped=arena();
+ one.enemies=one.enemies.filter(e=>e.id==='overlap');
+ blocked.blocks=[{x:968,y:760,w:16,h:80,hp:-1}];
+ swapped.weapons[0].branch='focused';
+ for(const other of [one,blocked,swapped]){
+  step(other,dt);
+  assert.equal(other.stats.wakeFlashes,undefined);
+  assert.ok(other.zones.every(z=>!z.flashed));
+ }
+});
 test('assembly progress distinguishes a ready recipe from an already completed weapon',()=>{
  const s=quiet();assert.ok(buildPaths(s).every(p=>!p.ready&&!p.complete));s.weapons[0].level=6;s.weapons[0].branch='ricochet';s.modules=[{id:'ricochet',rank:2}];assert.ok(buildPaths(s).some(p=>p.ready&&p.title.includes('사중')));action(s,'gear');choose(s,'evolve:h');assert.ok(buildPaths(s).some(p=>p.complete&&p.title.includes('사중')));assert.ok(buildPaths(s).every(p=>!p.ready));
 });
@@ -472,6 +506,7 @@ test('RIFT keeps boss warnings over hit and pickup cues and distinguishes capsto
  assert.deepEqual(mix(['payload-impact','payload-arrival','shot']),['conduit-arrival']);
  assert.deepEqual(mix(['flame','fire-spread','heat','kill'],{inferno:true}),['inferno-spread','heat-break']);
  assert.deepEqual(mix(['fire-spread','shot','kill','impact'],{inferno:true}),['inferno-embers']);
+ assert.deepEqual(mix(['warning','wake-flash','wake-kill','flame'],{inferno:true}),['mortar-lock','heat-break']);
  assert.deepEqual(mix(['wake-kill','kill'],{inferno:true}),['inferno-embers']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'flame'}),['inferno-ready']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'fusion'}),['conduit-ready']);

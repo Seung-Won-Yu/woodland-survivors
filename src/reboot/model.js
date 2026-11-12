@@ -91,7 +91,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -907,7 +907,10 @@ function scoreKill(s,e,source,kind,ignitedPayload){
   s.operation.holdoutKills=(s.operation.holdoutKills||0)+1;
   s.stats.holdoutDefeated=(s.stats.holdoutDefeated||0)+1;
  }
- if(source==='payload'||source==='wake'){const key=source==='payload'?'payloadKills':'wakeKills';s.stats[key]=(s.stats[key]||0)+1;}
+ const wake=source==='wake'||source==='wake-flash';
+ if(source==='payload')s.stats.payloadKills=(s.stats.payloadKills||0)+1;
+ if(source==='wake')s.stats.wakeKills=(s.stats.wakeKills||0)+1;
+ if(source==='wake-flash')s.stats.wakeFlashKills=(s.stats.wakeFlashKills||0)+1;
  if(e.type==='officer'){
   if(s.player.hp>0&&moduleRank(s,'medic')&&!(s.medicCd>0)){
    const heal=Math.min(12,s.player.maxHp-s.player.hp);
@@ -922,7 +925,6 @@ function scoreKill(s,e,source,kind,ignitedPayload){
  const xp=e.type==='rifle'&&s.operation?RULES.campaignDirector.rifleXp[s.operation.region]:RULES.enemies[e.type]?.xp||1;dropXp(s,e.x,e.y,xp);
  const flavor=ignitedPayload||kind==='fire'?'fire':source==='payload'?'arc':null;
  if(flavor)e.deathFlavor=flavor;
- const wake=source==='wake';
  emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{}),...(wake?{wake:true}:{})});
  if(wake)s.events.push('wake-kill');
  const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
@@ -1125,6 +1127,7 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=sou
  return burst;
 }
 function updateZones(s,dt,dashOrigin){
+ igniteWakeLinks(s,dt);
  for(const z of s.zones){
   z.life-=dt;z.tick-=dt;
   if(z.source==='ember-charge'){
@@ -1167,6 +1170,37 @@ function groundLineClear(s,from,to){
  return !s.blocks.some(b=>b.hp!==0&&rayBoxDistance(from,dx,dy,b)<gap);
 }
 const wakeTouches=(s,z,e)=>distance(z,e)<z.r+e.r&&groundLineClear(s,z,e);
+export function infernoWakeLinks(s){
+ const owner=s.weapons.find(isTrailInferno)?.uid;
+ if(!owner)return [];
+ const wakes=s.zones.filter(z=>z.source==='wake'&&z.owner===owner&&z.life>0);
+ const links=[];
+ for(let i=1;i<wakes.length;i++){
+  const a=wakes[i-1],b=wakes[i];
+  if(!a.flashed&&!b.flashed&&distance(a,b)<a.r+b.r&&groundLineClear(s,a,b))links.push([a,b]);
+ }
+ return links;
+}
+function igniteWakeLinks(s,dt){
+ for(const [a,b] of infernoWakeLinks(s)){
+  if(a.flashed||b.flashed||Math.min(a.life,b.life)<=dt||Math.min(a.tick,b.tick)>dt)continue;
+  const first=[],second=[];
+  for(const e of s.enemies){
+   if(e.dead||e.hp<=0)continue;
+   const nearA=wakeTouches(s,a,e),nearB=wakeTouches(s,b,e);
+   if(nearA&&(!nearB||distance(e,a)<=distance(e,b)))first.push(e);
+   else if(nearB)second.push(e);
+  }
+  if(!first.length||!second.length)continue;
+  a.flashed=b.flashed=true;
+  s.stats.wakeFlashes=(s.stats.wakeFlashes||0)+1;
+  emit(s,'wake-flash',a.x,a.y,{x2:b.x,y2:b.y,r:a.r,life:.42});
+  for(const e of [...first,...second]){
+   burn(e);
+   damage(s,e,INFERNO_WAKE.flashDamage,'fire','wake-flash');
+  }
+ }
+}
 function heatHarborCooling(s,z){
  const b=s.boss,mode=portWakeMode(s);
  if(!mode)return;

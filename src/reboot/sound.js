@@ -24,6 +24,7 @@ export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  else if(events.has('rail-decoy'))foreground='rail-decoy';
  if(foreground)return warning?[warning,foreground]:[foreground];
  if(events.has('payload-arrival'))return warning?[warning,'conduit-arrival']:['conduit-arrival'];
+ if(events.has('wake-flash'))return warning?[warning,'heat-break']:['heat-break'];
  if(inferno&&(events.has('fire-spread')||events.has('wake-kill'))){
   const contact=events.has('flame')?'inferno-spread':events.has('heat')?'heat-break':'inferno-embers';
   if(warning)return [warning,contact];

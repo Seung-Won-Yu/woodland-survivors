@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.114.0" src="https://img.shields.io/badge/RIFT-0.114.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.115.0" src="https://img.shields.io/badge/RIFT-0.115.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -115,6 +115,8 @@ npm run test:pages
 0.97에서는 철갑 급탄을 확보하면 항구의 보조포 쪽으로 먼저 돌아 현재 위치에서 교전을 시작할 수 있습니다. 보상 카드와 작전도가 같은 방향을 표시합니다. [항구 측면 교전과 첫 포격 비교](docs/RIFT-GAMEPLAY-V1.md#097-항구-측면-교전-위치).
 
 0.98에서는 실전 장착을 마친 분열 수류탄과 흡열 코일을 해안이나 철도에 예약할 수 있습니다. 해안 예약은 첫 보스 전부터 쓸 수 있고, 같은 거점의 축전 코일이나 촉매와 함께 한 가지를 고릅니다. [연구 장비의 배치와 실제 발동](docs/RIFT-GAMEPLAY-V1.md#098-연구-장비의-해안-배치).
+
+0.115에서는 연료 살포 인페르노가 이동 경로에 남긴 잔불을 연결합니다. 이어진 두 지점에 각각 적이 들어오면 불길이 함께 터집니다. 전도 격발망의 모바일 카메라는 도약탄과 실제 목표를 함께 따라갑니다. [완성 무장 전투 검증](docs/RIFT-GAMEPLAY-V1.md#0115-인페르노-잔불-연결과-전도-도약-시야).
 
 0.114에서는 귀환 보고서에서 추천 장비를 바로 연구합니다. 다음 판에서 시험 목표를 달성하면 120C를 받고, 보고서에서 그 장비의 배치를 준비할 수 있습니다. [연구 실증과 모바일 재출격](docs/RIFT-GAMEPLAY-V1.md#0114-연구-실증과-재출격).
 

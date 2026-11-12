@@ -78,7 +78,7 @@ export function growthForecast(s,c,args={}){
 const branchPayoff={
  h:{ricochet:'관통 실탄이 다른 적에게 도탄',grenade:'관통 실탄과 8회 사격마다 유탄'},
  r:{homing:'다탄두가 움직이는 적을 추적',incendiary:'다탄두가 터진 자리에 연소 지대'},
- f:{trail:'달린 자리에 불길 · 추격병을 불길로 유도',focused:'중거리에서 멈춰 항구 코어 직격'}
+ f:{trail:'이동 중 잔불 연결 · 두 곳에 적이 닿으면 점화',focused:'중거리에서 멈춰 항구 코어 직격'}
 };
 export function branchBuildPreview(s,c,branch,args={}){
  const gun=c.weapon??args.weapon;

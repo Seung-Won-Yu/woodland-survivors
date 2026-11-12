@@ -320,6 +320,7 @@
  #field-objective :is(#stage,#threat,#field-direct){transition:opacity 140ms ease-out}
  #hud[data-reduced-motion] :is(#map-panel,#weapons),#hud :is(#map-panel,#weapons)[data-field-clear]{transition:none}
  #hud :is(#map-panel,#weapons)[data-field-clear]{opacity:.12}
+ #field-feedback[data-field-clear]{opacity:.14}
  #hud[data-reduced-motion] #field-objective,#hud[data-reduced-motion] #field-objective :is(#stage,#threat,#field-direct),
  #field-objective[data-field-clear],#field-objective[data-field-clear] :is(#stage,#threat,#field-direct){transition:none}
  #field-objective[data-field-clear]{background:#1d302b21;border-color:#7b917847;box-shadow:none}
