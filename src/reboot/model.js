@@ -74,7 +74,7 @@ function validCoastSalvage(s,c){
  return s.choice?.type==='supply'&&c.kind==='gun'&&c.id===`gun:${c.weapon}`
   &&c.salvageLevel===COAST_SALVAGE_LEVEL&&coastCrossGun(s,site)===c.weapon;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -565,15 +565,16 @@ export function skip(s){if(s.phase!=='choice'||['assembly','clear','pursuit-rewa
 
 function buildCompleted(s,kind,{weapon,incendiary=false}={}){
  if(!s.stats.completedBuild)s.stats.completedBuild={kind,t:s.t};
- const showcase=kind==='fusion'?'fusion':weapon==='f'?'flame':null;
- const revealed=showcase==='fusion'?'fusionReveal':'flameReveal';
+ const showcase=kind==='fusion'?'fusion':weapon==='f'?'flame':weapon==='r'?'rocket':null;
+ const revealed=showcase==='fusion'?'fusionReveal':showcase==='rocket'?'rocketReveal':'flameReveal';
  if(showcase&&!s.stats[revealed]){
   s.stats[revealed]=true;
   const remaining=s.powerDone?Math.max(24,s.powerWave?.remaining||0):60;
   s.powerWave={delay:.65,remaining,clock:0,paired:Math.min(4,Math.floor(remaining/8)),showcase};
   s.powerDone=true;
-  const name=incendiary?'점화 격발망':'전도 격발망';
-  emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text:showcase==='fusion'?`${name} 가동 · 분산 편대 접근`:'인페르노 가동 · 밀집 보병 접근'});
+  const text=showcase==='fusion'?`${incendiary?'점화 격발망':'전도 격발망'} 가동 · 분산 편대 접근`
+   :showcase==='rocket'?'폭풍 발사대 가동 · 갈라진 편대 접근':'인페르노 가동 · 밀집 보병 접근';
+  emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text});
  }else if(!s.powerDone){
   s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};
   emit(s,'complete',s.player.x,s.player.y,{life:1.2,text:kind==='single'?'무기 진화 완료':'발동 연계 완성'});
@@ -1149,6 +1150,24 @@ export function activeManeuver(p){
  if(p.maneuver==='brace'&&!p.moving&&p.stillTime>=.45)return 'brace';
  return null;
 }
+function salvoTargets(ordered,radius,count){
+ const spread=[ordered[0]],radiusSquared=radius*radius;
+ const covered=(a,b)=>(a.x-b.x)**2+(a.y-b.y)**2<radiusSquared;
+ let remaining=ordered;
+ while(spread.length<count){
+  const last=spread.at(-1);
+  remaining=remaining.filter(e=>!covered(e,last));
+  if(!remaining.length)break;
+  let best=remaining[0],most=0;
+  for(const center of remaining){
+   let hits=0;
+   for(const e of remaining)if(covered(e,center))hits++;
+   if(hits>most){best=center;most=hits;}
+  }
+  spread.push(best);
+ }
+ return [...spread,...ordered.filter(e=>!spread.includes(e))];
+}
 function shoot(s,w,counter){
  const d=weaponStats(w),p=s.player;
  const damageScale=activeManeuver(p)==='brace'?1.25:1;
@@ -1198,7 +1217,8 @@ function shoot(s,w,counter){
   if(!w.evolved&&w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<3&&s.zones.length<RULES.limits.zones)
    s.zones.push({x:p.x,y:p.y,r:50,dps:12,life:2,tick:.25,source:'dot',owner:w.uid});
  }else{
-  const ordered=[target,...candidates.filter(e=>e.id!==target.id)];
+  const nearest=[target,...candidates.filter(e=>e.id!==target.id)];
+  const ordered=w.id==='r'&&w.evolved&&!w.fusion&&!reply?salvoTargets(nearest,d.radius,d.count):nearest;
   for(let i=0;i<d.count;i++){
    const t=ordered[i%ordered.length],counterShot=reply&&i===0;
    const angle=Math.atan2(t.y-p.y,t.x-p.x)+(ordered.length===1&&!counterShot?(i-(d.count-1)/2)*.035:0);
@@ -1283,7 +1303,7 @@ function separateEnemies(s,dt){
  crowd.forEach((a,i)=>{const cx=Math.floor(a.x/cell),cy=Math.floor(a.y/cell);for(let x=cx-1;x<=cx+1;x++)for(let y=cy-1;y<=cy+1;y++)for(const j of cells.get(`${x},${y}`)||[]){if(j<=i)continue;const b=crowd[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),gap=(a.r+b.r)*.9;if(d>=gap)continue;const angle=((i+1)*2.399963+(j+1)*.7),nx=d>.001?dx/d:Math.cos(angle),ny=d>.001?dy/d:Math.sin(angle),push=Math.min(limit,(gap-d)*.5);forces[i].x-=nx*push;forces[i].y-=ny*push;forces[j].x+=nx*push;forces[j].y+=ny*push;}});
  crowd.forEach((e,i)=>{if(e.cohort==='port-battery')return;const f=forces[i],length=Math.hypot(f.x,f.y);if(length)move(s,e,f.x*Math.min(1,limit/length),f.y*Math.min(1,limit/length),e.r);});
 }
-const FORMATION_INGRESS={flame:.65,fusion:1.15};
+const FORMATION_INGRESS={flame:.65,fusion:1.15,rocket:1.15};
 function updateEnemies(s,dt){
  const p=s.player;let incoming=null;
  for(const e of s.enemies){if(e.dead){e.death-=dt;continue;}e.spawnAge+=dt;e.hurt=Math.max(0,e.hurt-dt);e.timer-=dt;e.walk+=dt*e.speed*.12;

@@ -164,8 +164,12 @@ export function choiceDetails(s,c){
   }
  }else if(c.kind==='evolve'){
   if(w)out.title=capstoneName(w);
-  out.impact=c.weapon==='f'?w?.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
+  out.impact=c.weapon==='f'?w?.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'탄두 3발 · 떨어진 무리 우선';
   out.link=c.weapon==='f'?w?.branch==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'달린 자리에 불길 · 추격병을 불길로 유도':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
+  if(c.weapon==='r'){
+   out.detail='진화 직후 갈라진 편대가 접근합니다.';
+   out.link='엄폐를 돌아 여러 무리의 사선을 여세요.';
+  }
   out.consequence=assemblyConsequence(s,c);
  }else if(c.kind==='fusion'){
   const branch=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch,incendiary=branch==='incendiary';

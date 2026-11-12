@@ -34,6 +34,17 @@ test('auto aim holds a valid target briefly and immediately releases a dead targ
 test('evolved H and R allocate their simultaneous projectiles to distinct living targets',()=>{
  for(const id of ['h','r']){const s=quiet(),w={...makeWeapon(id),uid:'fan',level:6,evolved:true,branch:id==='h'?'ricochet':'homing',cd:0};s.weapons=[w];s.enemies=Array.from({length:6},(_,i)=>enemy(`spread-${i}`,1000+Math.cos(i)*40,800+Math.sin(i)*60,'rifle',1000));step(s,dt);assert.equal(new Set(s.shots.map(q=>q.target)).size,weaponStats(w).count);}
 });
+test('evolved R keeps its primary target and aims the remaining rockets at separated clear groups',()=>{
+ const s=quiet();
+ s.weapons=[{...makeWeapon('r'),uid:'salvo',level:6,branch:'incendiary',evolved:true,cd:0}];
+ s.blocks=[{x:771,y:669,w:60,h:25,hp:-1}];
+ s.enemies=[enemy('lead',918,800),enemy('near-lead',943,800),enemy('straggler',700,665),
+  enemy('left',600,800),enemy('left-2',563,813),enemy('left-3',555,790),
+  enemy('rear',800,1020),enemy('rear-2',837,1030),enemy('behind-cover',800,645)];
+ step(s,dt);
+ assert.deepEqual(s.shots.map(q=>q.target),['lead','left','rear']);
+ assert.ok(s.shots.every(q=>q.salvo&&q.incendiary));
+});
 test('muzzle artwork height cannot turn a small sideways target movement into a miss',()=>{
  const s=quiet(),w=s.weapons[0];w.cd=0;s.enemies=[enemy('moving',1000,800,'rifle',1000)];step(s,dt);w.cd=999;s.enemies[0].y+=12;tick(s,.4);assert.ok(s.enemies[0].hp<1000);
 });
@@ -445,6 +456,7 @@ test('RIFT keeps boss warnings over hit and pickup cues and distinguishes capsto
  assert.deepEqual(mix(['flame','fire-spread','heat','kill'],{inferno:true}),['inferno-spread','heat-break']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'flame'}),['inferno-ready']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'fusion'}),['conduit-ready']);
+ assert.deepEqual(mix(['complete','choose'],{showcase:'rocket'}),['salvo-ready']);
 });
 
 function quietOperation(operator='fio'){const s=createOperation(17,[],null,null,operator);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
@@ -561,6 +573,26 @@ test('Inferno forms a dense lane even when heat synergy was completed earlier',(
  const markers=s.effects.filter(e=>e.type==='formation');assert.equal(markers.length,2);assert.ok(markers.every(e=>e.showcase==='flame'));
  assert.ok(Math.abs(Math.hypot(markers[0].x-markers[1].x,markers[0].y-markers[1].y)-74)<1e-6);
  assert.equal(s.stats.completedBuild.kind,'synergy');assert.equal(s.enemies.length,8);
+});
+test('Storm Launcher stages separated packs promptly and pauses them during a boss charge',()=>{
+ const s=quietOperation();
+ Object.assign(s.player,{x:800,y:800,aim:-Math.PI/2});
+ s.weapons=[{...makeWeapon('r'),uid:'salvo',level:6,branch:'homing',cd:999}];
+ s.modules=[{id:'coil',rank:2}];
+ assert.ok(action(s,'gear'));assert.ok(choose(s,'evolve:r'));
+ assert.equal(s.powerWave.showcase,'rocket');
+ const loaded=restore(snapshot(s));
+ tick(loaded,.72);
+ const markers=loaded.effects.filter(e=>e.type==='formation');
+ assert.equal(markers.length,3);
+ assert.ok(markers.every(e=>e.showcase==='rocket'));
+ assert.ok(markers.slice(1).every((point,i)=>Math.hypot(point.x-markers[i].x,point.y-markers[i].y)>=weaponStats(loaded.weapons[0]).radius));
+ assert.equal(loaded.powerWave.remaining,48);
+ assert.equal(loaded.powerWave.paired,3);
+ loaded.stage='boss';
+ Object.assign(loaded.boss,{x:800,y:350,active:true,mode:'windup',cycle:1,timer:99,spawnClock:99});
+ tick(loaded,1);
+ assert.equal(loaded.powerWave.paired,3);
 });
 test('Inferno pursuit favors the traveled wake lane over the current weapon aim',()=>{
  const s=quiet();s.player.aim=Math.PI/2;

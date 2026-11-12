@@ -609,8 +609,9 @@ function updateHud(entry,focus=null){
  document.body.classList.toggle('capstone-approach',run.stage==='field'&&!!showcase);
  const mounted=showcase&&run.effects.some(f=>f.type==='complete'&&f.showcase);
  const response=showcase&&(showcase==='flame'?'밀집 보병까지 접근'
+  :showcase==='rocket'?'엄폐 밖에서 분산 포격'
   :run.weapons.some(isConductiveFusion)?'두 편대 사선 확보':'화약 원으로 보병 유도');
- const incoming=showcase?`${mounted?'장착 완료 · ':''}${forming&&!showcaseWindow(run)?'재장전 때 후속 편대':response}`:'';
+ const incoming=showcase?`${mounted?(showcase==='rocket'?'폭풍 발사대 · ':'장착 완료 · '):''}${forming&&!showcaseWindow(run)?'재장전 때 후속 편대':response}`:'';
  const reserve=incoming?` · ${incoming}`:wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
  $('objective').textContent=choosingEntry?(entry.routes.length===1?'남은 선택 경로':front===1?'선로 갈림길':'하역장 갈림길'):`${direction} ${next.kind?sitePresentation(next).name:next.name} · ${Math.round(distance(p,next)/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;

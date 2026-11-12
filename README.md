@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.100.0" src="https://img.shields.io/badge/RIFT-0.100.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.101.0" src="https://img.shields.io/badge/RIFT-0.101.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -115,6 +115,8 @@ npm run test:pages
 0.97에서는 철갑 급탄을 확보하면 항구의 보조포 쪽으로 먼저 돌아 현재 위치에서 교전을 시작할 수 있습니다. 보상 카드와 작전도가 같은 방향을 표시합니다. [항구 측면 교전과 첫 포격 비교](docs/RIFT-GAMEPLAY-V1.md#097-항구-측면-교전-위치).
 
 0.98에서는 실전 장착을 마친 분열 수류탄과 흡열 코일을 해안이나 철도에 예약할 수 있습니다. 해안 예약은 첫 보스 전부터 쓸 수 있고, 같은 거점의 축전 코일이나 촉매와 함께 한 가지를 고릅니다. [연구 장비의 배치와 실제 발동](docs/RIFT-GAMEPLAY-V1.md#098-연구-장비의-해안-배치).
+
+0.101의 폭풍 발사대는 떨어진 여러 무리에 탄두를 나눠 보냅니다. 진화 직후 갈라진 편대가 들어오고, 엄폐 밖으로 돌아 사선을 열면 여러 곳에 포격할 수 있습니다. [로켓 진화와 합체 비교](docs/RIFT-GAMEPLAY-V1.md#0101-폭풍-발사대-분산-포격).
 
 0.100에서 돌격 신관과 전도 격발망을 함께 쓰면 코어를 연 뒤 포탑과 보조포 중 한쪽에 역송해 다음 사격을 끊을 수 있습니다. 연료 살포 인페르노는 열린 배관 옆을 달려 불을 붙입니다. [철도 부품과 항구 보스 공략](docs/RIFT-GAMEPLAY-V1.md#0100-항구-코어-역송-사선).
 

@@ -133,6 +133,9 @@ export function createAudio({fieldMix = false} = {}) {
       transient(now,.055,.033,1800);
       note(470,840,'triangle',now,.105,.042);
       note(785,1270,'triangle',now+.11,.12,.032);
+    } else if (event === 'salvo-ready') {
+      [0,.065,.13].forEach((offset,i)=>transient(now+offset,.052,.035,1080-i*140));
+      note(145,54,'triangle',now+.13,.19,.042);
     } else if (event === 'conduit-transfer') {
       transient(now,.044,.041,1850);
       note(290,110,'triangle',now,.095,.036);
