@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.97.0" src="https://img.shields.io/badge/RIFT-0.97.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.98.0" src="https://img.shields.io/badge/RIFT-0.98.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -113,6 +113,8 @@ npm run test:pages
 0.96에서는 철갑 급탄으로 항구의 조준 중 보조포 급탄부를 끊을 수 있습니다. 반대편 포탑을 노리거나 돌격 신관으로 코어를 열고, 회수 의무 장비로 측면 화물을 챙겨 지원 포격을 쓸 수도 있습니다. [시드별 부품 공략과 모바일 귀환](docs/RIFT-GAMEPLAY-V1.md#096-항구-부품과-첫-조준).
 
 0.97에서는 철갑 급탄을 확보하면 항구의 보조포 쪽으로 먼저 돌아 현재 위치에서 교전을 시작할 수 있습니다. 보상 카드와 작전도가 같은 방향을 표시합니다. [항구 측면 교전과 첫 포격 비교](docs/RIFT-GAMEPLAY-V1.md#097-항구-측면-교전-위치).
+
+0.98에서는 실전 장착을 마친 분열 수류탄과 흡열 코일을 해안이나 철도에 예약할 수 있습니다. 해안 예약은 첫 보스 전부터 쓸 수 있고, 같은 거점의 축전 코일이나 촉매와 함께 한 가지를 고릅니다. [연구 장비의 배치와 실제 발동](docs/RIFT-GAMEPLAY-V1.md#098-연구-장비의-해안-배치).
 
 0.88에서는 연료 살포 인페르노가 실제 이동 경로에 불길을 남깁니다. 밀집 보병을 불길로 끌어들이거나 항구의 냉각 배관을 점화할 수 있습니다. [인페르노 분화 검증](docs/RIFT-GAMEPLAY-V1.md#088-인페르노-이동-불길과-냉각-배관).
 

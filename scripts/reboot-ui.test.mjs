@@ -86,7 +86,7 @@ test('research makes condition, funds, active-run block and owned trial explicit
  p.milestones.medic=true;p.credits=299;html=lobbyView(p,{tab:'research'});assert.match(html,/1C 부족/);
  p.credits=300;html=lobbyView(p,{tab:'research'});assert.match(html,/<button  class="primary" data-research="medic">300C · 연구/);
  p.research=['medic'];p.trials=['medic'];html=lobbyView(p,{tab:'research'});assert.match(html,/새 연구 · 조건에 맞는 첫 보급에서 제시/);assert.match(html,/disabled[^>]*data-research="medic"/);
- assert.match(html,/실전 배치 지령/);assert.match(html,/data-action="launch">실전 시험 출격/);
+ assert.match(html,/실전 배치 지령/);assert.match(html,/data-action="trial-brief">해안 브리핑 보기/);
  const active=beginProfile(emptyProfile(),createOperation(17));assert.match(lobbyView(active,{tab:'research'}),/이전 판을 정산한 뒤/);
 });
 test('field-tested equipment can be reserved on the rail briefing without adding fees to replay',()=>{
@@ -102,6 +102,19 @@ test('field-tested equipment can be reserved on the rail briefing without adding
  const settled=settleProfile(active,run),html=reportView(settled.recent[0],settled);
  assert.match(html,/철도 정비대 · 미회수/);assert.match(html,/다음 장비 예약/);
  assert.match(html,/같은 전장 · 표준 작전/);assert.doesNotMatch(html,/data-requisition=/);
+});
+test('research briefs identify both the coast delivery and the prerequisite route',()=>{
+ const p=emptyProfile();p.research=['thermal','shrapnel','medic'];p.trials=['thermal'];p.credits=500;
+ const research=lobbyView(p,{tab:'research'});
+ assert.match(research,/data-reserve="shrapnel" data-requisition-at="coast"/);
+ assert.doesNotMatch(research,/data-reserve="(?:medic|thermal)" data-requisition-at="coast"/);
+ const trial=lobbyView(p);
+ assert.match(trial,/data-coast="f" data-suggested[\s\S]*흡열 코일 시험/);
+ assert.match(trial,/data-coast="r" data-suggested[\s\S]*흡열 준비 · 축전 코일 후보/);
+ const coastal=lobbyView(p,{requisition:'shrapnel',requisitionAt:'coast'});
+ assert.match(coastal,/박격포 진지 예약 · 분열 수류탄/);
+ assert.match(coastal,/data-requisition="shrapnel" data-requisition-at="coast"/);
+ assert.match(coastal,/예약 · 분열 수류탄/);
 });
 test('reports distinguish this sortie unlocks from prior availability and show first field results',()=>{
  const run=createOperation(17);let p=beginProfile(emptyProfile(),run);

@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -15,10 +15,12 @@ function openingGunRoute(s,gun){
  const equipped={...s,firstNew:gun,weapons:[...s.weapons,makeWeapon(gun)]};
  const other=s.sites.find(n=>n.coastApproach&&n.coastApproach!==gun&&n.state!=='done');
  const cross=coastCrossGun(equipped,other),module=approach.module;
+ const delivery=site===requisitionStation(s)?RESEARCH[s.operation.requisition]:null;
+ const trial=s.trials?.find(id=>RESEARCH[id].fieldGun===gun);
  const supply=!s.excluded.includes(module)&&moduleRank(s,module)<3&&compatible(equipped,module)
   ?MODULES[module].name:s.stage==='field'&&!s.operation.coastStrike?COAST_STRIKES[gun].name:'';
  return {impact:`${coastBearing(s,site)} · ${approach.name}`,detail:`${approach.formation} · ${approach.hint}`,
-  link:supply?`맞춤 보급 · ${supply} 후보`:'',cost:cross?`${coastBearing(s,other)} · ${GUNS[cross].short} L${COAST_SALVAGE_LEVEL} 교차 노획 후보`:''};
+  link:delivery?`예약 · ${delivery.name}`:trial?`실전 시험 · ${RESEARCH[trial].name}`:supply?`맞춤 보급 · ${supply} 후보`:'',cost:cross?`${coastBearing(s,other)} · ${GUNS[cross].short} L${COAST_SALVAGE_LEVEL} 교차 노획 후보`:''};
 }
 export function gateContractDetails(s){
  const front=s.operation.region,tier=(s.operation.challengeTier||0)+1,contract=holdoutContract(s);
@@ -136,7 +138,7 @@ export function choiceDetails(s,c){
   }
   if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
   out.cost=c.kind==='tune'?'조율권 1개 사용':g.current?`${g.current} → ${g.next}강화 · 같은 칸 유지${g.charge?` · 초과 충전 +${g.charge}`:''}`:`새 모듈 ${g.next}강화 · ${s.modules.length<4?'모듈 한 칸 사용':'기존 모듈 교체'}`;
-  if(s.choice?.type==='rail-workshop'&&s.operation?.requisition===c.module&&!compatible(s,c.module))out.link=`장착 후 대기 · ${RESEARCH[c.module].fitting}`;
+  if(c.id?.startsWith('requisition:')&&!compatible(s,c.module))out.link=`장착 후 대기 · ${RESEARCH[c.module].fitting}`;
  }else if(c.id==='utility:health'||c.kind==='repair'||c.id==='resupply:medical'){
   const extra=c.kind==='repair'?15:c.kind==='utility'?6:0,heal=c.kind==='repair'?35:c.kind==='utility'?6:c.heal;out.art='medic';out.impact=extra?`최대 체력 +${extra}`:`체력 +${Math.min(heal,s.player.maxHp-s.player.hp)}`;out.detail=`${Math.ceil(s.player.hp)}/${s.player.maxHp} → ${Math.ceil(Math.min(s.player.maxHp+extra,s.player.hp+heal))}/${s.player.maxHp+extra}`;out.link=c.kind==='repair'?'최대 체력과 체력을 함께 정비':'';out.cost=c.kind==='repair'?'조율권 1개 사용':'';
  }else if(c.id==='utility:charge'||c.kind==='resupply'){

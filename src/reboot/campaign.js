@@ -411,10 +411,12 @@ export function coastLead(s){
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
  if(rescue)return rescue;
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
+ const needsCoil=s.firstNew==='f'&&!s.modules.some(m=>m.id==='coil');
+ const thermal=s.operation.requisition==='thermal';
+ const coilSite=needsCoil&&(thermal||s.trials?.includes('thermal'))&&s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
+ if(coilSite&&(s.operation.requisitionAt==='coast'||s.trials?.includes('thermal')))return coilSite;
  const standard=s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done');
- if(standard)return standard;
- if(s.operation.requisition==='thermal'&&s.firstNew==='f'&&!s.modules.some(m=>m.id==='coil'))return s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done')||null;
- return null;
+ return standard||coilSite||null;
 }
 export const COAST_SALVAGE_LEVEL=2;
 export function coastCrossGun(s,site){
@@ -583,12 +585,22 @@ export function regionBoss(index,seed=1){const d=REGIONS[index],turretSide=index
 export const RESEARCH={
  medic:{name:'응급 주사기',cost:300,condition:'첫 작전 완주',detail:'정예를 잡으면 체력12 회복 · 재사용12초. 보급 후보로 추가되며 모듈 한 칸을 씁니다.',fieldBrief:'포로 구출 보상에서 장착하고, 정예를 제압해 체력을 회복하세요.',fitting:'정예 제압으로 발동'},
  shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'유탄·로켓·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.',fieldGun:'r',fieldBrief:'로켓을 확보하세요. 박격포 진지에서 분열 수류탄과 축전 코일이 함께 후보에 오릅니다.',fitting:'유탄·로켓·합체 연쇄탄에서 발동'},
- thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'화염방사기와 축전 코일을 갖춘 뒤 보급을 여세요. 연소한 적에 전기가 닿으면 전탄이 찹니다.',fitting:'축전 코일과 연소 무장 필요'}
+ thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'F를 확보하고 박격포 진지에서 축전 코일을 고르세요. 다음 호환 보급에 시험품이 나옵니다.',fitting:'축전 코일과 연소 무장 필요'}
 };
 export const REQUISITION_FEE=120;
+export const requisitionFront=operation=>operation?.requisitionAt==='coast'?0:1;
+export const requisitionDestination=op=>requisitionFront(op)===0?COAST_APPROACHES[RESEARCH[op.requisition]?.fieldGun]?.name||'해안 보급':'화차 정비대';
+export function requisitionStation(s){
+ const op=s.operation;
+ if(!op?.requisition||op.region!==requisitionFront(op))return null;
+ if(op.region===1)return s.sites.find(site=>site.id==='rail-cache')||null;
+ const gun=RESEARCH[op.requisition]?.fieldGun;
+ return gun?s.sites.find(site=>site.coastApproach===gun)||null:null;
+}
 export function requisitionSite(s){
- if(s.operation?.region!==1||s.stage==='boss'||!s.operation.requisition)return null;
- return s.sites.find(site=>site.id==='rail-cache'&&site.state!=='done')||null;
+ if(s.stage==='boss'||s.operation?.requisitionClaimed)return null;
+ const station=requisitionStation(s);
+ return station?.state!=='done'?station:null;
 }
 export const CARGO_CREDITS=70;
 export function operationPayout(r,firstWin=false){

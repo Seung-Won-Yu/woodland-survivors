@@ -26,7 +26,7 @@ function watchCombatHud(){
  panels.forEach(panel=>observer.observe(panel));
  window.addEventListener('resize',measure);
 }
-let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,requisitionSelection=null,selectedOperator='fio',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,reportOrigin=null,equippedUntil=0,equippedWeapon=null;
+let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,requisitionSelection=null,requisitionAt=null,selectedOperator='fio',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,reportOrigin=null,equippedUntil=0,equippedWeapon=null;
 let focusGesture=null,queuedFocus=null;
 let battleArt=null,portraitArt=null,marcoArt=null,marcoArtWork=null,artWork=null,launchPreparation=null,kitPreloaded=false,firstBattleFrame=false;
 const profile=()=>store.get();
@@ -42,7 +42,7 @@ function drawPortrait(){
  if(art){requestAnimationFrame(()=>{if(mode==='home'&&canvas.isConnected)operatorPortrait(canvas,art,id,240);});return;}
  if(id==='marco'&&!marcoArtWork)marcoArtWork=loadOperatorPortrait().then(loaded=>{marcoArt=loaded;drawPortrait();}).catch(()=>{}).finally(()=>{marcoArtWork=null;});
 }
-function showHome(){mode='home';subpanel=null;stamp='home';document.body.dataset.scene='lobby';panel(lobbyView(profile(),{tab:lobbyTab,brief:briefRegion,seed:operationPlan.seed,order:sortieOrderSelection,operator:selectedOperator,requisition:requisitionSelection}));drawPortrait();}
+function showHome(){mode='home';subpanel=null;stamp='home';document.body.dataset.scene='lobby';panel(lobbyView(profile(),{tab:lobbyTab,brief:briefRegion,seed:operationPlan.seed,order:sortieOrderSelection,operator:selectedOperator,requisition:requisitionSelection,requisitionAt}));drawPortrait();}
 function doctrineChoices(){
  if(run.choice.type!=='level'||run.level<6||run.player.branchChosen)return '';
  const actor=operatorOf(run);
@@ -256,7 +256,7 @@ async function commitDraft(draft,next,launchMode){
   const previous=profile();await store.commit(next);operationPlan.committed(previous,next,draft);
   run=draft;saveClock=0;pending=null;
   if(launchMode){
-   mode='battle';sortieOrderSelection=null;requisitionSelection=null;document.body.dataset.scene='battle';selectedOperator=operatorId(draft);selectedDoctrine=draft.player.doctrine;$('world').setAttribute('aria-label',`${operatorOf(draft).name}의 빌드 서바이버 전투`);firstBattleFrame=true;pauseQueued||=document.hidden;
+   mode='battle';sortieOrderSelection=null;requisitionSelection=null;requisitionAt=null;document.body.dataset.scene='battle';selectedOperator=operatorId(draft);selectedDoctrine=draft.player.doctrine;$('world').setAttribute('aria-label',`${operatorOf(draft).name}의 빌드 서바이버 전투`);firstBattleFrame=true;pauseQueued||=document.hidden;
    if(launchMode==='fallback')notice('전장 원화를 불러오지 못해 기본 표시로 실행합니다.');
   }
   setBusy(false);committingPlay=false;present(true);
@@ -318,10 +318,11 @@ function closePreparation(cancelled=false){
 }
 async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie||null){
  const actor=source.dataset.actor||selectedOperator,requisition=source.dataset.requisition||null;
+ const delivery=source.dataset.requisitionAt||null;
  if(!Object.hasOwn(OPERATORS,actor))return;
  if(busy||pending||launchPreparation)return;
  if(order&&!canLaunchOrder(profile(),order)){notice('지령 출격 조건을 확인하세요.');return;}
- if(requisition&&!canReserveResearch(profile(),requisition)){notice('정비대 예약 조건을 확인하세요.');return;}
+ if(requisition&&!canReserveResearch(profile(),requisition,delivery)){notice('장비 예약 조건을 확인하세요.');return;}
  unlockSound();
  let art=battleArt;
  if(!art){
@@ -331,7 +332,7 @@ async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie
   closePreparation();
  }
  const replayFrom=source.dataset.action==='same-seed'&&source.dataset.replayFrom?Number(source.dataset.replayFrom):null;
- const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom);
+ const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom,delivery);
  renderer=createRenderer($('world'),art,combatHud);
  await commitDraft(draft,next,art?'art':'fallback');
 }
@@ -363,6 +364,9 @@ ui.addEventListener('keydown',e=>{const dialog=ui.querySelector('[role="dialog"]
 ui.addEventListener('click',async e=>{
  const button=e.target.closest('button');if(!button||busy||pending&&!['retry','reload-latest'].includes(button.dataset.action))return;
  if(launchPreparation){if(button.dataset.action==='cancel-launch')closePreparation(true);return;}
+ if(button.dataset.action==='trial-brief'){
+  lobbyTab='mission';briefRegion=0;nextPanelFocus={selector:'.command-nav [data-tab="mission"]'};showHome();return;
+ }
  if(button.dataset.tab){lobbyTab=button.dataset.tab;nextPanelFocus={selector:`.command-nav [data-tab="${CSS.escape(lobbyTab)}"]`};showHome();return;}
  if(button.dataset.brief!==undefined){briefRegion=Number(button.dataset.brief);nextPanelFocus={selector:`[data-brief="${briefRegion}"]`};showHome();return;}
  if(Object.hasOwn(OPERATORS,button.dataset.pilot)){
@@ -372,13 +376,13 @@ ui.addEventListener('click',async e=>{
  if(button.dataset.order!==undefined){
   const id=button.dataset.order;
   if(id&&!canLaunchOrder(profile(),id))return;
-  sortieOrderSelection=id||null;requisitionSelection=null;briefRegion=0;
+  sortieOrderSelection=id||null;requisitionSelection=null;requisitionAt=null;briefRegion=0;
   nextPanelFocus={scroll:ui.scrollTop,selector:id?`[data-order="${id}"]`:'[data-action="launch"]'};showHome();return;
  }
  if(button.dataset.reserve!==undefined){
-  const id=button.dataset.reserve;
-  if(id&&!canReserveResearch(profile(),id))return;
-  requisitionSelection=id||null;sortieOrderSelection=null;lobbyTab='mission';briefRegion=id?1:0;
+  const id=button.dataset.reserve,at=button.dataset.requisitionAt||null;
+  if(id&&!canReserveResearch(profile(),id,at))return;
+  requisitionSelection=id||null;requisitionAt=at;sortieOrderSelection=null;lobbyTab='mission';briefRegion=id&&!at?1:0;
   nextPanelFocus={selector:'[data-action="launch"]'};showHome();return;
  }
  if(button.dataset.report!==undefined){
@@ -455,7 +459,7 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast){
  if(lead){const {x,y}=lead;map+=`<path d="M${x} ${y-51}l51 51 -51 51 -51 -51Z" fill="none" stroke="${coastLeadColor(lead)}" stroke-width="14" aria-label="${esc(sitePresentation(lead).name)} · 다음 표적"/>`;}
  if(otherCoast){const {x,y}=otherCoast;map+=`<circle cx="${x}" cy="${y}" r="51" fill="none" stroke="${coastLeadColor(otherCoast)}" stroke-width="10" stroke-dasharray="15 12" aria-label="${esc(sitePresentation(otherCoast).name)} · 선택 경로"/>`;}
  if(dispatch)map+=orderPinSvg(dispatch,run.operation.order);
- if(reserved)map+=`<circle cx="${reserved.x}" cy="${reserved.y}" r="56" fill="none" stroke="#b6e1c5" stroke-width="12" aria-label="예약 장비 · 화차 정비대"/>`;
+ if(reserved)map+=`<circle cx="${reserved.x}" cy="${reserved.y}" r="56" fill="none" stroke="#b6e1c5" stroke-width="12" aria-label="예약 장비 · ${esc(sitePresentation(reserved).name)}"/>`;
  if(run.stage==='field'){
   const point=coastStagingPoint(run)||BOSS_ENTRY,armor=portArmorStaging(run);
   map+=dot('map-boss-entry',point.x,point.y,34,point.color||'#ef8e64',point.name||'보스 진입');
@@ -611,16 +615,18 @@ function updateHud(entry,focus=null){
   :`경계 ${run.pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${reserve}`;
  const fieldIntel=$('field-intel'),direct=$('field-direct');
  const armory=prepared&&next===bossTarget?run.sites.find(site=>site.kind==='armory'&&site.state!=='done'):null;
- const alternate=fork?.other||armory||(gantry&&next===bossTarget?gantry:bossTarget);
+ const coastDelivery=front===0&&reserved&&next!==reserved&&!primaryCoast?.opening?reserved:null;
+ const alternate=fork?.other||coastDelivery||armory||(gantry&&next===bossTarget?gantry:bossTarget);
  const part=front===2?run.operation.support:null;
  const coastReward=site=>{
+  if(site===reserved)return `${RESEARCH[run.operation.requisition].name} 예약`;
   if(site===fork?.cross)return `${site.coastApproach.toUpperCase()} L${COAST_SALVAGE_LEVEL} 노획`;
   const {module}=coastApproach(site);
   const available=module!==run.operation?.requisition&&!run.excluded.includes(module)&&compatible(run,module)&&moduleRank(run,module)<3;
   return available?`${MODULES[module].name} 후보`:'현장 보급';
  };
- const alternateLabel=fork?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
- direct.hidden=!((front>0||prepared||fork||crossDone)&&run.stage==='field'&&!raid&&next!==alternate);
+ const alternateLabel=fork||coastDelivery?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
+ direct.hidden=!((front>0||prepared||fork||crossDone||coastDelivery)&&run.stage==='field'&&!raid&&next!==alternate);
  direct.dataset.coast=fork?.other.coastApproach||'';
  direct.textContent=`${bearing(p,...(alternate.path?entryWaypoint(alternate.path,p):[alternate.x,alternate.y]))} ${alternateLabel} · ${Math.round(distance(p,alternate)/10)}m`;
  let intel='';
@@ -629,6 +635,10 @@ function updateHud(entry,focus=null){
   const plan=railGarrison(run.sites.find(site=>site.id===route.site));
   return `${bearing(p,...entryWaypoint(route.path,p))} ${route.summary||route.sign}${plan?` · ${plan.crew}`:''}`;
  }).join('\n');
+ else if(next===reserved&&front===0){
+  const shipment=RESEARCH[run.operation.requisition];
+  intel=next.state==='ready'?`${shipment.name} 예약품 · 접근해 회수`:`예약 · ${shipment.name}${next.state==='active'?' · 경비 제압':''}`;
+ }
  else if(next.id==='rail-cache'&&workshopRoute)intel=`${workshopRoute.note}\n${next.state==='ready'?'접근해 회수':garrison?.hint||'경비 제압'}`;
  else if(next.id==='rail-relay'){
   const cue=next.state==='ready'?'접근해 회수':next.state==='active'&&!crew?'범위 안에서 해킹':garrison?.hint||'범위 안에서 해킹';
@@ -652,7 +662,7 @@ function updateHud(entry,focus=null){
   if(coastSite.opening){
    const move=touchLayout.matches?'스틱 이동':'WASD 이동';
    intel=coastSite.state==='ready'?'감옥에 가까이 가면 구출됩니다.':coastSite.state==='active'?`경비 ${guards}명 제압 후 접근`:`${move} · 사격은 자동`;
-  }else if(run.operation?.requisition==='thermal'&&coastSite.coastApproach==='r'&&coastSite.state==='waiting'&&!moduleRank(run,'coil'))intel='흡열 코일 준비 · 이 진지에서 축전 코일 확보';
+  }else if((run.operation?.requisition==='thermal'||run.trials?.includes('thermal'))&&coastSite.coastApproach==='r'&&!moduleRank(run,'coil'))intel='흡열 코일 준비 · 여기서 축전 코일 선택';
   else intel=coastEncounterCue(run,coastSite,coastRocketVolley(run,coastSite),coastRocketCounter(run,coastSite))||(fork?`${coastReward(coastSite)} · ${coastApproach(coastSite).formation}`:coastApproach(coastSite).hint);
  }
  else if(front===0&&run.sites[0]?.state!=='done'){

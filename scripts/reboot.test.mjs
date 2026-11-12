@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -2844,6 +2844,49 @@ test('a paid rail reservation competes with workshop supplies and survives check
   assert.equal(settled.recent[0].requisitionFee,120);
   assert.equal(!!settled.recent[0].operation.requisitionClaimed,claimed);
  }
+});
+test('a paid coast shipment opens at its own outpost, survives reload and leaves the rail draft intact',()=>{
+ const p=emptyProfile();Object.assign(p,{credits:500,research:['thermal','shrapnel','medic']});
+ assert.throws(()=>freshSortie(p,24,null,'fio','medic',null,'coast'),/예약 조건/);
+ for(const [id,gun,station,signature] of [['shrapnel','r','supply-c','coil'],['thermal','f','supply-b','catalyst']]){
+  const {run,next}=freshSortie(p,24,null,'fio',id,null,'coast');
+  assert.equal(next.credits,380);
+  assert.deepEqual(run.modules,[]);
+  assert.equal(parseProfile(JSON.stringify(next)).active.run.operation.requisitionAt,'coast');
+  run.firstNew=gun;
+  run.weapons.push({...makeWeapon(gun),uid:gun,cd:999});
+  run.weapons[0].cd=999;run.enemies=[];run.spawnClock=999;
+  if(id==='thermal'){
+   run.sites[0].state='done';
+   assert.equal(coastLead(run)?.id,'supply-c');
+   run.modules.push({id:'coil',rank:1});
+   assert.equal(coastLead(run)?.id,'supply-b');
+   run.modules=[];
+  }
+  const wrong=station==='supply-c'?'supply-b':'supply-c';
+  run.sites.forEach(site=>site.state='done');
+  const wrongCards=supply(run,wrong);
+  assert.ok(!wrongCards.some(c=>c.id===`requisition:${id}`));
+  assert.ok(choose(run,'rank:h')||choose(run,'rank:'+gun));
+  const cards=supply(run,station);
+  const booked=cards.find(c=>c.id===`requisition:${id}`);
+  assert.ok(booked);
+  assert.ok(cards.some(c=>c.id===`module:${signature}`));
+  if(id==='thermal')assert.match(choiceDetails(run,booked).link,/장착 후 대기/);
+  const forged=snapshot(run);forged.choice.siteId=wrong;
+  assert.throws(()=>restore(forged),/체크포인트/);
+  assert.equal(choose(forged,booked.id),false);
+  const draft=restore(snapshot(run));
+  assert.ok(reroll(draft));
+  assert.ok(choose(draft,booked.id));
+  assert.equal(restore(snapshot(draft)).operation.requisitionClaimed,true);
+  assert.equal(draft.modules.find(m=>m.id===id)?.rank,1);
+  assert.ok(choose(run,`module:${signature}`));
+  clearRegion(run);assert.ok(choose(run,'advance'));
+  const plain=restore(snapshot(run));delete plain.operation.requisition;delete plain.operation.requisitionAt;
+  assert.deepEqual(railWorkshopPlan(run),railWorkshopPlan(plain));
+ }
+ assert.equal(p.credits,500);
 });
 test('rail refit retains fire evolution and changes the actual reach of the next shot',()=>{
  const s=quietRailWorkshop();s.firstNew='f';

@@ -36,12 +36,13 @@ export function beginProfile(p,run,reference=null){
  return n;
 }
 export const canLaunchOrder=(p,id)=>{const order=sortieOrder(id);return !!order&&!p.active&&p.records.wins>0&&p.credits>=order.fee;};
-export const canReserveResearch=(p,id)=>Object.hasOwn(RESEARCH,id)&&!p.active&&p.research.includes(id)&&!p.trials.includes(id)&&p.credits>=REQUISITION_FEE;
-export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null){
+export const canReserveResearch=(p,id,at=null)=>Object.hasOwn(RESEARCH,id)&&!p.active&&p.research.includes(id)
+ &&!p.trials.includes(id)&&p.credits>=REQUISITION_FEE&&(at===null||at==='coast'&&!!RESEARCH[id].fieldGun);
+export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null){
  const priorReport=replayFrom===null?null:p.recent.find(report=>report?.sequence===replayFrom);
  const reference=replayReference(priorReport,p.recordScope);
- if(requisition!==null){
-  if(order!==null||!canReserveResearch(p,requisition))throw Error('정비대 예약 조건을 확인하세요.');
+ if(requisition!==null||requisitionAt!==null){
+  if(order!==null||!canReserveResearch(p,requisition,requisitionAt))throw Error('장비 예약 조건을 확인하세요.');
   p={...p,credits:p.credits-REQUISITION_FEE};
  }
  if(order!==null){
@@ -55,6 +56,7 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
  }
  const run=createOperation(seed,p.research,p.trials,order,operator);
  if(requisition)run.operation.requisition=requisition;
+ if(requisitionAt)run.operation.requisitionAt=requisitionAt;
  return {run,next:beginProfile(p,run,reference)};
 }
 export function checkpointProfile(p,run){if(!p.active)throw Error('활성 전투가 없습니다.');if(run.runId!==p.active.runId)throw Error('다른 작전의 체크포인트입니다.');const n=copy(p);n.active.run=snapshot(run);n.trials=n.trials.filter(id=>!pickedTrials(run.stats).includes(id));return n;}
