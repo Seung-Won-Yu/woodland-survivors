@@ -377,13 +377,13 @@ test('coastal tracks connect the actual sites through clear ground and water sta
   assert.doesNotMatch(regionPreview(0,seed,createOperation(seed)),/data-approach=/);
  }
 });
-test('the launch briefing names both coastal routes before the start button and reflects the seeded garrisons',()=>{
+test('the launch briefing offers rescue and the seeded nearby outpost before the start button',()=>{
  const briefing=seed=>lobbyView(emptyProfile(),{seed}).match(/<section class="coast-plan"[\s\S]*?<\/section>/)[0];
  const seed22=briefing(22),seed25=briefing(25);
- assert.match(seed22,/화염방사기 F<\/strong><span>→ 약 47m · 이동 보급차<\/span><small>양갈래 호위/);
- assert.match(seed22,/로켓 R<\/strong><span>↖ 약 36m · 박격포 진지<\/span><small>집결 포대/);
- assert.match(seed25,/↗ 약 35m · 이동 보급차<\/span><small>밀집 호위/);
- assert.match(seed25,/← 약 42m · 박격포 진지<\/span><small>분산 포대/);
+ assert.match(seed22,/포로 구출<\/strong><span>↖ 경비 제압 후 접근<\/span><small>화염 F \/ 로켓 R 선택/);
+ assert.match(seed22,/이동 보급차 기습<\/strong><span>↗ 방패 호위 제압<\/span><small>F L2 노획/);
+ assert.match(seed25,/포로 구출<\/strong><span>↗ 경비 제압 후 접근<\/span><small>화염 F \/ 로켓 R 선택/);
+ assert.match(seed25,/박격포 진지 기습<\/strong><span>↖ 박격포 2문 제압<\/span><small>R L2 노획/);
  const lobby=lobbyView(emptyProfile(),{seed:22});
  assert.ok(lobby.indexOf(seed22)<lobby.indexOf('data-action="launch"'));
  assert.doesNotMatch(lobbyView(emptyProfile(),{seed:22,brief:1}),/class="coast-plan"/);

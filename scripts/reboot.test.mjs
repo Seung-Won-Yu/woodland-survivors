@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -19,6 +19,64 @@ function bullet(s,e,damage=100){return{x:e.x,y:e.y,vx:0,vy:0,life:1,damage,r:3,r
 function memory(){const values=new Map();let fail=false;return{values,getItem:k=>values.get(k)||null,setItem(k,v){if(fail)throw Error('quota');values.set(k,v);},setFail:v=>{fail=v;}};}
 
 test('reboot runtime data stays identical to the reviewed design baseline',async()=>{assert.deepEqual(RULES,JSON.parse(await readFile('docs/design/reboot-rules.json','utf8')));});
+test('a marked coast outpost can be seized for its native gun before rescuing the prisoner',()=>{
+ for(const [seed,gun,guardCount] of [[17,'r',2],[19,'f',3]]){
+  const s=createOperation(seed),rescue=s.sites[0],outpost=coastPreemptSite(s);
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  assert.equal(outpost.coastApproach,gun);
+  Object.assign(s.player,{x:outpost.x,y:outpost.y});
+  step(s,dt);
+  assert.equal(outpost.state,'waiting');
+  assert.equal(rescue.state,'waiting');
+  assert.equal(interaction(s)?.id,'coast-preempt');
+  assert.ok(action(s,'interact'));
+  step(s,dt);
+  assert.equal(outpost.state,'active');
+  assert.equal(s.enemies.filter(e=>e.siteId===outpost.id).length,guardCount);
+  assert.equal(interaction(s),null);
+  const active=restore(snapshot(s));
+  active.enemies=[];
+  step(active,dt);
+  assert.equal(active.choice.preempt,true);
+  assert.equal(active.choices.filter(c=>c.kind==='gun').length,1);
+  assert.equal(reroll(active),false);
+  assert.equal(banishOptions(active).length,0);
+  const draft=restore(snapshot(active));
+  assert.equal(choose(draft,'gun:'+gun),true);
+  assert.equal(draft.stats.coastPreempt,gun);
+  assert.equal(draft.weapons.find(w=>w.id===gun).level,2);
+  assert.equal(coastPreemptSite(draft),null);
+  const prisoner=draft.sites[0];
+  prisoner.state='ready';
+  Object.assign(draft.player,{x:prisoner.x,y:prisoner.y});
+  step(draft,dt);
+  assert.ok(draft.choices.some(c=>c.kind==='rank'));
+  assert.ok(!draft.choices.some(c=>c.kind==='gun'));
+  assert.equal(reroll(draft),true);
+  assert.ok(!draft.choices.some(c=>c.kind==='gun'));
+  takeEvents(draft);
+  assert.deepEqual(restore(snapshot(draft)),draft);
+  assert.equal(skip(active),true);
+  assert.equal(active.stats.coastPreempt,undefined);
+  const fallback=active.sites[0];
+  fallback.state='ready';
+  Object.assign(active.player,{x:fallback.x,y:fallback.y});
+  step(active,dt);
+  assert.equal(active.choice.opening,true);
+  assert.deepEqual(active.choices.filter(c=>c.kind==='gun').map(c=>c.weapon).sort(),['f','r']);
+ }
+});
+test('paid and research sorties preserve their briefed coast opening',()=>{
+ const reservation=createOperation(19,['shrapnel']);
+ reservation.operation.requisition='shrapnel';
+ for(const s of [createOperation(19,[],null,'wire'),reservation,createOperation(19,['thermal'],['thermal'])]){
+  assert.equal(coastPreemptSite(s),null);
+  const [outpost]=s.sites.filter(site=>site.coastApproach==='f');
+  s.blocks=[];
+  Object.assign(s.player,{x:outpost.x,y:outpost.y});
+  assert.notEqual(interaction(s)?.id,'coast-preempt');
+ }
+});
 test('opening enemies respect distance and cover even near the southern boundary',()=>{
  for(const seed of [17,71,109,214,3470268883]){const s=createRun(seed);assert.equal(s.enemies.length,10);for(const e of s.enemies){assert.ok(Math.hypot(e.x-s.player.x,e.y-s.player.y)>300);assert.ok(s.enemies.every(other=>e===other||Math.hypot(e.x-other.x,e.y-other.y)>=RULES.spawn.openingGap));assert.ok(!s.blocks.some(b=>e.x+e.r>b.x&&e.x-e.r<b.x+b.w&&e.y+e.r>b.y&&e.y-e.r<b.y+b.h));}}
 });

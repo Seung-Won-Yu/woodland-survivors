@@ -147,6 +147,10 @@ export function choiceDetails(s,c){
    out.link=plan?'수송차에서 성공 시 철도 노획 보급':'';
    out.cost=`빈칸에 L${level} 장착`;
    if(plan)out.impact=plan.impact;
+   if(s.choice?.preempt){
+    out.detail='포로 구출 시 정비 보급';
+    out.link='특화 모듈 · 이후 보급 및 레벨업';
+   }
   }
   if(s.choice?.opening&&s.operation?.region===0)Object.assign(out,openingGunRoute(s,c.weapon));
  }else if(c.module){

@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,coastPreemptSite,coastPreemptGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -80,6 +80,9 @@ function validCoastStrike(s,c){
 const isCoastTacticalLoot=c=>c.kind==='gun'&&c.id===`coast-loot:${c.weapon}`;
 function validCoastSalvage(s,c){
  const site=s.sites.find(n=>n.id===s.choice?.siteId&&n.state==='done');
+ if(s.choice?.preempt)return s.choice.type==='supply'&&c.kind==='gun'&&site?.preempt===true
+  &&s.operation?.region===0&&s.stage==='field'&&!s.firstNew&&s.sites[0]?.state!=='done'
+  &&c.weapon===site.coastApproach&&c.id===`gun:${c.weapon}`&&c.salvageLevel===COAST_SALVAGE_LEVEL;
  if(s.choice?.type!=='supply'||c.kind!=='gun'||coastCrossGun(s,site)!==c.weapon)return false;
  if(isCoastTacticalLoot(c))return c.salvageLevel===1&&coastTacticalLootAvailable(s,site);
  return c.id===`gun:${c.weapon}`&&c.salvageLevel===COAST_SALVAGE_LEVEL;
@@ -91,7 +94,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -140,6 +143,8 @@ export function restore(raw,{allowPrevious=false}={}){
   const deliveryFront=requisitionFront(s.operation);
   if(requisitionClaimed!==undefined&&(requisitionClaimed!==true||!requisition||s.operation.region<deliveryFront))fail();
   if(requisitionClaimed&&s.operation.region===deliveryFront&&requisitionStation(s)?.state!=='done')fail();
+  if(s.sites.some(site=>site.preempt!==undefined&&(site.preempt!==true||s.operation.region!==0||order||requisition||s.operation.trialProof||s.trials.length||site.coastApproach!==coastPreemptGun(s.seed))))fail();
+  if(s.stats.coastPreempt!==undefined&&s.stats.coastPreempt!==coastPreemptGun(s.seed))fail();
   // The first b30 release opened the hatch before the site stored its variant.
   if(s.operation.region===2&&s.balanceRevision==='b30-port-gantry'){
    const dock=s.sites.find(site=>site.id==='port-landing');
@@ -219,6 +224,7 @@ export function restore(raw,{allowPrevious=false}={}){
  }
  const salvage=s.choices.filter(c=>c?.salvageLevel!==undefined||typeof c?.id==='string'&&c.id.startsWith('coast-loot:'));
  if(new Set(salvage.map(c=>c.id)).size!==salvage.length||salvage.some(c=>!validCoastSalvage(s,c)))fail();
+ if(s.choice?.preempt!==undefined&&(s.choice.preempt!==true||salvage.length!==1))fail();
  const service=s.choices.filter(isCoastService);
  if(service.length>1||service.some(c=>!validCoastService(s,c)))fail();
  if(s.choice?.coastRecovery===true&&(s.choice.type!=='supply'||s.choice.source!=='장갑 수송차 노획'||!coastRecovery(s)||s.stage!=='field'||s.operation.regionTime!==0))fail();
@@ -312,14 +318,19 @@ const trialCard=(id,rank=1)=>({...moduleCard(id,rank),label:'새 연구 · 첫 �
 const newGun=(id,label='새 무기')=>({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label});
 const coastRecovery=s=>s.operation?.region===1&&s.operation.coastStrikeUsed
  ?{module:COAST_APPROACHES[s.operation.coastStrike].module,coastApproach:s.operation.coastStrike}:null;
-function supplyCards(s,site){
+function supplyCards(s,site,preempt=false){
  const guns=upgradeable(s),rank=guns.length?gunCard(pick(s,'supply',guns)):currentInvestments(s)[0]||utility('health');
  const pool=modulePool(s),trial=trialModule(s,pool,site?.coastApproach);
- if(site?.opening){
+ if(site?.opening&&!s.stats.coastPreempt){
   const opening=[site.gun,site.gun==='r'?'f':'r'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id));
   return fillCards(s,[...opening.map(id=>newGun(id,COAST_APPROACHES[id].label)),trial?trialCard(trial):rank]);
  }
+ if(site?.opening)return fillCards(s,[rank,trial&&trialCard(trial)]);
  const key=site?.coastApproach;
+ if(preempt){
+  const gun={...newGun(key,'전방 보급 선점'),title:`${GUNS[key].name} L${COAST_SALVAGE_LEVEL} 노획`,salvageLevel:COAST_SALVAGE_LEVEL};
+  return fillCards(s,[gun,rank]);
+ }
  const plan=coastStrikeForSite(s,site);
  const addStrike=cards=>plan?[...cards,{id:`coast:${key}`,kind:'coast-strike',key,title:plan.name,desc:plan.impact,label:'장갑 수송차 공략'}]:cards;
  const signature=pool.includes(site?.module)?{...moduleCard(site.module),label:'이 동선의 특화 모듈'}:null;
@@ -493,7 +504,7 @@ function deferOpeningUpgrade(s){
  if(s.operation?.region!==0||s.stage!=='field'||s.player.hp<s.player.maxHp*.45)return false;
  if(s.t<(s.openingFireUntil||0))return true;
  if(s.t>=RESCUE_FOCUS_SECONDS)return false;
- return s.sites.some(site=>site.opening&&['active','ready'].includes(site.state)&&distance(site,s.player)<300);
+ return s.sites.some(site=>(site.opening||site.preempt)&&['active','ready'].includes(site.state)&&distance(site,s.player)<300);
 }
 export function canOpenLevel(s){
  return s.phase==='playing'&&s.player.hp>0&&s.pendingLevels>0&&!s.queue.length&&!deferOpeningUpgrade(s);
@@ -580,7 +591,8 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
   if(s.weapons.length>=3||Number.isInteger(slot)&&slot>=0){const old=s.weapons[slot];if(!old||old.evolved||old.fusion)return false;w.level=gunEquipLevel(s,c,old);if(w.level>=4){if(!GUNS[w.id].branches[branch])return false;w.branch=branch;}if(s.refits>0&&s.stage==='field')s.refits--;w.uid=`w-${++s.id}`;s.weapons[slot]=w;}else{w.level=gunEquipLevel(s,c);w.uid=`w-${++s.id}`;s.weapons.push(w);}
   if(!s.firstNew)s.firstNew=w.id;
   if(isCoastTacticalLoot(c))s.operation.coastStrike=w.id;
-  if(s.operation?.region===0&&s.choice.opening)s.openingFireUntil=s.t+OPENING_WEAPON_SECONDS;
+  if(s.choice.preempt)s.stats.coastPreempt=w.id;
+  if(s.operation?.region===0&&(s.choice.opening||s.choice.preempt))s.openingFireUntil=s.t+OPENING_WEAPON_SECONDS;
  }
  else if(c.kind==='evolve'){if(!assemblyOptions(s).some(o=>o.id===id))return false;const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion&&!w.evolved);w.evolved=true;s.tuning--;buildCompleted(s,'single',{weapon:w.id});}
  else if(c.kind==='fusion'){
@@ -629,7 +641,7 @@ export function choose(s,id,{branch,slot,doctrine,weapon}={}){
 }
 export function reroll(s){
  const type=s.choice?.type;
- if(s.phase!=='choice'||s.choice?.opening||!['level','supply','armory','raid-reward'].includes(type)||s.rerolls<=0)return false;
+ if(s.phase!=='choice'||s.choice?.opening||s.choice?.preempt||!['level','supply','armory','raid-reward'].includes(type)||s.rerolls<=0)return false;
  s.rerolls--;
  if(type==='level')s.choices=levelCards(s);
  else if(type==='supply'){
@@ -641,7 +653,7 @@ export function reroll(s){
  }
  return true;
 }
-export function banishOptions(s){if(s.phase!=='choice'||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!isCoastTacticalLoot(c)&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&(!moduleRank(s,id)||c.support)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
+export function banishOptions(s){if(s.phase!=='choice'||s.choice.preempt||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!isCoastTacticalLoot(c)&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&(!moduleRank(s,id)||c.support)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
 export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)return false;const target=c.kind==='gun'?c.weapon:c.module;if(!moduleRank(s,target))s.excluded.push(target);s.banishes--;
  if(c.kind==='gun')s.choices=s.choices.filter(card=>!(isCoastTacticalLoot(card)&&card.weapon===target));
  const index=s.choices.indexOf(c);
@@ -1713,9 +1725,10 @@ function updateSites(s,dt){
   if(dock&&s.stage!=='field')continue;
   const garrison=s.operation?.region===1?railGarrison(site):null,wire=wireGarrison(s,site);
   const approach=dock?PORT_LANDING:garrison||wire||coastApproach(site);
-  if(site.coastApproach&&s.sites[0].state!=='done')continue;
+  if(site.coastApproach&&s.sites[0].state!=='done'&&!site.preempt&&!s.stats.coastPreempt)continue;
   if(site.state==='waiting'&&distance(site,s.player)<(approach?.range??215)){
-   const count=approach?.guards.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6),reserve=alive(s).length+count-160;
+   const guards=site.preempt&&site.coastApproach==='f'?COAST_PREEMPT_ESCORT:approach?.guards;
+   const count=guards?.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6),reserve=alive(s).length+count-160;
    if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets?.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}
    if(alive(s).length+count>160)continue;
    site.state='active';
@@ -1724,8 +1737,8 @@ function updateSites(s,dt){
    for(let i=0;i<count;i++){
     const angle=i*TAU/6;
     const guard=site.kind==='armory'&&i===0?'officer':i===1&&!site.opening?'shield':'rifle';
-    const [type,x,y]=approach?approach.guards[i]:[guard,Math.cos(angle)*85,Math.sin(angle)*65];
-    const extra=cohort?{cohort}:{};
+    const [type,x,y,hp]=guards?guards[i]:[guard,Math.cos(angle)*85,Math.sin(angle)*65];
+    const extra={...(cohort?{cohort}:{}),...(hp?{hp,maxHp:hp}:{})};
     if(wire&&type==='mortar')extra.timer=.8;
     if(site.coastPlan==='split'&&site.coastApproach==='f')extra.coastWing=Math.sign(x);
     if(site.coastApproach==='r'&&approach.firstSalvo){
@@ -1742,6 +1755,7 @@ function updateSites(s,dt){
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
   if(site.state==='ready'&&distance(site,s.player)<SITE_PICKUP_RANGE){
    if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'&&f.age<COAST_MORTAR.volleyBeat))continue;
+   const preempt=coastPreemptSite(s)===site&&site.preempt===true;
    site.state='done';
    if(s.operation?.region===0&&s.operation.order==='wire'&&site.id==='arsenal'){
     s.operation.orderDone=true;
@@ -1755,7 +1769,7 @@ function updateSites(s,dt){
    if(site.kind==='control'||site.kind==='relay'&&s.operation?.region===1)openChoice(s,'control',frontControlCards(s),site.name);
    else if(site.kind==='armory'){const quality=rollQuality(s,'normal');openChoice(s,'armory',armoryCards(s,quality),site.name,{quality,siteId:site.id});}
    else if(site.id==='rail-cache'&&s.operation?.region===1)openChoice(s,'rail-workshop',railWorkshopPlan(s).cards,site.name);
-   else openChoice(s,'supply',supplyCards(s,site),site.name,site.opening?{opening:true}:site.coastApproach?{siteId:site.id}:{});
+   else openChoice(s,'supply',supplyCards(s,site,preempt),site.name,site.opening&&!s.stats.coastPreempt?{opening:true}:site.coastApproach||site.opening?{siteId:site.id,...(preempt?{preempt:true}:{})}:{});
    return;
   }
  }
@@ -2001,6 +2015,9 @@ function startChallenge(s){
 export function interaction(s){
  if(s.phase!=='playing'||s.player.hp<=0)return null;
  if(railDecoyReady(s))return {id:'rail-decoy',label:railHasRelay(s)?'조준 유인':'암호로 조준 유인'};
+ const preempt=coastPreemptSite(s);
+ if(preempt?.state==='waiting'&&!preempt.preempt&&distance(s.player,preempt)<COAST_PREEMPT_RANGE&&!lineBlocked(s,s.player,preempt))
+  return {id:'coast-preempt',site:preempt,label:`기습 · ${GUNS[preempt.coastApproach].short} L${COAST_SALVAGE_LEVEL} 노획`};
  const gantry=portGantry(s),partStaging=portPartStaging(s);
  if(gantry&&distance(s.player,gantry)<64)return{id:'boss',gantry,blocked:s.raid?.state==='active',label:'측면 해치 · 기습 진입'};
  if(partStaging&&distance(s.player,partStaging)<partStaging.r)
@@ -2095,6 +2112,7 @@ export function action(s,kind,input){
  if(kind==='challenge')return startChallenge(s);
  if(kind==='interact'){
   const item=interaction(s);if(!item||item.blocked)return false;
+  if(item.id==='coast-preempt'){item.site.preempt=true;return true;}
   if(item.id==='extract'){if(s.operation)openChoice(s,'clear',exitCards(s),'열린 출구');else finish(s,true);return true;}
   if(item.id==='signal-cargo'){s.stats.signalOutcome='recovered';completeChallenge(s,s.challenge,s.challenge.tier);return true;}
   if(item.id==='rail-decoy'){

@@ -413,6 +413,17 @@ const BEACH_ROUTES=[
  {name:'벙커 횡단',gun:'f',points:[[1000,890],[555,875],[355,450],[1230,645]]}
 ];
 export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
+export const COAST_PREEMPT_RANGE=155;
+export const COAST_PREEMPT_ESCORT=[['shield',0,35,42],['rifle',-47,-22],['rifle',47,-22]];
+export function coastPreemptGun(seed){
+ const [,truck,,battery]=beachRoute(seed).points;
+ const gap=([x,y])=>Math.hypot(x-800,y-1040);
+ return gap(truck)<gap(battery)?'f':'r';
+}
+export function coastPreemptSite(s){
+ if(s.operation?.region!==0||s.stage!=='field'||s.operation.order||s.operation.requisition||s.operation.trialProof||s.trials?.length||s.firstNew||s.sites[0]?.state==='done')return null;
+ return s.sites.find(site=>site.coastApproach===coastPreemptGun(s.seed)&&site.state!=='done')||null;
+}
 export const COAST_APPROACHES={
  f:{name:'이동 보급차',label:'화염 · 근접 돌파',formation:'밀집 호위',hint:'붙어서 호위를 함께 태우기',module:'catalyst',range:215,
   guards:[['shield',0,54],['rifle',-33,26],['rifle',33,26],['rifle',-40,-13],['rifle',40,-13],['rifle',0,-30]]},
@@ -476,6 +487,8 @@ export function claimedCoastLead(s){
 export function coastLead(s){
  if(s.operation?.region!==0||s.stage!=='field')return null;
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
+ const preempt=coastPreemptSite(s);
+ if(preempt&&(distance(preempt,s.player)<COAST_PREEMPT_RANGE||preempt.preempt&&distance(preempt,s.player)<260))return preempt;
  if(rescue)return rescue;
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
  const needsCoil=s.firstNew==='f'&&!s.modules.some(m=>m.id==='coil');
@@ -515,6 +528,10 @@ export function coastShieldImpact(s,site){
 export function coastEncounterCue(s,site,volley,counter){
  const approach=coastApproach(site);
  if(!approach)return null;
+ if(coastPreemptSite(s)===site){
+  if(site.state==='waiting')return site.preempt?'경비 접근 중':`${site.coastApproach.toUpperCase()} L${COAST_SALVAGE_LEVEL} · 기습 가능`;
+  if(site.state==='ready')return `${site.coastApproach.toUpperCase()} L${COAST_SALVAGE_LEVEL} · 접근해 노획`;
+ }
  if(site.state==='ready'){
   if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'))return '로켓 한 발 · 두 문 제압';
   const salvage=coastCrossGun(s,site);
