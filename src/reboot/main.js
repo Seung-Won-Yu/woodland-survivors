@@ -1,12 +1,12 @@
 import {OPERATORS,operatorOf,operatorId,skillRules,canUseSkill,chargeLabel} from './operator.js';
 import {createOperationPlan} from './operation-plan.js';
-import {choiceDetails,growthForecast,isQuickMod,gateContractDetails} from './choice-details.js';
+import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractDetails} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview} from './field-scene.js';
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,portBreachFlank,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portRakeReady,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,region,operationCredits,railBarragePreview,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
-import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,evolutionParts,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName} from './content.js';
+import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
@@ -51,7 +51,41 @@ function showSettings(){if(!settingsOrigin)settingsOrigin={mode,scroll:ui.scroll
 function closeSettings(){const origin=settingsOrigin;settingsOrigin=null;subpanel=origin?.subpanel||null;nextPanelFocus={scroll:origin?.scroll||0,selector:'[data-action="settings-menu"]'};if(mode==='home')showHome();else present(true);}
 function showRetreat(fromHome=false){subpanel={type:'retreat',fromHome};const secured=operationCredits({operation:run.operation,stats:run.stats,won:false}),cleared=run.operation?.cleared||0;panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="retreat-title"><span class="eyebrow">작전 종료</span><h2 id="retreat-title">확보한 성과로 귀환할까요?</h2><p>${cleared}/3 전선 돌파 · ${fmt(run.t)} · LV.${run.level}<br>지금 귀환하면 <strong>${secured}C</strong>를 정산합니다. 이번 무장과 레벨은 다음 판에 초기화됩니다.</p><p class="inline-note">${run.raid?.state==='active'?'진행 중인 습격과 걸었던 상자는 포기합니다. ':''}최종 보스 뒤 출구로 탈출해야 완주로 기록됩니다.</p><div class="buttons"><button class="primary" data-action="retreat-cancel">작전 유지</button><button class="danger" data-action="retreat-confirm">종료하고 ${secured}C 정산</button></div></section>`);}
 
-function choiceCards(cards=run.choices){return cards.map((c,i)=>{const d=choiceDetails(run,c),forecast=d.blocked?null:growthForecast(run,c),art=d.art?itemArt(d.art):`<span class="module-engraving">${moduleIcon(c.module||(({advance:'route',extract:'extract',stay:'stay'})[c.kind]||'gear'))}</span>`;return `<button class="upgrade-card ${['evolve','fusion'].includes(c.kind)?'capstone':''}" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}${c.trial?' data-trial="true"':''}${c.workshopFinish?' data-finish="true"':''}><span class="upgrade-category">${esc(c.label||'전술 결정')}</span>${i<9?`<kbd>${i+1}</kbd>`:''}<span class="upgrade-illustration">${art}</span><span class="upgrade-copy"><h3>${esc(d.title)}</h3><strong class="upgrade-impact">${esc(d.impact)}</strong>${d.detail?`<span class="upgrade-detail">${esc(d.detail)}</span>`:''}</span>${d.before?`<span class="upgrade-levels" aria-label="레벨 ${d.before}에서 ${d.after}로">${Array.from({length:6},(_,i)=>`<i class="${i<d.before?'owned':i<d.after?'added':''}"></i>`).join('')}<b>L${d.before} → ${d.after}</b></span>`:''}<span class="upgrade-link${forecast?` forecast-${forecast.kind}`:''}">${esc(forecast?.text||d.link)}</span><span class="upgrade-cost">${esc(d.cost)}</span><span class="install-label">${c.kind==='back'?'돌아가기':['advance','stay','extract'].includes(c.kind)?'결정':c.kind==='permit'?'확보':c.kind==='resupply'?'보급 받기':'장착'} <span>↵</span></span></button>`;}).join('');}
+const isCapstone=c=>c.kind==='evolve'||c.kind==='fusion';
+function choiceKey(c){
+ const key=run.choices.indexOf(c)+1;
+ return key>0&&key<=9?`<kbd>${key}</kbd>`:'';
+}
+function choiceCards(cards){
+ return cards.map(c=>{
+  const d=choiceDetails(run,c),forecast=d.blocked?null:growthForecast(run,c);
+  const art=d.art?itemArt(d.art):`<span class="module-engraving">${moduleIcon(c.module||({advance:'route',extract:'extract',stay:'stay'})[c.kind]||'gear')}</span>`;
+  const consequence=d.consequence?.length?`<span class="upgrade-consequence">${d.consequence.map(note=>`<small>${esc(note)}</small>`).join('')}</span>`:'';
+  const levels=d.before?`<span class="upgrade-levels" aria-label="레벨 ${d.before}에서 ${d.after}로">${Array.from({length:6},(_,i)=>`<i class="${i<d.before?'owned':i<d.after?'added':''}"></i>`).join('')}<b>L${d.before} → ${d.after}</b></span>`:'';
+  const verb=({evolve:'진화',fusion:'합체',advance:'결정',stay:'결정',extract:'결정',permit:'확보',resupply:'보급 받기'})[c.kind]||'장착';
+  return `<button class="upgrade-card${isCapstone(c)?' capstone':''}" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}${c.trial?' data-trial="true"':''}${c.workshopFinish?' data-finish="true"':''}>
+   <span class="upgrade-category">${esc(c.label||'전술 결정')}</span>${choiceKey(c)}<span class="upgrade-illustration">${art}</span>
+   <span class="upgrade-copy"><h3>${esc(d.title)}</h3><strong class="upgrade-impact">${esc(d.impact)}</strong>${d.detail?`<span class="upgrade-detail">${esc(d.detail)}</span>`:''}</span>
+   ${levels}<span class="upgrade-link${forecast?` forecast-${forecast.kind}`:''}">${esc(forecast?.text||d.link)}</span>${consequence}
+   <span class="upgrade-cost">${esc(d.cost)}</span><span class="install-label">${verb} <span>↵</span></span>
+  </button>`;
+ }).join('');
+}
+function choiceDeck(cards){
+ return `<div class="upgrade-deck${cards.length===2?' two-options':''}">${choiceCards(cards)}</div>`;
+}
+function assemblyMaintenance(cards){
+ if(!cards.length)return '';
+ const rows=cards.map(c=>{
+  const d=choiceDetails(run,c),forecast=growthForecast(run,c);
+  return `<button class="maintenance-row" data-choice="${esc(c.id)}">
+   ${choiceKey(c)}<span><b>${esc(d.title)}</b><small>${esc(d.impact)}${d.detail?` · ${esc(d.detail)}`:''}</small>
+   ${forecast?`<small class="forecast-${forecast.kind}">${esc(forecast.text)}</small>`:''}</span>
+   <small class="maintenance-cost">${c.kind==='maneuver'?'무료':'조율권 1개'}</small>
+  </button>`;
+ });
+ return `<div class="assembly-maintenance" role="group" aria-label="기타 정비">${rows.join('')}</div>`;
+}
 function equippedFeedback(c,d,openingGun,heatActivated){
  if(!['rank','gun','module','tune','repair','evolve','fusion','maneuver','permit','resupply','front-support','cargo','calibrate','coast-strike'].includes(c.kind))return;
  equippedUntil=performance.now()+1900;
@@ -86,7 +120,7 @@ function gatePreparationView(){
  const recipes=buildPaths(run);
  const target=recipes.find(p=>p.id===(run.firstNew==='f'?'evolve:f':run.firstNew==='r'?'fusion:h:r':'evolve:h'));
  const equipped=run.weapons.find(w=>w.evolved&&(w.id===run.firstNew||w.fusion?.secondary===run.firstNew));
- const installed=equipped?.fusion?`전도 격발망 ${GUNS[equipped.id].short}+${GUNS[equipped.fusion.secondary].short}`:equipped?GUNS[equipped.id].evolution:recipes.find(p=>p.complete&&p.id!=='heat')?.title;
+ const installed=equipped?.fusion?fusionTitle(equipped.id,equipped.fusion.secondary,equipped.fusion.branch):equipped?capstoneName(equipped):recipes.find(p=>p.complete&&p.id!=='heat')?.title;
  const remaining=!equipped&&target?.missing&&(target.remaining===1&&target.status==='progress'||target.status==='permit')?target:null;
  const capstones=prep.capstones;
  const build=capstones.length
@@ -117,16 +151,26 @@ function showChoices(){
  const coastOptions=run.choices.some(c=>c.kind==='coast-strike');
  const salvage=run.choices.find(c=>c.salvageLevel);
  const type=run.choice.type,quick=isQuickMod(run),atGate=type==='clear'&&!!run.operation,atPursuit=type==='pursuit-reward',workshop=type==='rail-workshop',title=({level:'야전 개조',supply:run.choice.opening?'첫 무장을 골라라':salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:run.operation&&run.operation.region<2?'다음 전선이 열렸다':'작전 목표 달성',control:run.choices.some(c=>c.infernoRank)?'전술과 정비 중 선택':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
- const gateAssembly=type==='assembly'&&run.choice.gatePrep,gateLevel=type==='level'&&run.choice.gatePrep;
- const cards=gateAssembly?run.choices.filter(c=>c.kind!=='back'):run.choices;
- const quality=run.choice.quality,receipt=type==='raid-reward'?`<div class="loot-receipt"><span>걸었던 ${QUALITY[run.choice.wagerQuality]||'기존'} 상자</span><b>→ ${QUALITY[quality]} 보급 탈취</b><small>${run.choice.contract==='light'?'보급차 작업대 · 무기의 발사 방식을 바꿀 기회':'장갑 수송대 · 미완성 병기의 부품을 노린다'}</small></div>`:'',paths=type==='assembly'&&!gateAssembly?workshopBlueprints():'';
+ const assembly=type==='assembly',gateAssembly=assembly&&run.choice.gatePrep,gateLevel=type==='level'&&run.choice.gatePrep;
+ const back=assembly?run.choices.find(c=>c.kind==='back'):null;
+ const capstones=assembly?run.choices.filter(isCapstone):[];
+ const other=assembly?run.choices.filter(c=>c!==back&&!isCapstone(c)):[];
+ const quality=run.choice.quality,receipt=type==='raid-reward'?`<div class="loot-receipt"><span>걸었던 ${QUALITY[run.choice.wagerQuality]||'기존'} 상자</span><b>→ ${QUALITY[quality]} 보급 탈취</b><small>${run.choice.contract==='light'?'보급차 작업대 · 무기의 발사 방식을 바꿀 기회':'장갑 수송대 · 미완성 병기의 부품을 노린다'}</small></div>`:'',paths=assembly&&!gateAssembly?workshopBlueprints():'';
  const orderArmory=type==='armory'&&run.choice.siteId==='arsenal'&&run.operation?.region===0&&run.operation.order==='convoy'&&!run.raidUsed;
  const gateIntel=atGate?`<div class="gate-intel"><span><small>돌파 전선</small><b>${esc(region(run).name)}</b></span><span><small>목적지</small><b>${esc(REGIONS[run.operation.region+1]?.name||'작전실')}</b></span><span><small>미회수 XP</small><b>${groundXp(run)}</b></span></div>`:'';
- const tools=atGate?gateIntel+gatePace(run.operation,profile().active?.reference)+gatePreparationView():run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools"><span>공격 ${run.weapons.length}/3 · 모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</span><div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>`:''}</div></div>`;
- const lead=gateLevel?'개조 한 번을 확정하면 게이트로 돌아갑니다.':gateAssembly?'조립을 마치면 같은 전진 게이트로 돌아갑니다.':type==='level'?(run.pendingLevels?`이번 개조를 골라 장착하세요. 대기 중인 개조 ${run.pendingLevels}회는 전장에 남습니다.`:'한 가지를 골라 전투에 바로 투입하세요.'):atGate?(run.operation.region<2?'전진하거나 현장에 남아 XP를 회수하세요.':'귀환하거나 남아서 추가 점수를 노리세요.'):workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':coastOptions?'무장을 강화하거나 보스 공략을 고르세요.':salvage?`${run.choice.source} · 빈 무기 칸에 L${salvage.salvageLevel} 장착`:type==='assembly'?'조립과 정비에 쓸 조율권을 배분하세요.':run.choice.opening?`${beachRoute(run.seed).name} · 현재 위치 기준`:run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차');
+ const currentKit=type==='level'?`<span class="draft-loadout" aria-label="보유 무장">${run.weapons.map(w=>`<b>${GUNS[w.id].short}${w.fusion?`+${GUNS[w.fusion.secondary].short}`:` L${w.level}`}</b>`).join('')}<small>모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</small></span>`
+  :`<span>공격 ${run.weapons.length}/3 · 모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</span>`;
+ const tools=atGate?gateIntel+gatePace(run.operation,profile().active?.reference)+gatePreparationView():assembly||run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools">${currentKit}<div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>`:''}</div></div>`;
+ const lead=gateLevel?'개조를 확정하면 게이트로 돌아갑니다.':type==='level'?(run.pendingLevels?`대기 개조 ${run.pendingLevels}회 · 전장에서 이어서 사용`:''):atGate?(run.operation.region<2?'전진하거나 현장에 남아 XP를 회수하세요.':'귀환하거나 남아서 추가 점수를 노리세요.'):workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':coastOptions?'무장을 강화하거나 보스 공략을 고르세요.':salvage?`${run.choice.source} · 빈 무기 칸에 L${salvage.salvageLevel} 장착`:assembly?'':run.choice.opening?`${beachRoute(run.seed).name} · 현재 위치 기준`:run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차');
  const gateNote=run.pendingLevels?run.operation?.region===2?`귀환 시 미사용 개조 ${run.pendingLevels}회 소멸`:`대기 개조 ${run.pendingLevels}회 · 전진하면 이월`:'잔류하면 증원군이 강해집니다. 게이트는 계속 열려 있습니다.';
- const deck=atGate?gateChoices():`<div class="upgrade-deck${cards.length===2?' two-options':''}">${choiceCards(cards)}</div>`;
- panel(`<section class="sheet field-menu${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title"><header><div><span class="eyebrow">${type==='level'?`LV.${run.level} · 현장 정비`:type==='assembly'?'병기 조립':type==='clear'?'게이트 통과':atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2><p>${esc(lead)}</p></div><span class="paused">${atGate?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>${coastOptions?'':tools}${doctrineChoices()}${receipt}${paths}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${deck}${coastOptions?tools:''}<footer class="choice-footer"><small>${gateAssembly?'조립 한 번에 조율권 1개를 사용합니다.':type==='assembly'?`조율권 ${run.tuning}개 · ${run.tuning?'정비와 진화가 같은 조율권을 사용합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 1개를 확보합니다.':'중간 보스의 조율권을 모두 사용했습니다.'}`:type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'화물을 정산하거나 후송 보급을 써서 더 버티세요.'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자'}</small><div class="buttons">${gateAssembly?`<button data-choice="back">게이트로 돌아가기 <kbd>${run.choices.length}</kbd></button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer></section>`);
+ const deck=atGate?gateChoices():assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:choiceDeck(run.choices);
+ const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'화물을 정산하거나 후송 보급을 써서 더 버티세요.'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
+ panel(`<section class="sheet field-menu${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+  <header><div><span class="eyebrow">${type==='level'?`LV.${run.level} · 현장 정비`:assembly?`조율권 ${run.tuning}개`:type==='clear'?'게이트 통과':atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+  ${coastOptions?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${deck}${coastOptions?tools:''}
+  <footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>
+  ${capstones.length?paths:''}
+ </section>`);
 }
 function showPause(){panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="pause-title"><span class="eyebrow">작전 일시정지</span><h2 id="pause-title">다음 한 수를 준비하라.</h2><p>${run.operation?`${run.operation.region+1}/3 ${region(run).name} · ${fmt(run.t)} · LV.${run.level}`:'전투 중'}<br>${run.stage==='holdout'?'게이트 개방. 남아서 XP를 회수하거나 게이트로 이동하세요.':region(run).mission}</p>${loadoutChips(run.weapons,run.modules)}<div class="pause-actions"><button class="primary" data-action="continue">전투 이어하기 ▶</button><button data-action="retreat">작전 정산</button></div><div class="pause-secondary">${run.raid?.state==='active'?'<button data-action="withdraw">습격 철수 · 건 상자 소실</button>':''}${run.stage==='holdout'&&(!run.challenge||run.operation&&['complete','failed'].includes(run.challenge.state))?`<button data-action="challenge">${holdoutContract(run).name} · D ${(run.operation?.challengeTier||0)+1}</button>`:''}<button class="text-button" data-action="settings-menu">환경 설정</button></div></section>`);}
 function showResult(r=run.result,archived=false){
@@ -162,18 +206,38 @@ function showRaid(){
  }).join('');
  panel(`<section class="sheet compact raid-brief" role="dialog" aria-modal="true" aria-labelledby="raid-title"><header><div><span class="eyebrow">무기고 · 선택 임무</span><h2 id="raid-title">수송대 습격</h2></div><span class="paused">Ⅱ 전투 정지</span></header><p>현재 <b>${QUALITY[run.choice.quality]} 보급</b>을 겁니다. 차량이 탈출하거나 철수하면 상자를 잃습니다.</p><div class="raid-brief-map">${raidPreview(run)}<div class="raid-legend"><span>● 현재 위치</span><span>○ 차량 출발</span><span>▥ 탈출 검문선</span></div></div><div class="raid-contracts">${contracts}</div><footer><small>장갑차는 완성 무장 권장 · 정면 탄환 피해 절반<br>정면 충돌 주의 · 확률은 성공 기준</small><button data-action="choice-back">현재 보급 유지</button></footer></section>`);
 }
+function branchOutcome(c,branch,args){
+ const result=branchBuildPreview(run,c,branch,args);
+ const forecast=growthForecast(run,c,{...args,branch});
+ const showForecast=forecast&&(forecast.kind==='cost'||forecast.ids?.includes('heat')||forecast.text.startsWith('열압 연계 발동'));
+ return `${result?`<span class="branch-outcome" data-state="${result.status}"><b>${esc(result.title)}</b><small>${esc(result.payoff)}</small><small class="branch-need">${esc(result.need)}</small></span>`:''}
+  ${showForecast?`<small class="forecast-${forecast.kind}">${esc(forecast.text)}</small>`:''}`;
+}
 function showBranches(c,args){
  subpanel={type:'branch',card:c,args};
- const branches=Object.entries(GUNS[c.weapon].branches).map(([id,[name,desc]])=>{
-  const forecast=growthForecast(run,c,{...args,branch:id});
-  const parts=evolutionParts({id:c.weapon},id).map(part=>`${MODULES[part].name} 2`).join(' 또는 ');
-  const materials=forecast?.text.includes(parts)?'':`<small>진화 재료 · ${parts}</small>`;
-  return `<button data-branch="${id}"><b>${name}</b><small>${desc}</small>${materials}${forecast?`<small class="forecast-${forecast.kind}">${esc(forecast.text)}</small>`:''}</button>`;
- }).join('');
- panel(`<section class="sheet compact branch-sheet" role="dialog" aria-modal="true" aria-labelledby="branch-title"><span class="eyebrow">${c.kind==='rank'?'야전 개조 · LV.4':'야전 개장 · 분화'}</span><h2 id="branch-title">${GUNS[c.weapon].name} · 분화</h2><p>발사 방식과 이어갈 조합을 고르세요.</p><div class="branch-list">${branches}</div><button data-action="choice-back">선택으로 돌아가기</button></section>`);
+ const gun=GUNS[c.weapon],rank=c.kind==='rank',level=rank?4:gunEquipLevel(run,c,run.weapons[args.slot]);
+ const branches=Object.entries(gun.branches).map(([id,[name,desc]])=>
+  `<button data-branch="${id}" data-branch-style="${id}">
+   <strong>${name}</strong><small>${desc}</small>${branchOutcome(c,id,args)}
+  </button>`).join('');
+ panel(`<section class="sheet branch-sheet" role="dialog" aria-modal="true" aria-labelledby="branch-title">
+  <header class="branch-heading">${itemArt(c.weapon)}<div><span class="eyebrow">${rank?'L3 → L4':`개장 · L${level}`}</span><h2 id="branch-title">${gun.name} 분화</h2></div><span class="paused">Ⅱ 정비 중</span></header>
+  <div class="branch-list branch-compare">${branches}</div>
+  <footer class="branch-footer"><button data-action="choice-back">← 후보로 돌아가기</button></footer>
+ </section>`);
 }
 function showRefits(c){
- subpanel={type:'refit',card:c};panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="refit-title"><span class="eyebrow">FIELD WORKSHOP</span><h2 id="refit-title">같은 투자, 다른 발사 방식.</h2><p>미완성 총 하나의 분화를 전환합니다. 무기 레벨·모듈·조율권은 그대로 유지됩니다.</p><div class="branch-list">${refitWeapons(run).map(w=>{const next=Object.keys(GUNS[w.id].branches).find(id=>id!==w.branch);const forecast=growthForecast(run,c,{weapon:w.id,branch:next});return `<button data-refit="${w.id}"><b>${GUNS[w.id].name} L${w.level} · ${GUNS[w.id].branches[next][0]}</b><small>${GUNS[w.id].branches[w.branch][0]} → ${GUNS[w.id].branches[next][0]}<br>${GUNS[w.id].branches[next][1]}</small>${forecast?`<small class="forecast-${forecast.kind}">${esc(forecast.text)}</small>`:''}</button>`;}).join('')}</div><button data-action="choice-back">취소 · 전리품으로 돌아가기</button></section>`);
+ subpanel={type:'refit',card:c};
+ const branches=refitWeapons(run).map(w=>{
+  const gun=GUNS[w.id],next=Object.keys(gun.branches).find(id=>id!==w.branch);
+  return `<button data-refit="${w.id}" data-branch-style="${next}"><strong>${gun.name} L${w.level}</strong>
+   <small>${gun.branches[w.branch][0]} → ${gun.branches[next][0]}</small>${branchOutcome(c,next,{weapon:w.id})}</button>`;
+ }).join('');
+ panel(`<section class="sheet branch-sheet" role="dialog" aria-modal="true" aria-labelledby="refit-title">
+  <header><div><span class="eyebrow">무기 레벨 유지</span><h2 id="refit-title">발사 방식 개장</h2></div><span class="paused">Ⅱ 정비 중</span></header>
+  <div class="branch-list branch-compare">${branches}</div>
+  <footer class="branch-footer"><button data-action="choice-back">← 전리품으로 돌아가기</button></footer>
+ </section>`);
 }
 function showSlots(c){
  subpanel={type:'slots',card:c};const gun=c.kind==='gun';
@@ -292,7 +356,7 @@ ui.addEventListener('change',async e=>{
   notice(error.message);
  }finally{setBusy(false);nextPanelFocus={selector:`[data-setting="${key}"]`};showSettings();}
 });
-ui.addEventListener('keydown',e=>{const dialog=ui.querySelector('[role="dialog"],[role="alertdialog"]');if(!dialog)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(launchPreparation){closePreparation(true);return;}if(busy||pending)return;if(subpanel?.type==='settings')closeSettings();else if(subpanel?.type==='replay-briefing')closeReplayBriefing();else if(subpanel?.type==='retreat'){if(subpanel.fromHome)showHome();else present(true);}else if(subpanel){nextPanelFocus=choiceOrigin;subpanel=null;present(true);}else if(run?.phase==='choice'&&run.choice.gatePrep&&run.choice.type==='assembly')selectCard('back');else if(mode==='report')closeArchivedReport();else if(run?.phase==='result'){lobbyTab='mission';showHome();}else if(run?.phase==='paused')pauseButton();return;}if(e.key==='Tab'){const nodes=[...dialog.querySelectorAll('button:not(:disabled),input,a[href],summary')].filter(n=>n.getClientRects().length);if(!nodes.length){e.preventDefault();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||!nodes.includes(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!nodes.includes(document.activeElement))){e.preventDefault();first.focus();}}});
+ui.addEventListener('keydown',e=>{const dialog=ui.querySelector('[role="dialog"],[role="alertdialog"]');if(!dialog)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(launchPreparation){closePreparation(true);return;}if(busy||pending)return;if(subpanel?.type==='settings')closeSettings();else if(subpanel?.type==='replay-briefing')closeReplayBriefing();else if(subpanel?.type==='retreat'){if(subpanel.fromHome)showHome();else present(true);}else if(subpanel){nextPanelFocus=choiceOrigin;subpanel=null;present(true);}else if(run?.phase==='choice'&&run.choice.type==='assembly')selectCard('back');else if(mode==='report')closeArchivedReport();else if(run?.phase==='result'){lobbyTab='mission';showHome();}else if(run?.phase==='paused')pauseButton();return;}if(e.key==='Tab'){const nodes=[...dialog.querySelectorAll('button:not(:disabled),input,a[href],summary')].filter(n=>n.getClientRects().length);if(!nodes.length){e.preventDefault();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||!nodes.includes(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!nodes.includes(document.activeElement))){e.preventDefault();first.focus();}}});
 ui.addEventListener('click',async e=>{
  const button=e.target.closest('button');if(!button||busy||pending&&!['retry','reload-latest'].includes(button.dataset.action))return;
  if(launchPreparation){if(button.dataset.action==='cancel-launch')closePreparation(true);return;}
@@ -449,7 +513,7 @@ function fieldEntry(s){
  const ranked=investment?.kind==='rank'?s.weapons.find(w=>w.id===investment.weapon&&!w.fusion):null;
  const material=ranked?`${GUNS[ranked.id].short} L${ranked.level+1}`
   :investment?.kind==='module'?`${MODULES[investment.module].name} +1`:'';
- const target=finish?.recipe.kind==='fusion'?'전도 합체':finish?.recipe.title;
+ const target=finish?.recipe.title;
  let sign='정비대 · 응급 보급',summary='정비대 · 체력·충전 회복',note='응급 보급으로 체력과 충전을 회복합니다.';
  if(finish){
   sign='정비대 · 조립 재료';
@@ -458,7 +522,7 @@ function fieldEntry(s){
   note=`${material} → ${target} · ${condition}`;
  }else if(calibration){
   const w=s.weapons.find(gun=>gun.uid===calibration.uid),change=railCalibration(s,w);
-  const title=w.fusion?'전도탄':GUNS[w.id].evolution;
+  const title=capstoneName(w);
   const branch=GUNS[change.gun].branches[change.to][0];
   sign='정비대 · 병기 개장';
   summary=`정비대 · ${branch} 개장`;

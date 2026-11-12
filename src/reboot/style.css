@@ -658,3 +658,88 @@
  .coast-salvage .choice-footer>small{display:none}
 }
 .coast-options .choice-tools{margin-top:12px;margin-bottom:0}
+
+.draft-loadout{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.draft-loadout>b{padding:3px 6px;border:1px solid #6e806b;background:#1c2e29;color:#f0dfb7;white-space:nowrap}
+.draft-loadout>small{font-size:inherit;margin-left:5px}
+.sheet.branch-sheet{max-width:704px;padding:22px 24px;background:#263533f5;border-color:#8d967d;border-top:3px solid #d8b876}
+.branch-sheet>header{align-items:center;margin:0 0 16px;gap:12px}
+.branch-sheet .branch-heading{display:grid;grid-template-columns:76px minmax(0,1fr) auto}
+.branch-heading>.kit-sprite{width:76px;height:64px;background-color:#1a2b2b;border:1px solid #617370}
+.branch-sheet .eyebrow{margin-bottom:4px}
+.branch-sheet h2{font-size:clamp(18px,3vw,25px);line-height:1.25}
+.branch-compare{margin:0;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.branch-compare:has(>button:only-child){grid-template-columns:1fr}
+.branch-compare>button{--branch-color:#a9d7d6;gap:6px;padding:14px;background:#2b3d3b;border:1px solid #6b807b;border-left:3px solid var(--branch-color)}
+.branch-compare>button:is([data-branch-style="grenade"],[data-branch-style="incendiary"],[data-branch-style="trail"]){--branch-color:#f1b67f}
+.branch-compare>button:hover{border-color:var(--branch-color);background:#354944}
+.branch-compare>button>strong{font-size:16px;color:var(--branch-color)}
+.branch-compare small{font-size:11px;line-height:1.5;word-break:keep-all}
+.branch-outcome{display:grid;gap:4px;width:100%;margin-top:2px;padding:9px 10px;background:#192d2b;border-top:1px solid #708279}
+.branch-outcome>b{font-size:13px;line-height:1.4;color:#f4e7c7}
+.branch-outcome .branch-need{font-size:10px;color:#b6c6b2}
+.branch-outcome[data-state="ready"] .branch-need{font-weight:700;color:#ffe09e}
+.branch-outcome[data-state="permit"] .branch-need{color:#f4bf9e}
+.branch-footer{margin-top:12px}
+.branch-footer button{font-size:11px;min-height:44px}
+.sheet.field-menu.assembly-menu{max-width:840px}
+.assembly-menu .upgrade-deck:has(>.upgrade-card:only-child){grid-template-columns:minmax(0,1fr)}
+.assembly-menu .upgrade-deck:has(>.upgrade-card:nth-child(4)){grid-template-columns:repeat(2,minmax(0,1fr))}
+.assembly-menu .upgrade-card{min-height:0}
+.assembly-menu .upgrade-illustration{height:85px}
+.assembly-menu .upgrade-illustration .kit-sprite{width:116px;height:116px}
+.upgrade-consequence{display:grid;gap:3px;padding:7px 9px;border-left:2px solid #d9a371;background:#251f1d7a;color:#ffe0b6}
+.upgrade-consequence>small{font-size:10px;line-height:1.5;word-break:keep-all}
+.assembly-maintenance{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:12px}
+.assembly-maintenance:has(>.maintenance-row:only-child){grid-template-columns:1fr}
+.maintenance-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:48px;padding:7px 9px;text-align:left;background:#2b3c36}
+.maintenance-row>span{grid-column:2}
+.maintenance-row kbd,.assembly-menu .choice-footer kbd{display:inline-grid;place-items:center;min-width:18px;padding:2px 3px;font:inherit;font-size:9px;border:1px solid #809078;color:#d9d4ae}
+.maintenance-row b{display:block;font-size:11px;color:#e6ddbd}
+.maintenance-row small{display:block;font-size:9px;line-height:1.45;color:#bbcab2}
+.maintenance-row .forecast-cost{color:#ffd1a9}
+.maintenance-row .forecast-ready{color:#ffe19e}
+.maintenance-cost{white-space:nowrap}
+.assembly-menu .choice-footer button{min-height:44px}
+.assembly-menu .choice-footer+.workshop-blueprints{margin:12px 0 0}
+@media(min-width:701px){
+ .sheet.assembly-menu:has(.upgrade-deck>.upgrade-card:only-child){max-width:708px}
+ .assembly-menu .upgrade-deck>.upgrade-card:only-child{display:grid;grid-template-columns:148px minmax(0,1fr);gap:6px 16px}
+ .assembly-menu .upgrade-deck>.upgrade-card:only-child>.upgrade-illustration{grid-area:1 / 1 / span 6;align-self:stretch;height:auto;margin:0;background:#1d302c;border:1px solid #708077}
+ .assembly-menu .upgrade-deck>.upgrade-card:only-child>:is(.upgrade-category,.upgrade-copy,.upgrade-link,.upgrade-consequence,.upgrade-cost,.install-label){grid-column:2}
+ .assembly-menu .upgrade-deck>.upgrade-card:only-child .upgrade-illustration .kit-sprite{width:146px;height:146px}
+}
+@media(max-width:700px){
+ .draft-loadout>small{flex-basis:100%;margin-left:0}
+ .field-menu.level-draft .choice-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
+ .field-menu.level-draft .choice-tools>div{gap:5px}
+ .field-menu.level-draft .choice-tools button{white-space:nowrap;min-height:44px;padding:7px 8px}
+ .field-menu.level-draft .upgrade-card{padding:8px 22px 8px 67px;gap:3px}
+ .field-menu.level-draft .upgrade-illustration{left:2px;top:18px;width:62px;height:63px}
+ .field-menu.level-draft .upgrade-illustration .kit-sprite{width:73px;height:73px}
+ .field-menu.level-draft :is(.upgrade-card h3,.upgrade-impact){line-height:1.3}
+ .field-menu.level-draft :is(.upgrade-detail,.upgrade-link,.upgrade-cost){line-height:1.45}
+ .field-menu.level-draft .choice-footer{margin-top:9px}
+ .sheet.branch-sheet{margin:auto 0;padding:14px}
+ .branch-sheet>header{margin-bottom:10px;gap:8px}
+ .branch-sheet .branch-heading{grid-template-columns:52px minmax(0,1fr) auto}
+ .branch-heading>.kit-sprite{width:52px;height:50px}
+ .branch-sheet .paused{font-size:8px}
+ .branch-compare{grid-template-columns:1fr;gap:7px}
+ .branch-compare>button{padding:9px 10px;gap:4px}
+ .branch-compare>button>strong{font-size:14px}
+ .branch-outcome{padding:6px 8px;gap:2px}
+ .branch-footer{margin-top:9px}
+ .assembly-menu .upgrade-deck,.assembly-menu .upgrade-deck:has(>.upgrade-card:nth-child(4)),.assembly-maintenance{grid-template-columns:1fr;gap:7px}
+ .assembly-menu .upgrade-card{padding:8px 22px 8px 68px;gap:4px}
+ .assembly-menu .upgrade-copy{gap:3px}
+ .assembly-menu .upgrade-category{padding-right:10px}
+ .assembly-menu .upgrade-illustration{left:1px;top:19px;width:65px;height:66px}
+ .assembly-menu .upgrade-illustration .kit-sprite{width:78px;height:78px}
+ .assembly-menu .upgrade-card kbd{right:7px;top:8px}
+ .assembly-menu .upgrade-card h3,.assembly-menu .upgrade-impact{line-height:1.3}
+ .assembly-menu .upgrade-cost{margin-top:0;padding-top:3px}
+ .assembly-menu .upgrade-consequence{padding:5px 7px}
+ .assembly-menu .choice-footer{margin-top:9px}
+ .maintenance-row{min-height:44px}
+}

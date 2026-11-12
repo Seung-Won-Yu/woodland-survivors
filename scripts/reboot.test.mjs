@@ -6,7 +6,7 @@ import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
-import {choiceDetails,growthForecast,gateContractDetails} from '../src/reboot/choice-details.js';
+import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
@@ -136,6 +136,52 @@ test('growth preview predicts the exact branch or rank without mutating the run'
  assert.ok(choose(s,flame.id));assert.ok(assemblyOptions(s).some(card=>card.id==='evolve:f'));
  action(s,'gear');const repair=s.choices.find(card=>card.kind==='repair');
  assert.equal(growthForecast(s,repair).text,'조율권을 쓰면 인페르노 대기');
+});
+test('rocket branch and refit previews identify the actual fusion and its next action',()=>{
+ const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});
+ s.weapons.push({...makeWeapon('r'),uid:'rocket',level:3});
+ s.modules=[{id:'coil',rank:2}];s.phase='choice';s.choice={type:'level'};
+ const [rank]=s.choices=[{id:'rank:r',kind:'rank',weapon:'r'}],before=snapshot(s);
+ assert.equal(growthForecast(s,rank).text,'두 분화 모두 H+R 합체 가능');
+ const tracked=branchBuildPreview(s,rank,'homing'),ignition=branchBuildPreview(s,rank,'incendiary');
+ assert.equal(tracked.title,'전도 격발망 H+R');
+ assert.match(tracked.payoff,/추적탄.*연쇄/);
+ assert.equal(ignition.title,'점화 격발망 H+R');
+ assert.match(ignition.payoff,/회피 유폭/);
+ assert.equal(ignition.status,'ready');
+ assert.deepEqual(snapshot(s),before);
+ assert.ok(choose(s,rank.id,{branch:'incendiary'}));
+ s.phase='choice';s.choice={type:'raid-reward'};
+ const [refit]=s.choices=[{id:'refit:field',kind:'refit'}];
+ assert.equal(branchBuildPreview(s,refit,'homing',{weapon:'r'}).title,tracked.title);
+ s.tuning=0;
+ assert.equal(branchBuildPreview(s,refit,'homing',{weapon:'r'}).need,'필요 · 조율권 1개');
+});
+test('assembly previews consumed weapons and competing permits before committing',()=>{
+ const s=quiet();Object.assign(s.weapons[0],{level:6,branch:'ricochet'});
+ s.weapons.push({...makeWeapon('r'),uid:'rocket',level:6,branch:'incendiary'},
+  {...makeWeapon('f'),uid:'flame',level:6,branch:'focused'});
+ s.modules=[{id:'coil',rank:2},{id:'ricochet',rank:2},{id:'catalyst',rank:2}];
+ action(s,'gear');
+ const machine=s.choices.find(c=>c.id==='evolve:h'),fusion=s.choices.find(c=>c.id==='fusion:h:r');
+ fusion.title='전도 격발망 H+R'; // An older checkpoint may still contain this title.
+ const before=snapshot(s),detail=choiceDetails(s,fusion);
+ assert.equal(detail.title,'점화 격발망 H+R');
+ assert.equal(detail.consequence[0],'현재 H·R 단일 진화 포기');
+ assert.match(detail.consequence.at(-1),/조율권 소진.*압축 인페르노.*대기/);
+ assert.equal(choiceDetails(s,machine).consequence[0],'현재 H로 H+R 합체 불가');
+ assert.deepEqual(snapshot(s),before);
+ const heat=restore(before);
+ heat.weapons[0].branch='grenade';heat.weapons.pop();
+ assert.equal(buildPaths(heat).find(path=>path.id==='heat').status,'ready');
+ assert.ok(choiceDetails(heat,fusion).consequence.includes('열압 연계 재료 부족'));
+ heat.modules.find(m=>m.id==='catalyst').rank=3;
+ assert.ok(choiceDetails(heat,fusion).consequence.includes('열압 연계 해제'));
+ s.tuning=2;
+ assert.deepEqual(choiceDetails(s,fusion).consequence,['현재 H·R 단일 진화 포기']);
+ assert.ok(choose(s,fusion.id));
+ assert.equal(buildPaths(s).find(p=>p.id.startsWith('installed:')).title,detail.title);
+ assert.ok(assemblyOptions(s).some(c=>c.title==='압축 인페르노'));
 });
 test('replacing a full module slot previews the recipe gained and the recipe lost',()=>{
  const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});

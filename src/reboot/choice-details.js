@@ -1,4 +1,4 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
 import {REGIONS,RESEARCH,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
@@ -43,7 +43,7 @@ function projectedGrowth(s,c,args,before){
  const gained=paths.filter(p=>!before.get(p.id)?.complete&&p.complete);
  if(gained.length)return {kind:'ready',text:`${gained[0].title} 발동${suffix}`};
  const ready=paths.filter(p=>!before.get(p.id)?.ready&&p.ready);
- if(ready.length)return {kind:'ready',text:ready.map(p=>`${p.title} ${p.id==='heat'?'조율로 발동 가능':'조립 가능'}`).join(' · ')+suffix};
+ if(ready.length)return {kind:'ready',ids:ready.map(p=>p.id),text:ready.map(p=>`${p.title} ${p.id==='heat'?'조율로 발동 가능':'조립 가능'}`).join(' · ')+suffix};
  if(lost){
   const reason=c.kind==='refit'?'개장하면':['module','gun'].includes(c.kind)?'교체하면':'조율권을 쓰면';
   return {kind:'cost',text:`${reason} ${lost}`};
@@ -64,10 +64,50 @@ export function growthForecast(s,c,args={}){
   const results=Object.entries(GUNS[weapon.id].branches).map(([branch,[name]])=>({name,result:projectedGrowth(s,c,{branch},before)}));
   const first=results[0].result;
   if(first&&results.every(({result})=>result?.text===first.text))return first;
+  if(weapon.id==='r'&&results.every(({result})=>result?.ids?.includes('fusion:h:r')))return {kind:'ready',text:'두 분화 모두 H+R 합체 가능'};
   const branch=results.find(({result})=>result?.kind==='ready');
   return branch?{kind:'progress',text:`${branch.name} 선택 시 ${branch.result.text}`}:null;
  }
  return projectedGrowth(s,c,args,before);
+}
+
+const branchPayoff={
+ h:{ricochet:'관통 실탄이 다른 적에게 도탄',grenade:'관통 실탄과 8회 사격마다 유탄'},
+ r:{homing:'다탄두가 움직이는 적을 추적',incendiary:'다탄두가 터진 자리에 연소 지대'},
+ f:{trail:'달린 자리에 불길 · 추격병을 불길로 유도',focused:'중거리에서 멈춰 항구 코어 직격'}
+};
+export function branchBuildPreview(s,c,branch,args={}){
+ const gun=c.weapon??args.weapon;
+ if(!Object.hasOwn(branchPayoff[gun]||{},branch))return null;
+ const draft=snapshot(s);
+ if(!choose(draft,c.id,{doctrine:draft.player.doctrine,...args,branch}))return null;
+ const paths=buildPaths(draft);
+ const own=paths.find(p=>p.id===`evolve:${gun}`);
+ const pair=gun!=='f'&&['h','r'].every(id=>draft.weapons.some(w=>w.id===id&&!w.evolved&&!w.fusion))
+  ?paths.find(p=>p.id==='fusion:h:r'&&p.status!=='blocked'):null;
+ const path=pair&&(pair.ready||!own?.ready&&pair.remaining<=own?.remaining)?pair:own;
+ if(!path)return null;
+ const payoff=path===pair
+  ?gun==='h'?`${GUNS.h.branches[branch][0]} 유지 · R 폭발 추가`
+   :branch==='incendiary'?'화약 원을 지나 회피 유폭':'추적탄으로 떨어진 무리까지 연쇄'
+  :branchPayoff[gun][branch];
+ const need=path.ready?'분화 후 조립 가능':`필요 · ${[path.missing,path.status==='progress'&&!draft.tuning?'조율권 1개':''].filter(Boolean).join(' · ')}`;
+ return {title:path.title,payoff,status:path.status,need};
+}
+
+function assemblyConsequence(s,c){
+ if(s.phase!=='choice'||s.choice?.type!=='assembly')return [];
+ const draft=snapshot(s);
+ if(!choose(draft,c.id))return [];
+ const before=buildPaths(s),after=new Map(buildPaths(draft).map(path=>[path.id,path]));
+ const lock=c.kind==='evolve'&&['h','r'].includes(c.weapon);
+ const delayed=before.filter(path=>path.ready&&after.get(path.id)?.status==='permit');
+ const heatBefore=before.find(path=>path.id==='heat'),heatAfter=after.get('heat');
+ const heatCost=heatBefore?.complete&&!heatAfter?.complete?'열압 연계 해제'
+  :heatBefore?.ready&&heatAfter?.status==='progress'?'열압 연계 재료 부족':'';
+ return [c.kind==='fusion'?`현재 ${GUNS[c.primary].short}·${GUNS[c.secondary].short} 단일 진화 포기`:lock?`현재 ${GUNS[c.weapon].short}로 H+R 합체 불가`:'',
+  heatCost,
+  delayed.length?`조율권 소진 · ${delayed.map(path=>path.title).join(' · ')} 대기`:''].filter(Boolean);
 }
 
 export function choiceDetails(s,c){
@@ -78,7 +118,7 @@ export function choiceDetails(s,c){
   out.detail=c.desc||'';const hp=RULES.enemies.rifle.hp*(s.operation?[1,1.35,1.8][s.operation.region]:1)*1.05**Math.min(s.pressure,12),power=1+s.boosts.power*.01,before=Math.ceil(hp/(a.damage*power)),after=Math.ceil(hp/(b.damage*power));
   if(w.id==='h'&&before!==after&&!(s.operation&&s.stage==='holdout'&&holdoutTier(s.holdTime)))out.detail=`일반병 직격 ${before} → ${after}발 · 피해 ${num(a.damage)} → ${num(b.damage)}`;
   const modules=evolutionParts(w).map(id=>`${MODULES[id].name}2`).join(' 또는 ');
-  out.link=out.after<4?`L4 분화까지 ${4-out.after}회 강화`:out.after===4?'다음 화면에서 발사 방식을 고릅니다.':`진화 · L6 + ${modules} + 조율권1`;
+  out.link=out.after<4?`L4 분화까지 ${4-out.after}회 강화`:out.after===4?Object.values(GUNS[w.id].branches).map(([name])=>name).join(' / '):`진화 · L6 + ${modules} + 조율권1`;
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
  }else if(c.kind==='gun'){
   out.title=GUNS[c.weapon].name;out.impact=c.weapon==='r'?'무리째 날리는 광역 폭발':c.weapon==='f'?'가까운 적을 태우는 부채 화염':'끊임없이 쏟는 실탄 연사';out.detail=c.weapon==='r'?'높은 한 발 피해 · 느린 발사':c.weapon==='f'?'연소를 남겨 폭발 연계를 준비':'도탄 또는 유탄으로 분화';out.link=`L4 · ${Object.values(GUNS[c.weapon].branches).map(b=>b[0]).join(' / ')}`;out.cost=s.weapons.length<3?`새 총 L${1+(s.operation?.region||0)} · 공격 한 칸 사용`:s.refits>0&&s.stage==='field'?'기존 총 교체 · 무료 개장으로 L5까지 유지':'기존 총 교체 · 투자 일부 이전';
@@ -107,7 +147,7 @@ export function choiceDetails(s,c){
   const change=installed&&railCalibration(s,installed);
   if(change){
    const branches=GUNS[change.gun].branches;
-   out.title=installed.fusion?capstoneName(installed):GUNS[installed.id].evolution;
+   out.title=capstoneName(installed);
    out.impact=`${branches[change.from][0]} → ${branches[change.to][0]}`;
    if(installed.fusion){
     out.detail=change.to==='incendiary'?'보병 둘이 모이면 자동 유폭 · 한 명이면 원 안을 이동하며 회피해 점화':'살아 있는 표적을 추적하고 한 폭발로 둘을 잡으면 도약합니다.';
@@ -121,11 +161,15 @@ export function choiceDetails(s,c){
    out.cost='완성·투자 유지 · 귀환까지 적용';
   }
  }else if(c.kind==='evolve'){
-  out.impact=c.weapon==='f'?w.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
-  out.link=c.weapon==='f'?w.branch==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'달린 자리에 불길 · 추격병을 불길로 유도':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
+  if(w)out.title=capstoneName(w);
+  out.impact=c.weapon==='f'?w?.branch==='focused'?'멀리 닿는 고열 분사':'지나간 전선에 화염 장판':c.weapon==='h'?'동시 사격 · 탄환 첫 표적 관통':'다탄두가 여러 무리를 폭격';
+  out.link=c.weapon==='f'?w?.branch==='focused'?'항구 재장전 중 · 중거리에서 멈춰 코어 직격':'달린 자리에 불길 · 추격병을 불길로 유도':'강화한 모듈과 발사 방식을 유지합니다.';if(c.weapon==='f')out.detail='진화 후 밀집 보병이 접근합니다.';out.cost='조율권 1개 사용';
+  out.consequence=assemblyConsequence(s,c);
  }else if(c.kind==='fusion'){
-  const incendiary=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch==='incendiary';
+  const branch=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch,incendiary=branch==='incendiary';
+  out.title=fusionTitle(c.primary,c.secondary,branch);
   out.art=c.primary;out.impact=incendiary?'보병 둘이 모이면 자동 유폭':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'보병 한 명이면 화약 원 안을 이동하며 회피해 점화':'합체 직후 첫 연쇄탄 장전 · 보병 두 무리씩 접근';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
+  out.consequence=assemblyConsequence(s,c);
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){

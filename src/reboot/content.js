@@ -14,9 +14,11 @@ export const GUNS={
  f:{name:'화염방사기 F',short:'F',color:'#ff7148',branches:{trail:['연료 살포','움직인 자리에 화염 지대를 남깁니다.'],focused:['압축 분사','더 멀리, 좁고 강하게 분사합니다.']},evolution:'인페르노'}
 };
 export function capstoneName(w){
- if(w.fusion)return w.fusion.branch==='incendiary'?'점화 격발망':'전도 격발망';
+ if(w.fusion)return fusionName(w.fusion.branch);
  return w.id==='f'&&w.branch==='focused'?'압축 인페르노':GUNS[w.id].evolution;
 }
+const fusionName=branch=>branch==='incendiary'?'점화 격발망':branch==='homing'?'전도 격발망':'격발망';
+export const fusionTitle=(primary,secondary,branch)=>`${fusionName(branch)} ${GUNS[primary].short}+${GUNS[secondary].short}`;
 export const MODULES={
  medic:{name:'응급 주사기',color:'#b9d697',desc:'정예를 처치해 생존을 회수합니다.',detail:()=> '정예 처치 체력+12 · 재사용12초'},
  shrapnel:{name:'분열 수류탄',color:'#ffca88',desc:'로켓·유탄과 합체 연쇄탄이 작은 파쇄 폭발 3개로 번집니다.',detail:()=> '파쇄 피해20×3 · 재사용0.65초 · 추가 발동 없음'},
@@ -83,11 +85,10 @@ export function buildPaths(state){
  const {tuning,weapons}=state;
  const paths=weapons.filter(w=>!w.fusion).map(w=>{
   const materials=[gunRequirement(w.id,w,6),moduleRequirement(state,evolutionParts(w),2)];
-  return recipe(`evolve:${w.id}`,GUNS[w.id].evolution,materials,{complete:w.evolved,available:canEvolve(state,w),tuning});
+  return recipe(`evolve:${w.id}`,capstoneName(w),materials,{complete:w.evolved,available:canEvolve(state,w),tuning});
  });
  for(const w of weapons.filter(w=>w.fusion)){
-  const pair=`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`;
-  paths.push(recipe(`installed:${w.uid}`,`전도 격발망 ${pair}`,[requirement('무기 두 칸을 한 칸으로 합쳤습니다.','',0)],{complete:true}));
+  paths.push(recipe(`installed:${w.uid}`,fusionTitle(w.id,w.fusion.secondary,w.fusion.branch),[requirement('무기 두 칸을 한 칸으로 합쳤습니다.','',0)],{complete:true}));
  }
  const h=weapons.find(w=>w.id==='h'&&!w.fusion&&!w.evolved);
  const r=weapons.find(w=>w.id==='r'&&!w.fusion&&!w.evolved);
@@ -95,8 +96,8 @@ export function buildPaths(state){
   const materials=[gunRequirement('h',h,4),gunRequirement('r',r,4),moduleRequirement(state,['coil'],2)];
   const duplicate=h&&r&&sameFusion(state,h,r);
   const evolved=weapons.find(w=>w.evolved&&!w.fusion&&((w.id==='h'&&!h)||(w.id==='r'&&!r)));
-  const blocked=duplicate?'같은 분화의 전도 격발망을 장착 중입니다.':evolved?`${GUNS[evolved.id].name} 단일 진화 완료`:'';
-  paths.push(recipe('fusion:h:r','전도 격발망 H+R',materials,{
+  const blocked=duplicate?'같은 분화의 격발망을 장착 중입니다.':evolved?`${GUNS[evolved.id].name} 단일 진화 완료`:'';
+  paths.push(recipe('fusion:h:r',fusionTitle('h','r',r?.branch),materials,{
    available:!!(h&&r&&canFuse(state,h,r)),tuning,blocked
   }));
  }
