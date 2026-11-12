@@ -95,6 +95,8 @@ export function restore(raw,{allowPrevious=false}={}){
  for(const key of ['blocks','enemies','shots','enemyShots','gems','zones','hazards','effects','excluded','seenGuns','offeredWeapons'])if(!Array.isArray(s[key]))fail();
  if(s.shots.some(q=>q?.coastFuse!==undefined&&(!q.rocket||q.homing||q.source!=='native'||s.operation?.region!==0
   ||!Number.isFinite(q.coastFuse?.x)||!Number.isFinite(q.coastFuse?.y))))fail();
+ if(s.shots.some(q=>q?.relayGroup!==undefined&&(!q.relay||q.source!=='payload'
+  ||!Number.isSafeInteger(q.wavePulse)||!Number.isSafeInteger(q.relayGroup))))fail();
  if(s.zones.some(z=>z?.source==='ember-charge'&&(![z.x,z.y,z.r,z.life,z.tick].every(Number.isFinite)||z.r<=0||z.life<=0||typeof z.owner!=='string')))fail();
  if(new Set(s.modules.map(m=>m.id)).size!==s.modules.length||s.modules.some(m=>RULES.modules[m.id].unique&&m.rank!==1)||new Set(s.weapons.map(w=>w.uid)).size!==s.weapons.length||s.weapons.some(w=>typeof w.uid!=='string'))fail();
  if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
@@ -941,10 +943,10 @@ function feed(s,owner,weight,target,breachLane){
  }}
 }
 function payloadTargets(s,origin,min){return targets(s).filter(e=>e.hp>0&&distance(e,origin)>=min&&distance(e,origin)<300&&!lineBlocked(s,origin,e)).sort((a,b)=>distance(a,origin)-distance(b,origin));}
-function launchPayload(s,w,origin,target,amount,relay,breachLane){
+function launchPayload(s,w,origin,target,amount,relay,breachLane,relayGroup){
  const angle=Math.atan2(target.y-origin.y,target.x-origin.x);
  const incendiary=!relay&&w.fusion.branch==='incendiary';
- return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane});
+ return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane,relayGroup});
 }
 function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal,armorCycle){
  const charge=ignite&&effect==='payload-impact';
@@ -1069,7 +1071,21 @@ function fire(s,w,target,a,amount,opts={}){
  )):undefined;
  const armorCycle=source==='native'&&target===s.boss.parts[1]&&portArmorRound(s)&&portArmorFlank(s)
   &&!lineBlocked(s,s.player,partPosition(s,target))?s.boss.cycle:undefined;
- s.shots.push({x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),...(opts.coastSignal?{coastSignal:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(armorCycle!==undefined?{armorCycle}:{}),...(source==='payload'?{speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null}:evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{})});return true;
+ const payload=source==='payload'?{
+  speed,arming:.12,relay:opts.relay,avoidGroup:opts.avoidGroup??null,
+  ...(Number.isSafeInteger(origin?.wavePulse)?{wavePulse:origin.wavePulse}:{}),
+  ...(opts.relayGroup!==undefined?{relayGroup:opts.relayGroup}:{})
+ }:null;
+ s.shots.push({
+  x:origin?origin.x:s.player.x+Math.cos(a)*22,y:origin?origin.y:s.player.y+Math.sin(a)*22,
+  vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:d.range/speed,damage:amount,r:rocket?7:3,rocket,radius:opts.radius??d.radius,
+  source,owner:w.uid,target:target?.id,homing:opts.homing??w.branch==='homing',incendiary:opts.incendiary??w.branch==='incendiary',
+  bounces:Math.min(4,(w.branch==='ricochet'?1:0)+moduleRank(s,'ricochet')),hitIds:opts.ignore?[opts.ignore]:[],
+  ...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),
+  ...(opts.coastSignal?{coastSignal:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(armorCycle!==undefined?{armorCycle}:{}),
+  ...(payload||(evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{}))
+ });
+ return true;
 }
 export function activeManeuver(p){
  if(p.maneuver==='assault'&&p.moving&&p.assaultTime>0)return 'assault';
@@ -1140,7 +1156,7 @@ function shoot(s,w,counter){
  w.shots++;return true;
 }
 function segmentDistance(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,t=clamp(((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(px-ax-t*dx,py-ay-t*dy);}
-function detonate(s,q){
+function detonate(s,q,impact){
  const effect=q.source==='payload'?'payload-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
  const mortars=q.coastFuse&&s.enemies.filter(e=>!e.dead&&e.cohort==='coast-guard'&&e.type==='mortar'&&e.hp>0);
@@ -1150,15 +1166,31 @@ function detonate(s,q){
   emit(s,'coast-volley',q.x,q.y,{life:.85});
  }
  if(q.source!=='payload'||q.incendiary||q.relay||(s.stats.payloadKills||0)-before<2)return;
- const owner=s.weapons.find(w=>w.uid===q.owner&&w.fusion),next=payloadTargets(s,q,q.radius+22)[0];
- if(owner&&next&&launchPayload(s,owner,q,next,RULES.fusion.payloadDamage*.8,true,q.breachLane)){
+ const owner=s.weapons.find(w=>w.uid===q.owner&&w.fusion),eligible=payloadTargets(s,q,q.radius+22);
+ const struck=impact?.waveGroup,origin=q.avoidGroup,pulse=impact?.wavePulse;
+ // Only a confirmed cross-pack hit within the same pulse can seek its remaining pack.
+ const third=Number.isSafeInteger(pulse)&&pulse===q.wavePulse&&Number.isSafeInteger(origin)&&Number.isSafeInteger(struck)&&struck!==origin
+  ?eligible.find(e=>e.wavePulse===pulse&&Number.isSafeInteger(e.waveGroup)&&e.waveGroup!==struck&&e.waveGroup!==origin)
+  :null;
+ const next=third||eligible[0];
+ const launch=third?{x:q.x,y:q.y,id:impact.id,waveGroup:struck,wavePulse:pulse}:q;
+ if(owner&&next&&launchPayload(s,owner,launch,next,RULES.fusion.payloadDamage*.8,true,q.breachLane,third?.waveGroup)){
   s.stats.payloadRelays=(s.stats.payloadRelays||0)+1;
-  emit(s,'payload-relay',q.x,q.y,{x2:next.x,y2:next.y,life:.32});
+  emit(s,'payload-relay',q.x,q.y,{x2:next.x,y2:next.y,life:.32,...(third?{thirdPack:true}:{})});
  }
+}
+function homingTarget(s,q){
+ const candidates=targets(s);
+ const locked=candidates.find(e=>e.id===q.target&&e.hp>0);
+ if(locked)return locked;
+ const eligible=candidates.filter(e=>e.hp>0&&!q.hitIds.includes(e.id)&&(q.avoidGroup==null||e.waveGroup!==q.avoidGroup))
+  .sort((a,b)=>distance(a,q)-distance(b,q));
+ return q.relayGroup!==undefined&&eligible.find(e=>e.wavePulse===q.wavePulse&&e.waveGroup===q.relayGroup&&!lineBlocked(s,q,e))
+  ||eligible[0];
 }
 function updateShots(s,dt){
  for(const q of s.shots){q.life-=dt;if(q.life<=0)continue;if(q.arming>0)q.arming-=dt;const old={x:q.x,y:q.y};
-  if(q.homing){let target=targets(s).find(e=>e.id===q.target&&e.hp>0);if(!target)target=targets(s).filter(e=>e.hp>0&&!q.hitIds.includes(e.id)&&(q.avoidGroup==null||e.waveGroup!==q.avoidGroup)).sort((a,b)=>distance(a,q)-distance(b,q))[0];if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8),speed=q.source==='payload'?(q.speed??Math.hypot(q.vx,q.vy)):300;q.vx=Math.cos(angle)*speed;q.vy=Math.sin(angle)*speed;}}
+  if(q.homing){const target=homingTarget(s,q);if(target){q.target=target.id;const a=Math.atan2(q.vy,q.vx),wanted=Math.atan2(target.y-q.y,target.x-q.x),delta=Math.atan2(Math.sin(wanted-a),Math.cos(wanted-a)),angle=a+clamp(delta,-dt*2.8,dt*2.8),speed=q.source==='payload'?(q.speed??Math.hypot(q.vx,q.vy)):300;q.vx=Math.cos(angle)*speed;q.vy=Math.sin(angle)*speed;}}
   const atFuse=q.coastFuse&&distance(old,q.coastFuse)<=Math.hypot(q.vx,q.vy)*dt;
   q.x=atFuse?q.coastFuse.x:q.x+q.vx*dt;q.y=atFuse?q.coastFuse.y:q.y+q.vy*dt;
   const wall=blocked(s,q.x,q.y,q.r);if(wall){
@@ -1171,7 +1203,7 @@ function updateShots(s,dt){
   }
   for(const e of targets(s,q.breachLane,true,q.armorCycle)){if(e.hp<=0||q.hitIds.includes(e.id)||segmentDistance(e.x,e.y,old.x,old.y,q.x,q.y)>e.r+q.r)continue;
    if(q.arming>0&&q.target!==e.id||q.avoidGroup!=null&&q.avoidGroup===e.waveGroup)continue;
-   q.hitIds.push(e.id);if(q.rocket){detonate(s,q);break;}
+   q.hitIds.push(e.id);if(q.rocket){detonate(s,q,e);break;}
    const wasBounce=q.pierce===undefined?q.hitIds.length>1:!!q.reflected;
   const angle=e===s.raid?.target?Math.atan2(-q.vy,-q.vx):null,screened=angle!=null&&raidOnNose(s,angle);
    const amount=screened?q.damage*RULES.raidContracts.armored.bulletFrontMultiplier:q.damage;
@@ -1518,7 +1550,7 @@ function spawnShowcaseWave(s,pulse,showcase,remaining){
    const packs=centers.map(({x,y})=>[[-18,-20],[18,-20],[-18,20],[18,20]].map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
    if(centers.some((q,j)=>j>0&&lineBlocked(s,centers[j-1],q))||packs.flat().some(q=>q.x<65||q.x>1535||q.y<65||q.y>1135||distance(p,q)<155||blocked(s,q.x,q.y,22)||lineBlocked(s,p,q)||s.boss.active&&distance(q,s.boss)<s.boss.r+28||crowd.some(e=>distance(q,e)<32)))continue;
    const formationHeading=heading+Math.PI;
-   for(let group=0;group<packs.length;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',showcase,formationHeading,...(flame?{}:{waveGroup:pulse*4+group})});
+   for(let group=0;group<packs.length;group++)for(const q of packs[group])spawnEnemy(s,'rifle',q.x,q.y,null,{cohort:'ambient',showcase,formationHeading,...(flame?{}:{waveGroup:pulse*4+group,wavePulse:pulse})});
    for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase,angle:formationHeading});
    return count;
   }

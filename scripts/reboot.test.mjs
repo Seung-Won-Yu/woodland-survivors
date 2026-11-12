@@ -69,6 +69,38 @@ test('two payload kills send a single relay into another pack without feeding th
  assert.ok(groups.slice(0,2).flat().every(e=>e.dead));assert.ok(groups[2].every(e=>!e.dead));
  assert.equal(s.stats.payloadRelays,1);assert.equal(s.stats.payloadBursts,1);assert.equal(w.payload,0);
 });
+test('a conductive relay prefers the unhit third pack and can leave the impact pack',()=>{
+ for(const scenario of ['open','blocked','legacy','retarget']){
+  const s=quiet(),w=s.weapons[0],legacy=scenario==='legacy';
+  const blocked=scenario==='blocked',fallback=blocked||legacy;
+  if(legacy)s.balanceRevision='b31-harbor-counterattack';
+  Object.assign(w,{level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0},payload:9});
+  const unit=(id,x,y,hp,waveGroup)=>({...enemy(id,x,y,'rifle',hp),waveGroup,
+   ...(legacy?{}:{wavePulse:4})});
+  const origin=unit('origin',800,800,1000,16);
+  const impact=unit('impact',980,800,60,17),wing=unit('wing',1008,834,60,17);
+  const survivor=unit('survivor',1045,800,1000,17);
+  const third=unit('third',1190,800,60,18),partner=unit('partner',1215,835,60,18);
+  s.enemies=[origin,impact,wing,survivor,third,partner];
+  if(blocked)s.blocks=[{x:1110,y:755,w:42,h:105,hp:-1}];
+  s.shots=[bullet(s,origin,2)];
+  for(let i=0;i<30&&!s.stats.payloadRelays;i++)step(s,dt);
+  const relay=s.shots.find(q=>q.relay);
+  assert.equal(relay?.target,fallback?origin.id:third.id);
+  assert.equal(relay.avoidGroup,fallback?null:impact.waveGroup);
+  assert.equal(!!s.effects.find(f=>f.type==='payload-relay')?.thirdPack,!fallback);
+  const resumed=restore(snapshot(s));
+  if(scenario==='retarget'){
+   Object.assign(resumed.enemies.find(e=>e.id===third.id),{hp:0,dead:true});
+   step(resumed,dt);
+   assert.equal(resumed.shots.find(q=>q.relay)?.target,partner.id);
+  }
+  tick(resumed,.8);
+  assert.equal(resumed.stats.payloadRelays,1);
+  assert.equal(resumed.enemies.some(e=>e.id===third.id&&!e.dead),fallback);
+  assert.equal(resumed.enemies.some(e=>e.id===partner.id&&!e.dead),fallback);
+ }
+});
 test('first fusion primes the launcher and stages three legal packs when there is room',()=>{
  const s=quiet();Object.assign(s.weapons[0],{level:4,branch:'ricochet'});s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});s.modules=[{id:'coil',rank:2}];
  assert.ok(action(s,'gear'));assert.ok(choose(s,'fusion:h:r'));assert.equal(s.weapons[0].payload,RULES.fusion.hitsPerPayload);

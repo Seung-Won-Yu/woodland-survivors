@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.94.0" src="https://img.shields.io/badge/RIFT-0.94.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.95.0" src="https://img.shields.io/badge/RIFT-0.95.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -107,6 +107,8 @@ npm run test:pages
 철도 잔류에서 철갑 급탄을 확보하면 항구에서 어느 측면을 노릴지 고를 수 있습니다. 포탑 쪽은 포탑탄, 반대편 장갑 쪽은 보조 포격을 끊습니다. [부품별 모바일 귀환 기록](docs/RIFT-GAMEPLAY-V1.md#철도-부품으로-항구-포격-차단).
 
 0.94에서는 해안 수송차를 부른 자리에서 교전을 시작합니다. 화염은 가까운 측면에서 돌진을 엄폐물로 유도하고, 로켓은 떨어진 사선에서 첫 돌진에 대응할 수 있습니다. [해안 진입과 모바일 검증](docs/RIFT-GAMEPLAY-V1.md#094-해안-수송차-호출-위치).
+
+0.95의 전도 격발망은 열린 사선에서 도약탄을 세 번째 편대로 보냅니다. 짧은 모바일 화면에서는 장착 표시와 편대 공략을 HUD에 모아 대원과 탄착점을 더 많이 보여 줍니다. [장착 후 첫 15초 비교](docs/RIFT-GAMEPLAY-V1.md#095-장착-직후-편대-교전).
 
 0.88에서는 연료 살포 인페르노가 실제 이동 경로에 불길을 남깁니다. 밀집 보병을 불길로 끌어들이거나 항구의 냉각 배관을 점화할 수 있습니다. [인페르노 분화 검증](docs/RIFT-GAMEPLAY-V1.md#088-인페르노-이동-불길과-냉각-배관).
 

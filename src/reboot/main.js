@@ -583,15 +583,22 @@ function updateHud(entry,focus=null){
  const direction=bearing(p,...(trackedRoute?entryWaypoint(trackedRoute.path,p):[next.x,next.y]));
  $('operation-track').textContent=run.operation?REGIONS.map((d,i)=>`${i<run.operation.region?'✓':i===run.operation.region?'▶':'○'} ${d.name}`).join('  /  '):'';
  $('stage').textContent=run.operation?`${run.operation.region+1}/3 ${region(run).name}${run.stage==='holdout'?' · 돌파 완료':run.stage==='boss'?' · 보스 교전':''}`:run.powerWave&&run.stage==='field'?'POWER TEST / 완성 화력 전개':run.stage==='holdout'?'MISSION CLEAR / 잔류 가능':run.stage==='boss'?'ARMORED CARRIER':'BEACHHEAD / 해안 침투';
- const wave=run.powerWave,showcase=wave?.showcase&&wave.paired>0;
- const reinforcements=showcase?showcaseWindow(run)?(wave.showcase==='flame'?' · 밀집 보병 접근':' · 분산 편대 접근'):' · 재장전 때 후속 편대':wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
+ const wave=run.powerWave,forming=wave?.paired>0&&wave.showcase;
+ const showcase=forming||run.enemies.findLast(e=>e.showcase&&!e.dead&&e.hp>0)?.showcase;
+ document.body.classList.toggle('capstone-approach',run.stage==='field'&&!!showcase);
+ const mounted=showcase&&run.effects.some(f=>f.type==='complete'&&f.showcase);
+ const response=showcase&&(showcase==='flame'?'밀집 보병까지 접근'
+  :run.weapons.some(isConductiveFusion)?'두 편대 사선 확보':'화약 원으로 보병 유도');
+ const incoming=showcase?`${mounted?'장착 완료 · ':''}${forming&&!showcaseWindow(run)?'재장전 때 후속 편대':response}`:'';
+ const reserve=incoming?` · ${incoming}`:wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
  $('objective').textContent=choosingEntry?(entry.routes.length===1?'남은 선택 경로':front===1?'선로 갈림길':'하역장 갈림길'):`${direction} ${next.kind?sitePresentation(next).name:next.name} · ${Math.round(distance(p,next)/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;
  const garrison=railGarrison(next),crew=next.state==='active'&&next.kind==='relay'?railCrewLeft(run,next):0;
  const hacking=crew?`${garrison.crew} ${crew}${garrison.unit} 제압 후 해킹`:`범위 안에서 해킹 ${Math.round(next.progress/5*100)}%`;
  const coastFight=next===coastSite&&!!coastSite?.coastApproach;
  const siteHint=coastFight?'':next.state==='active'?next.kind==='relay'?` · ${hacking}`:` · 경비 ${guards}명, 이동하며 제압`:next.state==='ready'?next.kind==='relay'?' · 해킹 완료, 접근해 회수':' · 제압 완료, 접근해 회수':'';
- $('threat').textContent=`경계 ${run.pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${reinforcements}`;
+ $('threat').textContent=incoming&&run.stage==='field'?incoming
+  :`경계 ${run.pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${reserve}`;
  const fieldIntel=$('field-intel'),direct=$('field-direct');
  const armory=prepared&&next===bossTarget?run.sites.find(site=>site.kind==='armory'&&site.state!=='done'):null;
  const alternate=fork?.other||armory||(gantry&&next===bossTarget?gantry:bossTarget);
@@ -642,6 +649,7 @@ function updateHud(entry,focus=null){
   else if(rescue?.gun)intel=`${route} · ${GUNS[rescue.gun].name} 보급`;
  }else if(front===1&&railHasRelay(run))intel='중계기 연결 · 고정 전 조준선 탐지';
  else if(front===2&&run.operation.jammed)intel='통신 교란 중 · 증원 6 → 3';
+ if(!intel&&incoming&&next.state==='ready')intel='접근해 회수';
  fieldIntel.hidden=!intel||holdout;fieldIntel.textContent=intel;
  document.body.classList.toggle('holdout-active',holdout);
  const signalPursuit=holdout&&run.challenge?.type==='intercept'&&run.challenge.state==='active';
@@ -965,14 +973,16 @@ function processEvents(){
  if(mode!=='battle'||!events.size)return;
  const completed=events.has('complete')&&run.effects.findLast(f=>f.type==='complete');
  const capstone=completed?.showcase?completed:null;
+ if(capstone)$('capstone-announcement').textContent=capstone.text?.split(' · ')[0]||'';
  if(store.settings().sound){
   const inferno=run.weapons.some(w=>w.id==='f'&&w.evolved);
   for(const cue of selectRiftAudioEvents(events,{inferno,showcase:capstone?.showcase}))audio.play(cue);
  }
  const priority=bannerPriority.find(type=>events.has(type));
- if(!priority&&!capstone&&bannerPriority.includes(banner.dataset.kind))return;
+ if(!priority&&bannerPriority.includes(banner.dataset.kind))return;
  const counter=!priority&&events.has('aid-counter')&&run.effects.findLast(f=>f.type==='aid-counter');
- const fx=capstone||counter||run.effects.findLast(f=>priority?f.type===priority:!f.interrupted&&events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
+ const fx=counter||run.effects.findLast(f=>priority?f.type===priority:!f.interrupted&&(f.type!=='complete'||!capstone)
+  &&events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
  if(!fx||fx.coastTactic||fx.portWake||fx.type==='aid-counter')return;
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
  bannerUntil=run.t+(bannerPriority.includes(fx.type)?2.1:1.5);
@@ -995,7 +1005,7 @@ function frame(now){
   requestAnimationFrame(frame);return;
  }
  const starting=firstBattleFrame;
- if(starting){firstBattleFrame=false;accumulator=0;}
+ if(starting){firstBattleFrame=false;accumulator=0;$('capstone-announcement').textContent='';}
  if(!starting&&run.phase==='playing'&&!busy&&!pending){if(elapsed>.5){mutate(d=>{pause(d);return true;});accumulator=0;}else{const previousStage=run.stage;accumulator+=Math.min(.1,elapsed);const input=movementInput();while(accumulator>=1/60&&run.phase==='playing'){step(run,1/60,input,renderer.view());accumulator-=1/60;saveClock+=1/60;}if(run.phase!=='playing'){persistCurrent();accumulator=0;}else if(saveClock>=5||previousStage==='boss'&&run.stage==='holdout')persistCurrent();}}
  const entry=fieldEntry(run);
  const aiming=focusGesture&&!focusGesture.canceled&&run.phase==='playing'&&!busy&&!pending&&canUseSkill(run);

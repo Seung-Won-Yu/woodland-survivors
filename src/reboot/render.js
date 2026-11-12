@@ -471,6 +471,14 @@ function paintEmberBurst(c,f,t,reduced){
 function paintTransfer(c,f,t,reduced){
  const dx=f.x2-f.x,dy=f.y2-f.y;
  if(f.type==='payload-relay'){
+  if(f.thirdPack&&t<.55){
+   c.strokeStyle='#b8fff2';c.lineWidth=2;c.beginPath();
+   for(const side of [-1,1]){
+    const x=f.x2+side*19,y=f.y2-6;
+    c.moveTo(x-side*7,y-8);c.lineTo(x,y-8);c.lineTo(x,y+4);
+   }
+   c.stroke();
+  }
   c.translate(f.x,f.y-18);c.rotate(Math.atan2(dy,dx));
   c.fillStyle='#b8fff2';c.fillRect(-5,-6,13,2);c.fillRect(-5,4,13,2);
   if(!reduced){c.fillStyle='#70bfb3';c.fillRect(-7-t*16,-3,8,6);}
