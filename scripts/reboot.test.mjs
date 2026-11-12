@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -2116,6 +2116,59 @@ test('rail defense pauses outside the zone and harbor interception can fail and 
  const before=operationCredits(loaded);
  assert.equal(before-credits,20);
  assert.ok(choose(loaded,'pursuit:cargo'));assert.equal(operationCredits(loaded),before+CARGO_CREDITS);
+});
+test('harbor D2 uses two fixed firing positions, leaves extraction open and rotates to pursuit at D3',()=>{
+ for(const seed of [19,24]){
+  const s=harborLanding(seed);
+  s.sites.forEach(site=>site.state='done');
+  downBoss(s);
+  s.spawnClock=999;s.player.invuln=999;
+  assert.ok(action(s,'challenge'));
+  s.shots=[bullet(s,s.challenge.target,1200)];step(s,dt);
+  const cargo=signalCargo(s);
+  Object.assign(s.player,{x:cargo.x,y:cargo.y});
+  assert.ok(action(s,'interact'));assert.ok(choose(s,'pursuit:cargo'));
+  assert.equal(holdoutContract(s).id,'battery');
+  assert.match(gateContractDetails(s).goal,/양쪽 박격포/);
+  Object.assign(s.player,exitGate(s));
+  assert.ok(action(s,'interact'));assert.ok(action(s,'gate-challenge'));
+  const positions=portBatteryPositions(seed);
+  assert.equal(s.challenge.type,'battery');
+  assert.deepEqual(portBatteries(s).map(({x,y})=>({x,y})),positions);
+  assert.ok(portBatteries(s).every(e=>!overlapsCover(s,e,e.r)));
+  const forged=snapshot(s);
+  forged.enemies=forged.enemies.filter(e=>e.id!==forged.challenge.targets[0]);
+  assert.throws(()=>restore(forged),/체크포인트/);
+  const reload=restore(snapshot(s));
+  const retreat=restore(snapshot(s));
+  assert.ok(action(retreat,'interact'));assert.ok(choose(retreat,'extract'));
+  assert.ok(retreat.result.won);
+  assert.equal(retreat.stats.portBatteriesCleared,undefined);
+  Object.assign(reload.player,{x:800,y:448});
+  reload.shots=[bullet(reload,portBatteries(reload)[0],1)];
+  tick(reload,2.06);
+  assert.deepEqual(portBatteries(reload).map(({x,y})=>({x,y})),positions);
+  assert.equal(reload.hazards.filter(h=>h.portBattery&&!h.hit).length,2);
+  const hitNext=()=>{
+   reload.shots=[bullet(reload,portBatteries(reload)[0],10000)];
+   step(reload,dt);
+  };
+  hitNext();
+  assert.equal(reload.challenge.state,'active');
+  assert.equal(portBatteries(reload).length,1);
+  assert.deepEqual(restore(snapshot(reload)).challenge.destroyed,[reload.challenge.targets[0]]);
+  const score=reload.stats.score;
+  hitNext();
+  assert.equal(reload.challenge.state,'complete');
+  assert.equal(reload.stats.portBatteriesCleared,2);
+  assert.equal(reload.stats.score-score,1010);
+  assert.ok(action(reload,'challenge'));
+  assert.equal(reload.challenge.type,'intercept');
+  assert.equal(reload.challenge.tier,3);
+  reload.challenge.tier=2;reload.operation.challengeTier=1;reload.balanceRevision='b35-coast-requisition';
+  const old=restore(snapshot(reload));
+  assert.equal(holdoutContract(old).id,'intercept');
+ }
 });
 test('new harbor vehicles take mirrored cover-free paths while older interceptions resume in place',()=>{
  const routes=[];

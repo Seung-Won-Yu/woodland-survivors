@@ -30,7 +30,7 @@ export function gateContractDetails(s){
  const reward=rare?holdoutParts(s.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / ')
   :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:`완료 점수 +${tier*500}`;
  const escort=s.challenge?.recoverCargo?signalGuardCount(s):SIGNAL_ESCORT_COUNT;
- const cost=front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
+ const cost=contract.id==='battery'?'양쪽 진지 위치 표시 · 귀환로 개방':front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
  return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost};
 }
 

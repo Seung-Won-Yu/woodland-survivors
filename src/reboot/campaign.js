@@ -301,7 +301,19 @@ export function portTacticKeys(s){
  const incendiary=s.weapons.some(w=>w.fusion?.branch==='incendiary');
  return [fire,incendiary?'ember':'signal'];
 }
-export const holdoutContract=s=>HOLDOUT_CONTRACTS[s.operation?.region||0];
+const PORT_COUNTERBATTERY={id:'battery',name:'포격 진지 제압',goal:'양쪽 박격포 2문 제압',risk:'교차 포격 · 엄폐를 돌아 한 문씩'};
+export function holdoutContract(s,tier=(s.operation?.challengeTier||0)+1){
+ const front=s.operation?.region||0;
+ const legacy=s.challenge?.state==='active'&&s.challenge.type==='intercept'&&s.challenge.tier===tier;
+ return front===2&&tier%2===0&&!legacy?PORT_COUNTERBATTERY:HOLDOUT_CONTRACTS[front];
+}
+const BATTERY_POSITIONS=[{x:565,y:400},{x:1100,y:365}];
+export const portBatteryPositions=seed=>BATTERY_POSITIONS.map(({x,y})=>({x:seed%2?x:1600-x,y}));
+export const portBatterySide=point=>point.x<800?'서쪽':'동쪽';
+export function portBatteries(s){
+ const c=s.challenge;
+ return c?.type==='battery'&&c.state==='active'?s.enemies.filter(e=>!e.dead&&e.hp>0&&c.targets.includes(e.id)):[];
+}
 export const signalCourier=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'&&!s.challenge.secured?s.challenge.target:null;
 export const signalCargo=s=>s.challenge?.type==='intercept'&&s.challenge.state==='active'&&s.challenge.recoverCargo&&s.challenge.secured?s.challenge.target:null;
 export const SIGNAL_CARGO_REACH=76;

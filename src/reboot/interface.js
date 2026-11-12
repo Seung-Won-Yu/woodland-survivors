@@ -210,7 +210,8 @@ function debriefRoute(operation,stats,reference){
   const part=Object.hasOwn(FRONT_SUPPORTS,entry?.nextSupport)?FRONT_SUPPORTS[entry.nextSupport]:null;
   const signal=i===2&&({recovered:stats.holdoutCargo?'차량 저지 · 통신 화물':'차량 저지 · 후송 구급낭',
    'left-cargo':'차량 저지 · 화물 미회수',aborted:'차량 추격 중단',escaped:'차량 이탈'})[stats.signalOutcome];
-  const wager=signal||(entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'');
+  const batteries=i===2&&Number.isSafeInteger(stats.portBatteriesCleared)&&stats.portBatteriesCleared>0?`포대 ${n(stats.portBatteriesCleared)}문 제압`:'';
+  const wager=batteries||signal||(entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'');
   const pace=reference&&(entry||i===2&&operation.extracted)?timeDifference(elapsed,reference.fronts[i]):null;
   return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small>${pace?`<small class="front-pace" data-trend="${pace.trend}">${pace.text}</small>`:''}${wager?`<small class="debrief-wager">${e(wager)}</small>`:''}</li>`;
  }).join('')}</ol>`;

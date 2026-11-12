@@ -850,6 +850,11 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
      c.globalAlpha=Math.min(1,visibility+e.spawnAge*3);
     }
     circle(c,e.x,e.y,14,'#263b3338');
+    if(!e.dead&&e.cohort==='port-battery'){
+     circle(c,e.x,e.y,22,'#8a4e2425','#ffcf9a',2);
+     bar(c,e.x,e.y-58,45,e.hp/e.maxHp,'#f4be83');
+     c.fillStyle='#fff0cb';c.font='10px Galmuri';c.textAlign='center';c.fillText('박격포',e.x,e.y-66);
+    }
     if(e.hurt>0)c.filter='brightness(1.7)';if(art)actor(c,art.enemies,({rifle:0,shield:1,mortar:2,officer:3})[e.type],Math.floor(e.walk)%4,e.x,e.y,e.type==='officer'?62:e.type==='shield'?55:49,Math.cos(e.aim)<0);else{c.fillStyle=e.type==='officer'?'#ba6d53':'#48533c';c.fillRect(e.x-12,e.y-34,24,34);}c.filter='none';
     if(e.burn>0&&!e.dead){circle(c,e.x,e.y-18,15,'#ff994925');flame(c,e.x-7,e.y-18,18,s.t*13+e.x);flame(c,e.x+6,e.y-22,13,s.t*12+e.y);}if(e.type==='officer'&&!e.dead){
      const marked=e.cohort==='challenge';
@@ -1047,10 +1052,10 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   for(const h of railForecast)if(visible(h.x,s.player.y,h.w))paintRailWarning(c,h,s.player.y,true,railLocked);
   if(portRounds.length)paintPortPerimeter(c,portRounds.filter(h=>visible(h.x,h.y,blastContactRadius(h))));
   for(const h of s.hazards){
-   const wide=h.portRound||h.coastMortar||h.signalCut||portBoss&&!h.lane;
+   const wide=h.portRound||h.coastMortar||h.signalCut||h.portBattery||portBoss&&!h.lane;
    if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:wide?blastContactRadius(h):h.r))continue;
    if(h.lane){paintRailWarning(c,h,s.player.y);continue;}
-   if(h.coastMortar||h.signalCut){
+   if(h.coastMortar||h.signalCut||h.portBattery){
     if(!reduced&&Number.isFinite(h.fromX)&&Number.isFinite(h.fromY))paintCoastMortarFlight(c,h);
    }
    if(!h.portRound){
