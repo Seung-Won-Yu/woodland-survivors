@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,railCrewLeft,portGantry,portArmorStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portArmorStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastCrossGun,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -20,9 +20,12 @@ export function createRun(seed=17){
  return s;
 }
 export function createOperation(seed=17,research=[],trial=null,order=null,operator='fio'){
- if(order!==null&&!sortieOrder(order))throw Error('작전 지령을 확인할 수 없습니다.');
+ const dispatch=sortieOrder(order);
+ if(order!==null&&!dispatch)throw Error('작전 지령을 확인할 수 없습니다.');
  if(!Object.hasOwn(OPERATORS,operator))throw Error('출전 대원을 확인할 수 없습니다.');
- const s=createRun(seed);s.operation={region:0,cleared:0,regionTime:0,history:[],jammed:false,...(order?{order,orderDone:false}:{})};s.research=[...research];s.trials=(Array.isArray(trial)?[...trial]:[trial]).filter(Boolean);s.trial=s.trials[0]||null;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[0]};for(const e of s.enemies)e.cohort='ambient';s.stats.sitesCleared=0;s.stats.fusionBosses=0;s.stats.flameBosses=0;Object.assign(s,regionLayout(seed,0,order));s.boss=regionBoss(0);
+ const s=createRun(seed);s.operation={region:0,cleared:0,regionTime:0,history:[],jammed:false,...(dispatch?{order,orderDone:false}:{})};
+ if(dispatch?.recordRevision)s.operation.orderRevision=dispatch.recordRevision;
+ s.research=[...research];s.trials=(Array.isArray(trial)?[...trial]:[trial]).filter(Boolean);s.trial=s.trials[0]||null;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[0]};for(const e of s.enemies)e.cohort='ambient';s.stats.sitesCleared=0;s.stats.fusionBosses=0;s.stats.flameBosses=0;Object.assign(s,regionLayout(seed,0,order));s.boss=regionBoss(0);
  if(operator==='marco'){
   s.operator=operator;
   Object.assign(s.player,{charge:RULES.marco.initialCharge,doctrine:OPERATORS.marco.start,moveAim:-Math.PI/2,focusChargeAt:0});
@@ -104,8 +107,9 @@ export function restore(raw,{allowPrevious=false}={}){
  if(new Set(s.modules.map(m=>m.id)).size!==s.modules.length||s.modules.some(m=>RULES.modules[m.id].unique&&m.rank!==1)||new Set(s.weapons.map(w=>w.uid)).size!==s.weapons.length||s.weapons.some(w=>typeof w.uid!=='string'))fail();
  if(s.operation&&(!Array.isArray(s.research)||s.research.some(id=>!RESEARCH[id])||s.trial&&!s.research.includes(s.trial)||s.trials&&(!Array.isArray(s.trials)||s.trials.some(id=>!s.research.includes(id)))||!Number.isInteger(s.operation.region)||s.operation.region<0||s.operation.region>2||!Number.isInteger(s.operation.cleared)||s.operation.cleared<0||s.operation.cleared>3||!Number.isFinite(s.operation.regionTime)||!Array.isArray(s.operation.history)))fail();
  if(s.operation){
-  const order=s.operation.order;
-  if(order!==undefined&&(!sortieOrder(order)||typeof s.operation.orderDone!=='boolean')||order===undefined&&s.operation.orderDone!==undefined)fail();
+  const {order,orderRevision}=s.operation,dispatch=sortieOrder(order);
+  if(order!==undefined&&(!dispatch||typeof s.operation.orderDone!=='boolean')||order===undefined&&s.operation.orderDone!==undefined)fail();
+  if(orderRevision!==undefined&&orderRevision!==dispatch?.recordRevision)fail();
   if(order&&s.operation.region===0){
    const site=s.sites.find(site=>site.id==='arsenal');
    if(!site||site.kind!==(order==='wire'?'relay':'armory')||s.operation.orderDone&&site.state!=='done')fail();
@@ -125,7 +129,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(s.operation.portDock!==undefined&&(s.operation.portDock!==true||s.operation.region!==2||!s.sites.some(site=>site.id==='port-landing'&&site.state==='done')))fail();
   if(s.operation.portEntry!==undefined&&(s.operation.portEntry!=='gantry'||!s.operation.portDock||s.stage==='field'))fail();
   const decoy=s.boss.railDecoy;
-  if(decoy!==undefined&&(!decoy||s.operation.region!==1||s.stage==='field'||!railHasRelay(s)
+  if(decoy!==undefined&&(!decoy||s.operation.region!==1||s.stage==='field'||!(railHasRelay(s)||railHasWire(s))
    ||!Number.isFinite(decoy.x)||decoy.x<FIELD.left||decoy.x>FIELD.right||![0,1].includes(decoy.lead)
    ||!Number.isSafeInteger(decoy.cycle)||decoy.cycle<1||decoy.cycle>s.boss.cycle+1))fail();
   if([s.operation.support,s.operation.nextSupport].some(id=>id!=null&&!Object.hasOwn(FRONT_SUPPORTS,id)))fail();
@@ -1317,7 +1321,7 @@ function updateEnemies(s,dt){
    const inCut=cut&&distance(p,cut)<225&&distance(e,cut)<COAST_MORTAR.range;
    if(d<COAST_MORTAR.range&&e.timer<=0&&coastMortarWait(s,e)<=0&&(!courier||inCut)){
     e.timer=2.8;
-    const coast=e.cohort==='coast-guard';
+    const coast=e.cohort==='coast-guard'||e.cohort==='wire-guard';
     const duration=COAST_MORTAR.warning;
     const mark=inCut?cut:p,r=inCut?62:battery?56:48;
     const launch=coast||inCut||battery?{fromX:e.x,fromY:e.y}:null;
@@ -1537,21 +1541,22 @@ function updateSites(s,dt){
   if(site.id==='supply-b'&&site.state==='waiting'){site.baseX??=site.x;site.x=site.baseX+Math.sin(s.t*.35)*55;}
   const dock=s.operation?.region===2&&site.id==='port-landing'&&site.gantry===true;
   if(dock&&s.stage!=='field')continue;
-  const garrison=s.operation?.region===1?railGarrison(site):null;
-  const approach=dock?PORT_LANDING:garrison||coastApproach(site);
+  const garrison=s.operation?.region===1?railGarrison(site):null,wire=wireGarrison(s,site);
+  const approach=dock?PORT_LANDING:garrison||wire||coastApproach(site);
   if(site.coastApproach&&s.sites[0].state!=='done')continue;
   if(site.state==='waiting'&&distance(site,s.player)<(approach?.range??215)){
    const count=approach?.guards.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6),reserve=alive(s).length+count-160;
    if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets?.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}
    if(alive(s).length+count>160)continue;
    site.state='active';
-   const mirrored=dock&&site.x>800||garrison&&mapSeed(s.seed,1)%2===0;
-   const cohort=garrison?'rail-guard':site.coastApproach?'coast-guard':null;
+   const mirrored=(dock||wire)&&site.x>800||garrison&&mapSeed(s.seed,1)%2===0;
+   const cohort=garrison?'rail-guard':wire?'wire-guard':site.coastApproach?'coast-guard':null;
    for(let i=0;i<count;i++){
     const angle=i*TAU/6;
     const guard=site.kind==='armory'&&i===0?'officer':i===1&&!site.opening?'shield':'rifle';
     const [type,x,y]=approach?approach.guards[i]:[guard,Math.cos(angle)*85,Math.sin(angle)*65];
     const extra=cohort?{cohort}:{};
+    if(wire&&type==='mortar')extra.timer=.8;
     if(site.coastPlan==='split'&&site.coastApproach==='f')extra.coastWing=Math.sign(x);
     if(site.coastApproach==='r'&&approach.firstSalvo){
      const near=(s.player.x<=site.x)===(x<0);
@@ -1562,7 +1567,7 @@ function updateSites(s,dt){
    emit(s,'engage',site.x,site.y);
   }
   if(site.kind==='relay'&&site.state==='active'&&distance(site,s.player)<125){
-   if(!railCrewLeft(s,site))site.progress=Math.min(5,site.progress+dt);
+   if(!relayCrewLeft(s,site))site.progress=Math.min(5,site.progress+dt);
   }
   if(site.state==='active'&&(site.kind==='relay'?site.progress>=5:!s.enemies.some(e=>!e.dead&&e.siteId===site.id))){site.state='ready';s.stats.sitesCleared=(s.stats.sitesCleared||0)+1;s.stats.score+=400;emit(s,'supply-ready',site.x,site.y,{life:.8});}
   if(site.state==='ready'&&distance(site,s.player)<SITE_PICKUP_RANGE){
@@ -1570,7 +1575,7 @@ function updateSites(s,dt){
    site.state='done';
    if(s.operation?.region===0&&s.operation.order==='wire'&&site.id==='arsenal'){
     s.operation.orderDone=true;
-    emit(s,'supply-ready',site.x,site.y,{text:'전파 절단 · 귀환 시 지령 보상',life:1.4});
+    emit(s,'supply-ready',site.x,site.y,{text:wire?'교신 암호 확보 · 철도 조준 유인':'전파 절단 · 귀환 시 지령 보상',life:1.4});
    }
    if(dock){
     s.operation.portDock=true;
@@ -1800,7 +1805,7 @@ function startChallenge(s){
 
 export function interaction(s){
  if(s.phase!=='playing'||s.player.hp<=0)return null;
- if(railDecoyReady(s))return {id:'rail-decoy',label:'조준 유인'};
+ if(railDecoyReady(s))return {id:'rail-decoy',label:railHasRelay(s)?'조준 유인':'암호로 조준 유인'};
  const gantry=portGantry(s),armorStaging=portArmorStaging(s);
  if(gantry&&distance(s.player,gantry)<64)return{id:'boss',gantry,blocked:s.raid?.state==='active',label:'측면 해치 · 기습 진입'};
  if(armorStaging&&distance(s.player,armorStaging)<armorStaging.r)
@@ -1901,6 +1906,7 @@ export function action(s,kind,input){
    const cycle=s.boss.cycle+1;
    s.boss.railDecoy={...railBarrageAim(s,cycle),cycle};
    s.stats.railDecoys=1;
+   if(!railHasRelay(s)&&railHasWire(s))s.stats.wireDecoy=1;
    emit(s,'rail-decoy',p.x,p.y,{life:.55});
    return true;
   }

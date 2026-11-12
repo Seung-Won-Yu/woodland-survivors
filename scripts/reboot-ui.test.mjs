@@ -101,7 +101,8 @@ test('field-tested equipment can be reserved on the rail briefing without adding
  const active=beginProfile(p,run);finish(run,false);
  const settled=settleProfile(active,run),html=reportView(settled.recent[0],settled);
  assert.match(html,/철도 정비대 · 미회수/);assert.match(html,/다음 장비 예약/);
- assert.match(html,/같은 전장 · 표준 작전/);assert.doesNotMatch(html,/data-requisition=/);
+ assert.match(html,/같은 전장 · 출격 준비/);
+ assert.doesNotMatch(replayBriefingView(settled.recent[0],settled),/data-requisition=/);
 });
 test('research briefs identify both the coast delivery and the prerequisite route',()=>{
  const p=emptyProfile();p.research=['thermal','shrapnel','medic'];p.trials=['thermal'];p.credits=500;
@@ -130,7 +131,7 @@ test('reports distinguish this sortie unlocks from prior availability and show f
 });
 test('settled reports lead to affordable research and preserve exact replay seed',()=>{
  const run=createOperation(17);let p=beginProfile(emptyProfile(),run);run.operation.cleared=3;run.operation.extracted=true;run.stats.bossKilled=true;finish(run,true);p=settleProfile(p,run);
- const html=reportView(p.recent[0],p);assert.match(html,/data-target="research"/);assert.match(html,/data-action="same-seed" data-seed="17"/);assert.match(html,/첫 완주 \+200C 포함/);
+ const html=reportView(p.recent[0],p);assert.match(html,/data-target="research"/);assert.match(html,/data-action="replay-brief" data-replay-from="1"/);assert.match(replayBriefingView(p.recent[0],p),/data-action="same-seed" data-seed="17"/);assert.match(html,/첫 완주 \+200C 포함/);
  assert.match(html,/전선 보스 격파<\/dt><dd>\+390C/);
  assert.match(html,/이번에 지급<\/dt><dd>\+710C/);
  assert.ok(html.indexOf('debrief-actions')<html.indexOf('debrief-details'));
@@ -143,7 +144,7 @@ test('settled reports lead to affordable research and preserve exact replay seed
  assert.doesNotMatch(reportView({...p.recent[0],creditBreakdown:{...p.recent[0].creditBreakdown,firstClear:400}},p),/보급 크레딧 지급 내역/);
  assert.match(reportView(p.recent[0],p,{archived:true}),/data-target="archive"/);
  const withActive=beginProfile(p,createOperation(18)),archived=reportView(p.recent[0],withActive,{archived:true});
- assert.match(archived,/data-action="same-seed" data-seed="17"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
+ assert.match(archived,/data-action="replay-brief" data-replay-from="1"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
 });
 test('a comparable repeat shows independent time and score changes and the actual sector splits',()=>{
  const complete=(run,fronts,score)=>{
@@ -164,11 +165,25 @@ test('a comparable repeat shows independent time and score changes and the actua
  assert.match(briefing,/회수 의무 장비/);
  assert.doesNotMatch(briefing,/철갑 급탄/);
  assert.match(briefing,/data-action="same-seed" data-seed="23" data-actor="fio" data-replay-from="1"/);
+ const withResearch={...p,research:['shrapnel','thermal'],trials:['thermal']};
+ const wire=replayBriefingView(report,withResearch,'order:wire');
+ assert.match(wire,/value="order:wire" selected/);
+ assert.match(wire,/data-action="same-seed" data-seed="23" data-actor="fio" data-sortie="wire">재출격 · 70C/);
+ assert.match(wire,/박격포 제압 · 5초 해킹 · 철도 조준 유인/);
+ assert.doesNotMatch(wire,/data-replay-from/);
+ const paid=replayBriefingView(report,withResearch,'requisition:shrapnel:coast');
+ assert.match(paid,/data-action="same-seed" data-seed="23" data-actor="fio" data-requisition="shrapnel" data-requisition-at="coast">재출격 · 120C/);
+ assert.match(paid,/예약 · 분열 수류탄/);
+ assert.match(paid,/실전 시험 대기 · 흡열 코일/);
+ assert.doesNotMatch(paid,/value="requisition:thermal:|data-replay-from/);
+ const unaffordable=replayBriefingView(report,{...withResearch,credits:0},'order:wire');
+ assert.doesNotMatch(unaffordable,/data-sortie=|data-requisition=/);
+ assert.match(unaffordable,/data-replay-from="1"/);
  assert.match(lobbyView(p,{brief:1,seed:23}),/중계기 방어 8초 · 증원 8명 제압/);
  for(const unsupported of [{...report,balanceRevision:'previous'}, {...report,operation:{...report.operation,requisition:'thermal'}}]){
   const html=reportView(unsupported,p);
-  assert.match(html,/같은 전장 · 표준 작전/);
-  assert.doesNotMatch(html,/data-replay-from/);
+  assert.match(html,/같은 전장 · 출격 준비/);
+  assert.doesNotMatch(replayBriefingView(unsupported,p),/data-replay-from/);
  }
  const {run,next}=freshSortie(p,23,null,'fio',null,1);
  assert.equal(gatePace(run.operation,null),'');

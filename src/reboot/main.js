@@ -5,7 +5,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStagingPoint,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,railCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay} from './campaign.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,RESEARCH,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastStagingPoint,coastStrike,coastStrikeArmed,claimedCoastLead,coastApproach,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portArmorStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -38,7 +38,7 @@ const profile=()=>store.get();
 const unlockSound=()=>{if(store?.settings().sound)audio.unlock();};
 function notice(text){$('notice').textContent=text;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',4500);}
 function setBusy(on){busy=on;document.body.classList.toggle('is-saving',on);ui.setAttribute('aria-busy',String(on));for(const b of ui.querySelectorAll('button')){if(on&&!b.disabled){b.dataset.saving='true';b.disabled=true;}else if(!on&&b.dataset.saving){b.disabled=false;delete b.dataset.saving;}}}
-function panel(html){const origin=nextPanelFocus;nextPanelFocus=null;ui.innerHTML=html;ui.scrollTop=origin?.scroll||0;keys.clear();controls?.reset();requestAnimationFrame(()=>{const target=origin?.selector&&ui.querySelector(origin.selector)||ui.querySelector('h1,h2')||ui.querySelector('button:not(:disabled)');if(target){if(!target.matches('button,a,input'))target.tabIndex=-1;target.focus({preventScroll:true});}});}
+function panel(html){const origin=nextPanelFocus;nextPanelFocus=null;ui.innerHTML=html;ui.scrollTop=origin?.scroll||0;keys.clear();controls?.reset();requestAnimationFrame(()=>{const target=origin?.selector&&ui.querySelector(origin.selector)||ui.querySelector('h1,h2')||ui.querySelector('button:not(:disabled)');if(target){if(!target.matches('button,a,input,select,summary'))target.tabIndex=-1;target.focus({preventScroll:true});}});}
 function settings(){const p=profile();return `<div class="settings"><label><input type="checkbox" data-setting="sound" ${p.settings.sound?'checked':''}><span>전투 효과음<small>사격 · 적중 · 보스 포격 예고</small></span></label><label><input type="checkbox" data-setting="reduced" ${p.settings.reduced?'checked':''}><span>플래시·흔들림 줄이기<small>강한 폭발 효과와 화면 반동을 줄입니다.</small></span></label></div>`;}
 function drawPortrait(){
  const canvas=$('portrait'),id=selectedOperator;
@@ -192,7 +192,7 @@ function openReplayBriefing(source){
  const p=profile(),sequence=Number(source.dataset.replayFrom);
  const report=p.recent.find(r=>r?.sequence===sequence&&isReport(r));
  const html=report&&replayBriefingView(report,p);
- if(!html){notice('비교할 완주 기록을 읽지 못했습니다.');return;}
+ if(!html){notice('지난 전장의 작전 보고서를 읽지 못했습니다.');return;}
  subpanel={type:'replay-briefing',report,origin:{scroll:ui.scrollTop,selector:'[data-action="replay-brief"]'}};
  panel(html);
 }
@@ -354,6 +354,12 @@ async function selectCard(id,args={}){const c=run.choices.find(c=>c.id===id);if(
 }
 ui.addEventListener('change',async e=>{
  if(e.target.name==='doctrine'){selectedDoctrine=e.target.value;return;}
+ if(e.target.id==='replay-dispatch'&&subpanel?.type==='replay-briefing'){
+  if(busy||pending)return;
+  nextPanelFocus={scroll:ui.scrollTop,selector:'#replay-dispatch'};
+  panel(replayBriefingView(subpanel.report,profile(),e.target.value));
+  return;
+ }
  const key=e.target.dataset.setting;
  if(!key||busy)return;
  const p=profile();p.settings[key]=e.target.checked;
@@ -365,7 +371,7 @@ ui.addEventListener('change',async e=>{
   notice(error.message);
  }finally{setBusy(false);nextPanelFocus={selector:`[data-setting="${key}"]`};showSettings();}
 });
-ui.addEventListener('keydown',e=>{const dialog=ui.querySelector('[role="dialog"],[role="alertdialog"]');if(!dialog)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(launchPreparation){closePreparation(true);return;}if(busy||pending)return;if(subpanel?.type==='settings')closeSettings();else if(subpanel?.type==='replay-briefing')closeReplayBriefing();else if(subpanel?.type==='retreat'){if(subpanel.fromHome)showHome();else present(true);}else if(subpanel){nextPanelFocus=choiceOrigin;subpanel=null;present(true);}else if(run?.phase==='choice'&&run.choice.type==='assembly')selectCard('back');else if(mode==='report')closeArchivedReport();else if(run?.phase==='result'){lobbyTab='mission';showHome();}else if(run?.phase==='paused')pauseButton();return;}if(e.key==='Tab'){const nodes=[...dialog.querySelectorAll('button:not(:disabled),input,a[href],summary')].filter(n=>n.getClientRects().length);if(!nodes.length){e.preventDefault();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||!nodes.includes(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!nodes.includes(document.activeElement))){e.preventDefault();first.focus();}}});
+ui.addEventListener('keydown',e=>{const dialog=ui.querySelector('[role="dialog"],[role="alertdialog"]');if(!dialog)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(launchPreparation){closePreparation(true);return;}if(busy||pending)return;if(subpanel?.type==='settings')closeSettings();else if(subpanel?.type==='replay-briefing')closeReplayBriefing();else if(subpanel?.type==='retreat'){if(subpanel.fromHome)showHome();else present(true);}else if(subpanel){nextPanelFocus=choiceOrigin;subpanel=null;present(true);}else if(run?.phase==='choice'&&run.choice.type==='assembly')selectCard('back');else if(mode==='report')closeArchivedReport();else if(run?.phase==='result'){lobbyTab='mission';showHome();}else if(run?.phase==='paused')pauseButton();return;}if(e.key==='Tab'){const nodes=[...dialog.querySelectorAll('button:not(:disabled),input,select,a[href],summary')].filter(n=>n.getClientRects().length);if(!nodes.length){e.preventDefault();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||!nodes.includes(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!nodes.includes(document.activeElement))){e.preventDefault();first.focus();}}});
 ui.addEventListener('click',async e=>{
  const button=e.target.closest('button');if(!button||busy||pending&&!['retry','reload-latest'].includes(button.dataset.action))return;
  if(launchPreparation){if(button.dataset.action==='cancel-launch')closePreparation(true);return;}
@@ -620,7 +626,7 @@ function updateHud(entry,focus=null){
  const reserve=incoming?` · ${incoming}`:wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
  $('objective').textContent=choosingEntry?(entry.routes.length===1?'남은 선택 경로':front===1?'선로 갈림길':'하역장 갈림길'):`${direction} ${next.kind?sitePresentation(next).name:next.name} · ${Math.round(distance(p,next)/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;
- const garrison=railGarrison(next),crew=next.state==='active'&&next.kind==='relay'?railCrewLeft(run,next):0;
+ const garrison=railGarrison(next)||wireGarrison(run,next),crew=next.state==='active'&&next.kind==='relay'?relayCrewLeft(run,next):0;
  const hacking=crew?`${garrison.crew} ${crew}${garrison.unit} 제압 후 해킹`:`범위 안에서 해킹 ${Math.round(next.progress/5*100)}%`;
  const coastFight=next===coastSite&&!!coastSite?.coastApproach;
  const siteHint=coastFight?'':next.state==='active'?next.kind==='relay'?` · ${hacking}`:` · 경비 ${guards}명, 이동하며 제압`:next.state==='ready'?next.kind==='relay'?' · 해킹 완료, 접근해 회수':' · 제압 완료, 접근해 회수':'';
@@ -630,6 +636,7 @@ function updateHud(entry,focus=null){
  const armory=prepared&&next===bossTarget?run.sites.find(site=>site.kind==='armory'&&site.state!=='done'):null;
  const coastDelivery=front===0&&reserved&&next!==reserved&&!primaryCoast?.opening?reserved:null;
  const alternate=fork?.other||coastDelivery||armory||(gantry&&next===bossTarget?gantry:bossTarget);
+ const wireReady=railHasWire(run)&&!railHasRelay(run);
  const part=front===2?run.operation.support:null;
  const coastReward=site=>{
   if(site===reserved)return `${RESEARCH[run.operation.requisition].name} 예약`;
@@ -638,7 +645,7 @@ function updateHud(entry,focus=null){
   const available=module!==run.operation?.requisition&&!run.excluded.includes(module)&&compatible(run,module)&&moduleRank(run,module)<3;
   return available?`${MODULES[module].name} 후보`:'현장 보급';
  };
- const alternateLabel=fork||coastDelivery?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
+ const alternateLabel=fork||coastDelivery?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':wireReady?'열차 직행 · 교신 암호':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
  direct.hidden=!((front>0||prepared||fork||crossDone||coastDelivery)&&run.stage==='field'&&!raid&&next!==alternate);
  direct.dataset.coast=fork?.other.coastApproach||'';
  direct.textContent=`${bearing(p,...(alternate.path?entryWaypoint(alternate.path,p):[alternate.x,alternate.y]))} ${alternateLabel} · ${Math.round(distance(p,alternate)/10)}m`;
@@ -658,8 +665,13 @@ function updateHud(entry,focus=null){
   const fireRank=infernoControlRank(run);
   intel=`확보 시 조준 유인 1회${fireRank?` · F L${fireRank} 보급 후보`:''}\n${cue}`;
  }
+ else if(next===bossTarget&&wireReady)intel='교신 암호 · 열차 조준 유인 1회';
  else if(next===bossTarget&&workshopRoute)intel=`${bearing(p,...entryWaypoint(workshopRoute.path,p))} ${workshopRoute.summary}`;
- else if(dispatch&&next===dispatch)intel=`${order.name} · ${dispatch.state==='ready'?'접근해 회수':order.action}`;
+ else if(dispatch&&next===dispatch){
+  const cue=dispatch.state==='ready'?'접근해 회수':run.operation.order==='wire'
+   ?dispatch.state==='active'?hacking:garrison?garrison.hint:'범위 안에서 해킹한 뒤 회수':order.action;
+  intel=`${order.name} · ${cue}`;
+ }
  else if(next.site==='port-gantry')intel=`${portSideName(portTurretSide(run.boss))} 포탑 측면 · 첫 포격은 세로`;
  else if(next.id==='port-landing'&&next.gantry)intel='방패병 뒤 박격포까지 제압하면 측면 해치가 열립니다.';
  else if(orderSite&&next===orderSite)intel=entry?.routes.find(route=>route.site==='port-control')?.sign||'확보하면 보스 공략을 고를 수 있습니다.';

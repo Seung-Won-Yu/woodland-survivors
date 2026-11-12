@@ -14,15 +14,21 @@ export const HOLDOUT_CONTRACTS=[
  {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'하역장 바깥 굽이에서 차량의 진로를 끊으세요.'}
 ];
 export const SORTIE_ORDERS={
- wire:{name:'전파 절단',site:'해안 통신소',action:'범위 안에서 5초 해킹한 뒤 회수',fee:70,bonus:180,color:'#bde3cf'},
+ wire:{name:'전파 절단',site:'해안 통신소',action:'박격포 제압 · 5초 해킹 · 철도 조준 유인',fee:70,bonus:180,color:'#bde3cf',recordRevision:'rail-lure'},
  convoy:{name:'보급선 절단',site:'해안 무기고',action:'무기고에서 보급을 걸고 경량 보급차 저지',fee:70,bonus:180,color:'#f2ce91'}
 };
 export const sortieOrder=id=>Object.hasOwn(SORTIE_ORDERS,id)?SORTIE_ORDERS[id]:null;
+export const orderRecordScope=(scope,revision)=>revision?`${scope}/${revision}`:scope;
 export const orderBonus=r=>r.won&&r.operation?.orderDone?sortieOrder(r.operation.order)?.bonus||0:0;
 export function orderTarget(s){
  if(s.operation?.region!==0||s.stage==='boss'||s.operation.orderDone||!sortieOrder(s.operation.order))return null;
  return s.sites.find(site=>site.id==='arsenal'&&site.state!=='done')||null;
 }
+const WIRE_GARRISON={crew:'박격포',unit:'문',range:245,hint:'바깥쪽 박격포를 끊고 통신소를 해킹하세요.',guards:[
+ ['shield',22,44],['rifle',-50,25],['mortar',-86,-100]
+]};
+const hasWireOrder=s=>s.operation?.order==='wire'&&s.operation.orderRevision===SORTIE_ORDERS.wire.recordRevision;
+export const wireGarrison=(s,site)=>s.operation?.region===0&&hasWireOrder(s)&&site?.id==='arsenal'?WIRE_GARRISON:null;
 export const FRONT_SUPPORTS={
  breach:{name:'철갑 급탄',role:'부위 조준',art:'ammo',impact:'보스 부위 우선 조준 · 피해 +55%',detail:'측면에서 부위가 사거리에 들어오면 차체보다 먼저 조준합니다.',tactics:['조준 중인 포대를 부수면 해당 포격이 멈춥니다.','포탑을 먼저 파괴하면 재장전 직전 부채꼴 사격이 멈춥니다.']},
  overrun:{name:'돌격 신관',role:'재장전 돌입',art:'coil',impact:'회피 충격파 · 빈틈에 기본 피해 260',detail:'회피가 끝날 때 일반 적을 폭파하고, 재장전 중인 보스에도 근접 충격을 줍니다.',tactics:['포격이 끝나면 차선 밖에서 열차 쪽으로 회피하세요.','집중 포격을 벗어난 뒤 노출 코어 쪽으로 회피하세요.']},
@@ -214,8 +220,9 @@ export const railGunOf=hazard=>hazard.railGun??(hazard.x===500?0:hazard.x===1100
 export const railGunLabel=index=>index===0?'좌포':index===1?'우포':'포대';
 export const railLaneLabel=(h,locked=false)=>`${railGunLabel(railGunOf(h))} · ${h.tracked?(locked?'유인':'추적'):'측면'}`;
 export const railHasRelay=s=>s.sites.some(site=>site.kind==='relay'&&site.state==='done');
+export const railHasWire=s=>s.operation?.region===1&&hasWireOrder(s)&&s.operation.orderDone===true;
 export const railDecoyReady=s=>s.operation?.region===1&&s.stage==='boss'&&s.boss.active&&!s.boss.dead
- &&s.boss.mode==='aim'&&!s.boss.railDecoy&&!railDisarmed(s.boss)&&railHasRelay(s);
+ &&s.boss.mode==='aim'&&!s.boss.railDecoy&&!railDisarmed(s.boss)&&(railHasRelay(s)||railHasWire(s));
 export const railDecoyLocked=s=>s.operation?.region===1&&s.boss.active&&s.boss.mode==='aim'
  &&s.boss.railDecoy?.cycle===s.boss.cycle+1;
 export function railBarrageAim(s,cycle){
@@ -235,7 +242,7 @@ export function railBarrageRounds(s,cycle){
  return rounds;
 }
 export function railBarragePreview(s){
- return s.operation?.region===1&&s.boss.active&&s.boss.mode==='aim'&&railHasRelay(s)?railBarrageRounds(s,s.boss.cycle+1):[];
+ return s.operation?.region===1&&s.boss.active&&s.boss.mode==='aim'&&(railHasRelay(s)||railHasWire(s)&&!s.boss.railDecoy||railDecoyLocked(s))?railBarrageRounds(s,s.boss.cycle+1):[];
 }
 export function railLaneBounds(h){
  const width=h.w+32,height=h.h+32;
@@ -493,6 +500,8 @@ export const RAIL_GARRISONS={
 export const railGarrison=site=>Object.hasOwn(RAIL_GARRISONS,site?.guardPlan)?RAIL_GARRISONS[site.guardPlan]:null;
 export const railCrewLeft=(s,site)=>railGarrison(site)
  ?s.enemies.filter(e=>!e.dead&&e.siteId===site.id&&e.type===site.guardPlan).length:0;
+export const relayCrewLeft=(s,site)=>wireGarrison(s,site)
+ ?s.enemies.filter(e=>!e.dead&&e.hp>0&&e.siteId===site.id&&e.type==='mortar').length:railCrewLeft(s,site);
 const ENTRY={
  1:{arrival:{x:800,y:1040},routes:[
   {site:'rail-cache',sign:'화차 정비대',color:'#edce8e',path:[[800,1040],[665,1002],[562,947],[535,850]]},

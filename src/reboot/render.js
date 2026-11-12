@@ -878,10 +878,11 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
      c.globalAlpha=Math.min(1,visibility+e.spawnAge*3);
     }
     circle(c,e.x,e.y,14,'#263b3338');
-    if(!e.dead&&e.cohort==='port-battery'){
+    const wireMortar=e.cohort==='wire-guard'&&e.type==='mortar'&&s.stage!=='boss';
+    if(!e.dead&&(e.cohort==='port-battery'||wireMortar)){
      circle(c,e.x,e.y,22,'#8a4e2425','#ffcf9a',2);
      bar(c,e.x,e.y-58,45,e.hp/e.maxHp,'#f4be83');
-     c.fillStyle='#fff0cb';c.font='10px Galmuri';c.textAlign='center';c.fillText('박격포',e.x,e.y-66);
+     c.fillStyle='#fff0cb';c.font='10px Galmuri';c.textAlign='center';c.fillText(wireMortar?'통신소 박격포':'박격포',e.x,e.y-66);
     }
     if(e.hurt>0)c.filter='brightness(1.7)';if(art)actor(c,art.enemies,({rifle:0,shield:1,mortar:2,officer:3})[e.type],Math.floor(e.walk)%4,e.x,e.y,e.type==='officer'?62:e.type==='shield'?55:49,Math.cos(e.aim)<0);else{c.fillStyle=e.type==='officer'?'#ba6d53':'#48533c';c.fillRect(e.x-12,e.y-34,24,34);}c.filter='none';
     if(e.burn>0&&!e.dead){circle(c,e.x,e.y-18,15,'#ff994925');flame(c,e.x-7,e.y-18,18,s.t*13+e.x);flame(c,e.x+6,e.y-22,13,s.t*12+e.y);}if(e.type==='officer'&&!e.dead){

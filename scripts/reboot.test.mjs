@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -3329,8 +3329,13 @@ test('wire order requires recovering the completed relay and pays only after the
  const base=emptyProfile(),p={...base,records:{...base.records,wins:1,score:999},credits:900,milestones:{medic:true}};
  const {run:s,next}=freshSortie(p,19,'wire'),relay=orderTarget(s);
  s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.invuln=999;
+ s.weapons[0].cd=999;
  for(const n of s.sites)if(n!==relay)n.state='done';
- Object.assign(s.player,{x:relay.x+100,y:relay.y});tick(s,5.1);
+ Object.assign(s.player,{x:relay.x+100,y:relay.y});tick(s,1.35);
+ const mortar=s.enemies.find(e=>e.siteId===relay.id&&e.type==='mortar');
+ assert.ok(mortar?.hp>0);assert.equal(relay.progress,0);
+ assert.ok(s.hazards.some(h=>h.coastMortar===relay.id));
+ s.shots=[bullet(s,mortar,10000)];tick(s,5.1);
  assert.equal(relay.state,'ready');assert.equal(s.operation.orderDone,false);
  Object.assign(s.player,relay);step(s,dt);
  assert.equal(s.operation.orderDone,true);assert.equal(orderTarget(s),null);
@@ -3344,9 +3349,60 @@ test('wire order requires recovering the completed relay and pays only after the
  const complete=settleProfile(next,s),r=complete.recent[0];
  assert.equal(complete.credits,next.credits+r.credits);assert.equal(complete.records.score,999);
  assert.equal(complete.orderRecords.wire.wins,1);assert.equal(complete.orderRecords.wire.score,r.score);
+ assert.equal(complete.orderRecords.wire.scope,orderRecordScope(complete.recordScope,SORTIE_ORDERS.wire.recordRevision));
+ assert.notEqual(complete.orderRecords.wire.scope,complete.recordScope);
  assert.equal(r.orderFee,70);assert.equal(r.orderBonus,180);assert.ok(r.newTime);
  assert.deepEqual(settleProfile(complete,s),complete);
  assert.equal(parseProfile(JSON.stringify(complete)).orderRecords.wire.time,r.seconds);
+});
+
+test('recovered coast codes allow one rail decoy without the relay and preserve the shorter warning',()=>{
+ const start=(done,legacy=false)=>{
+  const s=createOperation(19,[],null,'wire');
+  const relay=orderTarget(s);
+  if(legacy)delete s.operation.orderRevision;
+  if(done){relay.state='done';s.operation.orderDone=true;}
+  clearRegion(s);assert.ok(choose(s,'advance'));
+  Object.assign(s.player,{x:800,y:350});assert.ok(action(s,'interact'));
+  return s;
+ };
+ const missed=start(false);
+ assert.equal(interaction(missed),null);
+ assert.deepEqual(railBarragePreview(missed),[]);
+ const legacy=restore(snapshot(start(true,true)));
+ assert.equal(interaction(legacy),null);
+ assert.deepEqual(railBarragePreview(legacy),[]);
+ const s=start(true);
+ assert.ok(railBarragePreview(s).some(h=>h.tracked));
+ assert.equal(interaction(s)?.label,'암호로 조준 유인');
+ assert.ok(action(s,'interact'));assert.equal(action(s,'interact'),false);
+ const loaded=restore(snapshot(s));
+ assert.equal(loaded.stats.wireDecoy,1);
+ assert.equal(loaded.sites.find(site=>site.id==='rail-relay').state,'waiting');
+ loaded.player.x=620;loaded.boss.timer=0;step(loaded,dt);
+ const tracked=loaded.hazards.find(h=>h.tracked);
+ assert.equal(tracked.x,800);
+ assert.equal(tracked.duration,RAIL_BARRAGE.warning+1);
+});
+
+test('an older wire checkpoint preserves its active coastal hack and original record scope',()=>{
+ const base=emptyProfile(),p={...base,records:{...base.records,wins:1},credits:900};
+ const {run:s,next}=freshSortie(p,19,'wire');
+ delete s.operation.orderRevision;
+ const relay=orderTarget(s);
+ Object.assign(relay,{state:'active',progress:3});
+ s.blocks=[];s.enemies=[];s.spawnClock=999;
+ for(const n of s.sites)if(n!==relay)n.state='done';
+ Object.assign(s.player,{x:relay.x+100,y:relay.y});
+ const loaded=restore(snapshot(s));
+ tick(loaded,2.1);
+ const ready=orderTarget(loaded);
+ assert.equal(ready.state,'ready');
+ assert.ok(!loaded.enemies.some(e=>e.siteId===ready.id&&e.type==='mortar'));
+ Object.assign(loaded.player,ready);step(loaded,dt);assert.ok(skip(loaded));
+ for(let i=0;i<3;i++){clearRegion(loaded);if(i<2)assert.ok(choose(loaded,'advance'));}
+ assert.ok(choose(loaded,'extract'));
+ assert.equal(settleProfile(next,loaded).orderRecords.wire.scope,base.recordScope);
 });
 
 test('only the designated light coast convoy secures the convoy order',()=>{

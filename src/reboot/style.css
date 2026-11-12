@@ -616,6 +616,15 @@
 .replay-briefing>header>b small{display:block;margin-top:3px;font-size:11px;color:#cbd8bb}
 .replay-briefing .replay-last-kit{margin:0 0 10px;color:#d8dec6;font-size:12px;line-height:1.45;word-break:keep-all}
 .replay-last-kit strong{color:#f0e5c9;margin-right:4px}
+.replay-dispatch{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:9px;margin-bottom:8px;padding:6px 8px 6px 10px;border-left:2px solid var(--gold);background:#31443a;color:#ede0b7;font-size:11px}
+.replay-dispatch select{min-width:0;min-height:44px;padding:6px 8px;font:inherit;color:#f2e7c9;background:#20352e;border:1px solid var(--line);border-radius:0}
+.replay-dispatch select:focus-visible,.replay-rail-note summary:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+.replay-briefing .replay-dispatch-note{margin:0 0 8px;color:#d9d6b8;font-size:11px;line-height:1.5;word-break:keep-all}
+.replay-briefing .coast-plan+.replay-dispatch-note{margin:7px 0 0}
+.replay-rail-note{margin-top:8px;border-top:1px solid var(--line)}
+.replay-rail-note summary{padding:10px 0;color:#e8deb9;font-size:11px;cursor:pointer}
+.replay-rail-note .rail-gate-brief{margin:0;padding-top:0;border:0}
+.replay-rail-note h3{display:none}
 .replay-briefing [data-suggested]{border-top:2px solid var(--route-color)}
 .replay-briefing .coast-plan li strong{font-size:13px}
 .replay-briefing .coast-plan li div>span,.replay-briefing .coast-plan li small{font-size:11px}

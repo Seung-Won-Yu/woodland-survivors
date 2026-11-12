@@ -1,4 +1,4 @@
-import {RESEARCH,REQUISITION_FEE,operationPayout,sortieOrder} from './campaign.js';
+import {RESEARCH,REQUISITION_FEE,operationPayout,sortieOrder,orderRecordScope} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,restore,snapshot,finish,canResumeRun} from './model.js';
 import {operatorId} from './operator.js';
@@ -77,9 +77,9 @@ export function settleProfile(p,run){
   const record=marco?(n.marcoRecords=marcoRecord(n)||{scope:n.recordScope,score:0,time:null,challenge:0,wins:0,orders:{}}):n.records;
   if(order){
    const orders=marco?record.orders:(n.orderRecords??={}),id=r.operation.order;
-   const prior=orders[id]?.scope===n.recordScope?orders[id]:null;
+   const scope=orderRecordScope(n.recordScope,r.operation.orderRevision),prior=orders[id]?.scope===scope?orders[id]:null;
    r.newScore=!prior||r.score>prior.score;r.newTime=!prior||r.seconds<prior.time;
-   orders[id]={scope:n.recordScope,wins:(prior?.wins||0)+1,score:Math.max(prior?.score||0,r.score),time:Math.min(prior?.time??Infinity,r.seconds)};
+   orders[id]={scope,wins:(prior?.wins||0)+1,score:Math.max(prior?.score||0,r.score),time:Math.min(prior?.time??Infinity,r.seconds)};
   }else{
    r.newScore=r.score>record.score;r.newTime=r.won&&(record.time===null||r.seconds<record.time);
    record.score=Math.max(record.score,r.score);record.challenge=Math.max(record.challenge,r.stats.challenge);

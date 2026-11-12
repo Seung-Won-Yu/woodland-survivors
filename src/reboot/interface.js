@@ -1,5 +1,5 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol} from './field-scene.js';
-import {REGIONS,RESEARCH,REQUISITION_FEE,requisitionDestination,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderBonus,operationCredits} from './campaign.js';
+import {REGIONS,RESEARCH,REQUISITION_FEE,requisitionDestination,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,COAST_STRIKES,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderRecordScope,orderBonus,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,bearing,distance,makeWeapon,weaponStats,capstoneName} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
@@ -87,7 +87,7 @@ function orderOptions(p,selected,operator,reserved){
  if(!p.records.wins||p.active)return '';
  const cards=Object.entries(SORTIE_ORDERS).map(([id,order])=>{
   const record=(operator==='marco'?marcoRecord(p)?.orders:p.orderRecords)?.[id],short=Math.max(0,order.fee-p.credits);
-  return `<button type="button" class="order-slip" data-order="${id}" aria-pressed="${id===selected}" ${short?'disabled':''}><span class="order-stamp" aria-hidden="true">${moduleIcon(id==='wire'?'coil':'route')}</span><span class="order-copy"><strong>${order.name}</strong><small>${order.action}</small><small>${short?`${short}C 부족`:record?.scope===p.recordScope?`최단 ${clockText(record.time)} · 최고 ${n(record.score)}점`:`${order.fee}C 선납 · 귀환 시 +${order.bonus}C`}</small></span></button>`;
+  return `<button type="button" class="order-slip" data-order="${id}" aria-pressed="${id===selected}" ${short?'disabled':''}><span class="order-stamp" aria-hidden="true">${moduleIcon(id==='wire'?'coil':'route')}</span><span class="order-copy"><strong>${order.name}</strong><small>${order.action}</small><small>${short?`${short}C 부족`:record?.scope===orderRecordScope(p.recordScope,order.recordRevision)?`최단 ${clockText(record.time)} · 최고 ${n(record.score)}점`:`${order.fee}C 선납 · 귀환 시 +${order.bonus}C`}</small></span></button>`;
  }).join('');
  return `<section class="sortie-orders" aria-labelledby="orders-title"><header><div><span class="section-index">${reserved?'선택하면 장비 예약을 취소합니다.':'해안 · 선택 목표'}</span><h2 id="orders-title">추가 작전 지령</h2></div>${selected?'<button class="text-button" data-order="">표준 작전으로</button>':''}</header><div class="order-options">${cards}</div></section>`;
 }
@@ -95,10 +95,7 @@ function orderOptions(p,selected,operator,reserved){
 function operatorSelector(operator){
  return `<div class="operator-selector" role="group" aria-label="출전 대원 선택">${Object.entries(OPERATORS).map(([id,d])=>`<button data-pilot="${id}" aria-pressed="${id===operator}"><span>${d.short}</span><b>${d.name}</b><small>${d.skill}</small></button>`).join('')}</div>`;
 }
-function missionPanel(p,brief,previewSeed,requested,operator,requisition,requisitionAt){
- const actor=OPERATORS[operator],order=canLaunchOrder(p,requested)?requested:null;
- const reserved=!order&&canReserveResearch(p,requisition,requisitionAt)?requisition:null;
- const selected=brief??0,d=REGIONS[selected],copy=briefCopy[selected],goal=nextOrder(p),weapons=[makeWeapon('h')];
+function coastResearchNotes(p,reserved,requisitionAt){
  const researchNotes={};
  for(const id of p.trials){
   const research=RESEARCH[id];
@@ -107,6 +104,13 @@ function missionPanel(p,brief,previewSeed,requested,operator,requisition,requisi
  if(reserved&&requisitionAt==='coast')researchNotes[RESEARCH[reserved].fieldGun]=`예약 · ${RESEARCH[reserved].name}`;
  if(researchNotes.f&&(reserved==='thermal'&&requisitionAt==='coast'||p.trials.includes('thermal')))
   researchNotes.r=researchNotes.r?`${researchNotes.r} / 축전 코일 후보`:'흡열 준비 · 축전 코일 후보';
+ return researchNotes;
+}
+function missionPanel(p,brief,previewSeed,requested,operator,requisition,requisitionAt){
+ const actor=OPERATORS[operator],order=canLaunchOrder(p,requested)?requested:null;
+ const reserved=!order&&canReserveResearch(p,requisition,requisitionAt)?requisition:null;
+ const selected=brief??0,d=REGIONS[selected],copy=briefCopy[selected],goal=nextOrder(p),weapons=[makeWeapon('h')];
+ const researchNotes=coastResearchNotes(p,reserved,requisitionAt);
  return `<div class="mission-layout"><section class="mission-board"><header class="board-heading"><div><span class="section-index">작전 지령</span><h1>시험 병기 수송을 차단하라</h1></div></header>${launchDock(p,order,operator,reserved,requisitionAt,selected===0?coastPlan(previewSeed,order,null,researchNotes):'')}${orderOptions(p,order,operator,reserved)}${operationMap(selected,previewSeed,order)}${selected?frontIntel(selected,previewSeed):''}${selected===1?railGateBrief(previewSeed):''}<div class="sector-brief"><div><span class="sector-number">0${selected+1}</span><div><h2>${d.name}</h2><p>${copy.terrain} · ${copy.supply}</p></div></div><p class="tactic"><b>${d.boss}</b>${copy.tactic}</p></div><p class="brief-contract"><b>잔류 · ${HOLDOUT_CONTRACTS[selected].name}</b><span>${HOLDOUT_CONTRACTS[selected].goal}${selected<2?` + 증원 ${HOLDOUT.rareKills}명 제압`:''}</span></p></section><aside class="deployment"><section class="operator-station" data-operator="${operator}"><div class="operator-heading"><span>출전 대원</span><h2>${actor.name}</h2><b>${actor.skill}</b></div><canvas class="portrait" id="portrait" aria-label="${actor.name} 출격 준비 모습"></canvas><div class="operator-platform"></div><div class="starting-kit"><span>시작 무장</span><div>${weapons.map(w=>`<b>${e(w.fusion?`${w.id.toUpperCase()}+${w.fusion.secondary.toUpperCase()}`:w.id.toUpperCase())}<small>L${w.level}</small></b>`).join('')}</div><p>${actor.brief}</p></div></section><section class="next-assignment"><span>다음 목표</span><h3>${e(goal.title)}</h3><p>${e(goal.text)}</p><button class="text-button" data-tab="${goal.target}">${goal.label} ↗</button></section>${p.active?'<button class="danger-text" data-action="end-saved">이전 판 정산</button>':''}</aside></div>`;
 }
 function trialDispatch(p){
@@ -165,7 +169,7 @@ function orderReceipt(r){
  if(!order)return '';
  const reward=Number.isSafeInteger(r.orderBonus)&&r.orderBonus>=0?r.orderBonus:orderBonus(r),done=r.operation.orderDone;
  const fee=Number.isSafeInteger(r.orderFee)&&r.orderFee>=0?r.orderFee:order.fee;
- return `<section class="sortie-receipt" aria-label="지령 정산"><span class="order-stamp" aria-hidden="true">${moduleIcon(r.operation.order==='wire'?'coil':'route')}</span><div><span class="section-index">해안 지령 · ${reward?'완수':done?'목표 확보':'미완료'}</span><b>${order.name}</b><small>${reward?'목표 확보 후 최종 귀환':done?'최종 귀환 조건 미달':'해안 목표 미확보'}</small></div><div class="sortie-pay"><b>${reward?`+${n(reward)}C`:'보너스 0C'}</b><small>출격 시 −${n(fee)}C</small></div></section>`;
+ return `<section class="sortie-receipt" aria-label="지령 정산"><span class="order-stamp" aria-hidden="true">${moduleIcon(r.operation.order==='wire'?'coil':'route')}</span><div><span class="section-index">해안 지령 · ${reward?'완수':done?'목표 확보':'미완료'}</span><b>${order.name}</b><small>${reward?'목표 확보 후 최종 귀환':done?'최종 귀환 조건 미달':'해안 목표 미확보'}${r.stats.wireDecoy?' · 교신 암호로 열차 조준 유인':''}</small></div><div class="sortie-pay"><b>${reward?`+${n(reward)}C`:'보너스 0C'}</b><small>출격 시 −${n(fee)}C</small></div></section>`;
 }
 function requisitionReceipt(r){
  const id=r.operation?.requisition;
@@ -245,21 +249,37 @@ const alternateRecipes={
  r:{name:'전도 격발망',materials:'R 추적 다탄두 · H·R 각 L4 + 축전 코일 2 + 조율권 1'},
  f:{name:'인페르노',materials:'F L6 + 촉매 연료 2 + 조율권 1'}
 };
-export function replayBriefingView(r,p){
+export function replayBriefingView(r,p,selection='standard'){
+ if(!isReport(r))return '';
  const reference=replayReference(r,p.recordScope);
- if(!reference)return '';
+ const orders=Object.entries(SORTIE_ORDERS).filter(([id])=>canLaunchOrder(p,id)).map(([id,order])=>({key:`order:${id}`,id,order,label:`${order.name} · ${order.fee}C`}));
+ const reservations=Object.entries(RESEARCH).flatMap(([id,request])=>[null,'coast'].filter(at=>canReserveResearch(p,id,at)).map(at=>{
+  const destination=requisitionDestination({requisition:id,requisitionAt:at});
+  return {key:`requisition:${id}:${at||'rail'}`,id,request,at,destination,label:`${request.name} · ${at?'해안':'철도'} ${REQUISITION_FEE}C`};
+ }));
+ const dispatch=[...orders,...reservations].find(option=>option.key===selection);
+ const {id,order,request,at,destination}=dispatch||{};
+ const researchNotes=coastResearchNotes(p,request&&id,at);
+ const options=(label,list)=>list.length?`<optgroup label="${label}">${list.map(item=>`<option value="${item.key}"${item===dispatch?' selected':''}>${e(item.label)}</option>`).join('')}</optgroup>`:'';
+ const selector=orders.length||reservations.length?`<label class="replay-dispatch"><span>출격 조건</span><select id="replay-dispatch"><option value="standard"${dispatch?'':' selected'}>표준 작전${reference?' · 기록 비교':''}</option>${options('추가 작전 지령',orders)}${options('연구 장비 예약',reservations)}</select></label>`:'';
+ const detail=order?`${order.site} · ${order.action} / 목표 확보 후 최종 귀환 +${order.bonus}C`:request?`${destination}에서 ${request.name} 회수 · 현장 보급 중 한 가지`:'';
+ const trials=p.trials.map(key=>RESEARCH[key].name).join(' / ');
+ const fee=order?.fee||(request?REQUISITION_FEE:0);
+ const attrs=order?` data-sortie="${id}"`:request?` data-requisition="${id}"${at?' data-requisition-at="coast"':''}`:reference?` data-replay-from="${reference.sequence}"`:'';
  const fire=r.weapons.some(w=>w.id==='f'&&w.evolved),fusion=r.weapons.some(w=>w.fusion);
  const suggested=fire===fusion?null:fire?'r':'f';
  const alternate=alternateRecipes[suggested];
  return `<section class="sheet replay-briefing" role="dialog" aria-modal="true" aria-labelledby="replay-brief-title">
-  <header><div><span class="section-index">작전 #${reference.sequence} · ${operatorOf(r).name}</span><h2 id="replay-brief-title">같은 전장 재도전</h2></div><b>${splitClockText(reference.seconds)}<small>${n(reference.score)}점</small></b></header>
-  <p class="replay-last-kit"><strong>지난 완주</strong> ${e(buildNames(reference.capstones))} · ${e(supportName(reference.harborSupport))}</p>
-  ${coastPlan(r.seed,null,suggested)}
-  ${alternate?`<p class="replay-route-hint" data-coast="${suggested}"><strong>${alternate.name}</strong><span>${alternate.materials}</span></p>`:''}
-  ${railGateBrief(r.seed)}
+  <header><div><span class="section-index">작전 #${r.sequence??'–'} · ${operatorOf(r).name}</span><h2 id="replay-brief-title">같은 전장 재도전</h2></div><b>${splitClockText(r.seconds)}<small>${n(r.score)}점</small></b></header>
+  <p class="replay-last-kit"><strong>${r.won?'지난 완주':'지난 출격'}</strong> ${e(buildNames(installedCapstones(r.weapons)))} · ${e(supportName(harborLoadout(r.operation)))}</p>
+  ${selector}${detail?`<p class="replay-dispatch-note">${e(detail)}</p>`:''}
+  ${coastPlan(r.seed,order?id:null,request?.fieldGun||suggested,researchNotes)}
+  ${trials?`<p class="replay-dispatch-note">실전 시험 대기 · ${e(trials)}</p>`:''}
+  ${alternate&&!dispatch?`<p class="replay-route-hint" data-coast="${suggested}"><strong>${alternate.name}</strong><span>${alternate.materials}</span></p>`:''}
+  <details class="replay-rail-note"><summary>철도 잔류 보급</summary>${railGateBrief(r.seed)}</details>
   <footer>
-   <small>${p.active?'진행 중인 작전을 정산하고 ':''}현재 연구로 해안 LV.1부터 시작합니다.</small>
-   <div><button data-action="replay-brief-back">보고서로</button><button class="primary" data-action="same-seed" data-seed="${reference.seed}" data-actor="${reference.operator}" data-replay-from="${reference.sequence}">재출격 <span aria-hidden="true">▶</span></button></div>
+   <small>${p.active?'진행 중인 작전을 정산하고 ':''}현재 연구로 해안 LV.1부터 시작합니다.${order?' 완수 시 지령 기록에 반영합니다.':''}</small>
+   <div><button data-action="replay-brief-back">보고서로</button><button class="primary" data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}"${attrs}>재출격${fee?` · ${fee}C`:''} <span aria-hidden="true">▶</span></button></div>
   </footer>
  </section>`;
 }
@@ -284,11 +304,12 @@ function debriefNext(r,p){
 function debriefActions(r,p,archived,compared){
  const reference=replayReference(r,p.recordScope);
  const target=reference?`${splitClockText(reference.seconds)} · ${n(reference.score)}점`:'';
+ const briefing=Number.isSafeInteger(r.sequence)&&r.sequence>0;
  const replay=`<div class="debrief-replays">
-   <button ${reference?`data-action="replay-brief" data-replay-from="${reference.sequence}"`:`data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}"`}>같은 전장 · ${reference?'기록 도전':'표준 작전'}${target?`<small>${target}</small>`:''}</button>
+   <button ${briefing?`data-action="replay-brief" data-replay-from="${r.sequence}"`:`data-action="same-seed" data-seed="${r.seed}" data-actor="${operatorId(r)}"`}>같은 전장 · ${reference?'기록 도전':briefing?'출격 준비':'표준 작전'}${target?`<small>${target}</small>`:''}</button>
    <button data-action="launch" data-actor="${operatorId(r)}">새 전장 출격</button>
   </div>`;
- const footnote=`<p class="report-footnote">${p.active?'진행 중인 작전을 정산한 뒤 출격합니다. ':''}표준 작전 · 현재 연구로 해안 LV.1 시작</p>`;
+ const footnote=`<p class="report-footnote">${p.active?'진행 중인 작전을 정산한 뒤 출격합니다. ':''}현재 연구로 해안 LV.1 시작</p>`;
  if(archived)return `<section class="debrief-actions" aria-label="재출격">${p.active?footnote+replay:replay+footnote}<button class="text-button" data-action="home" data-target="archive">기록실로 돌아가기</button></section>`;
  const next=debriefNext(r,p);
  const assignment=`<div class="debrief-next"><h2>${e(next.title)}</h2>${next.text?`<p>${e(next.text)}</p>`:''}

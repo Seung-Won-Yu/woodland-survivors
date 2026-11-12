@@ -222,6 +222,7 @@ export function choiceDetails(s,c){
   out.detail=vanguard?`첫 증원까지 ${Math.ceil(HOLDOUT.grace-s.holdTime)}초 · 남겨둘 XP ${groundXp(s)}`:`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
   out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':vanguard?'다음 보스 첫 포격 경고 +1초':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
   if(s.operation.region===0&&s.operation.coastStrikeUsed)out.detail+=' · 수송차 노획 보급 이월';
+  if(s.operation.region===0&&s.operation.order==='wire'&&s.operation.orderRevision&&s.operation.orderDone)out.detail+=' · 교신 암호로 철도 조준 유인';
   if(s.operation?.region===0&&s.operation.order&&!s.operation.orderDone)out.link=s.raid?.state==='active'?'습격 철수 · 상자 소실 · 지령 보너스 없음':'해안 지령 미완료 · 전진 시 추가 보상 없음';
   const aid=vanguard?vanguardAid(s.player):null;
   const changes=aid?[Math.ceil(aid.hp)>Math.ceil(s.player.hp)?`체력 ${Math.ceil(s.player.hp)} → ${Math.ceil(aid.hp)}`:'',Math.floor(aid.charge)>Math.floor(s.player.charge)?`충전 ${Math.floor(s.player.charge)} → ${Math.floor(aid.charge)}`:''].filter(Boolean):[];
