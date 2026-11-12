@@ -159,13 +159,16 @@ function researchFieldReport(r){
  if(!ids.length)return '';
  return `<section class="research-receipt field-receipt" aria-label="연구 실전 기록"><span class="section-index">연구 실전 기록</span><ul>${ids.map(id=>`<li><b>${RESEARCH[id].name}${tried.includes(id)?' <em>첫 실전</em>':''}</b><small>${evidence[id]||'장착 · 효과 기록 없음'}</small></li>`).join('')}</ul></section>`;
 }
-function railWorkshopReport(stats){
+function workshopReport(stats){
  const change=stats.railCalibration,branches=GUNS[change?.gun]?.branches;
  const from=branches?.[change?.from]?.[0],to=branches?.[change?.to]?.[0];
  const rebuild=stats.railRebuild,gun=['h','r'].includes(rebuild?.weapon)&&GUNS[rebuild.weapon];
  const rebuilt=gun&&rebuild.donor==='f'&&[rebuild.from,rebuild.to,rebuild.donorLevel].every(Number.isSafeInteger)
   ?`<p class="rail-workshop-record"><span>화차 정비 · F L${rebuild.donorLevel} 분해</span><b>${gun.short} L${rebuild.from} → L${rebuild.to}</b></p>`:'';
- return (from&&to?`<p class="rail-workshop-record"><span>화차 개장</span><b>${e(from)} → ${e(to)}</b></p>`:'')+rebuilt;
+ const service=stats.coastService;
+ const serviced=['f','r'].includes(service?.weapon)&&[service.from,service.to].every(Number.isSafeInteger)
+  ?`<p class="rail-workshop-record"><span>해안 노획 부품</span><b>${GUNS[service.weapon].short} L${service.from} → L${service.to}</b></p>`:'';
+ return serviced+(from&&to?`<p class="rail-workshop-record"><span>화차 개장</span><b>${e(from)} → ${e(to)}</b></p>`:'')+rebuilt;
 }
 function orderReceipt(r){
  const order=sortieOrder(r.operation?.order);
@@ -191,6 +194,7 @@ function harborPayoff(r){
  if(!log||!Object.hasOwn(labels,part))return '';
  const results=labels[part].filter(([key])=>Number.isSafeInteger(log[key])&&log[key]>0)
   .map(([key,label])=>`${label} ${n(log[key])}회`);
+ if(log.stagedEntry)results.unshift({breach:'보조포 측면 교전',overrun:'측면 돌입선 교전',recovery:'화물 유인점 교전'}[part]);
  if(!results.length)return '';
  return `<section class="harbor-payoff" data-part="${part}"><span>철도 부품 · 항구 전과</span><b>${FRONT_SUPPORTS[part].name}</b><p>${results.join(' / ')}</p></section>`;
 }
@@ -339,7 +343,7 @@ function debriefDetails(r,p,lines){
    <section class="build-report"><h2>이번 작전의 화력</h2>
     ${loadoutChips(r.weapons,r.modules)}
     ${Object.hasOwn(COAST_STRIKES,r.operation?.coastStrike)?`<p class="rail-workshop-record"><span>수송차 공략</span><b>${COAST_STRIKES[r.operation.coastStrike].name} · ${r.operation.coastStrikeUsed?'성공':'미발동'}</b></p>`:''}
-    ${railWorkshopReport(r.stats)}
+    ${workshopReport(r.stats)}
     ${r.operation?.portEntry==='gantry'?'<p class="rail-workshop-record"><span>항구 진입</span><b>측면 해치 기습</b></p>':''}
     ${Object.hasOwn(MANEUVERS,r.stats.maneuver)?`<small class="inline-note">노획 교범 · ${MANEUVERS[r.stats.maneuver].name}</small>`:''}
     ${procs.length?`<div class="proc-list">${procs.map(([label,v])=>`<span>${label}<b>${n(v)}회</b></span>`).join('')}</div>`:''}

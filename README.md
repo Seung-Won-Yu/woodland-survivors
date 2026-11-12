@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.111.0" src="https://img.shields.io/badge/RIFT-0.111.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.113.0" src="https://img.shields.io/badge/RIFT-0.113.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -115,6 +115,10 @@ npm run test:pages
 0.97에서는 철갑 급탄을 확보하면 항구의 보조포 쪽으로 먼저 돌아 현재 위치에서 교전을 시작할 수 있습니다. 보상 카드와 작전도가 같은 방향을 표시합니다. [항구 측면 교전과 첫 포격 비교](docs/RIFT-GAMEPLAY-V1.md#097-항구-측면-교전-위치).
 
 0.98에서는 실전 장착을 마친 분열 수류탄과 흡열 코일을 해안이나 철도에 예약할 수 있습니다. 해안 예약은 첫 보스 전부터 쓸 수 있고, 같은 거점의 축전 코일이나 촉매와 함께 한 가지를 고릅니다. [연구 장비의 배치와 실제 발동](docs/RIFT-GAMEPLAY-V1.md#098-연구-장비의-해안-배치).
+
+0.113에서는 철도 잔류 부품이 항구 교전 위치를 바꿉니다. 철갑 급탄으로 보조포의 급탄을 끊고, 돌격 신관으로 측면에서 코어를 열고, 회수 의무 장비로 첫 포격을 화물 아래에 유인할 수 있습니다. [부품별 항구 공략과 모바일 귀환](docs/RIFT-GAMEPLAY-V1.md#0113-철도-부품과-항구-첫-교전).
+
+0.112에서는 해안의 맞춤 거점에서 첫 노획 무장을 두 단계까지 정비합니다. 조율권 한 개를 써서 분화를 앞당기거나, 모듈과 수송차 전술을 선택해 조율권을 보관할 수 있습니다. [해안 무장 정비 검증](docs/RIFT-GAMEPLAY-V1.md#0112-해안-노획-부품과-첫-분화).
 
 0.111에서는 출격 브리핑과 구출 보급에서 화염방사기와 로켓의 첫 교전 경로를 비교할 수 있습니다. 전장 표식은 실제 목표 방향과 화면에 보이는 HUD 위치를 따라 배치합니다. [해안 첫 무장과 길 안내 검증](docs/RIFT-GAMEPLAY-V1.md#0111-해안-첫-무장과-길-안내).
 

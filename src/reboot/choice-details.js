@@ -1,5 +1,5 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -19,8 +19,10 @@ function openingGunRoute(s,gun){
  const trial=s.trials?.find(id=>RESEARCH[id].fieldGun===gun);
  const supply=!s.excluded.includes(module)&&moduleRank(s,module)<3&&compatible(equipped,module)
   ?MODULES[module].name:s.stage==='field'&&!s.operation.coastStrike?COAST_STRIKES[gun].name:'';
+ const service=coastService(equipped,site);
+ const rewards=[service&&`${GUNS[gun].short} L${service.level} 정비`,supply&&`${supply} 후보`].filter(Boolean);
  return {impact:`${coastBearing(s,site)} · ${approach.name}`,detail:`${approach.formation} · ${approach.hint}`,
-  link:delivery?`예약 · ${delivery.name}`:trial?`실전 시험 · ${RESEARCH[trial].name}`:supply?`맞춤 보급 · ${supply} 후보`:'',cost:cross?`${coastBearing(s,other)} · ${GUNS[cross].short} L${COAST_SALVAGE_LEVEL} 교차 노획 후보`:''};
+  link:delivery?`예약 · ${delivery.name}`:trial?`실전 시험 · ${RESEARCH[trial].name}`:rewards.length?`맞춤 보급 · ${rewards.join(' / ')}`:'',cost:cross?`${coastBearing(s,other)} · ${GUNS[cross].short} L${COAST_SALVAGE_LEVEL} 교차 노획 후보`:''};
 }
 export function gateContractDetails(s){
  const front=s.operation.region,tier=(s.operation.challengeTier||0)+1,contract=holdoutContract(s);
@@ -122,6 +124,12 @@ export function choiceDetails(s,c){
   const modules=evolutionParts(w).map(id=>`${MODULES[id].name}2`).join(' 또는 ');
   out.link=out.after<4?`L4 분화까지 ${4-out.after}회 강화`:out.after===4?Object.values(GUNS[w.id].branches).map(([name])=>name).join(' / '):`진화 · L6 + ${modules} + 조율권1`;
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
+  if(c.coastLevel){
+   out.title=`${GUNS[w.id].name} 정비`;
+   out.impact=`L${w.level} → L${out.after} · ${out.impact}`;
+   out.detail='';
+   out.cost=`조율권 ${COAST_SERVICE_COST}개 사용 · 수송차 격파 +1`;
+  }
   if(c.railDonor){
    const donor=s.weapons.find(gun=>gun.uid===c.railDonor);
    out.title=`F 분해 · ${GUNS[w.id].short} 재정비`;
@@ -212,6 +220,11 @@ export function choiceDetails(s,c){
    out.impact=`${portSideName(turret)} 포탑 · ${portSideName(-turret)} 보조포`;
    out.detail='보조포 표식에서 교전을 시작해 급탄을 끊거나, 해치로 포탑을 선점하세요.';
    out.link=`포탑 측면 피해 +${pct(1,effect.boost)}%`;
+  }else if(index===2&&c.key==='recovery'){
+   const side=portSideName(-portTurretSide(regionBoss(2,s.seed)));
+   out.impact=`${side} 화물 유인점 · 지원 포격`;
+   out.detail=`${side} 표식에서 교전하고 조준원이 고정되면 위쪽 화물을 회수하세요.`;
+   out.link=`체력 +${effect.heal} · 안전 회수 ${chargeLabel(s)} +${effect.warningCharge}`;
   }else if(index===2&&c.key==='overrun'&&s.weapons.some(isFocusedInferno)){
    out.detail=`압축 인페르노 장착 중 · 코어에서 ${portCompressionRange} 떨어져 좌우 회피한 뒤 멈춰 분사하세요.`;
    out.link='장갑 해제 · 재장전 +0.9초';
@@ -223,6 +236,7 @@ export function choiceDetails(s,c){
    out.detail=`회피로 코어를 열고 원하는 포대 쪽에서 맞히세요. ${portSideName(side)}은 포탑, ${portSideName(-side)}은 보조포입니다.`;
    out.link='포탑 탄막 소거 · 선택한 포대의 다음 사격 차단';
   }
+  if(index===2&&c.key==='overrun')out.impact=`측면 돌입선 · 회피 직격 ${effect.damage}`;
  }else if(c.kind==='cargo'){
   out.impact=`정산 +${CARGO_CREDITS}C`;out.detail='통신 화물을 확보해 이번 작전 정산에 더합니다.';out.cost='이번 판의 무장과 체력 유지';
  }else if(c.kind==='advance'){

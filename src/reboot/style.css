@@ -285,7 +285,7 @@
  :is(.rail-fork,.rail-contact,.harbor-fork) .objective{width:100%}
  :is(.rail-fork,.rail-contact,.harbor-fork) .objective #stage{display:none}
  :is(.rail-fork,.rail-contact,.harbor-fork) #map-panel{width:84px;justify-self:end}
- :is(.rail-fork,.rail-contact) #field-feedback,.rail-contact #banner[data-kind="region-entry"]{visibility:hidden}
+ :is(.rail-fork,.rail-contact,.harbor-fork) #field-feedback,.rail-contact #banner[data-kind="region-entry"]{visibility:hidden}
  .rail-fork #banner[data-kind="region-entry"]{top:max(232px,36vh);width:min(284px,calc(100% - 32px))}
  .harbor-fork #banner[data-kind="region-entry"]{clip-path:inset(50%)}
  .boss-active #combo{top:auto;bottom:130px;right:16px}
@@ -757,6 +757,28 @@
  .coast-salvage .choice-footer>small{display:none}
 }
 .coast-options .choice-tools{margin-top:12px;margin-bottom:0}
+.coast-service-menu [data-choice="coast-service:f"]{--accent:#ffd0a0}
+.coast-service-menu [data-choice="coast-service:r"]{--accent:#bcece4}
+@media(max-width:700px){
+ .sheet.field-menu.coast-service-menu{padding:12px 14px}
+ .field-menu.coast-service-menu>header,.field-menu.coast-service-menu .choice-tools{margin-bottom:8px}
+ .coast-service-menu header p{margin-top:3px}
+ .field-menu.coast-service-menu .upgrade-deck{grid-template-columns:minmax(0,1fr);gap:6px}
+ .field-menu.coast-service-menu .upgrade-card{min-height:67px;padding:6px 24px 6px 57px;gap:2px}
+ .field-menu.coast-service-menu .upgrade-illustration{left:0;top:6px;width:54px;height:56px}
+ .field-menu.coast-service-menu .upgrade-illustration .kit-sprite{width:60px;height:60px}
+ .coast-service-menu .module-engraving{width:38px;height:38px}
+ .coast-service-menu .module-engraving svg{width:26px;height:26px}
+ .coast-service-menu .upgrade-card :is(.upgrade-impact,.upgrade-link){line-height:1.3;min-height:0}
+ .coast-service-menu [data-choice^="gun:"] .upgrade-link,
+ .coast-service-menu :is([data-choice^="gun:"],[data-choice^="coast-service:"]) .upgrade-category,
+ .coast-service-menu [data-choice^="coast:"] .upgrade-link,
+ .coast-service-menu .upgrade-card:not([data-choice^="coast:"]):not([data-trial]) .upgrade-detail,
+ .coast-service-menu .choice-tools>span{display:none}
+ .field-menu.coast-service-menu .choice-tools{margin:8px 0 0}
+ .coast-service-menu .choice-tools>div{width:100%;margin-left:0;gap:5px}
+ .coast-service-menu .choice-tools button{flex:1;min-height:44px;padding:5px 4px;white-space:nowrap}
+}
 #interact[data-kind="rail-decoy"]{border-color:#b6d7bb;background:#294239;color:#e9f0c7}
 #skill[data-aim="marco"]{touch-action:none}
 #skill[data-aim="marco"].pressed{background:#485542;border-color:#e4c396;color:#fff0cd}

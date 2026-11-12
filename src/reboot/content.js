@@ -118,7 +118,7 @@ export function canReplaceModule(s,id,slot){
  return s.modules[slot].id!=='coil'||(id!=='thermal'&&!moduleRank(s,'thermal'));
 }
 export function moduleGain(s,id,amount){const current=moduleRank(s,id),next=Math.min(3,current+amount),overflow=Math.max(0,current+amount-3);return{current,next,overflow,charge:overflow*RULES.crateRewards.overflowChargePerRank};}
-export const rankChoiceLevel=(weapon,card)=>card.railLevel??weapon.level+1;
+export const rankChoiceLevel=(weapon,card)=>card.coastLevel??card.railLevel??weapon.level+1;
 export function gunEquipLevel(s,card,old){
  const base=card.salvageLevel||1+(s.operation?.region||0);
  if(!old)return base;

@@ -1,4 +1,4 @@
-import {FIELD,MODULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
+import {FIELD,MODULES,INFERNO_CORE_DISTANCE,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
 import {routeCursor} from './raid.js';
 
 export const REGIONS=[
@@ -136,10 +136,24 @@ export const supportTactic=(id,index)=>(index===2&&PORT_SUPPORT[id]?.hint)||FRON
 export const portTurretSide=boss=>Math.sign(boss.parts[0]?.ox)||-1;
 export const portSideName=side=>side<0?'왼쪽':'오른쪽';
 export const portFlankPoint=(boss,side=portTurretSide(boss))=>({x:boss.x+side*142,y:boss.y+95});
-export function portArmorStaging(s){
- if(s.operation?.region!==2||s.operation.support!=='breach'||s.stage!=='field'||!portAuxiliaryRound(s,1))return null;
- const b=s.boss,side=-portTurretSide(b);
- return {x:b.x+side*164,y:b.y+144,r:44,name:`${portSideName(side)} 보조포`,color:'#f0cf9c'};
+export function portPartStaging(s){
+ if(s.operation?.region!==2||s.stage!=='field')return null;
+ const b=s.boss,part=s.operation.support,turret=portTurretSide(b);
+ if(part==='breach'&&portAuxiliaryRound(s,1)){
+  return {x:b.x-turret*164,y:b.y+144,r:44,name:`${portSideName(-turret)} 보조포`,color:'#f0cf9c',part,
+   sign:'보조포 선제 사격',hint:'조준 중 장갑을 쏘고 남은 포격을 피하세요.'};
+ }
+ if(part==='overrun'){
+  const arc=s.weapons.some(isConductiveFusion),trail=s.weapons.some(isTrailInferno),side=arc&&!trail?turret:-turret;
+  return {x:b.x+side*128,y:b.y+178,r:36,name:`${portSideName(side)} 돌입선`,color:'#ffb399',part,
+   sign:'재장전 돌입',hint:'첫 포격을 피한 뒤 재장전 때 코어로 회피하세요.'};
+ }
+ if(part==='recovery'){
+  const crate=portAidPoint(b,1),side=Math.sign(crate.x-b.x);
+  return {x:crate.x,y:crate.y+102,r:24,name:`${portSideName(side)} 화물 유인점`,color:'#c7e9b0',part,
+   sign:'구급 화물 회수',hint:'조준원이 고정되면 위쪽 화물로 이동하세요.'};
+ }
+ return null;
 }
 export const portWakePoint=boss=>({x:boss.x-portTurretSide(boss)*134,y:boss.y+86,r:12});
 const portOpeningShutter=s=>s.operation?.region===2&&s.boss.active&&!s.boss.dead&&s.boss.parts[0]?.hp>0&&(s.boss.cycle===0&&s.boss.mode==='aim'||s.boss.cycle===1&&s.boss.mode==='salvo');
@@ -412,6 +426,13 @@ const SPLIT_COAST={
   guards:[['mortar',-78,-42],['mortar',78,-42]],firstSalvo:[.6,1.45]}
 };
 export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_APPROACHES)[site?.coastApproach];
+export const COAST_SERVICE_COST=1;
+export function coastService(s,site){
+ const id=site?.coastApproach;
+ if(s.operation?.region!==0||s.stage!=='field'||s.tuning<COAST_SERVICE_COST||id!==s.firstNew||!Object.hasOwn(COAST_APPROACHES,id))return null;
+ const weapon=s.weapons.find(w=>w.id===id&&!w.evolved&&!w.fusion&&w.level<4);
+ return weapon?{weapon,level:Math.min(4,weapon.level+2)}:null;
+}
 export const COAST_WING={offset:64,hold:1.25,release:1.6};
 export const COAST_MORTAR={range:400,tell:.36,warning:.9,spacing:.85,volleyDistance:160,volleyBeat:.55,counterSide:44};
 export function coastMortarWait(s,e){
@@ -498,6 +519,8 @@ export function coastEncounterCue(s,site,volley,counter){
   if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'))return '로켓 한 발 · 두 문 제압';
   const salvage=coastCrossGun(s,site);
   if(salvage)return `접근해 회수 · ${salvage.toUpperCase()} L${COAST_SALVAGE_LEVEL}${coastTacticalLootAvailable(s,site)?' / L1 전술':''}`;
+  const service=coastService(s,site);
+  if(service&&site!==requisitionStation(s))return `접근해 회수 · ${service.weapon.id.toUpperCase()} L${service.level} 정비`;
   return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
  }
  if(site.state!=='active')return null;
@@ -587,10 +610,11 @@ export function activeEntry(s){
   const origin=control&&(!dock||distance(s.player,control)<distance(s.player,dock))?'control':dock?'dock':'arrival';
   const direct=portCenterRoute(s.seed,origin);
   if(s.operation.jammed)direct.sign='정면 · 첫 장갑탄 차단';
-  const armor=portArmorStaging(s);
-  if(armor){
-   direct.name=armor.name;direct.sign=`${armor.name} · 선제 사격`;direct.color=armor.color;
-   direct.path=[...direct.path,[armor.x,armor.y]];
+  const staging=portPartStaging(s);
+  if(staging){
+   direct.name=staging.name;direct.sign=`${staging.name} · ${staging.sign}`;direct.color=staging.color;
+   direct.path=staging.part==='breach'?[...direct.path,[staging.x,staging.y]]
+    :[...direct.path.slice(0,-1),[PORT_CENTER.x,staging.y],[staging.x,staging.y]];
   }
   return {...entry,routes,direct};
  }

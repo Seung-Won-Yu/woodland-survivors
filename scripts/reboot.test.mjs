@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
+import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -1257,6 +1257,48 @@ test('opposite coast routes offer a saved L2 salvage choice alongside the live f
   assert.ok(supply(loaded,main.id).some(c=>c.id===`coast:${first}`));
  }
 });
+test('matched coastal service offers early F or R branching without removing modules or tactics',()=>{
+ for(const weapon of ['f','r'])for(const from of [1,2,3,4]){
+  const s=quietOperation();
+  supply(s);assert.ok(choose(s,`gun:${weapon}`));
+  const gun=s.weapons.find(w=>w.id===weapon);
+  const branch=weapon==='f'?'focused':'homing';
+  Object.assign(gun,{level:from,...(from===4?{branch}:{})});
+  const site=s.sites.find(n=>n.coastApproach===weapon);
+  const cards=supply(s,site.id),id=`coast-service:${weapon}`,card=cards.find(c=>c.id===id);
+  assert.ok(cards.some(c=>c.id===`module:${site.module}`));
+  assert.ok(cards.some(c=>c.id===`coast:${weapon}`));
+  if(from===4){assert.equal(card,undefined);continue;}
+  const to=Math.min(4,from+2);
+  assert.equal(card.coastLevel,to);
+  assert.equal(choiceDetails(s,card).after,to);
+  assert.match(choiceDetails(s,card).cost,/조율권 1개 사용/);
+  const modulePick=restore(snapshot(s));
+  assert.ok(choose(modulePick,`module:${site.module}`));
+  assert.equal(modulePick.tuning,1);
+  const unpaid=snapshot(s);unpaid.tuning=0;
+  assert.equal(choose(unpaid,id,{branch}),false);
+  assert.throws(()=>restore(unpaid),/체크포인트/);
+  const invalid=snapshot(s);
+  invalid.choices.find(c=>c.id===id).coastLevel=6;
+  assert.equal(choose(invalid,id,{branch}),false);
+  assert.throws(()=>restore(invalid),/체크포인트/);
+  const wrong=snapshot(s);wrong.choice.siteId=s.sites.find(n=>n.coastApproach&&n!==site).id;
+  assert.equal(choose(wrong,id,{branch}),false);
+  assert.throws(()=>restore(wrong),/체크포인트/);
+  const loaded=restore(snapshot(s));
+  assert.ok(reroll(loaded));
+  assert.equal(loaded.choices.find(c=>c.id===id)?.coastLevel,to);
+  if(to===4)assert.equal(choose(loaded,id),false);
+  assert.ok(choose(loaded,id,to===4?{branch}:{}));
+  assert.equal(loaded.weapons.find(w=>w.id===weapon).level,to);
+  if(to===4)assert.equal(loaded.weapons.find(w=>w.id===weapon).branch,branch);
+  assert.deepEqual(loaded.stats.coastService,{weapon,from,to});
+  assert.equal(loaded.tuning,0);
+  downBoss(loaded);
+  assert.equal(loaded.tuning,1);
+ }
+});
 test('the remaining coast site offers a one-rank trade for the other gun and carrier plan',()=>{
  for(const first of ['f','r']){
   const s=quietOperation();
@@ -1480,7 +1522,7 @@ test('rail breach parts reveal a mirrored harbor firing position that keeps the 
   assert.equal(interaction(other),null);
 
   Object.assign(s.player,start);
-  assert.equal(interaction(s).armorStaging,true);
+  assert.equal(interaction(s).partStaging.part,'breach');
   assert.ok(action(s,'interact'));
   assert.deepEqual([s.player.x,s.player.y],[start.x,start.y]);
   assert.equal(s.operation.portEntry,undefined);
@@ -1490,6 +1532,51 @@ test('rail breach parts reveal a mirrored harbor firing position that keeps the 
   tick(resumed,1.34);
   assert.equal(resumed.operation.harborPayoff.armorPreps,1);
   assert.deepEqual(resumed.hazards.map(h=>h.portRound),['lock','turret','turret']);
+ }
+});
+test('harbor recovery and overrun parts open different launch positions and first-cycle actions',()=>{
+ for(const seed of [23,24])for(const part of ['overrun','recovery'])for(const conduction of [false,true]){
+  const s=harborLanding(seed);
+  s.operation.support=part;s.operation.harborPayoff={};
+  s.weapons=[{...makeWeapon(conduction?'h':'f'),uid:'built',level:6,evolved:true,cd:999,
+   ...(conduction?{branch:'ricochet',fusion:{secondary:'r',branch:'homing',overflow:0}}:{branch:'trail'})}];
+  const staging=portPartStaging(s),{x,y}=staging;
+  const path=activeEntry(s).direct.path;
+  assert.deepEqual(path.at(-1),[x,y]);
+  for(let i=0;i<=10;i++)assert.ok(!overlapsCover(s,{x:800+(x-800)*i/10,y},16));
+  const front=restore(snapshot(s));
+  Object.assign(front.player,{x:800,y:350});
+  assert.equal(interaction(front).partStaging,undefined);
+  assert.ok(action(front,'interact'));
+  assert.deepEqual([front.player.x,front.player.y],[800,390]);
+  Object.assign(s.player,{x,y});
+  assert.equal(interaction(s).partStaging.part,part);
+  assert.ok(action(s,'interact'));
+  assert.deepEqual([s.player.x,s.player.y],[x,y]);
+  assert.equal(portPartStaging(s),null);
+  assert.equal(s.operation.harborPayoff.stagedEntry,1);
+  const battle=restore(snapshot(s)),hp=battle.player.hp;
+  tick(battle,1.32);
+  const lock=battle.hazards.find(h=>h.portRound==='lock');
+  assert.deepEqual([lock.x,lock.y],[x,y]);
+  if(part==='recovery'){
+   assert.equal(battle.boss.harborSupply.x,x);
+   tick(battle,.48,{x:0,y:-1});
+   assert.equal(battle.operation.harborPayoff.safeAid,1);
+   assert.ok(battle.boss.harborCounter);
+   assert.equal(battle.player.hp,hp);
+  }else{
+   assert.equal(Math.sign(x-800),Math.sign(battle.boss.parts[0].ox)*(conduction?1:-1));
+   tick(battle,.46,{x:0,y:-1});
+   tick(battle,.72);
+   assert.equal(battle.boss.mode,'recover');
+   assert.ok(action(battle,'dash'));
+   tick(battle,.11,{x:-Math.sign(x-800),y:0});
+   assert.ok(portCoreDisrupted(battle));
+   const {sidesteps=0,dives=0}=battle.operation.harborPayoff;
+   assert.equal(sidesteps+dives,1);
+   assert.equal(battle.player.hp,hp);
+  }
  }
 });
 test('the harbor landing opens a mirrored, traversable hatch only after its defenders are cleared',()=>{
