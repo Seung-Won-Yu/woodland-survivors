@@ -10,7 +10,7 @@ import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} fro
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
-import {coastRoleTarget,coastRoleRank} from '../src/reboot/coast-salvage.js';
+import {coastRoleTarget,coastRoleRank,coastFanPosition} from '../src/reboot/coast-salvage.js';
 import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
 import {COAST_RAID_PATROL_DELAY,COAST_SHIELD_BRACE,bracingCoastEscort,shieldFaces} from '../src/reboot/campaign.js';
 import {railInfernoPlan,railAmmoInvestment} from '../src/reboot/model.js';
@@ -339,6 +339,33 @@ test('the captured turret inherits the boss fan and hits separated lanes, while 
 });
 
 test('reboot runtime data stays identical to the reviewed design baseline',async()=>{assert.deepEqual(RULES,JSON.parse(await readFile('docs/design/reboot-rules.json','utf8')));});
+test('a returned turret can open the rescue with two independent rays on either beach flank',()=>{
+ for(const seed of [27,28]){
+  let s=createOperation(seed,[],null,null,'fio','turret');
+  s.enemies=[];s.spawnClock=999;
+  const pad=coastFanPosition(s.sites[0]);
+  assert.ok(coastOpeningGuide(s).routes.some(route=>route.fan?.x===pad.x));
+  Object.assign(s.player,{x:pad.x,y:pad.y});
+  tick(s,.56);
+  assert.deepEqual(s.enemies.filter(e=>e.siteId==='supply-a').map(e=>e.rescueWing),[0,0,1,1]);
+  assert.equal(s.shots.filter(q=>q.rescueFan).length,5);
+  s=restore(snapshot(s));
+  tick(s,.6);
+  assert.equal(s.stats.rescueFanSweep,true);
+  assert.equal(s.sites[0].state,'ready');
+  assert.equal(s.effects.filter(f=>f.type==='rescue-fan-sweep').length,1);
+  assert.equal(coastOpeningGuide(s),null);
+  Object.assign(s.player,s.sites[0]);
+  step(s,dt);
+  assert.equal(s.choice.opening,true);
+  assert.deepEqual(s.choices.filter(c=>c.kind==='gun').map(c=>c.weapon),['f','h']);
+  const standard=createOperation(seed,[],null,null,'fio','standard');
+  Object.assign(standard.player,{x:pad.x,y:pad.y});
+  tick(standard,.55);
+  assert.ok(standard.enemies.some(e=>e.siteId==='supply-a'));
+  assert.ok(standard.enemies.every(e=>e.rescueWing===undefined));
+ }
+});
 test('captured outside rounds cut a live railway barrage from the center line',()=>{
  const prepare=(seed,loadout='turret',x=800,y=424)=>{
   const s=createOperation(seed,[],null,null,'fio',loadout);

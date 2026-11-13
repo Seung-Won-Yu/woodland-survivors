@@ -1,4 +1,5 @@
 import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite,isOpeningGun,RAIL_SALVAGE_ROUTES,railWorkshopEntry} from './campaign.js';
+import {coastFanPosition,coastFanRescue} from './coast-salvage.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -51,6 +52,11 @@ function coastOpeningRoutes(seed,rescue,preempt,planned){
   {site:preempt.id,kind:'preempt',sign:`${preempt.name} 기습`,color:coastLeadColor(preempt),path:[COAST_INSERTION,...bypass,[preempt.x,preempt.y]],recommended:!!planned}
  ];
 }
+function coastFanRoute(rescue){
+ const fan=coastFanPosition(rescue);
+ return {site:rescue.id,kind:'rescue',sign:'포탑 사격 위치',color:coastLeadColor(rescue),fan,
+  path:[COAST_INSERTION,[fan.x,fan.y],[rescue.x,rescue.y]]};
+}
 const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
  shapes:scene.shapes.map(shape=>shape.type==='rect'?{...shape,x:1600-shape.x-shape.w}:{...shape,points:mirrorPoints(shape.points)}),
  rails:scene.rails?.map(mirrorPoints),
@@ -70,7 +76,12 @@ const coastScenes=Array.from({length:4},(_,index)=>{
 });
 export const fieldScene=(index,seed=17)=>index===0?coastScenes[(seed>>>0)%coastScenes.length]:(mapSeed(seed,index)%2===0?mirrored:scenes)[index]||scenes[0];
 export function coastOpeningGuide(s){
- const preempt=coastPreemptSite(s),rescue=preempt&&s.sites[0];
+ const preempt=coastPreemptSite(s),rescue=s.sites[0];
+ if(s.raid?.state!=='active'&&coastFanRescue(s,rescue)&&['waiting','active'].includes(rescue.state)&&!s.stats.rescueFanSweep){
+  const routes=[coastFanRoute(rescue)];
+  if(preempt?.state==='waiting'&&!preempt.preempt)routes.push(coastOpeningRoutes(s.seed,rescue,preempt,false)[1]);
+  return {routes,preempt,rescue,fan:routes[0].fan};
+ }
  if(!preempt||s.raid?.state==='active')return null;
  const planned=s.operation.openingGun;
  if(planned)return {routes:coastOpeningRoutes(s.seed,rescue,preempt,true),preempt,rescue};
@@ -126,6 +137,10 @@ export function entryRouteSvg(entry){
  return routes.map(route=>{
   const [x,y]=route.path.at(-1),recommended=route.recommended===true;
   const line=`<polyline data-approach="${route.site}"${route.kind?` data-coast-opening="${route.kind}"`:''} points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="${recommended?30:route.kind?23:13}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${route.kind==='preempt'||recommended?'33 14':route.kind==='rescue'?'5 31':'22 18'}" aria-label="${route.sign} ${recommended?'추천 경로':'경로'}"/>`;
+  if(route.fan){
+   const {x,y,dx,dy}=route.fan,angle=Math.atan2(-dy,-dx)*180/Math.PI;
+   return `${line}<g data-rescue-fan transform="translate(${x} ${y}) rotate(${angle})" aria-label="포탑 사격 위치"><rect x="-36" y="-31" width="72" height="62" fill="#2d3629" stroke="${route.color}" stroke-width="9"/><path d="M-15 0H22M-15 0 20-17M-15 0 20 17" stroke="${route.color}" stroke-width="8"/></g>`;
+  }
   return recommended?`${line}<circle cx="${x}" cy="${y}" r="65" fill="none" stroke="${route.color}" stroke-width="18" aria-hidden="true"/>`:line;
  }).join('');
 }
@@ -161,14 +176,15 @@ export function orderPinSvg(site,id){
  const order=sortieOrder(id);
  return order&&site?`<path data-order-pin="${id}" d="M${site.x} ${site.y-57}l57 57 -57 57 -57 -57Z" fill="none" stroke="${order.color}" stroke-width="11" aria-label="${order.name} · ${order.site}"/>`:'';
 }
-export function regionPreview(index,seed=17,current=null,order=null,showPreempt=!order,openingGun=null){
+export function regionPreview(index,seed=17,current=null,order=null,showPreempt=!order,openingGun=null,turret=false){
  const front=frontEntry(mapSeed(seed,index),index);
  const entry=front?{...front,direct:index===2?portCenterRoute(seed):railCenterRoute(seed)}:null;
  const map=current||previewLayout(seed,index,order),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
  const stops=index===0&&!current?map.sites.filter(n=>n.opening||n.coastApproach):[];
  const coast=stops.length?fieldScene(0,seed):null;
  const planned=coast&&showPreempt&&isOpeningGun(openingGun)&&stops.find(site=>site.coastApproach===openingGun);
- const coastRoutes=coast&&(planned?{routes:coastOpeningRoutes(seed,stops[0],planned,true)}:showPreempt?coast.opening:{routes:stops.map((site,i)=>({
+ const coastRoutes=coast&&(turret?{routes:[coastFanRoute(stops[0]),...(showPreempt?[coast.opening.routes[1]]:[])]}
+  :planned?{routes:coastOpeningRoutes(seed,stops[0],planned,true)}:showPreempt?coast.opening:{routes:stops.map((site,i)=>({
   site:site.id,sign:sitePresentation(site).name,color:coastLeadColor(site),path:coast.tracks[i]
  }))});
  const insertion=entryRouteSvg(entry||coastRoutes)||'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';

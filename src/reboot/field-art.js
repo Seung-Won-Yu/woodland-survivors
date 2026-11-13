@@ -191,6 +191,15 @@ export function paintCoastOpening(c,{routes}){
   }
   c.restore();
  }
+ for(const {fan,color} of routes){
+  if(!fan)continue;
+  c.save();c.translate(fan.x,fan.y);c.rotate(Math.atan2(-fan.dy,-fan.dx));
+  c.fillStyle='#26352ed9';c.fillRect(-20,-18,40,36);
+  c.strokeStyle=color;c.lineWidth=1.5;c.strokeRect(-20,-18,40,36);
+  c.lineWidth=2.5;c.beginPath();c.moveTo(-10,0);c.lineTo(12,-10);
+  c.moveTo(-10,0);c.lineTo(12,0);c.moveTo(-10,0);c.lineTo(12,10);c.stroke();
+  c.restore();
+ }
 }
 export function paintTerrain(c,index,seed,art){
  const scene=fieldScene(index,seed);c.fillStyle=scene.ground;c.fillRect(0,0,1600,1200);

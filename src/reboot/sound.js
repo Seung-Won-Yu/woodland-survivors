@@ -24,7 +24,7 @@ export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  else if(events.has('shell-land'))foreground='shell-land';
  else if(events.has('rail-decoy'))foreground='rail-decoy';
  if(foreground)return warning?[warning,foreground]:[foreground];
- if(events.has('rail-fan-sweep'))return warning?[warning,'turret-sweep']:['turret-sweep'];
+ if(events.has('rail-fan-sweep')||events.has('rescue-fan-sweep'))return warning?[warning,'turret-sweep']:['turret-sweep'];
  if(events.has('payload-arrival'))return warning?[warning,'conduit-arrival']:['conduit-arrival'];
  if(events.has('wake-flash'))return warning?[warning,'heat-break']:['heat-break'];
  if(inferno&&(events.has('fire-spread')||events.has('wake-kill'))){

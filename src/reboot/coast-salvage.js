@@ -1,4 +1,4 @@
-import {CAPTURED_TURRET,distance} from './content.js';
+import {CAPTURED_TURRET,distance,isCapturedTurret} from './content.js';
 
 export const COAST_SALVAGE = {
   reach: 92,
@@ -30,6 +30,16 @@ export function coastTurretOwner(s,uid) {
 export const coastRole = s => COAST_SALVAGE.roles[s.operator === 'marco' ? 'marco' : 'fio'];
 export const coastRoleRank = coast => COAST_SALVAGE.steps.filter(step => step <= coast.progress).length;
 export const coastRoleBonus = (operator,rank) => (operator==='marco'?.2:.08)*rank;
+export const COAST_FAN_ENTRY={depth:194,hold:1.45,ready:.55,guards:[[-66,18],[-79,20],[66,18],[79,20]]};
+export function coastFanPosition(site){
+ const angle=Math.atan2(1040-site.y,800-site.x)+Math.sign(800-site.x)*.62;
+ const dx=Math.cos(angle),dy=Math.sin(angle);
+ return {x:site.x+dx*COAST_FAN_ENTRY.depth,y:site.y+dy*COAST_FAN_ENTRY.depth,dx,dy};
+}
+export function coastFanRescue(s,site=s.sites[0]){
+ return s.operation?.region===0&&s.stage==='field'&&coastSalvage(s)?.fanRescue===true&&site?.opening&&site.id==='supply-a'
+  &&s.weapons.some(w=>w.uid===COAST_TURRET_STARTER&&isCapturedTurret(w));
+}
 export const coastGrowthEnemy = (s,e) => s.operator === 'marco'
   ? e.type === 'shield' && !e.coastScanned
   : e.coastCarrier || e.type === 'mortar' || e.type === 'officer';

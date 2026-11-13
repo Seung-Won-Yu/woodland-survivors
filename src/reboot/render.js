@@ -259,7 +259,7 @@ export function coveredCombatPanels(s,panels,project,scale){
   else if(f.type==='fire-spread'&&f.age<f.life*fireSpreadContactLife)mark(f.x2,f.y2-4,13);
   else if(f.type==='kill'&&f.wake&&f.age<f.life*.52)mark(f.x,f.y-3,13);
   else if(f.type==='wake-flash'&&f.age<f.life*.65){mark(f.x,f.y,f.r);mark(f.x2,f.y2,f.r);}
-  else if(f.type==='rail-fan-sweep'&&f.age<f.life*.6){mark(f.x,f.y-3,17);mark(f.x2,f.y2-3,17);}
+  else if((f.type==='rail-fan-sweep'||f.type==='rescue-fan-sweep')&&f.age<f.life*.6){mark(f.x,f.y-3,17);mark(f.x2,f.y2-3,17);}
   else if(f.type==='formation'&&f.age<.4)formations.push({...project(f.x,f.y),r:28*scale,focused:f.focused});
   else if(s.operation?.region===2&&s.stage==='field'&&f.type==='flame'&&f.evolved&&f.focused)mark(f.x,f.y-18,22);
  }
@@ -707,7 +707,7 @@ function paintCapturedMount(c,art,p,volley,reduced){
  c.drawImage(image,cell,cell,cell,cell,-size*.29,-size*.49,size,size);
  c.restore();
 }
-function paintRailFanSweep(c,f,t,reduced){
+function paintFanSweep(c,f,t,reduced){
  const color='#ffe3a4';
  c.globalAlpha=Math.min(1,(1-t)*2.4);
  for(const [px,py] of [[f.x,f.y],[f.x2,f.y2]]){
@@ -746,8 +746,9 @@ function paintRailFanLine(c,cue){
  }
  c.restore();
 }
-function paintRailWing(c,e){
- const color=e.railWing===0?'#f2cc85':'#c3e5d7',side=e.railWing===0?-1:1;
+function paintFanWing(c,e){
+ const wing=e.railWing??e.rescueWing;
+ const color=wing===0?'#f2cc85':'#c3e5d7',side=wing===0?-1:1;
  const {x,y}=e;
  c.save();c.beginPath();
  c.moveTo(x-side*8,y+6);c.lineTo(x+side*13,y+6);c.lineTo(x+side*19,y-1);
@@ -1119,8 +1120,8 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   const salvage=coastSalvage(s),wreck=coastSalvageWreck(s),roleTarget=coastRoleTarget(s);
   const railFanLine=rail?.pad,hasTurret=s.weapons.some(isCapturedTurret);
   const turretVolley=hasTurret&&s.effects.findLast(f=>f.type==='captured-volley');
-  const railWings=s.operation?.region===1&&s.stage==='field'&&!s.stats.railFanSweep&&hasTurret
-   ?[0,1].map(wing=>s.enemies.find(e=>e.railWing===wing&&!e.dead&&visible(e.x,e.y,24))):[];
+  const wingKey=opening?.fan?'rescueWing':s.operation?.region===1&&s.stage==='field'&&!s.stats.railFanSweep&&hasTurret?'railWing':null;
+  const fanWings=wingKey?[0,1].map(wing=>s.enemies.find(e=>e[wingKey]===wing&&!e.dead&&visible(e.x,e.y,24))):[];
   if(wreck&&visible(wreck.x,wreck.y,COAST_SALVAGE.reach)){
    c.save();c.setLineDash([9,7]);
    circle(c,wreck.x,wreck.y,COAST_SALVAGE.reach,'#e9bf641c','#f0d290',2);
@@ -1198,7 +1199,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
      c.fillStyle=color;c.font='10px Galmuri';c.textAlign='center';c.fillText(wireMortar?'통신소 박격포':relayMortar?'후방 박격포':'박격포',e.x,e.y-66);
     }
     if(e.hurt>0)c.filter='brightness(1.7)';if(art)actor(c,art.enemies,({rifle:0,shield:1,mortar:2,officer:3})[e.type],Math.floor(e.walk)%4,e.x,e.y,e.type==='officer'?62:e.type==='shield'?55:49,Math.cos(e.aim)<0);else{c.fillStyle=e.type==='officer'?'#ba6d53':'#48533c';c.fillRect(e.x-12,e.y-34,24,34);}c.filter='none';
-    if(railWings.includes(e))paintRailWing(c,e);
+    if(fanWings.includes(e))paintFanWing(c,e);
     if(bracingCoastEscort(e))paintCoastShieldBrace(c,e,s.player);
     else if(!e.dead&&roleTarget&&s.operator==='marco'&&!e.coastScanned&&(e.coastArmor||roleTarget.id===e.id)){
      const radius=e.r+(roleTarget.id===e.id?13:8);
@@ -1328,7 +1329,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    c.restore();
   }
   const latestInferno=s.effects.findLast(f=>f.type==='flame'&&f.evolved);
-  let railSweep=null;
+  let fanSweep=null;
   for(const f of s.effects){const t=f.age/f.life;c.save();c.globalAlpha=1-t;
    if(f.type==='xp-pickup'){
     const {x,y}=s.player,label=`+${f.value} XP`,rise=reduced?0:Math.max(0,t-.55)*15;
@@ -1422,7 +1423,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     c.strokeStyle='#f6bd75';c.lineWidth=3;c.stroke();c.restore();
    }
    else if(f.type==='captured-volley'&&visible(f.x,f.y,66))paintCapturedVolley(c,f,t,reduced);
-   else if(f.type==='rail-fan-sweep'&&(visible(f.x,f.y,30)||visible(f.x2,f.y2,30))){paintRailFanSweep(c,f,t,reduced);railSweep=f;}
+   else if((f.type==='rail-fan-sweep'||f.type==='rescue-fan-sweep')&&(visible(f.x,f.y,30)||visible(f.x2,f.y2,30))){paintFanSweep(c,f,t,reduced);fanSweep=f;}
    else if(f.type==='salvo-impact'||f.type==='captured-impact'){
     if(visible(f.x,f.y,f.r+20))paintSalvoImpact(c,f,t,reduced);
    }
@@ -1564,8 +1565,8 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    }
    c.restore();
   }
-  if(railSweep&&s.phase==='playing'&&!s.hazards.some(h=>!h.hit&&h.timer>0)){
-   const {x,y,x2,y2,age,life}=railSweep,label='양쪽 대열 명중';
+  if(fanSweep&&s.phase==='playing'&&!s.hazards.some(h=>!h.hit&&h.timer>0)){
+   const {x,y,x2,y2,age,life}=fanSweep,label='양쪽 대열 명중';
    const center=project((x+x2)/2,(y+y2)/2-40);
    c.save();c.font='bold 12px Galmuri';
    const at=clearBearingPosition(size,center,c.measureText(label).width+12,combatHud.rects,10);

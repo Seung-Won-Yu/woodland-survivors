@@ -258,6 +258,7 @@ function showChoices(){
  const earnedLevel=run.level-run.pendingLevels;
  const railGate=atGate&&carriesCoastSalvage(run)&&run.operation.region===1;
  const title=({level:'야전 개조',supply:run.choice.opening?'첫 무장을 골라라':run.choice.preempt?'전방 보급 선점':thermalPrep?'박격포 진지 보급':railAmmo||coastalService?esc(run.choice.source):relaySupply?'중계기 정비 보급':salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:shoreGate?'철도 전진로 개방':railGate?'철도 돌파':canAdvanceFront(run)?'다음 전선이 열렸다':'귀환로 개방','coast-boss':'파괴할까, 노획할까','coast-mount':'노획 포탑 확보',control:run.choices.some(c=>c.infernoRank||c.relayInvestment)?'열차 전술 또는 무장 정비':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
+ const rescueReceipt=run.stats.rescueFanSweep?'포로 구출 · 양쪽 대열 명중':'포로 구출 완료';
  const assembly=type==='assembly',gateAssembly=assembly&&run.choice.gatePrep,gateLevel=type==='level'&&run.choice.gatePrep;
  const back=assembly?run.choices.find(c=>c.kind==='back'):null;
  const capstones=assembly?run.choices.filter(isCapstone):[];
@@ -283,7 +284,7 @@ function showChoices(){
  const deck=carrier||mount?ordnanceDeck():atGate?gateChoices():assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
  const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
  panel(`<section class="sheet field-menu${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':relaySupply?' relay-supply-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-  <header><div><span class="eyebrow">${carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?'포로 구출 완료':run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+  <header><div><span class="eyebrow">${carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?rescueReceipt:run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
   ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${railPreview}${carrierPrep?`<button class="carrier-prep" data-action="coast-upgrade" aria-keyshortcuts="R"><span>${moduleIcon('gear')}<b>XP 개조</b> <small>${run.pendingLevels}회 대기</small></span><span>교전 전 사용 <i aria-hidden="true">›</i></span></button>`:''}${deck}${railGate?gatePrep:''}${toolsAfterDeck?tools:''}
   ${coastalService||carrier||mount?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
   ${capstones.length?paths:''}
@@ -934,9 +935,11 @@ function updateHud(entry,focus=null,coast={},rail=null){
  const railCargo=railFork&&salvage?.turret==='secured'&&!run.weapons.some(isCapturedTurret);
  const railTurret=railFork&&run.weapons.find(isCapturedTurret);
  const railRocket=railFork&&!railTurret&&run.weapons.find(w=>w.id==='r');
+ const fan=trackedRoute?.fan,fanGap=fan?distance(p,fan):Infinity;
  const detour=next===preempt&&trackedRoute?.recommended&&waypoint!==trackedRoute.path.at(-1);
  const goalRange=detour?Math.hypot(p.x-waypoint[0],p.y-waypoint[1]):distance(p,next);
- $('objective').textContent=choosingEntry?(front===1?(railTurret?`포탑 L${railTurret.level} · 부채꼴 ${weaponStats(railTurret).count}발`:railCargo?'포탑 운반 중':railRocket?`로켓 R L${railRocket.level} · 철도 경로`:'철도 진입 경로')
+ $('objective').textContent=fan?(fanGap<34?'포탑 사격 위치 · 양쪽 대열':`${bearing(p,fan.x,fan.y)} 포탑 사격 위치 · ${Math.ceil(fanGap/10)}m`)
+  :choosingEntry?(front===1?(railTurret?`포탑 L${railTurret.level} · 부채꼴 ${weaponStats(railTurret).count}발`:railCargo?'포탑 운반 중':railRocket?`로켓 R L${railRocket.level} · 철도 경로`:'철도 진입 경로')
   :front===2&&showcaseGun?`항구 · ${capstoneName(showcaseGun)}`:entry.routes.length===1?'남은 선택 경로':'하역장 갈림길'):`${direction} ${detour?`${GUNS[preempt.coastApproach].short} 기습 · 우회 지점`:objectiveName} · ${Math.round(goalRange/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;
  const garrison=railGarrison(next)||wireGarrison(run,next),crew=next.state==='active'&&next.kind==='relay'?relayCrewLeft(run,next):0;
@@ -1030,7 +1033,8 @@ function updateHud(entry,focus=null,coast={},rail=null){
    const cue=parts?`${bearing(p,roleTarget.x,roleTarget.y)} 부품 회수 · ${Math.ceil(distance(p,roleTarget)/10)}m`
     :role&&run.operator==='marco'&&coastSite.state==='active'?'방패 옆에서 자동 사격 · 약점 타격':role?.rescue||'';
    const reward=isSalvageCampaign(run)?coastRescueReward(run.weapons.some(isCapturedTurret),!!run.stats.coastPreempt):'';
-   intel=coastSite.state==='ready'?[reward?`감옥에 접근 · ${reward}`:'감옥에 접근해 구출',parts&&cue].filter(Boolean).join('\n')
+   intel=fan?(fanGap<34?'두 대열에 자동 일제사격':'추천 사선 · 양쪽 경비를 겨냥'):
+    coastSite.state==='ready'?[reward?`감옥에 접근 · ${reward}`:'감옥에 접근해 구출',parts&&cue].filter(Boolean).join('\n')
     :coastSite.state==='active'?[`경비 ${guards}명 · 제압 후 감옥 접근`,cue].filter(Boolean).join('\n')
     :[`감옥으로 이동 · ${move} · 사격 자동`,reward||cue].filter(Boolean).join('\n');
   }else{
