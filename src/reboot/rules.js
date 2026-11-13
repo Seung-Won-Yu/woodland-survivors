@@ -1,7 +1,7 @@
 export const RULES = {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b69-rescue-coil",
+  "balanceRevision": "b70-relay-branch",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",

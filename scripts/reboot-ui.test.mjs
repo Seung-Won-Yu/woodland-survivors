@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief} from '../src/reboot/interface.js';
+import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
@@ -48,6 +48,23 @@ test('the rail transfer briefing mirrors the first move and keeps carried cargo 
  assert.match(railTransferBrief(27,broken),/후방 박격포 먼저 제압.*교신으로 열차 조준 유인/s);
  assert.doesNotMatch(railTransferBrief(27,broken),/data-rail-transfer-pad/);
  assert.match(railTransferBrief(28,broken),/↗<\/i>.*교신으로 열차 조준 유인/s);
+});
+
+test('the captured starter with a first H routes a missing turret branch to the railway relay',()=>{
+ const s=createOperation(28,[],null,null,'fio','turret');
+ s.stage='holdout';s.firstNew='h';s.operation.coastSalvage.turret='broken';
+ s.weapons[0].level=3;s.weapons.push({...makeWeapon('h'),uid:'rifle'});
+ const handoff=railHandoff(s);
+ assert.equal(handoff.route,'rail-relay');
+ assert.match(railTransferBrief(28,handoff),/data-transfer-route="rail-relay".*↗<\/i>.*격발망 · 포탑 L4.*열차 조준 유인/s);
+ s.weapons[0].level=2;
+ assert.equal(railHandoff(s).route,'rail-cache');
+ assert.equal(railArrivalKit(s).label,'반출 포탑');
+ s.weapons=[{...makeWeapon('h'),level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}}];
+ for(const turret of ['broken','secured']){
+  s.operation.coastSalvage.turret=turret;
+  assert.deepEqual(railArrivalKit(s),{state:'fusion',art:'r',label:'합체 장착',weapon:'전도 격발망'});
+ }
 });
 
 test('the harbor forecast matches the mounted build and the actual control tactic',()=>{
@@ -616,6 +633,8 @@ test('harbor wins show the final build and put its unlocked research before opti
  assert.match(html,/data-research-next[\s\S]*data-research="thermal" data-debrief-research[\s\S]*data-replay-route="fresh"/);
  const captured={...saved.recent[0],operation:{...saved.recent[0].operation,coastSalvage:{...saved.recent[0].operation.coastSalvage,turret:'secured'}},stats:{...saved.recent[0].stats,railFirstSite:'rail-cache',railFanCut:true,railTurretKills:20},creditBreakdown:{...saved.recent[0].creditBreakdown,turret:40}};
  assert.match(reportView(captured,saved),/data-build-summary data-outcome="returned"[\s\S]*인페르노[\s\S]*포탑 반출 \+40C[\s\S]*화차 정비대 · 양쪽 포격 차단 · 포탑 제압 20명/);
+ const signal={...captured,stats:{...captured.stats,harborSignalHits:2,harborSignalTurretBreaks:1,harborSignalArmorCuts:1}};
+ assert.match(reportView(signal,saved),/data-part="signal".*역송 2회 · 포탑 직접 파괴 1문 · 보조포 포격 차단 1회/);
  const study=buyResearch(saved,'thermal'),after=reportView(saved.recent[0],study);
  assert.match(after,/data-trial-focus="thermal"[\s\S]*data-replay-route="fresh"/);
  const brief=replayBriefingView(saved.recent[0],study,'standard','thermal',{freshSeed:28});

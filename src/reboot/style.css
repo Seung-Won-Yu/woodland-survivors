@@ -175,15 +175,19 @@
 #threat[data-formation="rocket"]{color:#f7dba3}
 #threat[data-formation="quad"]{color:#e4e5a9}
 #field-intel[data-rail-fork]{display:grid;gap:4px;white-space:normal}
-.rail-route-row{display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:6px;padding:4px 5px;border-left:2px solid #a0b1a26b;color:#c6d1bd;background:#14272276;line-height:1.35}
-.rail-route-row[data-recommended]{border-color:var(--route-ink);color:#f0ebd6;background:color-mix(in srgb,var(--route-ink) 18%,#1b2c28)}
-.rail-route-row b{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:11px;color:var(--route-ink)}
-.rail-route-row small{display:block;color:#c3d4bf;font-size:9px}
-.rail-route-alternative{margin-top:1px}
-.rail-route-row b small{color:inherit;font-weight:400}
-.rail-route-row .rail-route-weapon{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
-.rail-route-weapon .kit-turret{width:23px;height:18px;margin-block:-2px}
-.rail-route-row .rail-route-arrow{display:grid;place-items:center;min-height:22px;color:var(--route-ink);font-size:15px;background:#172824}
+#rail-arrival-kit{--kit-ink:#f4ca87;display:grid;grid-template-columns:29px auto minmax(0,1fr);align-items:center;gap:5px;padding:4px 6px;border-bottom:1px solid var(--kit-ink);background:linear-gradient(95deg,#2d352b,#182b27);color:var(--kit-ink);font-size:11px;line-height:1.3}
+#rail-arrival-kit[hidden]{display:none}
+#rail-arrival-kit:is([data-state="broken"],[data-state="fusion"]){--kit-ink:#9cd4da;background:linear-gradient(95deg,#294443,#182b27)}
+#rail-arrival-kit .kit-sprite{width:29px;height:22px}
+#rail-arrival-kit small{color:#f3ead4;font-size:10px;text-align:right}
+.rail-fork #rail-arrival-kit:not([hidden]) + #objective{display:none}
+.rail-route-row{display:grid;grid-template-columns:23px minmax(0,1fr);align-items:center;gap:6px;padding:5px 6px;border-left:2px solid #70867b;color:#d7dfce;background:#14272285;line-height:1.35}
+.rail-route-row[data-recommended]{border-color:var(--route-ink);background:linear-gradient(95deg,color-mix(in srgb,var(--route-ink) 21%,#1b2c28),#1b2c28)}
+.rail-route-row b{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:12px;color:var(--route-ink)}
+.rail-route-row small{display:block;color:#cedbc9;font-size:10px}
+.rail-route-row b small{color:inherit;font-weight:500;font-variant-numeric:tabular-nums}
+.rail-route-row[data-recommended] .rail-route-tactic{color:#f0ebd6}
+.rail-route-row .rail-route-arrow{display:grid;place-items:center;min-height:23px;color:var(--route-ink);font-size:15px;background:#172824}
 .rail-route-row[data-recommended] .rail-route-arrow{background:var(--route-ink);color:#172824}
 #salvage-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;color:#ffdf9c;font-size:10px}
 #salvage-progress progress,.rail-gun progress{width:100%;height:4px;margin:0;border:0;appearance:none;background:#0e201d}
@@ -1153,6 +1157,7 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .transfer-route b i {font-style:normal;color:var(--route-ink)}
 .front-transfer .transfer-route small {font-size:10px;line-height:1.35;color:#e2e1c9}
 .front-transfer .transfer-route .transfer-boss {color:var(--route-ink)}
+.front-transfer .transfer-route .transfer-material {color:#f4dfaa}
 .transfer-boss::before {content:'↳';margin-right:.32em}
 .front-transfer > button {flex:none;min-height:44px;padding:4px 10px;border:1px solid #e1ba79;background:#edc988;color:#26332d;font-size:12px;font-weight:bold}
 .front-transfer > button:is(:hover,:focus-visible) {background:#ffe6ae;color:#1c2e27}
@@ -1431,6 +1436,8 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .shore-transfer .arsenal :is(#weapons,#modules,#synergy,#support-status){display:none}
 }
 @media(max-width:360px) and (orientation:portrait) {
+ .rail-fork .rail-route-row{padding-block:3px}
+ .rail-fork #field-intel:has([data-recommended]) .rail-route-row:not([data-recommended]) .rail-route-tactic{display:none}
  .gate-near #holdout-intel :is(#holdout-steps,#pursuit-intel,#pursuit-pay:not([data-extraction-reward])) {display:none}
  .gate-near #pursuit-goal {font-size:9px}
  .gate-near #pursuit {min-height:44px}

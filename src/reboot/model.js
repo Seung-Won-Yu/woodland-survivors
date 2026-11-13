@@ -193,7 +193,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -437,7 +437,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
   if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
   const part=s.raid.part,designated=isSalvageCampaign(s)&&contract==='armored';
-  if(designated&&[RULES.balanceRevision,'b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
+  if(designated&&[RULES.balanceRevision,'b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
   if(part!==undefined&&(!designated||part!==null&&(
    !['coil','catalyst','ricochet'].includes(part?.module)||part.rank!==2&&!(part.module==='catalyst'&&part.rank===3))))fail();
   if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
@@ -456,7 +456,7 @@ export function restore(raw,{allowPrevious=false}={}){
  const defense=s.challenge?.type==='defend'?s.challenge:null;
  if(s.challenge?.safeTransmission!==undefined&&(!defense||defense.safeTransmission!==true||s.operation?.region!==1||s.stage!=='holdout'))fail();
  if(defense&&(![defense.progress,defense.duration,defense.strike].every(Number.isFinite)
-  ||[RULES.balanceRevision,'b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
+  ||[RULES.balanceRevision,'b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
  const relayRounds=s.hazards.filter(h=>h?.relayDefense!==undefined);
  const liveDefense=defense?.state==='active'&&!defense.secured||defense?.state==='withdrawn'&&s.phase==='result';
  if(relayRounds.length>1||relayRounds.some(h=>h.relayDefense!==true||!defense?.safeTransmission||h.lane
@@ -672,27 +672,35 @@ export function infernoControlRank(s){
  return weapon?weapon.level+1:null;
 }
 function relayInvestmentCards(s){
- if(!isSalvageCampaign(s)||s.operation.region!==1||s.stage!=='field')return [];
+ if(!isSalvageCampaign(s))return [];
+ const rail=s.operation.region===1&&s.stage==='field';
+ const shore=s.operation.region===0&&s.stage==='holdout';
+ if(!rail&&!shore)return [];
  const flame=s.weapons.find(w=>w.id==='f'&&w.level>=3&&!w.evolved&&!w.fusion);
- if(s.firstNew==='f'&&flame){
+ if(rail&&s.firstNew==='f'&&flame){
   const rank=flame.level<6?{...gunCard(flame),label:'분사기 정비'}:null;
   const catalyst=moduleRank(s,'catalyst')<2&&modulePool(s).includes('catalyst');
   return [...(rank?[rank]:[]),...(catalyst?[{...moduleCard('catalyst'),label:'인페르노 재료'}]:[])];
  }
  const rocket=s.weapons.find(w=>w.id==='r'&&!w.fusion&&!w.evolved);
- if(!rocket||rocket.level<4)return [];
+ if(!rocket)return [];
  const captured=isCapturedTurret(rocket);
+ if((shore&&!captured)||rocket.level<(captured?3:4))return [];
  if(captured?coastSalvage(s).loadout!=='turret'||s.firstNew!=='h':s.firstNew!=='r')return [];
  const rifle=s.weapons.find(w=>w.id==='h'&&!w.fusion&&!w.evolved&&(captured||w.level>=2));
  if(!rifle)return [];
  const coil=moduleRank(s,'coil')<2&&modulePool(s).includes('coil');
+ if(captured&&rocket.level===3)return [{...gunCard(rocket),label:'격발망 준비 · 포탑 분화'}];
  return [...(rifle.level<4?[{...gunCard(rifle),label:'격발망 조립 재료'}]:[]),...(coil?[{...moduleCard('coil'),label:'격발망 조립 재료'}]:[])];
 }
 export function railRelayInvestment(s){
  const cards=relayInvestmentCards(s);
  const target=cards.length?(s.firstNew==='f'?'f':'r'):null;
- const material=cards.map(card=>card.kind==='rank'
-  ?`${GUNS[card.weapon].short} L${rankChoiceLevel(s.weapons.find(w=>w.id===card.weapon),card)}`:`${MODULES[card.module].name} +1`).join(' / ');
+ const material=cards.map(card=>{
+  if(card.kind!=='rank')return `${MODULES[card.module].name} +1`;
+  const gun=s.weapons.find(w=>w.id===card.weapon);
+  return `${isCapturedTurret(gun)?'포탑':GUNS[card.weapon].short} L${rankChoiceLevel(gun,card)}`;
+ }).join(' / ');
  return {cards,material,target,turret:target==='r'&&s.weapons.some(isCapturedTurret)};
 }
 export function wireTransferInvestment(s){
@@ -1353,8 +1361,13 @@ function activateHarborSignal(s,source,owner){
  recordFrontTactic(s);
  emit(s,'payload-relay',b.x,b.y,{x2:point.x,y2:point.y,life:.38});
  damage(s,target,PORT_CONDUCTIVE_SIGNAL.damage,'electric','front-relay');
+ const broken=target.hp<=0;
+ if(broken){
+  const key=part==='turret'?'harborSignalTurretBreaks':'harborSignalArmorBreaks';
+  s.stats[key]=(s.stats[key]||0)+1;
+ }
  const name=part==='turret'?'포탑':'보조포';
- emit(s,'weakpoint',point.x,point.y,{life:1.2,portRelay:true,text:target.hp<=0?`측면 역송 · ${name} 파괴`:`측면 역송 · 다음 ${name} 차단`});
+ emit(s,'weakpoint',point.x,point.y,{life:1.2,portRelay:true,text:broken?`측면 역송 · ${name} 파괴`:`측면 역송 · 다음 ${name} 차단`});
 }
 export function harborArcTarget(s){
  const b=s.boss;

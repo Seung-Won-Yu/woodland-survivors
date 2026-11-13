@@ -7,6 +7,7 @@ import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coa
 import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
 import {HARBOR_PART_ACTION} from './choice-details.js';
 import {RAIL_SALVAGE_ROUTES,frontEntry,mapSeed,railWorkshopEntry} from './campaign.js';
+import {railRelayInvestment} from './model.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
 export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
@@ -22,14 +23,18 @@ export function railTransferBrief(seed,handoff,mountOption){
  const site=mountOption?'rail-cache':handoff.route;
  if(!site)return '';
  const fan=site==='rail-cache',{name,color,direction,side,fight,boss}=railApproachBrief(seed,site,fan);
- return `<div class="transfer-route" data-transfer-route="${site}" style="--route-ink:${color}">${railSalvagePreview(seed,site,fan)}<span><b><i role="img" aria-label="${side}">${direction}</i> ${name}</b><small>${fight}</small><small class="transfer-boss">${boss}</small></span></div>`;
+ const material=!mountOption&&handoff.material;
+ return `<div class="transfer-route" data-transfer-route="${site}" style="--route-ink:${color}">${railSalvagePreview(seed,site,fan)}<span><b><i role="img" aria-label="${side}">${direction}</i> ${name}</b><small>${fight}</small>${material?`<small class="transfer-material">격발망 · ${e(material)}</small>`:''}<small class="transfer-boss">${boss}</small></span></div>`;
 }
 export function railHandoff(s){
  const turret=s.weapons.find(isCapturedTurret),coast=coastSalvage(s);
  if(turret){
   const name=turret.evolved?capstoneName(turret):CAPTURED_TURRET.name;
   const weapon=`${weaponStats(turret).count}발 부채꼴`;
-  return {state:'mounted',art:'turret',route:'rail-cache',gateNote:`포탑 L${turret.level} · 화차 정비대`,title:`${name} L${turret.level} 이월`,detail:`${weapon} · 정비대의 양쪽 대열과 열차의 두 포대 공략`,gateDetail:weapon};
+  const relay=railRelayInvestment(s);
+  const route=relay.turret?'rail-relay':'rail-cache';
+  const detail=relay.turret?`${weapon} · 중계기에서 격발망 재료 확보`:`${weapon} · 정비대의 양쪽 대열과 열차의 두 포대 공략`;
+  return {state:'mounted',art:'turret',route,gateNote:`포탑 L${turret.level} · ${RAIL_SALVAGE_ROUTES[route].name}`,title:`${name} L${turret.level} 이월`,detail,gateDetail:weapon,material:relay.turret?relay.material:null};
  }
  if(coast.turret==='secured')return {state:'cargo',art:'turret',gateNote:'노획 포탑 운반 중',title:'포탑 운반 중',detail:'현재 무장으로 교전 · 철도 생존 귀환 시 포탑 반출'};
  if(coastSalvageWreck(s))return {state:'wreck',art:'turret',title:'포탑이 잔해에 남아 있음',detail:'잔해에서 5초간 분리하면 이번 판에 장착 가능'};
@@ -41,6 +46,18 @@ export function railHandoff(s){
    gateDetail:name?`${name} 장비 이월`:'지원 장비를 골라 전진'};
  }
  return {state:'standard',art:'ammo',title:'현재 무장 이월',detail:'통신 중계기를 확보하면 열차 조준을 한 번 유인'};
+}
+export function railArrivalKit(s){
+ const coast=coastSalvage(s),turret=s.weapons.find(isCapturedTurret);
+ if(turret)return {state:'mounted',art:'turret',label:coast.mounted?'노획 장착':'반출 포탑',weapon:`L${turret.level} · 부채꼴 ${weaponStats(turret).count}발`};
+ const fusion=s.weapons.find(w=>w.fusion);
+ if(fusion)return {state:'fusion',art:'r',label:'합체 장착',weapon:capstoneName(fusion)};
+ if(coast.turret==='secured')return {state:'cargo',art:'turret',label:'포탑 운반',weapon:'전리품'};
+ if(coast.turret==='broken'){
+  const rocket=s.weapons.find(w=>w.id==='r');
+  return {state:'broken',art:rocket?'r':'ammo',label:'포탑 파괴',weapon:rocket?`로켓 R L${rocket.level}`:'무장 유지'};
+ }
+ return null;
 }
 export const coastRescueReward=(turret,preempted=false)=>preempted?'추가 정비':turret?'화염 F / 기관총 H 선택':'화염 F / 로켓 R 선택';
 export function moduleIcon(id){
@@ -313,7 +330,10 @@ function crossfireReport(r){
 }
 function signalReport(r){
  if(!r.stats.harborSignalHits)return '';
- return `<section class="harbor-payoff" data-part="signal"><span>관제소 · 전도 격발망 전술</span><b>측면 교신 역송</b><p>측면 역송 ${n(r.stats.harborSignalHits)}회 · 포탑 차단 ${n(r.stats.harborSignalTurretCuts)}회 · 보조포 차단 ${n(r.stats.harborSignalArmorCuts)}회</p></section>`;
+ const stats=r.stats;
+ const parts=[['포탑',stats.harborSignalTurretBreaks,stats.harborSignalTurretCuts],['보조포',stats.harborSignalArmorBreaks,stats.harborSignalArmorCuts]];
+ const effects=parts.flatMap(([name,broken,cut])=>[broken&&`${name} 직접 파괴 ${n(broken)}문`,cut&&`${name} 포격 차단 ${n(cut)}회`]).filter(Boolean);
+ return `<section class="harbor-payoff" data-part="signal"><span>관제소 · 전도 격발망 전술</span><b>측면 교신 역송</b><p>${[`역송 ${n(stats.harborSignalHits)}회`,...effects].join(' · ')}</p></section>`;
 }
 const payoutLabels={
  fronts:'전선 보스 격파',extraction:'생존 귀환',combat:'적 제압',supply:'보급 거점',raids:'습격 성공',
@@ -631,14 +651,14 @@ function salvageCampaignReport(r){
    ${itemArt(art)}<div><h2>${returned?'노획 포탑 반출':demolition&&decoy?decoyTitle:outcomes[coast.turret]}</h2>
     ${result?`<p class="rail-operation-result">${result}</p>`:''}
     <p>${returned?payout+'새 전장에서 포탑 L1 선택':earnsWireOrder(r)?'전파 절단 지령 개방':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p></div>
-   <dl><div><dt>철도 경유</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'철도 포탑 제압':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>
+   <dl><div><dt>철도 첫 교전</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'철도 포탑 제압':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>
   </section>`;
  }
  const status=returned?'노획 포탑 반출':outcomes[coast.turret];
  return `<section class="salvage-report" data-outcome="${returned?'returned':e(coast.turret)}" aria-label="현장 노획 성과">
   ${returned||coast.turret==='secured'?itemArt('turret'):itemArt('ammo')}
   <div><h2>${status}</h2><p>${returned?'새 출격에서 포탑 장착 가능':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p>${r.stats.railFanSweep===true?'<p class="salvage-sweep">정비대 · 일제사격으로 양쪽 대열 명중</p>':''}${r.stats.railFanCut===true?'<p class="salvage-cut">열차 · 양쪽 포대 직격으로 포격 차단</p>':''}</div>
-  ${site||returned?`<dl><div><dt>철도 경유</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'포탑 직접 제압 · 철도':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>`:''}
+  ${site||returned?`<dl><div><dt>철도 첫 교전</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'포탑 직접 제압 · 철도':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>`:''}
  </section>`;
 }
 function debriefDetails(r,p,lines){

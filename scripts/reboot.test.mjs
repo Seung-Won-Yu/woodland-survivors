@@ -1648,7 +1648,7 @@ test('the Quad Cannon meets two traversable columns and confirms a second target
  }
 });
 test('prior turret build revisions can still resume on either later front',()=>{
- for(const [front,revision] of [[1,'b67-turret-builds'],[2,'b67-turret-builds'],[1,'b68-quad-lanes'],[2,'b68-quad-lanes']]){
+ for(const revision of ['b67-turret-builds','b68-quad-lanes','b69-rescue-coil'])for(const front of [1,2]){
   const s=railwayCapstone(27,'rocket');
   Object.assign(s.operation,{region:front,cleared:front});
   Object.assign(s,regionLayout(mapSeed(s.seed,front),front,null,true),{boss:regionBoss(front,s.seed)});
@@ -4755,7 +4755,22 @@ test('turret starters can tune the captured gun on the beach and finish either b
  loaded.modules=[{id:'coil',rank:2}];
  const underleveled=snapshot(loaded);
  Object.assign(underleveled.weapons[0],{level:3,branch:null});
- assert.deepEqual(railRelayInvestment(underleveled).cards,[]);
+ assert.equal(railRelayInvestment(underleveled).material,'포탑 L4');
+ const tooEarly=snapshot(underleveled);tooEarly.weapons[0].level=2;
+ assert.deepEqual(railRelayInvestment(tooEarly).cards,[]);
+ for(const branch of ['homing','incendiary']){
+  const short=restore(snapshot(underleveled));
+  Object.assign(short.weapons[1],{level:4,branch:'ricochet'});
+  const dispatch=supply(short,'rail-relay').find(c=>c.id==='control:supply');
+  assert.match(dispatch.desc,/포탑 L4/);
+  assert.ok(choose(short,dispatch.id));
+  assert.equal(choose(short,'rank:r'),false);
+  const saved=restore(snapshot(short));
+  assert.ok(choose(saved,'rank:r',{branch}));
+  assert.ok(action(saved,'gear'));
+  assert.ok(choose(saved,'fusion:h:r'));
+  assert.equal(saved.weapons[0].fusion.branch,branch);
+ }
  Object.assign(loaded.weapons[0],{level:5,cd:999});
  Object.assign(loaded.weapons[1],{level:3,cd:999});
  const wide=restore(snapshot(loaded)),fusion=restore(snapshot(loaded));
@@ -5038,6 +5053,7 @@ test('the standard campaign conductive signal interrupts the selected side on th
  assert.equal(broken.boss.parts[0].hp,0);
  broken.boss.mode='aim';broken.boss.timer=0;step(broken,dt);
  assert.equal(broken.stats.harborSignalHits,1);
+ assert.equal(broken.stats.harborSignalTurretBreaks,1);
  assert.equal(broken.stats.harborSignalTurretCuts,undefined);
 
  const breach=arena(17,0);
