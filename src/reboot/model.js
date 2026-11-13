@@ -188,7 +188,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -514,7 +514,7 @@ function supplyCards(s,site,preempt=false){
  const cross=coastCrossGun(s,site);
  const service=coastService(s,site);
  const matchingRank=service?{...gunCard(service.weapon),id:`coast-service:${key}`,coastLevel:service.level,
-  title:`${GUNS[key].name} L${service.level} 정비`,desc:'맞춤 거점에서 회수한 정비 부품',label:'노획 무장 정비'}:rank;
+  title:`${isCapturedTurret(service.weapon)?CAPTURED_TURRET.name:GUNS[key].name} L${service.level} 정비`,desc:'맞춤 거점에서 회수한 정비 부품',label:'노획 무장 정비'}:rank;
  const reservation=key&&s.operation?.region===0&&!s.operation.requisitionClaimed&&site===requisitionStation(s)
   ?reservationCard(s.operation.requisition):null;
  if(cross){
@@ -632,17 +632,21 @@ function relayInvestmentCards(s){
   const catalyst=moduleRank(s,'catalyst')<2&&modulePool(s).includes('catalyst');
   return [...(rank?[rank]:[]),...(catalyst?[{...moduleCard('catalyst'),label:'인페르노 재료'}]:[])];
  }
- if(s.firstNew!=='r'||!s.weapons.some(w=>w.id==='r'&&w.level>=4&&!w.fusion&&!w.evolved&&!isCapturedTurret(w)))return [];
- const rifle=s.weapons.find(w=>w.id==='h'&&!w.fusion&&!w.evolved&&w.level>=2);
+ const rocket=s.weapons.find(w=>w.id==='r'&&!w.fusion&&!w.evolved);
+ if(!rocket||rocket.level<4)return [];
+ const captured=isCapturedTurret(rocket);
+ if(captured?coastSalvage(s).loadout!=='turret'||s.firstNew!=='h':s.firstNew!=='r')return [];
+ const rifle=s.weapons.find(w=>w.id==='h'&&!w.fusion&&!w.evolved&&(captured||w.level>=2));
  if(!rifle)return [];
  const coil=moduleRank(s,'coil')<2&&modulePool(s).includes('coil');
  return [...(rifle.level<4?[{...gunCard(rifle),label:'격발망 조립 재료'}]:[]),...(coil?[{...moduleCard('coil'),label:'격발망 조립 재료'}]:[])];
 }
 export function railRelayInvestment(s){
  const cards=relayInvestmentCards(s);
+ const target=cards.length?(s.firstNew==='f'?'f':'r'):null;
  const material=cards.map(card=>card.kind==='rank'
   ?`${GUNS[card.weapon].short} L${rankChoiceLevel(s.weapons.find(w=>w.id===card.weapon),card)}`:`${MODULES[card.module].name} +1`).join(' / ');
- return {cards,material};
+ return {cards,material,target,turret:target==='r'&&s.weapons.some(isCapturedTurret)};
 }
 export function railAmmoInvestment(s){
  const spare=railSpareForFlame(s);
@@ -2307,8 +2311,8 @@ function frontControlCards(s){
  const equipment=index===1?{key:'supply',title:'중계기 보급 회수',desc:'보유 병기를 개조하거나 새 무장과 모듈을 확보합니다.',label:'일반 보급'}
   :{key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈 또는 재보급 후보 3개',label:'추가 화력'};
  const supply={...equipment,id:`control:${equipment.key}`,kind:'control',...(relay.cards.length?{
-  title:s.firstNew==='f'?'분사기 정비 보급':'격발망 조립 보급',desc:relay.material,
-  label:'무장 개조',relayInvestment:s.firstNew
+  title:relay.target==='f'?'분사기 정비 보급':'격발망 조립 보급',desc:relay.material,
+  label:'무장 개조',relayInvestment:relay.target
  }:rank?{
   title:'분사기 정비 보급',desc:`F L${rank-1} → L${rank} 강화 후보`,label:'인페르노 준비',infernoRank:rank
  }:null)};

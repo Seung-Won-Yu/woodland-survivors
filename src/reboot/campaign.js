@@ -514,7 +514,8 @@ export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_AP
 export const COAST_SERVICE_COST=1;
 export function coastService(s,site){
  const id=site?.coastApproach;
- if(s.operation?.region!==0||s.stage!=='field'||s.tuning<COAST_SERVICE_COST||id!==s.firstNew||!Object.hasOwn(COAST_APPROACHES,id))return null;
+ const turretService=id==='r'&&s.firstNew==='h'&&isSalvageCampaign(s)&&s.operation.coastSalvage.loadout==='turret'&&s.weapons.some(isCapturedTurret);
+ if(s.operation?.region!==0||s.stage!=='field'||s.tuning<COAST_SERVICE_COST||(!turretService&&id!==s.firstNew)||!Object.hasOwn(COAST_APPROACHES,id))return null;
  const weapon=s.weapons.find(w=>w.id===id&&!w.evolved&&!w.fusion&&w.level<4);
  return weapon?{weapon,level:Math.min(4,weapon.level+2)}:null;
 }
@@ -570,6 +571,10 @@ export function coastLead(s){
  if(s.operation.openingGun&&rescue&&rescue.state!=='waiting'&&distance(rescue,s.player)<120)return rescue;
  if(preempt&&(s.operation.openingGun||distance(preempt,s.player)<COAST_PREEMPT_RANGE||preempt.preempt&&distance(preempt,s.player)<260))return preempt;
  if(rescue)return rescue;
+ if(s.firstNew==='h'&&isSalvageCampaign(s)&&s.operation.coastSalvage.loadout==='turret'&&s.weapons.some(isCapturedTurret)){
+  const battery=s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
+  if(battery&&(coastService(s,battery)||moduleRank(s,'coil')<2&&!s.excluded.includes('coil')))return battery;
+ }
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
  const coilSite=coastalThermalPrep(s)&&s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
  return coilSite||s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done')||null;

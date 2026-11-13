@@ -975,7 +975,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
  const missileTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
- function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s),opening=null,rail=railBossGuide(s,railFanCutCue(s))){
+ function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s),opening=null,rail=railBossGuide(s,railFanCutCue(s)),gateInk){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
   const gate=exitGate(s),aid=portAidCue(s),conduit=conduitMortarCue(s);
   const harborWarnings=s.operation?.region===2&&s.boss.active?s.hazards.filter(h=>!h.lane&&!h.hit):[];
@@ -1082,7 +1082,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   const gateNear=gate&&distance(gate,s.player)<(s.operation?92:140);
   if(gate&&s.operation){
    if(visible(s.boss.x,s.boss.y,150))paintWreckGround(c,s.boss.x,s.boss.y,index);
-   if(visible(gate.x,gate.y,80))paintGateApproach(c,gate,gateNear);
+   if(visible(gate.x,gate.y,80))paintGateApproach(c,gate,gateNear,gateInk);
   }
   const raid=s.raid?.state==='active'?s.raid:null;
   const gantry=portGantry(s);
@@ -1161,7 +1161,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     if(s.player.y<=e.y&&Math.abs(s.player.x-e.x)<e.w*.48&&e.y-s.player.y<e.w)c.globalAlpha=.32;
     paintLandmark(c,art,e);c.restore();continue;
    }
-   if(item.kind==='gate'){if(s.operation)paintGate(c,e,s.holdTime,reduced);else if(art)prop(c,art,2,3,e.x,e.y,112);c.restore();continue;}
+   if(item.kind==='gate'){if(s.operation)paintGate(c,e,s.holdTime,reduced,gateInk);else if(art)prop(c,art,2,3,e.x,e.y,112);c.restore();continue;}
    if(item.kind==='site'){paintSite(c,e,s,art,s.t-(siteStates.get(e.id)?.collected??-99));c.restore();continue;}
    if(item.kind==='relay-defense'){
     if(art)prop(c,art,3,3,e.x,e.y,62);
@@ -1292,7 +1292,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(gate&&distance(s.player,gate)<220){
    const label=gate.name;
    c.fillStyle='#152a26e8';c.fillRect(gate.x-55,gate.y+72,110,22);
-   c.fillStyle=gateNear?'#e0f5c5':'#aac6a7';c.font='11px Galmuri';c.textAlign='center';c.fillText(label,gate.x,gate.y+87);
+   c.fillStyle=gateNear?(gateInk||'#e0f5c5'):'#aac6a7';c.font='11px Galmuri';c.textAlign='center';c.fillText(label,gate.x,gate.y+87);
   }
   for(const q of s.shots){
    const onScreen=visible(q.x,q.y,68),payload=q.source==='payload';

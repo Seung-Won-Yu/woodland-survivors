@@ -15,12 +15,17 @@ test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a
  coast.turret='secured';
  assert.match(railHandoff(s).detail,/현재 무장으로 교전.*철도 생존 귀환/);
  assert.equal(railHandoff(s).state,'cargo');
+ assert.equal(railHandoff(s).gateNote,'노획 포탑 운반 중');
+ assert.equal(railHandoff(s).route,undefined);
  s.weapons.push({id:'r',level:6,branch:'homing',evolved:true,capturedTurret:true});
  assert.equal(railHandoff(s).title,'광각 포탑 L6 이월');
  assert.match(railHandoff(s).detail,/7발/);
+ assert.equal(railHandoff(s).route,'rail-cache');
+ assert.match(railHandoff(s).gateNote,/포탑 L6.*화차 정비대/);
  s.weapons.pop();
  coast.turret='broken';
  assert.equal(railHandoff(s).state,'broken');
+ assert.equal(railHandoff(s).route,'rail-relay');
  s.operation.nextSupport='vanguard';
  assert.match(railHandoff(s).detail,/후송 정비.*이월/);
 });

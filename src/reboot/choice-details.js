@@ -126,7 +126,7 @@ export function branchBuildPreview(s,c,branch,args={}){
  const payoff=path===pair
   ?gun==='h'?`${GUNS.h.branches[branch][0]} 유지 · R 폭발 추가`
    :branch==='incendiary'?'화약 원을 지나 회피 유폭':'추적탄으로 떨어진 무리까지 연쇄'
-  :branchPayoff[gun][branch];
+  :gun==='r'&&branch==='homing'&&draft.weapons.some(isCapturedTurret)?'가운데 탄 추적 · 바깥 탄은 부채꼴':branchPayoff[gun][branch];
  const need=path.ready?'분화 후 조립 가능':`필요 · ${[path.missing,path.status==='progress'&&!draft.tuning?'조율권 1개':''].filter(Boolean).join(' · ')}`;
  return {title:path.title,payoff,status:path.status,need};
 }
@@ -162,10 +162,10 @@ export function choiceDetails(s,c){
   out.link=out.after<4?`L4 분화까지 ${4-out.after}회 강화`:out.after===4?Object.values(GUNS[w.id].branches).map(([name])=>name).join(' / '):`진화 · L6 + ${modules} + 조율권1`;
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
   if(c.coastLevel){
-   out.title=`${GUNS[w.id].name} 정비`;
+   out.title=`${out.title} 정비`;
    out.impact=`L${w.level} → L${out.after} · ${out.impact}`;
    out.detail='';
-   out.cost=`조율권 ${COAST_SERVICE_COST}개 사용 · 수송차 격파 +1`;
+   out.cost=`조율권 ${COAST_SERVICE_COST}개 사용 · 수송차 격파 시 +1`;
   }
   if(c.railDonor){
    const donor=s.weapons.find(gun=>gun.uid===c.railDonor);
@@ -233,6 +233,7 @@ export function choiceDetails(s,c){
    out.link='엄폐를 돌아 여러 무리의 사선을 여세요.';
   }
   if(isCapturedTurret(w)){
+   out.art='turret';
    out.impact='부채꼴 5발 → 7발 · 바깥 사선 확장';
    out.link=isSalvageCampaign(s)?'항구 관제소에서 양쪽 급탄 차단 전술 선택 가능':'중거리에서 두 무리를 부채꼴 안에 두세요.';
   }
@@ -242,7 +243,7 @@ export function choiceDetails(s,c){
   out.title=fusionTitle(c.primary,c.secondary,branch);
   out.art=c.primary;out.impact=incendiary?'보병 둘이 모이면 자동 유폭':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'보병 한 명이면 화약 원 안을 이동하며 회피해 점화':'첫 연쇄탄 장전 · 탄착원 밖에서 박격포에 도약';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
   out.consequence=assemblyConsequence(s,c);
-  if(isCapturedTurret(secondary))out.link='노획 포탑 분해 · 부채꼴 사격을 격발망으로 전환';
+  if(isCapturedTurret(secondary))out.link=`노획 포탑 분해 · ${incendiary?'화약 유폭':'연쇄탄'}으로 전환 · 무장 1칸 회수`;
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){

@@ -1092,6 +1092,16 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .front-transfer > div {flex:1;min-width:0}
 .front-transfer > button {flex:none;min-height:44px;padding:4px 10px;border:1px solid #e1ba79;background:#edc988;color:#26332d;font-size:12px;font-weight:bold}
 .front-transfer > button:is(:hover,:focus-visible) {background:#ffe6ae;color:#1c2e27}
+.shore-transfer #interact {
+ --gate-color:var(--transfer-ink,#f4ca87);
+ min-width:166px;min-height:52px;padding:6px 11px;text-align:left;
+ border-color:var(--gate-color);border-left-width:4px;
+ background:#203431;color:#f1ebd2;box-shadow:0 3px #172322;
+}
+.shore-transfer #interact:is(:hover,:focus-visible){background:#304743}
+.shore-transfer #interact-label{font-size:13px;font-weight:bold}
+.shore-transfer #interact-detail{margin-top:2px;font-size:10px;color:var(--gate-color)}
+.shore-transfer #banner:is([data-kind="pressure"],[data-kind="complete"]){visibility:hidden}
 .sheet.field-ordnance {max-width: 754px}
 .ordnance-deck {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px}
 .ordnance-card {
@@ -1325,6 +1335,13 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .front-transfer b{font-size:13px;line-height:1.4}
  .front-transfer small{font-size:10px}
  .front-transfer > button{padding-inline:7px;font-size:11px}
+}
+@media(max-width:700px) and (orientation:portrait) {
+ .shore-transfer .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}
+ .shore-transfer .objective{width:100%;max-width:192px}
+ .shore-transfer.holdout-active #map-panel{display:block;width:84px;justify-self:end}
+ .shore-transfer #holdout-intel :is(#holdout-steps,#pursuit-goal,#pursuit-intel,#pursuit-pay,#pursuit){display:none}
+ .shore-transfer .arsenal :is(#weapons,#modules,#synergy,#support-status){display:none}
 }
 @media(max-width:360px) and (orientation:portrait) {
  .gate-near #holdout-intel :is(#holdout-steps,#pursuit-intel,#pursuit-pay:not([data-extraction-reward])) {display:none}

@@ -17,15 +17,15 @@ export function railHandoff(s){
  const turret=s.weapons.find(isCapturedTurret),coast=coastSalvage(s);
  if(turret){
   const name=turret.evolved?capstoneName(turret):CAPTURED_TURRET.name;
-  return {state:'mounted',art:'turret',title:`${name} L${turret.level} 이월`,detail:`${weaponStats(turret).count}발 부채꼴 · 정비대의 양쪽 대열과 열차의 두 포대 공략`};
+  return {state:'mounted',art:'turret',route:'rail-cache',gateNote:`포탑 L${turret.level} · 화차 정비대`,title:`${name} L${turret.level} 이월`,detail:`${weaponStats(turret).count}발 부채꼴 · 정비대의 양쪽 대열과 열차의 두 포대 공략`};
  }
- if(coast.turret==='secured')return {state:'cargo',art:'turret',title:'포탑 운반 중',detail:'현재 무장으로 교전 · 철도 생존 귀환 시 포탑 반출'};
+ if(coast.turret==='secured')return {state:'cargo',art:'turret',gateNote:'노획 포탑 운반 중',title:'포탑 운반 중',detail:'현재 무장으로 교전 · 철도 생존 귀환 시 포탑 반출'};
  if(coastSalvageWreck(s))return {state:'wreck',art:'turret',title:'포탑이 잔해에 남아 있음',detail:'잔해에서 5초간 분리하면 이번 판에 장착 가능'};
  if(coast.turret==='broken'){
   const support=FRONT_SUPPORTS[s.operation.nextSupport];
   const name=s.operation.nextSupport==='vanguard'?'후송 정비':support?.name;
   const rocket=s.weapons.find(w=>w.id==='r'&&!w.fusion);
-  return {state:'broken',art:rocket?'r':support?.art||'ammo',title:rocket?`로켓 R L${rocket.level} 이월`:'현재 무장 이월',detail:name?`${name} 장비 이월 · 중계기 조준 유인`:'철갑 급탄 또는 후송 정비 · 통신 중계기 경유'};
+  return {state:'broken',art:rocket?'r':support?.art||'ammo',route:'rail-relay',gateNote:rocket?`로켓 R L${rocket.level} · 통신 중계기`:'통신 중계기 · 조준 유인',title:rocket?`로켓 R L${rocket.level} 이월`:'현재 무장 이월',detail:name?`${name} 장비 이월 · 중계기 조준 유인`:'철갑 급탄 또는 후송 정비 · 통신 중계기 경유'};
  }
  return {state:'standard',art:'ammo',title:'현재 무장 이월',detail:'통신 중계기를 확보하면 열차 조준을 한 번 유인'};
 }

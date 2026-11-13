@@ -128,8 +128,8 @@ function briefingCover(b,index){
  const {x,y,w,h}=b,roof=index===1?'#68877d':index===2?'#708b90':'#c3b28c';
  return `<g aria-hidden="true"><rect x="${x+12}" y="${y+11}" width="${w}" height="${h}" fill="#1a25255c"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#344843" stroke="#213533" stroke-width="9"/><path d="M${x+7} ${y+7}h${w-14}v${h-30}h-${w-14}Z" fill="${roof}"/></g>`;
 }
-export function gateSymbol({x,y,name}){
- return `<g class="map-exit" transform="translate(${x} ${y})" aria-label="${name}"><rect x="-39" y="-32" width="78" height="64" rx="8" fill="#23473a" stroke="#b8efbd" stroke-width="9"/><path d="m-18 7 18-16 18 16" fill="none" stroke="#b8efbd" stroke-width="8"/></g>`;
+export function gateSymbol({x,y,name},ink='#b8efbd'){
+ return `<g class="map-exit" transform="translate(${x} ${y})" aria-label="${name}"><rect x="-39" y="-32" width="78" height="64" rx="8" fill="#23473a" stroke="${ink}" stroke-width="9"/><path d="m-18 7 18-16 18 16" fill="none" stroke="${ink}" stroke-width="8"/></g>`;
 }
 export function entryRouteSvg(entry){
  if(!entry)return '';
