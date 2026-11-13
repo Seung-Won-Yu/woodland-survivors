@@ -415,6 +415,20 @@ export function paintEntryRoutes(c,entry){
    }
    c.restore();
   }
+  if(route.fanCount){
+   const [[x,y],[tx,ty]]=route.path;
+   const heading=Math.atan2(ty-y,tx-x);
+   c.save();c.translate(x+Math.cos(heading)*76,y+Math.sin(heading)*76);c.rotate(heading);
+   c.fillStyle='#202a25e6';c.fillRect(-22,-19,44,38);
+   c.strokeStyle=route.color;c.lineWidth=1.5;c.strokeRect(-21,-18,42,36);
+   c.lineWidth=2.5;
+   for(const offset of [-.45,0,.45]){
+    c.save();c.rotate(offset);c.beginPath();
+    c.moveTo(-9,0);c.lineTo(12,0);c.moveTo(6,-4);c.lineTo(12,0);c.lineTo(6,4);c.stroke();
+    c.restore();
+   }
+   c.restore();
+  }
  }
  c.restore();
 }

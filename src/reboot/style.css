@@ -175,6 +175,8 @@
 .rail-route-row b{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:11px;color:var(--route-ink)}
 .rail-route-row small{display:block;color:#c3d4bf;font-size:9px}
 .rail-route-row b small{color:inherit;font-weight:400}
+.rail-route-row .rail-route-weapon{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.rail-route-weapon .kit-turret{width:23px;height:18px;margin-block:-2px}
 .rail-route-row .rail-route-arrow{display:grid;place-items:center;min-height:22px;color:var(--route-ink);font-size:15px;background:#172824}
 .rail-route-row[data-recommended] .rail-route-arrow{background:var(--route-ink);color:#172824}
 #salvage-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;color:#ffdf9c;font-size:10px}
@@ -1078,6 +1080,10 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .front-transfer .kit-sprite {width: 48px; height: 48px}
 .front-transfer b,.front-transfer small {display:block}
 .front-transfer small {margin-top: .15rem; color: #c3d3bb; line-height: 1.4}
+.front-transfer > .kit-sprite {flex:none}
+.front-transfer > div {flex:1;min-width:0}
+.front-transfer > button {flex:none;min-height:44px;padding:4px 10px;border:1px solid #e1ba79;background:#edc988;color:#26332d;font-size:12px;font-weight:bold}
+.front-transfer > button:is(:hover,:focus-visible) {background:#ffe6ae;color:#1c2e27}
 .sheet.field-ordnance {max-width: 754px}
 .ordnance-deck {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px}
 .ordnance-card {
@@ -1310,6 +1316,7 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .front-transfer .kit-sprite{width:38px;height:38px}
  .front-transfer b{font-size:13px;line-height:1.4}
  .front-transfer small{font-size:10px}
+ .front-transfer > button{padding-inline:7px;font-size:11px}
 }
 @media(max-width:360px) and (orientation:portrait) {
  .gate-near #holdout-intel :is(#holdout-steps,#pursuit-intel,#pursuit-pay:not([data-extraction-reward])) {display:none}

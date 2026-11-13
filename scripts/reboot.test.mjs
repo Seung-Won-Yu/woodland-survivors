@@ -184,6 +184,29 @@ test('the same seed carries both coast outcomes through the short sortie and the
    quietFront();
    tick(s,5.1);
    assert.deepEqual(restore(snapshot(s)).choices.map(c=>c.id),['mount:turret','carry:turret']);
+   const cargo=restore(snapshot(s));
+   assert.ok(choose(cargo,'carry:turret'));
+   assert.equal(action(cargo,'gate-mount'),false);
+   Object.assign(cargo.player,exitGate(cargo));
+   assert.ok(action(cargo,'interact'));
+   assert.equal(gatePreparation(cargo).mounts[0].id,'mount:turret');
+   assert.ok(action(cargo,'gate-mount'));
+   const deferred=restore(snapshot(cargo));
+   const displaced=snapshot(deferred);
+   displaced.player.y=900;
+   assert.throws(()=>restore(displaced));
+   assert.equal(choose(displaced,'mount:turret'),false);
+   assert.ok(choose(deferred,'carry:turret'));
+   assert.equal(deferred.choice.type,'clear');
+   assert.ok(action(deferred,'gate-mount'));
+   assert.ok(choose(deferred,'mount:turret'));
+   assert.equal(deferred.choice.type,'clear');
+   assert.equal(action(deferred,'gate-mount'),false);
+   assert.deepEqual(deferred.weapons.map(w=>[w.id,w.level,!!w.capturedTurret]),[['h',1,false],['r',2,true]]);
+   assert.ok(choose(deferred,'advance'));
+   assert.equal(deferred.operation.region,1);
+   assert.equal(deferred.weapons[1].cd,0);
+   assert.equal(deferred.stats.turretVolleys,undefined);
    assert.ok(choose(s,'mount:turret'));
    assert.deepEqual(s.weapons.map(w=>[w.id,w.level,!!w.capturedTurret]),[['h',1,false],['r',2,true]]);
    const abandoned=restore(snapshot(s));
@@ -333,7 +356,13 @@ test('captured outside rounds cut a live railway barrage from the center line',(
   assert.equal(railFanCutCue(s).state,'hold');
   tick(s,.14);
   assert.equal(railFanCutCue(s).state,'flying');
-  assert.deepEqual(s.shots.filter(q=>q.railFanCut).map(q=>q.railFanCut.gun),[0,1]);
+  const outside=s.shots.filter(q=>q.railFanCut);
+  assert.deepEqual(outside.map(q=>q.railFanCut.gun),[0,1]);
+  const volley=s.effects.find(f=>f.type==='captured-volley');
+  for(const {gun,angle} of volley.cutRays){
+   const q=outside.find(q=>q.railFanCut.gun===gun);
+   assert.ok(Math.abs(volley.angle+angle-Math.atan2(q.vy,q.vx))<1e-9);
+  }
   const restored=restore(snapshot(s));
   tick(s,.6);tick(restored,.6);
   assert.equal(s.stats.railFanCut,true);assert.equal(restored.stats.railFanCut,true);
@@ -5117,6 +5146,40 @@ test('focused aim hits one exposed boss plate and sweep covers a wider infantry 
  const wider=quietOperation('marco'),e=enemy('side',852,680);
  wider.enemies=[e];wider.player.doctrine='sweep';wider.player.charge=60;
  assert.ok(action(wider,'skill'));assert.equal(e.hp,0);
+});
+
+test('Marco studies one real reload weak point per later front and keeps the limit after saving',()=>{
+ const s=createOperation(27,[],null,null,'marco','standard');
+ Object.assign(s.operation,{region:1,cleared:1});
+ Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken',progress:3});
+ Object.assign(s,regionLayout(mapSeed(s.seed,1),1,null,true),{stage:'boss',enemies:[],boss:regionBoss(1,s.seed)});
+ Object.assign(s.boss,{active:true,mode:'aim',cycle:1});
+ const aim={x:0,y:-1};
+ Object.assign(s.player,{x:740,y:345,charge:60});
+ assert.equal(focusPlan(s,aim).impacts[0]?.study,undefined);
+ assert.ok(action(s,'skill',aim));assert.equal(s.player.charge,0);
+ assert.equal(s.stats.focusStudy,undefined);
+ Object.assign(s.player,{charge:60,skillCd:0});
+ s.boss.mode='recover';
+ assert.ok(focusPlan(s,aim).impacts.some(hit=>hit.study));
+ assert.ok(action(s,'skill',aim));
+ assert.equal(s.player.charge,RULES.marco.studyRefund);
+ assert.equal(s.operation.coastSalvage.progress,4);
+ assert.deepEqual(s.stats.focusStudy,[1]);
+ const loaded=restore(snapshot(s));
+ Object.assign(loaded.player,{x:860,charge:60,skillCd:0});
+ assert.equal(focusPlan(loaded,aim).impacts[0]?.study,undefined);
+ assert.ok(action(loaded,'skill',aim));assert.equal(loaded.player.charge,0);
+ assert.equal(loaded.operation.coastSalvage.progress,4);
+ assert.deepEqual(loaded.stats.focusStudy,[1]);
+ clearRegion(loaded);
+ assert.ok(choose(loaded,'advance'));
+ Object.assign(loaded.boss,{active:true,mode:'recover',cycle:1});
+ loaded.stage='boss';
+ Object.assign(loaded.player,{x:loaded.boss.x+loaded.boss.parts[1].ox,y:355,charge:60,skillCd:0});
+ assert.ok(action(loaded,'skill',aim));
+ assert.deepEqual(loaded.stats.focusStudy,[1,2]);
+ assert.equal(loaded.operation.coastSalvage.progress,5);
 });
 
 test('Marco wins keep a separate standard and order record and preserve Fio marks',()=>{

@@ -559,7 +559,8 @@ function debriefDetails(r,p,lines){
   ['화약 유폭',r.stats.emberBursts],['회피 유폭',r.stats.emberDashBursts],['철도 병기 유폭',r.stats.emberRailBursts],['화약 유폭 처치',r.stats.emberKills],['압축 코어 직격',r.stats.infernoCoreHits],
   ['코어 재장전 지연',lensUses],['냉각 배관 점화',wakeUses],['화약 포탑탄 차단',r.stats.emberIntercepts],
   ['인페르노 장판 처치',r.stats.wakeKills],['잔불 연결 점화',r.stats.wakeFlashes],['연결 점화 처치',r.stats.wakeFlashKills],
-  ['철도 조준 유인',r.stats.railDecoys],['관통 사격 명중',r.stats.focusHits],['약점 직격',r.stats.focusWeakHits]].filter(([,v])=>v>0);
+  ['철도 조준 유인',r.stats.railDecoys],['관통 사격 명중',r.stats.focusHits],['약점 직격',r.stats.focusWeakHits],
+  ['철도·항구 첫 약점 관통',r.stats.focusStudy?.length]].filter(([,v])=>v>0);
  const fee=r.orderFee??r.requisitionFee,paid=Number.isSafeInteger(fee)&&fee>0,net=r.credits-fee;
  const ledger=lines?`<section class="payout-ledger"><h2>보급 크레딧 지급 내역</h2><dl>
   ${lines.map(({label,value})=>`<div><dt>${label}</dt><dd>+${n(value)}C</dd></div>`).join('')}

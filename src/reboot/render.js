@@ -40,7 +40,7 @@ function paintFocusSight(c,s,plan){
  c.beginPath();c.moveTo(end-12,-6);c.lineTo(end,0);c.lineTo(end-12,6);c.stroke();c.restore();
 }
 function paintFocusTargets(c,plan,visible){
- for(const {enemy,point,weak,roleWeak} of plan.impacts){
+ for(const {enemy,point,weak,roleWeak,study} of plan.impacts){
   if(!visible(point.x,point.y,36))continue;
   const x=point.x,y=point.y-13,r=clamp(enemy.r+4,19,38);
   c.save();c.strokeStyle=weak||roleWeak?'#ffe09e':'#d5ebc7';c.lineWidth=weak||roleWeak?3:2;c.beginPath();
@@ -49,7 +49,11 @@ function paintFocusTargets(c,plan,visible){
    c.moveTo(x+side*r,y-8);c.lineTo(x+side*(r-6),y-8);
    c.moveTo(x+side*r,y+8);c.lineTo(x+side*(r-6),y+8);
   }
-  c.stroke();c.restore();
+  c.stroke();
+  if(study){
+   c.fillStyle='#fff0b0';c.beginPath();c.moveTo(x,y-27);c.lineTo(x+5,y-22);c.lineTo(x,y-17);c.lineTo(x-5,y-22);c.closePath();c.fill();
+  }
+  c.restore();
  }
 }
 function paintFocusShot(c,f,t,reduced){
@@ -685,19 +689,22 @@ function paintCapturedVolley(c,f,t,reduced){
   c.fillStyle='#fff6cc';c.fillRect(23,-3,14,6);
  }
  for(let i=0;i<f.count;i++){
+  const cut=f.cutRays?.find(ray=>ray.ray===i);
+  const length=cut?31:20;
   c.save();
-  c.rotate(coastFanAngle(i,f.count));
-  c.fillStyle='#ae6a3c';c.fillRect(26+t*11,-2,20+t*10,4);
-  c.fillStyle='#ffe7a6';c.fillRect(29+t*11,-1,14+t*7,2);
+  c.rotate(cut?.angle??coastFanAngle(i,f.count));
+  c.fillStyle=cut?'#202b24':'#ae6a3c';c.fillRect(26+t*11,-2,length+t*10,4);
+  c.fillStyle=cut?RAIL_GUN_COLORS[cut.gun]:'#ffe7a6';c.fillRect(29+t*11,-1,length-6+t*7,2);
   c.restore();
  }
 }
 function paintCapturedMount(c,art,p,volley,reduced){
- const image=art.vehicleLayers,cell=image.width/2,size=42;
- const recoil=volley&&!reduced?6*(1-volley.age/volley.life)**2:0;
- c.save();c.translate(p.x,p.y-18);c.rotate(volley?.angle??p.aim);
+ const image=art.vehicleLayers,cell=image.width/2,size=53,aim=volley?.angle??p.aim;
+ const recoil=volley&&!reduced?8*(1-volley.age/volley.life)**2:0;
+ c.save();c.translate(p.x+Math.cos(aim)*4,p.y-18+Math.sin(aim)*4);c.rotate(aim);
  c.translate(-recoil,0);
- c.drawImage(image,cell,cell,cell,cell,-size*.32,-size*.49,size,size);
+ c.filter='brightness(1.18) drop-shadow(1px 1px 0px #e5bc78) drop-shadow(-1px -1px 0px #1b211d)';
+ c.drawImage(image,cell,cell,cell,cell,-size*.29,-size*.49,size,size);
  c.restore();
 }
 function paintRailFanSweep(c,f,t,reduced){
@@ -1392,6 +1399,13 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     c.stroke();
    }
    else if(f.type==='focus-shot')paintFocusShot(c,f,t,reduced);
+   else if(f.type==='focus-study'&&visible(f.x,f.y)){
+    const y=f.y-40-(reduced?0:12*t);
+    c.globalAlpha=Math.min(1,(1-t)*3);
+    c.font='bold 13px Galmuri';c.textAlign='center';c.lineWidth=4;
+    c.strokeStyle='#25312a';c.strokeText(`집중 +${f.gain}`,f.x,y);
+    c.fillStyle='#ffe3a4';c.fillText(`집중 +${f.gain}`,f.x,y);
+   }
    else if(f.type==='wake-flash'&&(visible(f.x,f.y,f.r)||visible(f.x2,f.y2,f.r)))paintWakeFlash(c,f,t,reduced);
    else if(f.type==='payload'&&visible(f.x,f.y)){c.fillStyle='#bcf9e9';c.fillRect(f.x-7,f.y-18,14,3);c.fillRect(f.x-2,f.y-23,4,13);}
    else if(f.type==='payload-relay'||f.type==='fire-spread'){

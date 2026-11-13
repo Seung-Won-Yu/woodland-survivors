@@ -1,7 +1,7 @@
 export const RULES = {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b64-harbor-standoff",
+  "balanceRevision": "b65-field-study",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",
@@ -133,6 +133,7 @@ export const RULES = {
   },
   "marco": {
     "initialCharge": 40,
+    "studyRefund": 20,
     "directCharge": 5,
     "chargeReach": 215,
     "chargeInterval": 0.32,

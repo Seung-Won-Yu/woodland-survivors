@@ -313,7 +313,11 @@ export function choiceDetails(s,c){
   out.cost=aid?changes.join(' · '):'현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){
-  if(c.id==='carry:turret'){out.impact='현재 무장 유지';out.detail='철도 보스 격파 후 포탑 반출';return out;}
+  if(c.id==='carry:turret'){
+   out.impact='현재 무장 유지';
+   out.detail=s.choice?.gatePrep?'전진하면 포탑을 화물로 가져갑니다.':'전진 게이트에서 다시 장착할 수 있습니다.';
+   return out;
+  }
   const active=gateActiveContract(s);
   if(active){out.title=active.title;out.impact=active.progress;out.detail=active.progress;out.link='';return out;}
   if(s.operation?.coastSalvage&&(!isSalvageCampaign(s)||c.title!=='전장 복귀 · XP 회수')){out.impact=c.desc;out.detail=c.desc;out.link=canAdvanceFront(s)?'전진 게이트는 열려 있습니다.':'귀환 게이트는 열려 있습니다.';return out;}
