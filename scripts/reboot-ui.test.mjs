@@ -203,6 +203,14 @@ test('the research experiment follows one module through trial briefing, payout 
  assert.match(briefing,/파편 적중 8회 · 실증 \+120C/);
  assert.match(briefing,/data-action="same-seed" data-seed="23"/);
  assert.doesNotMatch(briefing,/data-requisition=/);
+ const experiment={...pending,milestones:{coastTurret:true}};
+ const freshBrief=replayBriefingView(r,experiment,'standard','shrapnel',{freshSeed:27,starter:'turret'});
+ assert.match(freshBrief,/data-brief-route="fresh" aria-pressed="true"/);
+ assert.match(freshBrief,/data-brief-starter="turret" aria-pressed="true"/);
+ assert.match(freshBrief,/data-action="launch" data-actor="fio" data-coast-loadout="turret">새 전장 출격/);
+ assert.doesNotMatch(freshBrief,/data-requisition=|data-replay-from=/);
+ const sameBrief=replayBriefingView(r,experiment,'standard','shrapnel',{freshSeed:27,route:'same'});
+ assert.match(sameBrief,/data-action="same-seed" data-seed="23" data-actor="fio">같은 전장 출격/);
  const wonTrial=createOperation(23,base.research,base.trials),newActive=beginProfile(pending,wonTrial);
  wonTrial.stats.researchTrialsPicked=['shrapnel'];wonTrial.stats.shrapnelHits=8;
  finish(wonTrial,false);
@@ -214,6 +222,8 @@ test('the research experiment follows one module through trial briefing, payout 
  const reservation=replayBriefingView(report,tested,'requisition:shrapnel:coast');
  assert.match(reservation,/data-requisition="shrapnel" data-requisition-at="coast"/);
  assert.match(reservation,/재출격 · 120C/);
+ const freshReservation=replayBriefingView(report,tested,'requisition:shrapnel:coast',null,{freshSeed:27});
+ assert.match(freshReservation,/data-action="launch" data-actor="fio" data-requisition="shrapnel" data-requisition-at="coast">새 전장 출격 · 120C/);
 });
 test('a comparable repeat shows independent time and score changes and the actual sector splits',()=>{
  const complete=(run,fronts,score)=>{

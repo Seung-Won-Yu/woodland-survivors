@@ -3980,6 +3980,70 @@ test('a ranged signal arcs once to the other part and changes the next boss acti
   else assert.ok(s.boss.spawnClock>2.9);
  }
 });
+test('the standard campaign conductive signal interrupts the selected side on the next harbor barrage',()=>{
+ const arena=(seed,index)=>{
+  const s=createOperation(seed,[],null,null,'fio','standard');
+  Object.assign(s.operation,{region:2,cleared:2,support:'vanguard'});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  s.sites=[{id:'port-control',kind:'control',state:'ready',x:800,y:535}];
+  Object.assign(s.player,{x:800,y:535});
+  Object.assign(s.weapons[0],{level:4,branch:'ricochet',cd:999,fusion:{secondary:'r',branch:'homing',overflow:0},payload:0,payloadCd:0});
+  step(s,dt);
+  assert.deepEqual(s.choices.map(c=>c.id),['control:signal','control:jam','control:loot']);
+  assert.equal(s.choices.find(c=>c.id==='control:signal').title,'측면 교신 역송');
+  assert.ok(choose(s,'control:signal'));
+  s.stage='boss';s.boss={...regionBoss(2,seed),active:true,mode:'recover',cycle:1,timer:2.6,spawnClock:999};
+  Object.assign(s.player,{x:800+Math.sign(s.boss.parts[index].ox)*125,y:440});
+  return s;
+ };
+ for(const seed of [17,18])for(const index of [0,1]){
+  const s=arena(seed,index),part=index===0?'turret':'armor';
+  const near=restore(snapshot(s));near.player.y=360;near.shots=[bullet(near,near.boss,10)];step(near,dt);
+  assert.equal(near.stats.harborSignalHits,undefined);
+  const covered=restore(snapshot(s));covered.blocks=[{x:690,y:265,w:220,h:95,hp:-1}];covered.shots=[bullet(covered,covered.boss,10)];step(covered,dt);
+  assert.equal(covered.stats.harborSignalHits,undefined);
+  const alternate=restore(snapshot(s));alternate.weapons.push({...makeWeapon('r'),uid:'ordinary-r',cd:999});
+  alternate.shots=[{...bullet(alternate,alternate.boss,10),owner:'ordinary-r'}];step(alternate,dt);
+  assert.equal(alternate.stats.harborSignalHits,undefined);
+
+  s.weapons[0].cd=0;
+  for(let i=0;i<30&&!s.stats.harborSignalHits;i++)step(s,dt);
+  assert.equal(s.stats.harborSignalHits,1);
+  assert.deepEqual(s.boss.portSignal,{cycle:1,part});
+  assert.equal(s.boss.parts[index].hp,s.boss.parts[index].maxHp-210);
+  assert.equal(s.boss.parts[1-index].hp,s.boss.parts[1-index].maxHp);
+  s.weapons[0].cd=999;
+  s.shots=[bullet(s,s.boss,10)];step(s,dt);
+  assert.equal(s.stats.harborSignalHits,1);
+  const restored=restore(snapshot(s));
+  const key=index===0?'harborSignalTurretCuts':'harborSignalArmorCuts';
+  restored.boss.mode='aim';restored.boss.timer=0;step(restored,dt);
+  assert.deepEqual(restored.hazards.map(h=>h.portRound),index===0?['lock','battery','battery']:['lock','turret','turret']);
+  assert.equal(restored.stats[key],1);
+  restored.boss.timer=0;step(restored,dt);
+  assert.equal(restored.enemyShots.filter(q=>q.portFan).length,index===0?0:9);
+  restored.boss.mode='aim';restored.boss.timer=0;step(restored,dt);
+  assert.equal(restored.stats[key],1);
+ }
+ const broken=arena(17,0);
+ broken.boss.parts[0].hp=100;broken.shots=[bullet(broken,broken.boss,10)];step(broken,dt);
+ assert.equal(broken.boss.parts[0].hp,0);
+ broken.boss.mode='aim';broken.boss.timer=0;step(broken,dt);
+ assert.equal(broken.stats.harborSignalHits,1);
+ assert.equal(broken.stats.harborSignalTurretCuts,undefined);
+
+ const breach=arena(17,0);
+ breach.operation.support='breach';breach.operation.harborPayoff={};
+ breach.shots=[bullet(breach,breach.boss,10)];step(breach,dt);
+ breach.boss.mode='aim';breach.boss.timer=0;step(breach,dt);
+ const turret=breach.boss.parts[0];
+ breach.shots=[{...bullet(breach,partPosition(breach,turret),10),breachLane:true}];step(breach,dt);
+ assert.equal(breach.boss.turretSuppressedCycle,undefined);
+ breach.boss.timer=0;step(breach,dt);
+ assert.equal(breach.stats.harborSignalTurretCuts,1);
+ assert.equal(breach.operation.harborPayoff.fans,undefined);
+});
 test('harbor armor parts change actual body vulnerability and rare unique banish keeps crate quality',()=>{
  const hit=broken=>{const s=quietOperation();s.operation.region=2;s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.mode='aim';s.boss.timer=999;s.boss.spawnClock=999;if(broken)s.boss.parts.forEach(p=>p.hp=0);const hp=s.boss.hp;s.shots=[bullet(s,s.boss,100)];step(s,dt);return hp-s.boss.hp;};assert.ok(hit(true)>hit(false)*1.5);
  const s=quietOperation();s.research=['medic'];s.phase='choice';s.choice={type:'armory',quality:'rare'};s.choices=[{id:'module:medic',kind:'module',module:'medic',rank:1}];assert.ok(banish(s,'module:medic'));assert.equal(s.choices[0].rank,2);

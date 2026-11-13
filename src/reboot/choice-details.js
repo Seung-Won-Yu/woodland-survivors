@@ -217,7 +217,7 @@ export function choiceDetails(s,c){
   const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
   out.art=c.infernoRank||['heat','lens','wake'].includes(c.key)?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
   out.cost='';
-  if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';}
+  if(tactic){out.detail=c.hint||tactic.hint;out.link='포격 주기마다 1회';}
   if(c.key==='crossfire'){
    out.art='turret';out.link='발밑 포격과 후속 탄막은 계속 발사';
   }

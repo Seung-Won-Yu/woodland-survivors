@@ -69,9 +69,14 @@ export const portJamsSweep=(s,cycle)=>s.operation.jammed&&cycle===(s.operation.p
 export const portRelayCuts=(s,cycle,part)=>s.operation?.region===2&&s.operation.support==='overrun'
  &&s.boss.harborRelayPart===part&&s.boss.harborArcCycle+1===cycle
  &&(part!=='armor'||portBarrageAxis(s,cycle)!=='horizontal'||!portJamsSweep(s,cycle));
+export function portSignalCuts(s,cycle,part){
+ const b=s.boss,signal=b.portSignal;
+ if(!signal||s.operation?.region!==2||s.operation.tactic!=='signal'||signal.part!==part||signal.cycle+1!==cycle||portRelayCuts(s,cycle,part))return false;
+ return part==='turret'?b.parts[0].hp>0:b.parts[1].hp>0&&b.armorSuppressedCycle!==cycle&&!(portBarrageAxis(s,cycle)==='horizontal'&&portJamsSweep(s,cycle));
+}
 export function portAuxiliaryRound(s,cycle,applyCrossfire=true){
  if(applyCrossfire&&portCrossfireCuts(s,cycle))return null;
- if(s.boss.parts[1].hp<=0||s.boss.armorSuppressedCycle===cycle||portRelayCuts(s,cycle,'armor'))return null;
+ if(s.boss.parts[1].hp<=0||s.boss.armorSuppressedCycle===cycle||portRelayCuts(s,cycle,'armor')||portSignalCuts(s,cycle,'armor'))return null;
  if(portBarrageAxis(s,cycle)==='vertical')return 'battery';
  return portJamsSweep(s,cycle)?null:'rake';
 }
@@ -86,7 +91,7 @@ export function portBarrageRounds(s,cycle,applyCrossfire=true){
  for(const side of [-1,1]){
   if(auxiliary==='rake')push(side*plan.batteryOffset,0,auxiliary);
   else if(auxiliary==='battery')push(0,side*plan.batteryOffset,auxiliary);
-  if(!crossfire&&b.parts[0].hp>0&&b.emberCycle!==cycle&&!portRelayCuts(s,cycle,'turret'))push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
+  if(!crossfire&&b.parts[0].hp>0&&b.emberCycle!==cycle&&!portRelayCuts(s,cycle,'turret')&&!portSignalCuts(s,cycle,'turret'))push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
  }
  return rounds;
 }
@@ -340,19 +345,23 @@ export const FRONT_TACTICS={
  2:{
   heat:{name:'코어 냉각 차단',role:'화염 · 근접 돌파',impact:'근접 분사 · 코어·장갑 피해 +55%',hint:'붉은 포격 범위를 피해 노출 코어에 붙으세요.',range:168,boost:1.55},
   wake:{name:'냉각 배관 점화',role:'연료 살포 · 측면 우회',impact:'재장전 중 배관에 불길이 닿으면 장갑 또는 차체 피해 180',hint:'포격 뒤 표시된 냉각 배관 옆을 달려 지나가세요.',damage:180},
-  signal:{name:'포탑 교신 탈취',role:'전도 · 원거리 제압',impact:'원거리 적중 · 포탑 전류 도약',hint:'붉은 원 밖에서 사격하면 증원을 최소 3초 늦춥니다.',range:220,hop:280,delay:3},
+  signal:{name:'포탑 교신 탈취',role:'로켓·전기 · 원거리 제압',impact:'원거리 적중 · 포탑 전류 도약',hint:'재장전 중 원거리에서 사격해 증원을 늦춥니다.',range:220,hop:280,delay:3},
   lens:{name:'코어 재장전 지연',role:'압축 분사 · 사선 유지',impact:'코어 직격으로 재장전 +0.8초',hint:'포격 뒤 중거리에서 멈춰 압축 분사를 코어에 맞히세요.',delay:.8},
   ember:{name:'포탑 급탄선 단선',role:'점화 탄두 · 포탑 유폭',impact:'포탑 옆 유폭 · 이번 또는 다음 포탑탄 차단',hint:'살아 있는 포탑과 보병 한 명을 화약에 넣으세요.'},
   crossfire:{name:'양쪽 급탄 차단',role:'노획 포탑 · 정면 중거리',impact:'한 번에 두 부위 직격 · 다음 양측 포격 차단',hint:'재장전 중 차체 앞 20m 사격선에 서면 부채꼴 바깥 탄이 두 부위를 노립니다.'}
  }
 };
+export const PORT_CONDUCTIVE_SIGNAL={side:72,damage:210,name:'측면 교신 역송',role:'전도 격발망 · 좌우 포대 선택',impact:'선택한 쪽의 다음 포격 차단',hint:'재장전 중 차체에서 22m 이상 거리를 두고 좌우로 이동해 자동 사격을 맞히세요.'};
+export const portConductiveSignal=s=>isSalvageCampaign(s)&&s.operation.region===2&&s.weapons.some(isConductiveFusion);
 export const frontTactic=s=>FRONT_TACTICS[s.operation?.region]?.[s.operation?.tactic];
 export function portTacticKeys(s){
  const fire=s.weapons.some(isFocusedInferno)?'lens':s.weapons.some(isTrailInferno)?'wake':'heat';
  const incendiary=s.weapons.some(w=>w.fusion?.branch==='incendiary');
- if(isSalvageCampaign(s)&&s.weapons.some(isCapturedTurret))return [
-  'crossfire',...(s.weapons.some(w=>w.id==='f')?[fire]:[]),...(s.weapons.some(w=>w.fusion)?[incendiary?'ember':'signal']:[])
- ];
+ if(isSalvageCampaign(s)){
+  const fan=s.weapons.some(isCapturedTurret);
+  return [...(fan?['crossfire']:[]),...(s.weapons.some(w=>w.id==='f')?[fire]:[]),
+   ...(!fan||s.weapons.some(w=>w.fusion)?[incendiary?'ember':'signal']:[])];
+ }
  return [fire,incendiary?'ember':'signal'];
 }
 const PORT_COUNTERBATTERY={id:'battery',name:'포격 진지 제압',goal:'양쪽 박격포 2문 제압',risk:'교차 포격 · 엄폐를 돌아 한 문씩'};

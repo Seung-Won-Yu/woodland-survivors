@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RESPONSE,coastPreemptSite,coastPreemptGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RESPONSE,coastPreemptSite,coastPreemptGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance,CAPTURED_TURRET,COAST_FAN,coastFanAngle,isCapturedTurret} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -165,7 +165,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -265,6 +265,9 @@ export function restore(raw,{allowPrevious=false}={}){
   const arcCycle=s.boss.harborArcCycle;
   if(arcCycle!==undefined&&(s.operation.region!==2||s.operation.support!=='overrun'||!Number.isSafeInteger(arcCycle)||arcCycle<1||arcCycle>s.boss.cycle))fail();
   if(s.boss.harborRelayPart!==undefined&&(arcCycle===undefined||!['turret','armor'].includes(s.boss.harborRelayPart)))fail();
+  const portSignal=s.boss.portSignal;
+  if(portSignal!==undefined&&(!portSignal||!isSalvageCampaign(s)||s.operation.region!==2||s.operation.tactic!=='signal'||s.stage==='field'||
+   !['turret','armor'].includes(portSignal.part)||!Number.isSafeInteger(portSignal.cycle)||portSignal.cycle<1||portSignal.cycle>s.boss.cycle))fail();
   const wakeCycle=s.boss.harborWakeCycle;
   if(wakeCycle!==undefined&&(s.operation.region!==2||s.operation.support!=='overrun'||!Number.isSafeInteger(wakeCycle)||wakeCycle<1||wakeCycle>s.boss.cycle))fail();
   if(s.boss.emberCycle!==undefined&&(s.operation.region!==2||s.operation.tactic!=='ember'||!Number.isSafeInteger(s.boss.emberCycle)||s.boss.emberCycle<1||s.boss.emberCycle>s.boss.cycle+1))fail();
@@ -992,6 +995,8 @@ export function infernoCoreLine(s,w){
  return true;
 }
 function targetFor(s,w,d,candidates,lance){
+ const signal=isConductiveFusion(w)?harborSignalLine(s,w):null;
+ if(signal?.state==='ready'&&candidates.includes(s.boss))return s.boss;
  const priority=portBreachFlank(s)?s.boss.parts[0]
   :portArmorOpportunity(s)&&portArmorFlank(s)?s.boss.parts[1]
   :portCoreDisrupted(s)?s.boss:null;
@@ -1044,6 +1049,35 @@ function recordSupportUse(s){
 function recordHarborPayoff(s,key){
  const payoff=s.operation.harborPayoff;
  if(payoff)payoff[key]=(payoff[key]||0)+1;
+}
+export function harborSignalLine(s,weapon=s.weapons.find(isConductiveFusion)){
+ const {boss:b,player:p}=s;
+ if(!weapon||!portConductiveSignal(s)||s.operation.tactic!=='signal'||!b.active||b.dead||b.parts.every(part=>part.hp<=0))return null;
+ const dx=p.x-b.x,side=portTurretSide(b),index=dx*side>0?0:1,target=b.parts[index];
+ const part=index===0?'turret':'armor',point=partPosition(s,target);
+ if(b.mode!=='recover')return {state:'wait'};
+ if(portCoreDisrupted(s))return null;
+ if(b.tacticCycle===b.cycle)return {state:'spent',part:b.portSignal?.part};
+ if(Math.abs(dx)<PORT_CONDUCTIVE_SIGNAL.side||target.hp<=0)return {state:'side',side:target.hp>0?0:b.parts[0].hp>0?side:-side};
+ const gap=distance(p,b),range=weaponStats(weapon).range+b.r;
+ const state=gap<FRONT_TACTICS[2].signal.range?'near':gap>=range?'far':lineBlocked(s,p,b)||lineBlocked(s,b,point)?'blocked':'ready';
+ return {state,part,point,target};
+}
+function activateHarborSignal(s,source,owner){
+ if(source!=='native'&&source!=='payload')return;
+ const weapon=s.weapons.find(w=>w.uid===owner&&isConductiveFusion(w));
+ if(!weapon)return;
+ const signal=harborSignalLine(s,weapon);
+ if(signal?.state!=='ready')return;
+ const b=s.boss,{target,part,point}=signal;
+ Object.assign(target,point);
+ b.tacticCycle=b.cycle;b.portSignal={cycle:b.cycle,part};
+ s.stats.harborSignalHits=(s.stats.harborSignalHits||0)+1;
+ recordFrontTactic(s);
+ emit(s,'payload-relay',b.x,b.y,{x2:point.x,y2:point.y,life:.38});
+ damage(s,target,PORT_CONDUCTIVE_SIGNAL.damage,'electric','front-relay');
+ const name=part==='turret'?'포탑':'보조포';
+ emit(s,'weakpoint',point.x,point.y,{life:1.2,portRelay:true,text:target.hp<=0?`측면 역송 · ${name} 파괴`:`측면 역송 · 다음 ${name} 차단`});
 }
 export function harborArcTarget(s){
  const b=s.boss;
@@ -1122,6 +1156,7 @@ function activateFrontTactic(s,e,kind,source,owner){
  const b=s.boss,tactic=frontTactic(s),p=s.player;
  if(!tactic||source==='front-relay'||!['heat','signal'].includes(s.operation.tactic))return;
  const gap=distance(p,b),index=s.operation.region,cycle=b.cycle;
+ if(index===2&&s.operation.tactic==='signal'&&portConductiveSignal(s))return;
  if(index===1&&s.operation.tactic==='signal'&&b.mode==='aim')return;
  if(b.tacticCycle===cycle)return;
  if(s.operation.tactic==='heat'){
@@ -1203,7 +1238,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if((source==='native'||source==='payload'||source==='focus')&&(breachLane??(portBreachFlank(s)&&!lineBlocked(s,s.player,e)))){
    amount*=PORT_SUPPORT.breach.boost;recordSupportUse(s);
    const lethal=e.hp<=amount;
-   if(s.boss.mode==='salvo'&&s.boss.turretSuppressedCycle!==s.boss.cycle){
+   if(s.boss.mode==='salvo'&&s.boss.turretSuppressedCycle!==s.boss.cycle&&!portSignalCuts(s,s.boss.cycle,'turret')){
     const cancelled=clearPortRounds(s,'turret');
     if(!lethal)s.boss.turretSuppressedCycle=s.boss.cycle;
     if(cancelled)recordHarborPayoff(s,'salvos');
@@ -1256,7 +1291,10 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
  if(e.type==='shield'&&kind==='bullet'&&shieldFaces(e,s.player))amount*=breach?.65:.45;
  amount+=coastStrikeDamage(s,e,kind,source,owner,coastSignal);
  const actual=e.part||e,before=actual.hp;actual.hp=Math.max(0,actual.hp-amount);e.hp=actual.hp;e.hurt=.10;actual.hurt=.1;
- if(e===s.boss&&e.hp>0&&(source==='native'||source==='payload'))relayCoreHit(s,owner);
+ if(e===s.boss&&e.hp>0&&(source==='native'||source==='payload')){
+  activateHarborSignal(s,source,owner);
+  relayCoreHit(s,owner);
+ }
  if(s.operator==='marco'&&source==='native'&&actual.hp<before&&s.player.focusChargeAt<=s.t&&s.player.charge<100&&distance(s.player,e)<=RULES.marco.chargeReach+e.r&&!lineBlocked(s,s.player,e)){
   const p=s.player,gain=Math.min(100-p.charge,RULES.marco.directCharge);
   p.charge+=gain;p.focusChargeAt=s.t+RULES.marco.chargeInterval;s.stats.focusGained=(s.stats.focusGained||0)+gain;
@@ -1833,13 +1871,19 @@ function startPortBarrage(s,warning){
  const cut=b.emberCycle===b.cycle&&b.parts[0].hp>0;
  const relayTurret=b.parts[0].hp>0&&portRelayCuts(s,b.cycle,'turret');
  const relayArmor=b.parts[1].hp>0&&portRelayCuts(s,b.cycle,'armor');
+ const signalTurret=!cut&&portSignalCuts(s,b.cycle,'turret');
+ const signalArmor=portSignalCuts(s,b.cycle,'armor');
+ if(signalTurret||signalArmor){
+  const key=signalTurret?'harborSignalTurretCuts':'harborSignalArmorCuts';
+  s.stats[key]=(s.stats[key]||0)+1;
+ }
  if(relayTurret&&!cut)recordHarborPayoff(s,'arcTurretCuts');
  if(relayArmor)recordHarborPayoff(s,'arcArmorCuts');
  const message=crossfire?'양쪽 급탄 차단 · 발밑 포격':jammed?'관제소 교란 · 장갑탄 차단':rake?`가로 포격 ${mark}`:battery?`세로 포격 ${mark}`
   :suppressed?'철갑 · 보조 포격 차단':'발밑 포격';
  const signal=rake?'harbor-rake-lock':battery?'harbor-vertical-lock':'harbor-center-lock';
  if(cut)recordPortEmberIntercept(s,partPosition(s,b.parts[0]));
- const relay=relayTurret&&!cut?' · 전도 포탑 차단':relayArmor?' · 전도 보조포 차단':'';
+ const relay=relayTurret&&!cut||signalTurret?' · 전도 포탑 차단':relayArmor||signalArmor?' · 전도 보조포 차단':'';
  emitBossWarning(s,signal,p.x,p.y,{text:`${message}${cut?' · 포탑탄 차단':''}${relay}${warning?' · 선행 경보 +1초':''}`,life:1});
 }
 function clearPortRounds(s,...rounds){
@@ -1903,7 +1947,7 @@ function updateOperationBoss(s,dt){
     if(b.turretSuppressedCycle===b.cycle)recordHarborPayoff(s,'fans');
     else if(portRelayCuts(s,b.cycle,'turret')){
      if(b.emberCycle===b.cycle)recordHarborPayoff(s,'arcTurretCuts');
-    }else{
+    }else if(!portSignalCuts(s,b.cycle,'turret')){
      for(let i=-4;i<=4;i++)enemyShot(s,b,b.aim+i*.16,true);
      b.kick=1;b.flash=.12;
     }
@@ -1977,7 +2021,7 @@ function updateBoss(s,dt){
 function frontControlCards(s){
  const index=s.operation.region,tactics=FRONT_TACTICS[index];
  const keys=index===2?portTacticKeys(s):Object.keys(tactics);
- const orders=keys.map(key=>{const t=tactics[key];return {id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role};});
+ const orders=keys.map(key=>{const t=key==='signal'&&portConductiveSignal(s)?PORT_CONDUCTIVE_SIGNAL:tactics[key];return {id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role,hint:t.hint};});
  const rank=infernoControlRank(s);
  const equipment=index===1?{key:'supply',title:'중계기 보급 회수',desc:'보유 병기를 개조하거나 새 무장과 모듈을 확보합니다.',label:'일반 보급'}
   :{key:'loot',title:'시험 탄약 노획',desc:'희귀 모듈 또는 재보급 후보 3개',label:'추가 화력'};

@@ -604,6 +604,7 @@
 .harbor-payoff[data-part="overrun"]{--part-color:#ffd2a2}
 .harbor-payoff[data-part="recovery"]{--part-color:#d5edb3}
 .harbor-payoff[data-part="crossfire"]{--part-color:#f0c685}
+.harbor-payoff[data-part="signal"]{--part-color:#a5e1e6}
 .harbor-payoff span{color:#c8cfba;font-size:10px}
 .harbor-payoff b{color:var(--part-color);font-size:11px}
 .harbor-payoff p{grid-column:1/-1;margin:0;color:#ebeddc;font-size:12px;line-height:1.45}
@@ -705,6 +706,10 @@
 .replay-briefing>footer small{color:#cbd8bb;font-size:11px;line-height:1.4}
 .replay-briefing>footer div{display:grid;grid-template-columns:1fr 2fr;gap:7px}
 .replay-briefing>footer button{min-height:44px}
+.replay-launch-options{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-block:6px}
+.replay-launch-options button{min-height:44px;padding:6px 8px;font-size:12px;text-align:left}
+.replay-launch-options button[aria-pressed="true"]{border-color:#e3b777;background:#433b2b;color:#ffe3a3;box-shadow:inset 3px 0 #efc480}
+.research-sortie-briefing>footer{margin:9px 0 14px}
 @media(max-width:700px){
  body[data-scene=lobby] #ui:has(>:is(.report-sheet,.replay-briefing)){padding:12px}
  .sheet.report-sheet{padding:15px 14px 13px}
