@@ -240,6 +240,7 @@ export function coveredCombatPanels(s,panels,project,scale){
   else if(f.type==='fire-spread'&&f.age<f.life*fireSpreadContactLife)mark(f.x2,f.y2-4,13);
   else if(f.type==='kill'&&f.wake&&f.age<f.life*.52)mark(f.x,f.y-3,13);
   else if(f.type==='wake-flash'&&f.age<f.life*.65){mark(f.x,f.y,f.r);mark(f.x2,f.y2,f.r);}
+  else if(f.type==='rail-fan-sweep'&&f.age<f.life*.6){mark(f.x,f.y-3,17);mark(f.x2,f.y2-3,17);}
  }
  for(const h of s.hazards){
   if(h.hit||h.timer<=0)continue;
@@ -660,6 +661,16 @@ function paintCapturedVolley(c,f,t,reduced){
    c.fillStyle='#fff6cc';c.fillRect(25,-3,8,6);
   }
   c.restore();
+ }
+}
+function paintRailFanSweep(c,f,t,reduced){
+ const color='#ffe3a4';
+ c.globalAlpha=Math.min(1,(1-t)*2.4);
+ for(const [px,py] of [[f.x,f.y],[f.x2,f.y2]]){
+  const r=reduced?12:11+Math.min(t*20,9);
+  c.lineWidth=2;c.strokeStyle=color;c.beginPath();
+  c.moveTo(px-r,py-6);c.lineTo(px-r,py+2);c.lineTo(px-r+7,py+2);
+  c.moveTo(px+r,py-6);c.lineTo(px+r,py+2);c.lineTo(px+r-7,py+2);c.stroke();
  }
 }
 function paintInfantryFall(c,e,reduced){
@@ -1190,6 +1201,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    c.restore();
   }
   const latestInferno=s.effects.findLast(f=>f.type==='flame'&&f.evolved);
+  let railSweep=null;
   for(const f of s.effects){const t=f.age/f.life;c.save();c.globalAlpha=1-t;
    if(f.type==='xp-pickup'){
     const {x,y}=s.player,label=`+${f.value} XP`,rise=reduced?0:Math.max(0,t-.55)*15;
@@ -1275,6 +1287,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     c.strokeStyle='#f6bd75';c.lineWidth=3;c.stroke();c.restore();
    }
    else if(f.type==='captured-volley'&&visible(f.x,f.y,66))paintCapturedVolley(c,f,t,reduced);
+   else if(f.type==='rail-fan-sweep'&&(visible(f.x,f.y,30)||visible(f.x2,f.y2,30))){paintRailFanSweep(c,f,t,reduced);railSweep=f;}
    else if(f.type==='salvo-impact'||f.type==='captured-impact'){
     if(visible(f.x,f.y,f.r+20))paintSalvoImpact(c,f,t,reduced);
    }
@@ -1380,6 +1393,19 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   paintPortWakeCue(c,s);
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
+  const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
+  if(railSweep&&s.phase==='playing'&&!s.hazards.some(h=>!h.hit&&h.timer>0)){
+   const {x,y,x2,y2,age,life}=railSweep,label='양쪽 대열 명중';
+   const center=project((x+x2)/2,(y+y2)/2-40);
+   c.save();c.font='bold 12px Galmuri';
+   const at=clearBearingPosition(size,center,c.measureText(label).width+12,combatHud.rects,10);
+   if(at){
+    c.globalAlpha=Math.min(1,(1-age/life)*2.4);
+    c.textAlign='center';c.lineWidth=4;c.strokeStyle='#20322c';c.strokeText(label,at.x,at.y+4);
+    c.fillStyle='#ffe3a4';c.fillText(label,at.x,at.y+4);
+   }
+   c.restore();
+  }
   if(lead){
    const marker=paintCoastCue(c,s,lead,guns,volley,counter,size,cx-shake,cy,scale,combatHud.rects,!!opening&&lead.opening);
    if(opening&&lead.opening&&Math.hypot(s.player.x-800,s.player.y-1040)<330){
@@ -1389,7 +1415,6 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   if(mobile&&showAid)paintAidBearing(c,s,aid,size,cx,cy,scale,combatHud.rects);
   if(mobile&&size.h>size.w&&combatHud.passive?.length&&s.phase==='playing'){
-   const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
    return coveredCombatPanels(s,combatHud.passive,project,scale);
   }
  }

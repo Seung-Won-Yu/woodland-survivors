@@ -8,6 +8,7 @@ const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
 const pick=(s,key,items)=>items[Math.floor(rng(s,key)*items.length)];
 const alive=s=>s.enemies.filter(e=>!e.dead);
+const isRailWorkshopGuard=e=>e?.siteId==='rail-cache'&&e.cohort==='rail-guard'&&e.type==='rifle';
 const emit=(s,type,x=s.player.x,y=s.player.y,extra={})=>{
  const effect={type,x,y,age:0,life:.45,...extra};
  s.events.push(type);s.effects.push(effect);
@@ -70,6 +71,7 @@ function advanceRegion(s,card){
  s.operation.support=support;delete s.operation.nextSupport;delete s.operation.tactic;
  if(support==='vanguard')Object.assign(s.player,vanguardAid(s.player));
  s.operation.region++;s.operation.regionTime=0;s.operation.jammed=false;s.operation.challengeTier=0;s.operation.holdoutKills=0;delete s.operation.gate;delete s.pursuitClock;s.director={pack:0,officerClock:RULES.campaignDirector.officerInterval[s.operation.region]};
+ delete s.railFanContacts;
  if(s.operation.region===2&&Object.hasOwn(PORT_SUPPORT,support))s.operation.harborPayoff={};
  const sectorSeed=mapSeed(s.seed,s.operation.region),arrival=frontEntry(sectorSeed,s.operation.region).arrival;
  Object.assign(s,regionLayout(sectorSeed,s.operation.region,null,!!coast));s.boss=regionBoss(s.operation.region,s.seed);s.stage='field';s.pressure=0;s.holdTime=0;s.challenge=null;s.raid=null;s.raidUsed=false;s.enemies=[];s.shots=[];s.enemyShots=[];s.hazards=[];s.zones=[];s.gems=[];s.effects=[];s.events=[];s.spawnClock=1;Object.assign(s.player,arrival);s.player.invuln=1;s.player.dash=0;s.choice=null;s.choices=[];s.phase='playing';
@@ -165,7 +167,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -195,6 +197,15 @@ export function restore(raw,{allowPrevious=false}={}){
   ||!Number.isFinite(q.coastFuse?.x)||!Number.isFinite(q.coastFuse?.y))))fail();
  if(s.shots.some(q=>q?.capturedFan!==undefined&&(q.capturedFan!==true||!q.rocket||q.source!=='native'||
   !coastTurretOwner(s,q.owner)||q.speed!==CAPTURED_TURRET.speed)))fail();
+ const rail=s.operation?.region===1&&carriesCoastSalvage(s);
+ if(s.enemies.some(e=>e?.railWing!==undefined&&(!rail||!isRailWorkshopGuard(e)||![0,1].includes(e.railWing))))fail();
+ if(s.shots.some(q=>q?.railFan!==undefined&&(!rail||!q.capturedFan||!Number.isSafeInteger(q.railFan?.volley)||q.railFan.volley<1
+  ||!Number.isSafeInteger(s.stats.turretVolleys)||q.railFan.volley>s.stats.turretVolleys||!Number.isInteger(q.railFan.ray)||q.railFan.ray<0||q.railFan.ray>=CAPTURED_TURRET.evolved.count)))fail();
+ if(s.stats.railFanSweep!==undefined&&(s.stats.railFanSweep!==true||!carriesCoastSalvage(s)||s.operation.region<1||!Number.isSafeInteger(s.stats.turretVolleys)||s.stats.turretVolleys<1))fail();
+ if(s.railFanContacts!==undefined&&(!rail||s.stats.railFanSweep||!s.railFanContacts||typeof s.railFanContacts!=='object'||Array.isArray(s.railFanContacts)
+  ||Object.entries(s.railFanContacts).some(([volley,hits])=>!s.shots.some(q=>String(q.railFan?.volley)===volley)
+   ||!Array.isArray(hits)||hits.length!==2||!hits.some(Boolean)||hits.some(hit=>hit!==null&&(!hit||![hit.x,hit.y].every(Number.isFinite)
+    ||!Number.isInteger(hit.ray)||hit.ray<0||hit.ray>=CAPTURED_TURRET.evolved.count)))))fail();
  if(s.shots.some(q=>q?.crossfire!==undefined&&(!q.capturedFan||s.operation?.region!==2||s.operation.tactic!=='crossfire'
   ||!Number.isSafeInteger(q.crossfire?.volley)||q.crossfire.volley<1||q.crossfire.volley>s.stats.turretVolleys
   ||!Number.isSafeInteger(q.crossfire.cycle)||q.crossfire.cycle<1||q.crossfire.cycle>s.boss.cycle)))fail();
@@ -1378,7 +1389,7 @@ function launchPayload(s,w,origin,target,amount,relay,breachLane,relayGroup,cut=
  const incendiary=!relay&&w.fusion.branch==='incendiary';
  return fire(s,w,target,angle,amount,{rocket:true,radius:RULES.fusion.payloadRadius,source:'payload',homing:!incendiary,incendiary,origin,ignore:origin.id,avoidGroup:origin.waveGroup!==target.waveGroup?origin.waveGroup:null,relay,breachLane,relayGroup,conduitGun:cut?target.id:undefined});
 }
-function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal,armorCycle){
+function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=source==='payload'?'payload-impact':'explosion',breachLane,coastSignal,armorCycle,railFan){
  const charge=ignite&&effect==='payload-impact';
  const reach=charge?r*EMBER_CHARGE.impactScale:r;
  const burst=emit(s,effect,x,y,{r:reach,life:.4,...(charge?{incendiary:true}:{})}),center={x,y};
@@ -1388,6 +1399,7 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=sou
   const gap=distance(e,center);
   if(gap>reach+e.r||(effect==='ember-burst'?!groundLineClear(s,center,e):lineBlocked(s,center,e)))continue;
   const w=source==='native'?Math.min(.5,budget):0,before=e.hp;
+  const workshopHit=railFan&&!s.stats.railFanSweep&&isRailWorkshopGuard(e)&&e.railWing!==undefined?{x:e.x,y:e.y,wing:e.railWing}:null;
   budget-=w;damage(s,e,amount,'blast',source,owner,w,breachLane,coastSignal,source==='payload'&&ignite,armorCycle);
   if(effect==='payload-impact'&&e.hp<before&&gap<contactGap){
    burst.contact={x:e.x,y:e.y};contactGap=gap;
@@ -1397,6 +1409,7 @@ function blast(s,x,y,r,amount,source='native',owner=null,ignite=false,effect=sou
    if(e.dead&&Object.hasOwn(RULES.enemies,e.type))s.stats.shrapnelKills=(s.stats.shrapnelKills||0)+1;
   }
   if(effect==='captured-impact'&&e.hp<before){
+   if(workshopHit)recordRailFanHit(s,railFan,workshopHit);
    s.stats.turretHits=(s.stats.turretHits||0)+1;
    if(e.dead&&Object.hasOwn(RULES.enemies,e.type)){
     s.stats.turretKills=(s.stats.turretKills||0)+1;
@@ -1563,6 +1576,7 @@ function fire(s,w,target,a,amount,opts={}){
   ...(opts.coastFuse?{coastFuse:opts.coastFuse}:{}),...(opts.coastCounter?{coastCounter:true}:{}),
   ...(opts.coastSignal?{coastSignal:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(armorCycle!==undefined?{armorCycle}:{}),
   ...(opts.capturedFan?{capturedFan:true,speed,...(opts.crossfire?{crossfire:opts.crossfire}:{})}:{}),
+  ...(opts.railFan?{railFan:opts.railFan}:{}),
   ...(payload||(evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{}))
  });
  return true;
@@ -1592,10 +1606,12 @@ function salvoTargets(ordered,radius,count){
 }
 function fireCapturedFan(s,w,target,angle,stats,damage,crossfire){
  const volley=(s.stats.turretVolleys||0)+1;
+ const trackRail=s.operation?.region===1&&carriesCoastSalvage(s)&&!s.stats.railFanSweep&&s.sites.some(site=>site.id==='rail-cache'&&['waiting','active'].includes(site.state));
  for(let i=0;i<stats.count;i++){
   const offset=coastFanAngle(i,stats.count);
   const marking=crossfire&&offset!==0?{volley,cycle:s.boss.cycle}:null;
-  fire(s,w,offset===0?target:null,angle+offset,damage,{capturedFan:true,homing:!crossfire&&offset===0&&w.branch==='homing',crossfire:marking});
+  fire(s,w,offset===0?target:null,angle+offset,damage,{capturedFan:true,homing:!crossfire&&offset===0&&w.branch==='homing',crossfire:marking,
+   railFan:trackRail?{volley,ray:i}:null});
  }
  s.stats.turretVolleys=volley;
  if(volley===1)s.stats.turretFirstAt=s.t;
@@ -1604,18 +1620,27 @@ function fireCapturedFan(s,w,target,angle,stats,damage,crossfire){
 }
 function capturedFanAim(p,targets,heading,stats){
  const nearby=targets.slice(0,18).map(e=>({
-  angle:Math.atan2(e.y-p.y,e.x-p.x),radius:e.r,reach:distance(e,p)
+  angle:Math.atan2(e.y-p.y,e.x-p.x),radius:e.r,reach:distance(e,p),wing:e.railWing
  }));
- let best=heading,most=0;
- const center=coastFanAngle(stats.count-1,stats.count);
+ const leftWing=nearby.find(e=>e.wing===0),rightWing=nearby.find(e=>e.wing===1);
+ const workshopAim=leftWing&&rightWing?Math.atan2(Math.sin(leftWing.angle)+Math.sin(rightWing.angle),Math.cos(leftWing.angle)+Math.cos(rightWing.angle)):null;
+ let best=heading,most=0,split=false;
+ const edge=(stats.count-1)/2,center=edge*COAST_FAN.step;
  // The best lane can lie in the space between two groups.
- for(const aim of [heading,...nearby.flatMap(e=>[e.angle,e.angle-center,e.angle+center])]){
-  const hits=nearby.reduce((sum,e)=>{
+ const angles=[heading,...nearby.flatMap(e=>[e.angle,e.angle-center,e.angle+center])];
+ if(workshopAim!==null)angles.push(workshopAim);
+ for(const aim of angles){
+  let hits=0,left=0,right=0;
+  for(const e of nearby){
    const offset=Math.atan2(Math.sin(e.angle-aim),Math.cos(e.angle-aim));
-   const nearest=clamp(Math.round(offset/COAST_FAN.step)*COAST_FAN.step,-center,center);
-   return sum+Number(Math.abs(offset)<Math.PI/2&&Math.abs(Math.sin(offset-nearest))*e.reach<=e.radius+7);
-  },0);
-  if(hits>most){most=hits;best=aim;}
+   const ray=clamp(Math.round(offset/COAST_FAN.step),-edge,edge);
+   if(Math.abs(offset)>=Math.PI/2||Math.abs(Math.sin(offset-ray*COAST_FAN.step))*e.reach>e.radius+7)continue;
+   hits++;
+   if(e.wing===0)left|=1<<(ray+edge);
+   if(e.wing===1)right|=1<<(ray+edge);
+  }
+  const rays=left|right,coversBoth=left!==0&&right!==0&&(rays&(rays-1))!==0;
+  if(coversBoth&&!split||coversBoth===split&&hits>most){most=hits;best=aim;split=coversBoth;}
  }
  return best;
 }
@@ -1709,7 +1734,7 @@ function detonate(s,q,impact){
  const cut=q.conduitGun&&conduitMortarCue(s);
  const cutHit=cut?.gun&&cut.gun.id===q.conduitGun&&distance(q,cut.gun)<=q.radius+cut.gun.r&&!lineBlocked(s,q,cut.gun);
  const directHp=impact?.hp;
- const burst=blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal,q.armorCycle);
+ const burst=blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal,q.armorCycle,q.railFan);
  if(q.crossfire&&impact?.hp<directHp)registerCrossfireHit(s,impact,q.crossfire);
  q.life=0;
  if(cutHit){
@@ -1740,6 +1765,16 @@ function detonate(s,q,impact){
   s.stats.payloadRelays=(s.stats.payloadRelays||0)+1;
   emit(s,'payload-relay',q.x,q.y,{x2:next.x,y2:next.y,life:.32,...(third?{thirdPack:true}:{}),...(direct?{conduitCut:true}:{})});
  }
+}
+function recordRailFanHit(s,{volley,ray},{x,y,wing}){
+ const contacts=s.railFanContacts??={};
+ const hits=contacts[volley]??=[null,null];
+ const opposite=hits[1-wing];
+ if(opposite&&opposite.ray!==ray){
+  s.stats.railFanSweep=true;
+  delete s.railFanContacts;
+  emit(s,'rail-fan-sweep',x,y,{x2:opposite.x,y2:opposite.y,life:.72});
+ }else hits[wing]??={x,y,ray};
 }
 function homingTarget(s,q){
  const candidates=targets(s);
@@ -1779,6 +1814,11 @@ function updateShots(s,dt){
   if(atFuse&&q.life>0)detonate(s,q);
  }
  s.shots=s.shots.filter(q=>q.life>0);
+ if(s.railFanContacts){
+  const pending=new Set(s.shots.map(q=>q.railFan?.volley));
+  for(const volley of Object.keys(s.railFanContacts))if(!pending.has(Number(volley)))delete s.railFanContacts[volley];
+  if(!Object.keys(s.railFanContacts).length)delete s.railFanContacts;
+ }
 }
 function hurt(s,amount,x,y){const p=s.player;if(p.invuln>0||p.dash>0||p.hp<=0)return;const actual=amount*(moduleRank(s,'overcharger')?1.15:1);p.hp=Math.max(0,p.hp-actual);s.stats.damageTaken+=actual;p.hurt=.2;p.invuln=.65;const dx=p.x-x,dy=p.y-y,d=Math.hypot(dx,dy)||1;move(s,p,dx/d*RULES.combatFeel.pilotHitPush,dy/d*RULES.combatFeel.pilotHitPush,16);emit(s,'hurt',p.x,p.y);}
 function enemyShot(s,e,a,portFan=false){if(s.enemyShots.length<100)s.enemyShots.push({x:e.x,y:e.y,vx:Math.cos(a)*180,vy:Math.sin(a)*180,life:3,r:5,...(portFan?{portFan}:null)});}
@@ -2061,6 +2101,7 @@ function updateSites(s,dt){
     const guard=site.kind==='armory'&&i===0?'officer':i===1&&!site.opening?'shield':'rifle';
     const [type,x,y,hp]=guards?guards[i]:[guard,Math.cos(angle)*85,Math.sin(angle)*65];
     const extra={...(cohort?{cohort}:{}),...(hp?{hp,maxHp:hp}:{})};
+    if(s.operation?.region===1&&carriesCoastSalvage(s)&&site.id==='rail-cache'&&site.guardPlan==='spread')extra.railWing=Number((mirrored?-x:x)>0);
     if(rescue&&s.operator!=='marco'&&(i===0||i===3))extra.coastCarrier=true;
     if(isSalvageCampaign(s)&&site.preempt&&type==='shield'&&s.operator==='marco')extra.coastArmor=true;
     if(wire&&type==='mortar')extra.timer=.8;

@@ -669,7 +669,14 @@ export function activeEntry(s){
   const [x,y]=route.path.at(-1);
   const site=s.sites.find(n=>n.id===route.site&&n.x===x&&n.y===y&&n.state!=='done');
   if(!site)return [];
-  if(site.id==='rail-cache'&&s.operation.requisition)return [{...route,sign:'정비대 · 예약품'}];
+  if(site.id==='rail-cache'){
+   const sign=s.operation.requisition?'정비대 · 예약품':route.sign;
+   if(site.guardPlan==='spread'&&site.state==='waiting'&&s.weapons.some(isCapturedTurret)){
+    const {x:startX,y:startY}=entry.arrival,flankY=y+244;
+    return [{...route,sign,path:[[startX,startY],[(startX+x)/2,flankY],[x,flankY],[x,y]]}];
+   }
+   if(s.operation.requisition)return [{...route,sign}];
+  }
   return [site.id==='port-landing'&&!site.gantry?{...route,sign:'하역장 보급'}:route];
  });
  if(index===2){

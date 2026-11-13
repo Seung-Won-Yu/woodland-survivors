@@ -168,6 +168,10 @@ export function createAudio({fieldMix = false} = {}) {
       note(146,48,'triangle',now,.14,.035);
     }
     else if(event==='turret-impact'){transient(now,.066,.033,870);note(108,39,'triangle',now,.10,.023);}
+    else if(event==='turret-sweep'){
+      transient(now,.048,.032,1040);transient(now+.045,.042,.025,1550);
+      note(150,58,'triangle',now,.12,.024);
+    }
     else if(event==='scatter-shot'){transient(now,.035,.03,1800);note(180,65,'triangle',now,.09,.03);note(78,45,'sine',now,.1,.018);}
     else if(event==='swarm-shot'){transient(now,.025,.02,2400);note(240,170,'triangle',now,.06,.014);}
     else if(event==='armor-collapse'){

@@ -1065,6 +1065,7 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .salvage-report .kit-sprite {width:46px;height:46px;background-color:#1a2925;border:1px solid #7e8266}
 .salvage-report h2 {font-size:14px;color:var(--salvage-ink)}
 .salvage-report p {margin:3px 0 0;color:#d0d7bb;font-size:10px}
+.salvage-report .salvage-sweep {color:#ffe3a4}
 .salvage-report dl {grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin:0;padding-top:6px;border-top:1px solid #7a886375}
 .salvage-report dt {font-size:9px;color:#bac9ae}
 .salvage-report dd {margin:2px 0 0;font-size:11px;color:var(--salvage-ink)}

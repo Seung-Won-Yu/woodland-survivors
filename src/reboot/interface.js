@@ -349,7 +349,7 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  const railReservation=request&&!at;
  const rail=sortie?previewLayout(seed,1,null,true).sites:[];
  const railSite=rail.find(site=>site.id===(railReservation||starter==='turret'?'rail-cache':'rail-relay'));
- const railTip=railReservation?`경비를 제압한 뒤 예약한 ${request.name} 수령`:starter==='turret'?'중거리에서 양쪽 보병을 부채꼴 한 번에':'로켓 R을 얻으면 긴 사선에서 후방 박격포부터';
+ const railTip=railReservation?`경비를 제압한 뒤 예약한 ${request.name} 수령`:starter==='turret'?'정비대 남쪽에서 양쪽 보병을 부채꼴 한 번에':'로켓 R을 얻으면 긴 사선에서 후방 박격포부터';
  const nextRoute=railSite?`<p class="replay-rail-target"><b>철도 ${bearing({x:800,y:1040},railSite.x,railSite.y)} ${sitePresentation(railSite).name}</b><span>${railTip}</span></p>`:'';
  return `<section class="sheet replay-briefing${experiment?' research-sortie-briefing':sortie?' sortie-briefing':''}" role="dialog" aria-modal="true" aria-labelledby="replay-brief-title">
   <header><div><span class="section-index">${experiment?`병기 연구 · ${operatorOf(r).name}`:`${trial?'실전 시험 · 같은 전장 · ':''}작전 #${r.sequence??'–'} · ${operatorOf(r).name}`}</span><h2 id="replay-brief-title">${trial?trial.name:experiment?'연구 장비 배치':sortie?'다음 출격 준비':'같은 전장 재도전'}</h2></div>${configurable?'':`<b>${splitClockText(r.seconds)}<small>${n(r.score)}점</small></b>`}</header>
@@ -458,7 +458,7 @@ function salvageCampaignReport(r){
  const site=r.stats.railFirstSite==='rail-cache'?'화차 정비대':r.stats.railFirstSite==='rail-relay'?'통신 중계기':null;
  return `<section class="salvage-report" data-outcome="${returned?'returned':e(coast.turret)}" aria-label="현장 노획 성과">
   ${returned||coast.turret==='secured'?itemArt('turret'):itemArt('ammo')}
-  <div><h2>${status}</h2><p>${returned?'새 출격에서 포탑 장착 가능':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p></div>
+  <div><h2>${status}</h2><p>${returned?'새 출격에서 포탑 장착 가능':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p>${r.stats.railFanSweep===true?'<p class="salvage-sweep">정비대 · 일제사격으로 양쪽 대열 명중</p>':''}</div>
   ${site||returned?`<dl><div><dt>철도 경유</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'포탑 직접 제압 · 철도':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>`:''}
  </section>`;
 }

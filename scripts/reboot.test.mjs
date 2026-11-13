@@ -311,6 +311,52 @@ test('the captured turret inherits the boss fan and hits separated lanes, while 
 });
 
 test('reboot runtime data stays identical to the reviewed design baseline',async()=>{assert.deepEqual(RULES,JSON.parse(await readFile('docs/design/reboot-rules.json','utf8')));});
+test('a workshop sweep requires two rays from one captured volley and survives a checkpoint between contacts',()=>{
+ const prepared=seed=>{
+  const s=createOperation(seed,[],null,null,'fio','turret');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{blocks:[],enemies:[],spawnClock:999,boss:regionBoss(1,seed)});
+  const site=s.sites.find(site=>site.id==='rail-cache');
+  s.sites.filter(other=>other!==site).forEach(other=>other.state='done');
+  const workshopRoute=activeEntry(s).routes.find(route=>route.site===site.id);
+  assert.deepEqual(workshopRoute.path.slice(-2),[[site.x,site.y+244],[site.x,site.y]]);
+  Object.assign(s.player,{x:site.x-60,y:site.y+210});
+  s.weapons[0].cd=999;step(s,dt);
+  assert.equal(site.state,'active');
+  assert.deepEqual(s.enemies.map(e=>e.railWing).sort(),[0,0,0,0,1,1,1,1]);
+  s.weapons[0].cd=0;step(s,dt);s.weapons[0].cd=999;
+  return s;
+ };
+ for(const seed of [27,28]){
+  const s=prepared(seed);
+  for(let i=0;i<50&&!s.railFanContacts;i++)step(s,dt);
+  assert.ok(s.railFanContacts);assert.equal(s.stats.railFanSweep,undefined);
+  const resumed=restore(snapshot(s));
+  tick(s,.75);tick(resumed,.75);
+  assert.deepEqual(resumed.stats,s.stats);assert.equal(resumed.stats.railFanSweep,true);
+  const [event]=resumed.effects.filter(e=>e.type==='rail-fan-sweep');
+  assert.ok(event);assert.notEqual(event.x,event.x2);
+  const events=takeEvents(resumed);
+  assert.equal(events.filter(event=>event==='rail-fan-sweep').length,1);
+  assert.deepEqual(selectRiftAudioEvents(new Set([...events,'rail-lock'])),['rail-lock','turret-sweep']);
+  assert.equal(restore(snapshot(resumed)).stats.railFanSweep,true);
+ }
+ const original=prepared(27),single=restore(snapshot(original)),untracked=restore(snapshot(original));
+ const targets=[0,1].map(wing=>single.enemies.find(e=>e.railWing===wing));
+ const makeImpact=(s,e,volley,ray)=>({...bullet(s,e,60),rocket:true,radius:9,capturedFan:true,speed:s.shots[0].speed,railFan:{volley,ray}});
+ single.stats.turretVolleys=2;
+ single.shots=targets.map((e,index)=>makeImpact(single,e,index+1,index));
+ step(single,dt);
+ assert.equal(single.stats.railFanSweep,undefined);assert.equal(single.railFanContacts,undefined);
+ const overlap=restore(snapshot(original)),left=overlap.enemies.find(e=>e.railWing===0),right=overlap.enemies.find(e=>e.railWing===1);
+ Object.assign(right,{x:left.x+11,y:left.y});
+ overlap.shots=[makeImpact(overlap,left,1,0)];step(overlap,dt);
+ assert.ok(left.dead&&right.dead);assert.equal(overlap.stats.railFanSweep,undefined);
+ for(const e of untracked.enemies)delete e.railWing;
+ for(const q of untracked.shots)delete q.railFan;
+ assert.doesNotThrow(()=>restore(snapshot(untracked)));
+});
 test('a marked coast outpost can be seized for its native gun before rescuing the prisoner',()=>{
  for(const [seed,gun,guardCount] of [[17,'r',2],[19,'f',3]]){
   const s=createOperation(seed),rescue=s.sites[0],outpost=coastPreemptSite(s);

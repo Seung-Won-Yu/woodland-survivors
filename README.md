@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.124.0" src="https://img.shields.io/badge/RIFT-0.124.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.125.0" src="https://img.shields.io/badge/RIFT-0.125.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -19,7 +19,7 @@
 
 **새 출격**은 해안에서 철도와 항구로 이어집니다. 첫 포로 구출부터 마르코는 방패병 옆에서 약점을 맞혀 관통 사격을, 피오는 호위가 떨어뜨린 부품을 직접 주워 연사를 키웁니다. 수송차 포탑을 파괴하면 탄막이 5발에서 3발로 줄고 철갑 급탄이나 후송 정비를 받을 수 있습니다. 포탑을 남겨 두면 격파 뒤 증원 속에서 5초간 분리해 현장에서 장착합니다. 로켓 R을 갖고 있으면 강화 단계를 이어받습니다.
 
-철도의 **화차 정비대**에서는 두 갈래로 배치된 보병을, **통신 중계기**에서는 후방 박격포를 상대합니다. 노획 포탑은 두 대열이 동시에 부채꼴에 들어오도록 중거리에서 접근하고, 일반 R은 긴 사선을 열어 박격포를 먼저 노립니다. 포격 열차를 잡으면 항구로 전진하거나 60C의 생존 귀환 수당을 받고 작전실로 돌아갈 수 있습니다. 포탑을 반출한 판에는 40C가 추가되고 새 시드에서 5발 포탑으로 시작할 수 있습니다.
+철도의 **화차 정비대**에서는 두 갈래로 배치된 보병을, **통신 중계기**에서는 후방 박격포를 상대합니다. 노획 포탑으로 정비대 남쪽에 접근해 일제사격의 서로 다른 탄을 양쪽 대열에 맞히면 착탄 표시가 뜨고 보고서에 남습니다. 일반 R은 긴 사선을 열어 박격포를 먼저 노립니다. 포격 열차를 잡으면 항구로 전진하거나 60C의 생존 귀환 수당을 받고 작전실로 돌아갈 수 있습니다. 포탑을 반출한 판에는 40C가 추가되고 새 시드에서 5발 포탑으로 시작할 수 있습니다.
 
 레벨업에서는 다음 강화 한 번으로 진화나 합체를 열 수 있는 카드를 확인할 수 있습니다. 조립을 앞당길지, 다른 총이나 전술 보조에 투자할지 고릅니다.
 
