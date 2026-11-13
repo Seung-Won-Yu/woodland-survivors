@@ -680,23 +680,26 @@ function paintRailFanSweep(c,f,t,reduced){
 }
 function paintRailFanLine(c,cue){
  const {x,y,state,guns,edges,halfWidth,halfDepth,inPosition}=cue;
- const active=state==='hold'||state==='ready',color=active?'#fff2b4':'#e5be7b';
+ const active=state==='hold'||state==='ready',color=active?'#ffedaf':'#edc382';
+ const top=y-halfDepth,bottom=y+halfDepth;
  c.save();
- c.fillStyle=inPosition?'#655237b3':'#2c3833b3';c.fillRect(x-halfWidth,y-halfDepth,halfWidth*2,halfDepth*2);
- c.strokeStyle='#222d29';c.lineWidth=5;c.strokeRect(x-halfWidth,y-halfDepth,halfWidth*2,halfDepth*2);
- c.strokeStyle=color;c.lineWidth=2;c.beginPath();
+ c.fillStyle=inPosition?'#725b3bbd':'#272e28bd';c.fillRect(x-halfWidth,top,halfWidth*2,halfDepth*2);
  for(const side of [-1,1]){
-  c.moveTo(x+side*halfWidth,y+halfDepth);c.lineTo(x+side*halfWidth,y-halfDepth);c.lineTo(x+side*7,y-halfDepth);
-  c.moveTo(x+side*15,y+halfDepth+11);c.lineTo(x+side*8,y+halfDepth+5);c.lineTo(x+side*2,y+halfDepth+11);
+  const edge=x+side*halfWidth;
+  c.beginPath();
+  c.moveTo(x+side*6,bottom);c.lineTo(edge,bottom);c.lineTo(edge,top);c.lineTo(x+side*6,top);
+  c.strokeStyle='#1a2522';c.lineWidth=7;c.stroke();
+  c.strokeStyle=color;c.lineWidth=3;c.stroke();
+  c.fillStyle=color;c.fillRect(edge+side*7-2,y-3,4,6);
  }
- c.stroke();
- if(active||state==='approach'||state==='recover'){
-  for(let i=0;i<edges.length;i++){
-   const edge=edges[i],gun=guns[i],ink=RAIL_GUN_COLORS[i];
-   c.strokeStyle=ink+(active?'b8':'50');c.setLineDash(active?[10,8]:[4,12]);c.beginPath();
-   c.moveTo(x,y-halfDepth-2);c.lineTo(edge.x,edge.y+12);c.stroke();c.setLineDash([]);
-   if(active)circle(c,gun.x,gun.y,31,null,ink,2);
-  }
+ for(let i=0;i<edges.length;i++){
+  const edge=edges[i],gun=guns[i],ink=RAIL_GUN_COLORS[i];
+  c.setLineDash(active?[12,8]:[5,13]);c.beginPath();
+  c.moveTo(x+(i===0?-1:1)*8,top-7);c.lineTo(edge.x,edge.y+18);
+  c.strokeStyle='#1a2522aa';c.lineWidth=5;c.stroke();
+  c.strokeStyle=ink+(active?'e6':'97');c.lineWidth=2;c.stroke();
+  c.setLineDash([]);
+  if(active)circle(c,gun.x,gun.y,30,null,ink,2);
  }
  c.restore();
 }
@@ -1039,7 +1042,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   for(const g of s.gems)if(!g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   const salvage=coastSalvage(s),wreck=coastSalvageWreck(s),roleTarget=coastRoleTarget(s);
   const railFanLine=railFanCutCue(s);
-  if(railFanLine&&['approach','hold','ready','recover'].includes(railFanLine.state))paintRailFanLine(c,railFanLine);
+  const showRailPad=railFanLine&&['approach','hold','ready','recover'].includes(railFanLine.state);
   const railWings=s.operation?.region===1&&s.stage==='field'&&!s.stats.railFanSweep&&s.weapons.some(isCapturedTurret)
    ?[0,1].map(wing=>s.enemies.find(e=>e.railWing===wing&&!e.dead&&visible(e.x,e.y,24))):[];
   if(wreck&&visible(wreck.x,wreck.y,COAST_SALVAGE.reach)){
@@ -1195,6 +1198,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    }if(item.kind!=='enemy'&&item.kind!=='player'&&e.burn>0&&!e.dead){for(let i=-1;i<=1;i++)flame(c,e.x+i*28,e.y-18,24,s.t*11+i);}
    c.restore();
   }
+  if(showRailPad&&visible(railFanLine.x,railFanLine.y,55))paintRailFanLine(c,railFanLine);
   for(const g of s.gems)if(g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   if(salvage)for(const part of salvage.parts)if(visible(part.x,part.y)){
    circle(c,part.x,part.y,12,'#223a38b0','#91dbc1',1.5);
@@ -1443,6 +1447,18 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
+  if(showRailPad&&['approach','hold','recover'].includes(railFanLine.state)&&distance(s.player,railFanLine)<125
+   &&!s.hazards.some(h=>!h.lane&&!h.hit&&h.timer>0&&distance(s.player,h)<blastContactRadius(h))){
+   const label=railFanLine.clear?'사격선 확보':railFanLine.inPosition?'엄폐 옆으로':'표식 안에서 정지';
+   c.save();c.font='bold 12px Galmuri';
+   const width=Math.ceil(c.measureText(label).width)+16;
+   const at=clearBearingPosition(size,project(railFanLine.x,railFanLine.y+railFanLine.halfDepth+18),width,combatHud.rects,10);
+   if(at){
+    c.fillStyle='#172822ee';c.fillRect(at.x-width/2,at.y-10,width,20);
+    c.fillStyle='#ffe2a0';c.textAlign='center';c.fillText(label,at.x,at.y+4);
+   }
+   c.restore();
+  }
   const equipped=s.stage==='field'&&s.phase==='playing'&&s.effects.findLast(f=>f.type==='complete'&&f.showcase&&f.text);
   if(equipped&&!s.hazards.some(h=>!h.hit&&h.timer>0&&distance(h,s.player)<blastContactRadius(h)+56)){
    const label=equipped.text.split(' · ')[0],ink=FORMATION_INK[equipped.showcase];

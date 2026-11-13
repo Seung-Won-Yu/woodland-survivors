@@ -347,6 +347,23 @@ test('captured outside rounds cut a live railway barrage from the center line',(
   assert.equal(s.stats.railFanCut,undefined);
   assert.equal(s.hazards.filter(h=>h.lane).length,2);
  }
+ for(const seed of [27,28]){
+  const rear=prepare(seed,'turret',782,448);
+  assert.equal(railFanCutCue(rear).state,'hold');
+  tick(rear,.75);
+  assert.equal(rear.stats.railFanCut,true);
+  for(const y of [415,449]){
+   const outside=prepare(seed,'turret',782,y);
+   assert.equal(railFanCutCue(outside).state,'approach');
+   tick(outside,.75);
+   assert.equal(outside.stats.railFanCut,undefined);
+  }
+ }
+ const waitingOutside=prepare(27,'turret',800,470);
+ tick(waitingOutside,.14);
+ waitingOutside.player.x=918;
+ assert.equal(railFanCutCue(waitingOutside).state,'evade');
+ assert.equal(railFanCutCue(waitingOutside).clear,false);
  const lethal=prepare(27);
  lethal.boss.parts.forEach(part=>part.hp=20);
  tick(lethal,.75);

@@ -415,6 +415,28 @@ test('a rail report can start a new sortie or replay with the turret originally 
  assert.match(replayBriefingView(r,saved),/data-action="same-seed"[^>]*data-coast-loadout="turret"/);
  assert.doesNotMatch(replayBriefingView(r,saved),/박격포 진지 기습/);
 });
+test('rail debrief shows the tactical result and the next sortie reward from each route',()=>{
+ for(const capture of [false,true]){
+  const {run,next}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+  Object.assign(run.operation,{region:1,cleared:2});
+  Object.assign(run.operation.coastSalvage,{turret:capture?'secured':'broken',extracted:true});
+  Object.assign(run.stats,capture?{railFirstSite:'rail-cache',railFanSweep:true,railFanCut:true,railTurretKills:8}
+   :{railFirstSite:'rail-relay',railDecoys:1,railGunsDestroyed:2});
+  finish(run,false,'rail-return');
+  const saved=settleProfile(next,run),r=saved.recent[0],view=reportView(r,saved);
+  assert.equal(r.creditBreakdown.extraction,60);
+  if(capture){
+   assert.equal(r.creditBreakdown.turret,40);
+   assert.match(view,/노획 포탑 반출[\s\S]*정비대 양쪽 대열 명중 · 열차 양쪽 포격 차단[\s\S]*\+40C · 새 전장에서 포탑 L1 선택[\s\S]*철도 포탑 제압<\/dt><dd>8명/);
+   assert.match(replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28,starter:'turret'}),/data-action="launch"[^>]+data-coast-loadout="turret"/);
+  }else{
+   assert.equal(r.creditBreakdown.turret,undefined);
+   assert.match(view,/중계기 교신으로 돌파[\s\S]*열차 조준 유인 1회[\s\S]*열차 포대 파괴<\/dt><dd>2 \/ 2문/);
+   assert.doesNotMatch(view,/새 전장에서 포탑 L1 선택/);
+   assert.match(reportView({...r,stats:{...r.stats,wireDecoy:1}},saved),/교신 암호로 돌파/);
+  }
+ }
+});
 test('a canonical report previews the chosen beach and starter and only compares matching records',()=>{
  const p=emptyProfile(),run=createOperation(27,[],null,null,'fio','standard'),active=beginProfile(p,run);
  Object.assign(run.operation,{region:2,cleared:3,extracted:true,history:[{region:0,time:20},{region:1,time:40}],regionTime:30});

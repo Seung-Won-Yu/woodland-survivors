@@ -641,9 +641,9 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast,conduit,op
  if(run.boss.active){const b=run.boss;map+=dot('map-boss',b.x,b.y,50,'#ef8e64',run.operation?region(run).boss:'장갑 수송차')+`<line class="map-boss-facing" x1="${b.x}" y1="${b.y}" x2="${b.x+Math.cos(b.body)*120}" y2="${b.y+Math.sin(b.body)*120}" stroke="#ef8e64" stroke-width="16"/>`;}
  const boss=run.boss;
  const fanLane=railFanCutCue(run);
- if(fanLane){
-  const {x,y}=fanLane;
-  map+=`<path d="M${x} ${y-35}l35 35 -35 35 -35 -35Z" fill="#263732" stroke="#f4d18e" stroke-width="11" aria-label="노획 포탑 정면 사격선"/>`;
+ if(fanLane&&fanLane.state!=='evade'&&fanLane.state!=='flying'){
+  const {x,y,edges,inPosition}=fanLane;
+  map+=`<g data-map-fan-pad aria-label="노획 포탑 정면 사격선">${edges.map((edge,i)=>`<path d="M${x} ${y}L${edge.x} ${edge.y}" stroke="${RAIL_GUN_COLORS[i]}" stroke-width="9" stroke-dasharray="16 13"/>`).join('')}<rect x="${x-30}" y="${y-26}" width="60" height="52" fill="${inPosition?'#f4d18e':'#263732'}" stroke="#f4d18e" stroke-width="11"/></g>`;
  }
  const crossfire=portCrossfireZone(run);
  if(crossfire&&!portCrossfireCuts(run,boss.mode==='salvo'?boss.cycle:boss.cycle+1)){
@@ -718,12 +718,12 @@ function fieldEntry(s){
  const relayRank=infernoControlRank(s);
  const relay=entry.routes.some(route=>route.site==='rail-relay')?railRelayInvestment(s).material:'';
  const salvageRoutes=carriesCoastSalvage(s)&&requisitionSite(s)?.id!=='rail-cache',fan=salvageRoutes&&s.weapons.some(isCapturedTurret);
- const rocket=salvageRoutes&&!fan&&s.weapons.some(w=>w.id==='r'||w.fusion);
+ const rocket=salvageRoutes&&!fan&&s.weapons.some(w=>w.id==='r'),fusion=salvageRoutes&&!fan&&s.weapons.some(w=>w.fusion);
  const routes=entry.routes.map(route=>{
   if(route.site!=='rail-relay')return route;
   const rank=relay?`중계기 · ${relay}`:relayRank&&`중계기 · 유인 + F L${relayRank} 후보`;
-  return {...route,...(rank?{supplyHint:rank}:null),...(salvageRoutes?{color:'#9cd4da',recommended:!fan&&!!(rocket||rank),tactical:rocket?'원거리에서 뒤쪽 박격포 우선':'조준 유인 1회'}:null),
-   sign:rank||(rocket?'중계기 · 로켓 사선':salvageRoutes?'중계기 · 원거리 박격포':'중계기 · 조준 유인'),
+  return {...route,...(rank?{supplyHint:rank}:null),...(salvageRoutes?{color:'#9cd4da',recommended:!fan&&!!(rocket||fusion||rank),tactical:rocket?'후방 박격포 → 조준 유인':fusion?'박격포 제압 → 열차 전술':'확보하면 열차 조준 유인'}:null),
+   sign:rank||(rocket?'중계기 · 로켓 사선':salvageRoutes?'중계기 · 후방 박격포':'중계기 · 조준 유인'),
    summary:rank||(rocket?'중계기 · 로켓 원거리 공략':salvageRoutes?'중계기 · 원거리 박격포':'중계기 · 조준 유인 1회')};
  });
  if(!routes.some(route=>route.site==='rail-cache'))return {...entry,routes};
@@ -776,15 +776,15 @@ function fieldEntry(s){
   summary=fan?'정비대 · 부채꼴 포탑 사선':'정비대 · 양쪽 보병';
  }
  return {...entry,routes:routes.map(route=>route.site==='rail-cache'?{...route,sign,summary,note,
-  ...(salvageRoutes?{color:'#f4ca87',recommended:!!(fan||finish&&!rocket),tactical:fan?'부채꼴로 양쪽 대열 사격':null}:null)}:route)};
+  ...(salvageRoutes?{color:'#f4ca87',recommended:!!(fan||finish&&!rocket&&!fusion),tactical:fan?'부채꼴로 양쪽 보병 동시 사격':null}:null)}:route)};
 }
 function railForkRows(routes,pilot){
  return routes.map(route=>{
-  const workshop=route.site==='rail-cache',name=workshop?'화차 정비대':'통신 중계기';
+  const name=route.site==='rail-cache'?'화차 정비대':route.site==='rail-relay'?'통신 중계기':'포대 탄약고';
   const direction=bearing(pilot,...entryWaypoint(route.path,pilot));
   const payoff=(route.supplyHint||route.summary||'').replace(/^(정비대|중계기) · /,'');
-  const tip=route.supplyHint&&route.tactical?`${route.tactical} · ${payoff}`:route.tactical||payoff||(workshop?'경비 제압 후 정비':'해킹 후 조준 유인');
-  return `<span class="rail-route-row" data-rail-route="${route.site}"${route.recommended?' data-recommended':''} style="--route-ink:${route.color}"><span class="rail-route-arrow">${direction}</span><span><b>${name}</b><span>${esc(tip)}</span></span>${route.recommended?'<em>추천</em>':''}</span>`;
+  const tip=route.tactical||payoff||'경비 제압 후 보급';
+  return `<span class="rail-route-row" data-rail-route="${route.site}"${route.recommended?' data-recommended':''} style="--route-ink:${route.color}"><span class="rail-route-arrow">${direction}</span><span><b>${name}${route.recommended?'<small>추천</small>':''}</b><span>${esc(tip)}</span>${route.supplyHint&&route.tactical?`<small>${esc(payoff)}</small>`:''}</span></span>`;
  }).join('');
 }
 function updateHud(entry,focus=null,coast={}){
@@ -864,7 +864,8 @@ function updateHud(entry,focus=null,coast={}){
  const objectiveName=next.opening&&run.stats.coastPreempt?'포로 구출 · 선택':next.kind?sitePresentation(next).name:next.name;
  const railCargo=railFork&&salvage?.turret==='secured'&&!run.weapons.some(isCapturedTurret);
  const railTurret=railFork&&run.weapons.find(isCapturedTurret);
- $('objective').textContent=choosingEntry?(front===1?(railTurret?`철도 · 포탑 L${railTurret.level} 장착`:railCargo?'철도 · 포탑 운반 중':'철도 · 진입 경로')
+ const railRocket=railFork&&!railTurret&&run.weapons.find(w=>w.id==='r');
+ $('objective').textContent=choosingEntry?(front===1?(railTurret?`포탑 L${railTurret.level} · 부채꼴 ${weaponStats(railTurret).count}발`:railCargo?'포탑 운반 중':railRocket?`로켓 R L${railRocket.level} · 철도 경로`:'철도 진입 경로')
   :front===2&&showcaseGun?`항구 · ${capstoneName(showcaseGun)}`:entry.routes.length===1?'남은 선택 경로':'하역장 갈림길'):`${direction} ${objectiveName} · ${Math.round(distance(p,next)/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;
  const garrison=railGarrison(next)||wireGarrison(run,next),crew=next.state==='active'&&next.kind==='relay'?relayCrewLeft(run,next):0;
@@ -916,7 +917,7 @@ function updateHud(entry,focus=null,coast={}){
  }
  else if(next.id==='rail-cache'&&workshopRoute){
   const fan=run.weapons.some(isCapturedTurret);
-  const status=fan&&run.stats.railFanSweep?'일제사격 · 양쪽 대열 명중':fan&&next.state==='active'?'정비대 아래 열린 쪽에서 양쪽 사격':garrison?.hint||'경비 제압';
+  const status=fan&&run.stats.railFanSweep?'양쪽 대열 동시 명중':fan&&next.state==='active'?'남쪽 열린 길에서 두 대열을 함께 겨냥':garrison?.hint||'경비 제압';
   intel=next.state==='ready'?`${status}\n접근해 보급 회수`:next.state==='active'&&fan?status:`${workshopRoute.note}\n${status}`;
  }
  else if(next.id==='rail-relay'){
@@ -1351,7 +1352,8 @@ function updateHud(entry,focus=null,coast={}){
    else if(dashEmber)hint='화약 원 안에서 이동 + 회피';
    if(railFanCut){
     const direction=bearing(p,railFanCut.x,railFanCut.y),gap=Math.ceil(distance(p,railFanCut)/10);
-    hint=({approach:`${direction} 정면 사격선 · ${gap}m`,hold:'정면 사격선 확보 · 포격 예고까지 대기',ready:'양쪽 포대 조준 · 곧 자동 발사',flying:'일제사격 발사 · 차선 밖으로 회피',evade:'포격을 피하고 다음 사격 준비',recover:railFanCut.inPosition?'정면 사격선 · 다음 조준 대기':`${direction} 재장전 중 · 사격선까지 ${gap}m`})[railFanCut.state];
+    const approach=railFanCut.inPosition?'엄폐 옆에서 사선 확보':`${direction} 금색 표식까지 ${gap}m · 안에서 정지`;
+    hint=({approach,hold:'사격선 확보 · 포격 예고에 자동 발사',ready:'좌포·우포 조준 · 곧 자동 발사',flying:'부채꼴 발사 · 차선 밖으로 회피',evade:'포격 뒤 금색 표식으로',recover:railFanCut.clear?'사격선 확보 · 다음 포격 예고 대기':approach})[railFanCut.state];
     if(railFanCut.state==='ready'&&railRounds.length){
      const time=(Math.ceil(Math.min(...railRounds.map(h=>h.timer))*10)/10).toFixed(1);
      bossState.textContent=`포격 예고 · ${time}초`;

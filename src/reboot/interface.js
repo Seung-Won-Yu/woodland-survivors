@@ -15,7 +15,7 @@ export function railHandoff(s){
  const turret=s.weapons.find(isCapturedTurret),coast=coastSalvage(s);
  if(turret){
   const name=turret.evolved?capstoneName(turret):CAPTURED_TURRET.name;
-  return {state:'mounted',art:'turret',title:`${name} L${turret.level} 이월`,detail:`${weaponStats(turret).count}발 부채꼴 · 화차 정비대에서 양쪽 대열 사격`};
+  return {state:'mounted',art:'turret',title:`${name} L${turret.level} 이월`,detail:`${weaponStats(turret).count}발 부채꼴 · 정비대의 양쪽 대열과 열차의 두 포대 공략`};
  }
  if(coast.turret==='secured')return {state:'cargo',art:'turret',title:'포탑 운반 중',detail:'현재 무장으로 교전 · 철도 생존 귀환 시 포탑 반출'};
  if(coastSalvageWreck(s))return {state:'wreck',art:'turret',title:'포탑이 잔해에 남아 있음',detail:'잔해에서 5초간 분리하면 이번 판에 장착 가능'};
@@ -470,10 +470,23 @@ function debriefActions(r,p,archived,compared){
 }
 function salvageCampaignReport(r){
  if(!isSalvageCampaign(r))return '';
- const coast=coastSalvage(r),returned=coastTurretReturned(r);
+ const coast=coastSalvage(r),returned=coastTurretReturned(r),rail=railSortieReturned(r);
  const outcomes={aboard:'수송차 미확보',broken:'포탑 파괴',intact:'포탑 미회수',securing:'포탑 분리 미완료',secured:'포탑 확보 · 반출 미완료'};
- const status=returned?'노획 포탑 반출':outcomes[coast.turret];
  const site=r.stats.railFirstSite==='rail-cache'?'화차 정비대':r.stats.railFirstSite==='rail-relay'?'통신 중계기':null;
+ if(rail){
+  const decoy=r.stats.railDecoys>0,demolition=coast.turret==='broken',rocket=r.weapons.some(w=>w.id==='r'&&!isCapturedTurret(w));
+  const decoyTitle=r.stats.wireDecoy?'교신 암호로 돌파':'중계기 교신으로 돌파';
+  const result=[r.stats.railFanSweep===true?'정비대 양쪽 대열 명중':'',r.stats.railFanCut===true?'열차 양쪽 포격 차단':'',decoy?'열차 조준 유인 1회':''].filter(Boolean).join(' · ');
+  const art=returned?'turret':rocket?'r':'ammo';
+  const payout=r.creditBreakdown?.turret===COAST_SALVAGE.credits?`+${COAST_SALVAGE.credits}C · `:'';
+  return `<section class="salvage-report" data-rail-return data-outcome="${returned?'returned':demolition?'rail-demolition':e(coast.turret)}" aria-label="철도 공략 성과">
+   ${itemArt(art)}<div><h2>${returned?'노획 포탑 반출':demolition&&decoy?decoyTitle:outcomes[coast.turret]}</h2>
+    ${result?`<p class="rail-operation-result">${result}</p>`:''}
+    <p>${returned?payout+'새 전장에서 포탑 L1 선택':demolition&&decoy?'해안에서 포탑 파괴':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p></div>
+   <dl><div><dt>철도 경유</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'철도 포탑 제압':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>
+  </section>`;
+ }
+ const status=returned?'노획 포탑 반출':outcomes[coast.turret];
  return `<section class="salvage-report" data-outcome="${returned?'returned':e(coast.turret)}" aria-label="현장 노획 성과">
   ${returned||coast.turret==='secured'?itemArt('turret'):itemArt('ammo')}
   <div><h2>${status}</h2><p>${returned?'새 출격에서 포탑 장착 가능':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p>${r.stats.railFanSweep===true?'<p class="salvage-sweep">정비대 · 일제사격으로 양쪽 대열 명중</p>':''}${r.stats.railFanCut===true?'<p class="salvage-cut">열차 · 양쪽 포대 직격으로 포격 차단</p>':''}</div>

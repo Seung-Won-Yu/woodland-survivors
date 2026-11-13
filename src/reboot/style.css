@@ -170,11 +170,13 @@
 #threat[data-formation="fusion"]{color:#bcece3}
 #threat[data-formation="rocket"]{color:#f7dba3}
 #field-intel[data-rail-fork]{display:grid;gap:4px;white-space:normal}
-.rail-route-row{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;padding:3px 5px;border-left:2px solid #a0b1a26b;color:#c6d1bd;background:#14272276;line-height:1.4}
-.rail-route-row[data-recommended]{border-color:var(--route-ink);color:#efe8cb;background:color-mix(in srgb,var(--route-ink) 14%,#1b2c28)}
-.rail-route-row b{display:block;font-size:10px;color:var(--route-ink)}
-.rail-route-row .rail-route-arrow{color:var(--route-ink);font-size:15px;text-align:center}
-.rail-route-row em{align-self:start;color:var(--route-ink);font-size:9px;font-style:normal}
+.rail-route-row{display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:6px;padding:4px 5px;border-left:2px solid #a0b1a26b;color:#c6d1bd;background:#14272276;line-height:1.35}
+.rail-route-row[data-recommended]{border-color:var(--route-ink);color:#f0ebd6;background:color-mix(in srgb,var(--route-ink) 18%,#1b2c28)}
+.rail-route-row b{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:11px;color:var(--route-ink)}
+.rail-route-row small{display:block;color:#c3d4bf;font-size:9px}
+.rail-route-row b small{color:inherit;font-weight:400}
+.rail-route-row .rail-route-arrow{display:grid;place-items:center;min-height:22px;color:var(--route-ink);font-size:15px;background:#172824}
+.rail-route-row[data-recommended] .rail-route-arrow{background:var(--route-ink);color:#172824}
 #salvage-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;color:#ffdf9c;font-size:10px}
 #salvage-progress progress,.rail-gun progress{width:100%;height:4px;margin:0;border:0;appearance:none;background:#0e201d}
 #salvage-progress progress::-webkit-progress-bar,.rail-gun progress::-webkit-progress-bar{background:#0e201d}
@@ -1092,6 +1094,9 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .front-transfer:is([data-transfer="mounted"],[data-transfer="cargo"],[data-transfer="wreck"]) {background:#373d30;color:#ffdf9c}
 .front-transfer[data-transfer="broken"]{border-left-color:#accdd2;background:#243b3a;color:#cfebea}
 .salvage-report .salvage-cut {color:#f3d698}
+.salvage-report[data-outcome="rail-demolition"] {--salvage-ink:#b7e2df;border-left-color:var(--salvage-ink)}
+.salvage-report[data-rail-return] .kit-sprite {width:39px;height:39px}
+.salvage-report[data-rail-return] .rail-operation-result {color:var(--salvage-ink);font-size:11px;line-height:1.45}
 .rail-debrief {
  display: grid;
  grid-template-columns: repeat(auto-fit,minmax(70px,1fr));
