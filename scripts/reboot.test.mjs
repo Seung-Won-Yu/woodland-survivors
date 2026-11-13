@@ -1127,6 +1127,55 @@ test('the fusion showcase waits through the boss attack and survives a quick gat
  assert.ok(s.enemies.filter(e=>e.waveGroup!=null).length>=8);
  clearRegion(s);assert.ok(choose(s,'advance'));assert.equal(s.powerWave.showcase,'fusion');assert.equal(s.powerWave.paired,3);
 });
+function railwayCapstone(seed,build){
+ const s=createOperation(seed,[],null,null,'fio',build==='rocket'?'turret':'standard');
+ Object.assign(s.operation,{region:1,cleared:1});
+ Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+ Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{enemies:[],boss:regionBoss(1,seed)});
+ s.sites.forEach(site=>site.state='done');
+ if(build==='flame'){
+  s.weapons.push({...makeWeapon('f'),uid:'f',level:6,branch:'trail'});
+  s.modules=[{id:'catalyst',rank:2}];
+ }else{
+  Object.assign(s.weapons[0],{level:build==='rocket'?6:4,branch:build==='rocket'?'homing':'ricochet'});
+  if(build==='fusion')s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});
+  s.modules=[{id:'coil',rank:2}];
+ }
+ assert.ok(action(s,'gear'));
+ assert.ok(choose(s,{flame:'evolve:f',fusion:'fusion:h:r',rocket:'evolve:r'}[build]));
+ return s;
+}
+test('a narrow rail lane can deploy a whole split wave with a clear and safe entrance',()=>{
+ const s=railwayCapstone(32,'fusion');
+ Object.assign(s.player,{x:835,y:536});
+ tick(s,.72);
+ const troops=s.enemies.filter(e=>e.showcase==='fusion');
+ assert.equal(troops.length,8);
+ assert.equal(new Set(troops.map(e=>e.waveGroup)).size,2);
+ assert.ok(troops.every(e=>Math.hypot(e.x-s.player.x,e.y-s.player.y)>=145));
+ assert.equal(s.powerWave.paired,3);
+ assert.equal(s.powerWave.remaining,52);
+ assert.deepEqual(restore(snapshot(s)).powerWave,s.powerWave);
+});
+test('advancing with a completed loadout leads with its formation from the existing reinforcement reserve',()=>{
+ for(const build of ['flame','fusion','rocket']){
+  const s=railwayCapstone(27,build);
+  Object.assign(s.player,{x:800,y:350});
+  tick(s,7);
+  assert.ok(!s.powerWave?.paired);
+  clearRegion(s);
+  assert.ok(choose(s,'advance'));
+  assert.equal(s.operation.region,2);
+  assert.deepEqual(s.powerWave,{delay:2,remaining:60,clock:0,paired:1,showcase:build});
+  const loaded=restore(snapshot(s));
+  for(let i=0;i<145&&loaded.powerWave.paired;i++)step(loaded,dt);
+  const troops=loaded.enemies.filter(e=>e.showcase===build),count=troops.length;
+  assert.ok(count===8||build!=='flame'&&count===12,`${build}: ${count}`);
+  if(build!=='flame')assert.equal(new Set(troops.map(e=>e.waveGroup)).size,count/4);
+  assert.equal(loaded.powerWave.remaining,60-count);
+  assert.equal(loaded.powerWave.paired,0);
+ }
+});
 test('the final formation is held for another beat and deploys out of the same reserve',()=>{
  const s=quietOperation();
  Object.assign(s.weapons[0],{level:4,branch:'ricochet'});

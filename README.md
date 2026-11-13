@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.127.0" src="https://img.shields.io/badge/RIFT-0.127.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.128.0" src="https://img.shields.io/badge/RIFT-0.128.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -22,6 +22,8 @@
 철도의 **화차 정비대**에서는 노획 포탑의 일제사격으로 양쪽 보병을 함께 노립니다. 열차 앞의 금색 사격선에 서면 포격 예고 때 자동 사격합니다. 바깥 탄 두 발이 각각 포대에 직격하면 그 주기의 차선 포격을 한 번 끊습니다. 일반 R은 **통신 중계기**에서 후방 박격포를 먼저 처리하고, 열차의 조준을 유인해 안전한 사선을 확보할 수 있습니다. 포격 열차를 잡으면 항구로 전진하거나 60C의 생존 귀환 수당을 받고 작전실로 돌아갑니다. 포탑을 반출하면 40C가 추가되고 새 시드에서 5발 포탑을 시작 무장으로 고를 수 있습니다. [동일 시드 검증](docs/RIFT-GAMEPLAY-V1.md#0127-노획-포탑의-철도-포격-차단)
 
 레벨업에서는 다음 강화 한 번으로 진화나 합체를 열 수 있는 카드를 확인할 수 있습니다. 조립을 앞당길지, 다른 총이나 전술 보조에 투자할지 고릅니다.
+
+완성 무장을 들고 항구에 들어가면 첫 증원부터 사격 방식이 드러납니다. 인페르노는 한 통로로 몰려오는 보병을 점화하고, 전도 격발망은 떨어진 편대로 탄을 이어 보냅니다. 전투 목표판의 방향과 거리로 접근 중인 편대를 찾을 수 있습니다. [항구 전진 비교](docs/RIFT-GAMEPLAY-V1.md#0128-항구에서-이어지는-완성-무장-교전)
 
 철도 중계기를 확보하면 열차에 쓸 전술과 무장 정비 중 하나를 고릅니다. 화염으로 시작한 판은 F 강화와 촉매, 로켓으로 시작한 판은 H 강화와 축전 코일 중 부족한 재료가 표시됩니다. 두 재료가 필요해도 한 가지만 장착합니다.
 

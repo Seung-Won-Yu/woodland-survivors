@@ -815,9 +815,15 @@ function updateHud(entry,focus=null,coast={}){
  const showcase=forming||run.enemies.findLast(e=>e.showcase&&!e.dead&&e.hp>0)?.showcase;
  document.body.classList.toggle('capstone-approach',run.stage==='field'&&!!showcase);
  const mounted=showcase&&run.effects.some(f=>f.type==='complete'&&f.showcase);
- const showcaseHint=showcase&&(showcase==='flame'?(run.weapons.some(isTrailInferno)?'이동해 잔불 연결 · 보병 유도':'밀집 보병까지 접근')
-  :showcase==='rocket'?'엄폐 밖에서 분산 포격'
-  :run.weapons.some(isConductiveFusion)?'두 편대 사선 확보':'화약 원으로 보병 유도');
+ let contact=null,contactGap=Infinity;
+ if(showcase&&run.stage==='field')for(const e of run.enemies){
+  if(e.showcase!==showcase||e.dead||e.type==='mortar')continue;
+  const gap=distance(p,e);
+  if(gap<contactGap){contact=e;contactGap=gap;}
+ }
+ const formation=showcase==='flame'?'밀집 보병':showcase==='fusion'&&run.weapons.some(isConductiveFusion)?'연쇄 사격 대상':'분산 보병';
+ const showcaseHint=contact?`${bearing(p,contact.x,contact.y)} ${formation} · ${Math.round(contactGap/10)}m`
+  :showcase==='flame'?'밀집 보병 접근':showcase==='rocket'?'분산 보병 접근':'분산 편대 접근';
  const incoming=showcase?`${mounted?(showcase==='rocket'?`${run.weapons.some(w=>w.evolved&&isCapturedTurret(w))?CAPTURED_TURRET.evolution:'폭풍 발사대'} · `:'장착 완료 · '):''}${forming&&!showcaseWindow(run)?'재장전 때 후속 편대':showcaseHint}`:'';
  const reserve=incoming?` · ${incoming}`:wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
  const objectiveName=next.opening&&run.stats.coastPreempt?'포로 구출 · 선택':next.kind?sitePresentation(next).name:next.name;

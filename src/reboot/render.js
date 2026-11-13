@@ -233,7 +233,7 @@ function touchesCircle({x,y,r},box){
 }
 export function coveredCombatPanels(s,panels,project,scale){
  if(!panels.length)return [];
- const circles=[],lanes=[];
+ const circles=[],formations=[],lanes=[];
  const mark=(x,y,r)=>circles.push({...project(x,y),r:r*scale});
  for(const f of s.effects){
   if(f.relayArrival&&f.contact&&f.age<f.life*relayContactLife)mark(f.contact.x,f.contact.y-7,21);
@@ -241,6 +241,7 @@ export function coveredCombatPanels(s,panels,project,scale){
   else if(f.type==='kill'&&f.wake&&f.age<f.life*.52)mark(f.x,f.y-3,13);
   else if(f.type==='wake-flash'&&f.age<f.life*.65){mark(f.x,f.y,f.r);mark(f.x2,f.y2,f.r);}
   else if(f.type==='rail-fan-sweep'&&f.age<f.life*.6){mark(f.x,f.y-3,17);mark(f.x2,f.y2-3,17);}
+  else if(f.type==='formation'&&f.age<.4)formations.push({...project(f.x,f.y),r:28*scale});
  }
  for(const h of s.hazards){
   if(h.hit||h.timer<=0)continue;
@@ -250,7 +251,7 @@ export function coveredCombatPanels(s,panels,project,scale){
   }else mark(h.x,h.y,blastContactRadius(h));
  }
  return panels.filter(({id,rect})=>(id!=='field-objective'||s.stage==='field')&&
-  (circles.some(circle=>touchesCircle(circle,rect))||lanes.some(lane=>
+  (circles.some(circle=>touchesCircle(circle,rect))||id==='weapons'&&formations.some(formation=>touchesCircle(formation,rect))||lanes.some(lane=>
    lane.left<rect.right&&lane.right>rect.left&&lane.top<rect.bottom&&lane.bottom>rect.top))).map(({id})=>id);
 }
 const bearingObscured=(size,{x,y},r,hud)=>x<r||x>size.w-r||y<r||y>size.h-r||hud.some(box=>overlapsBox(x,y,r,r,box));
@@ -623,14 +624,17 @@ function paintMissileTrail(c,q,points){
 }
 function paintFormationEntry(c,f,reduced){
  const fire=f.showcase==='flame',t=f.age/f.life;
- const line=fire?'#c78850':f.showcase==='rocket'?'#d1b07d':'#77b8ad';
+ const line=fire?'#f1b477':f.showcase==='rocket'?'#edd3a3':'#abe5d7';
  const dust=fire?'#e4bc79':f.showcase==='rocket'?'#f8e3af':'#b8e1cd';
- c.save();c.globalAlpha=(1-t)*.75;c.translate(f.x,f.y);c.rotate(f.angle??0);
- c.fillStyle=line;
- for(const offset of [-15,15]){
-  c.fillRect(-25,offset-2,fire?24:16,4);c.fillRect(-27,offset-5,4,10);
-  if(!reduced){c.fillStyle=dust;c.fillRect(-26-t*14,offset+(offset>0?5:-7),5,3);c.fillStyle=line;}
+ c.save();c.globalAlpha=Math.min(1,(1-t)*2);c.translate(f.x,f.y);c.rotate(f.angle??0);
+ c.lineJoin='bevel';c.beginPath();
+ for(const side of [-1,1]){
+  c.moveTo(-9,side*23);c.lineTo(-27,side*23);c.lineTo(-27,side*8);
+  if(!reduced){c.fillStyle=dust;c.fillRect(-33-t*14,side*19-2,5,4);}
  }
+ c.moveTo(14,-10);c.lineTo(24,0);c.lineTo(14,10);
+ c.strokeStyle='#29332b';c.lineWidth=7;c.stroke();
+ c.strokeStyle=line;c.lineWidth=3;c.stroke();
  c.restore();
 }
 function paintSalvoImpact(c,f,t,reduced){
