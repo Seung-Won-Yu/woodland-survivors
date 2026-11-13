@@ -179,6 +179,7 @@
 .rail-route-row[data-recommended]{border-color:var(--route-ink);color:#f0ebd6;background:color-mix(in srgb,var(--route-ink) 18%,#1b2c28)}
 .rail-route-row b{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:11px;color:var(--route-ink)}
 .rail-route-row small{display:block;color:#c3d4bf;font-size:9px}
+.rail-route-alternative{margin-top:1px}
 .rail-route-row b small{color:inherit;font-weight:400}
 .rail-route-row .rail-route-weapon{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
 .rail-route-weapon .kit-turret{width:23px;height:18px;margin-block:-2px}
@@ -201,6 +202,7 @@
 #boss-parts .rail-gun[data-state="파괴"]{border-left-color:#9ba897;color:#bbc6b8;opacity:.78}
 #boss-parts .rail-gun[data-state="차단"] span{color:#ffdd96}
 .objective #field-direct{color:#c2d6bf;border-top:1px solid #a5b3a55c;padding-top:4px}
+.objective #coast-part-cue{color:#b4efd7;border-left:2px solid #8ad5b4;padding:3px 5px;background:#203c34;line-height:1.35;word-break:keep-all}
 .objective #field-direct[data-coast="f"]{color:#ffd0a0}
 .objective #field-direct[data-coast="r"]{color:#bcece4}
 #boss-tactic:not([hidden]){display:block;padding-top:5px;margin-top:5px;border-top:1px solid #afba8f58;color:#f6d897;line-height:1.45}
@@ -376,7 +378,7 @@
  #hud[data-reduced-motion] #field-objective,#hud[data-reduced-motion] #field-objective :is(#stage,#threat,#field-direct),
  #field-objective[data-field-clear],#field-objective[data-field-clear] :is(#stage,#threat,#field-direct){transition:none}
  #field-objective[data-field-clear]{background:#1d302b21;border-color:#7b917847;box-shadow:none}
- #field-objective[data-field-clear] :is(#stage,#threat,#field-direct){opacity:.14}
+ #field-objective[data-field-clear] :is(#stage,#threat,#field-direct,#coast-part-cue){opacity:.14}
  #field-objective[data-field-clear] :is(#objective,#field-intel){text-shadow:0 1px 3px #172821,0 1px 2px #172821}
  .boss-active{--boss-rail-top:calc(max(12px,env(safe-area-inset-top)) + 70px)}
  .boss-active :is(.vitals,.score){top:max(12px,env(safe-area-inset-top))}
@@ -1132,26 +1134,30 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .front-transfer > .kit-sprite {flex:none}
 .front-transfer > div {flex:1;min-width:0}
 .front-transfer:has(.transfer-route) {
- display:grid;grid-template-columns:48px minmax(0,1fr) minmax(180px,1fr);gap:6px 10px;
+ display:grid;grid-template-columns:48px minmax(0,1fr) minmax(250px,1fr);gap:6px 10px;
 }
 .transfer-route {
- display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:8px;
- padding:3px 6px 3px 3px;border:1px solid #7b8266;border-left:2px solid var(--route-ink);
- background:#182b29;color:var(--route-ink);
+ display:grid;grid-template-columns:74px minmax(0,1fr);align-items:stretch;gap:9px;
+ padding:4px;border:1px solid #7b8266;border-left:2px solid var(--route-ink);
+ background:color-mix(in srgb,var(--route-ink) 9%,#172622);color:var(--route-ink);
 }
-.transfer-route .rail-salvage-map {height:36px;border:1px solid #647870}
-.transfer-route b {font-size:12px;line-height:1.25}
-.transfer-route b i {font-style:normal}
-.transfer-route small {font-size:10px;line-height:1.25}
+.transfer-route .rail-salvage-map {height:100%;min-height:52px;border:1px solid #647870;background:#1b2523}
+.transfer-route > span {align-self:center;padding-block:1px}
+.transfer-route b {font-size:13px;line-height:1.25}
+.transfer-route b i {font-style:normal;color:var(--route-ink)}
+.front-transfer .transfer-route small {font-size:10px;line-height:1.35;color:#e2e1c9}
+.front-transfer .transfer-route .transfer-boss {color:var(--route-ink)}
+.transfer-boss::before {content:'↳';margin-right:.32em}
 .front-transfer > button {flex:none;min-height:44px;padding:4px 10px;border:1px solid #e1ba79;background:#edc988;color:#26332d;font-size:12px;font-weight:bold}
 .front-transfer > button:is(:hover,:focus-visible) {background:#ffe6ae;color:#1c2e27}
+.front-transfer > button kbd {margin-left:6px;padding:1px 4px;border:1px solid currentColor;font-size:9px}
 .front-transfer:has(.transfer-route):not([data-mount-forward]) > button {grid-column:1/-1;justify-self:end}
 .front-transfer[data-mount-forward] {
  display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:9px 12px;padding:8px 10px;
  border:1px solid #a48050;border-left:4px solid #f4ca87;
  background:linear-gradient(100deg,#3a3225,#232e26);color:#ffdf9c;
 }
-.front-transfer[data-mount-forward]:has(.transfer-route) {grid-template-columns:56px minmax(0,1fr) minmax(180px,1fr) auto}
+.front-transfer[data-mount-forward]:has(.transfer-route) {grid-template-columns:56px minmax(0,1fr) minmax(250px,1fr) auto}
 .front-transfer[data-mount-forward] > .kit-sprite {width:56px;height:48px;background-color:#1b2722}
 .front-transfer[data-mount-forward] small {color:#e3d4ad}
 .front-transfer[data-mount-forward] > button {padding-inline:12px;background:#f0cb88;border-color:#f8da9d;box-shadow:0 2px #171f1c}
@@ -1399,15 +1405,16 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .front-transfer b{font-size:13px;line-height:1.4}
  .front-transfer small{font-size:10px}
  .front-transfer > button{padding-inline:7px;font-size:11px}
+ .front-transfer > button kbd{display:none}
  .front-transfer[data-mount-forward] {grid-template-columns:48px minmax(0,1fr);gap:6px 9px}
  .front-transfer[data-mount-forward] > .kit-sprite {width:48px;height:42px}
  .front-transfer[data-mount-forward] > button {grid-column:1/-1;font-size:13px}
  .front-transfer:has(.transfer-route),
  .front-transfer[data-mount-forward]:has(.transfer-route) {grid-template-columns:42px minmax(0,1fr);gap:5px 8px}
  .front-transfer:has(.transfer-route) > .kit-sprite {width:42px;height:36px}
- .front-transfer .transfer-route {grid-column:1/-1;grid-template-columns:48px minmax(0,1fr);padding:2px 5px 2px 2px}
- .transfer-route .rail-salvage-map {height:30px}
- .front-transfer .transfer-route b {font-size:11px}
+ .front-transfer .transfer-route {grid-column:1/-1;grid-template-columns:57px minmax(0,1fr);padding:3px 5px 3px 3px;gap:7px}
+ .transfer-route .rail-salvage-map {min-height:43px}
+ .front-transfer .transfer-route b {font-size:11px;line-height:1.25}
  .front-transfer .transfer-route small {margin:0}
 }
 @media(max-width:700px) and (orientation:portrait) {

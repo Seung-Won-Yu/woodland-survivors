@@ -22,8 +22,7 @@ export function railTransferBrief(seed,handoff,mountOption){
  const site=mountOption?'rail-cache':handoff.route;
  if(!site)return '';
  const fan=site==='rail-cache',{name,color,direction,side,fight,boss}=railApproachBrief(seed,site,fan);
- const goal=fan?fight:boss;
- return `<div class="transfer-route" data-transfer-route="${site}" style="--route-ink:${color}"><div>${railSalvagePreview(seed,site,fan)}</div><span><b><i role="img" aria-label="${side}">${direction}</i> ${name}</b><small>${goal}</small></span></div>`;
+ return `<div class="transfer-route" data-transfer-route="${site}" style="--route-ink:${color}">${railSalvagePreview(seed,site,fan)}<span><b><i role="img" aria-label="${side}">${direction}</i> ${name}</b><small>${fight}</small><small class="transfer-boss">${boss}</small></span></div>`;
 }
 export function railHandoff(s){
  const turret=s.weapons.find(isCapturedTurret),coast=coastSalvage(s);

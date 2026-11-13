@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite,isOpeningGun,RAIL_SALVAGE_ROUTES,railWorkshopEntry} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite,isOpeningGun,RAIL_SALVAGE_ROUTES,railWorkshopEntry,railWorkshopFan} from './campaign.js';
 import {coastFanPosition,coastFanRescue} from './coast-salvage.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
@@ -150,13 +150,16 @@ export function railSalvagePreview(seed,selected=null,fan=true){
  const track=routes.map(route=>{
   const color=RAIL_SALVAGE_ROUTES[route.site].color;
   const [x,y]=route.path.at(-1);
-  const path=route.site==='rail-cache'&&fan?railWorkshopEntry(route,arrival):route.path;
+  const workshop=route.site==='rail-cache'&&fan;
+  const path=workshop?railWorkshopEntry(route,arrival):route.path;
   const points=path.map(point=>point.join(',')).join(' ');
   const waypoint={id:route.site,kind:route.site==='rail-relay'?'relay':'supply'};
-  return `<g${selected&&route.site!==selected?' opacity=".35"':''}><polyline points="${points}" fill="none" stroke="#1b2925" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
-   <polyline points="${points}" fill="none" stroke="${color}" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  const main=selected===route.site;
+  const pad=workshop&&railWorkshopFan({x,y});
+  return `<g${selected&&!main?' opacity=".28"':''}><polyline points="${points}" fill="none" stroke="#1b2925" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+   <polyline points="${points}" fill="none" stroke="${color}" stroke-width="${main?25:18}" stroke-linecap="round" stroke-linejoin="round"/>
    <rect x="${x-46}" y="${y-46}" width="92" height="92" fill="#21312e" stroke="${color}" stroke-width="11"/>
-   ${siteSymbol(waypoint,x,y,35)}</g>`;
+   ${siteSymbol(waypoint,x,y,35)}${pad?`<g transform="translate(${pad.x} ${pad.y})" data-rail-transfer-pad><rect x="-32" y="-28" width="64" height="56" fill="#292f25" stroke="${color}" stroke-width="12"/><path d="M0 11 -18 -13 M0 11 18 -13" stroke="${color}" stroke-width="9"/></g>`:''}</g>`;
  }).join('');
  return `<svg class="rail-salvage-map" viewBox="420 478 760 640" aria-hidden="true">${terrainSvg(1,seed)}${track}<circle cx="${arrival.x}" cy="${arrival.y}" r="29" fill="#fbefc8" stroke="#21312e" stroke-width="11"/></svg>`;
 }

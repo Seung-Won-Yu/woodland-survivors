@@ -483,7 +483,8 @@ export const COAST_SHIELD_BRACE=1.65;
 export const COAST_SHIELD_BEARING=Math.PI/2;
 const SHIELD_COVER_COSINE=.45;
 export const SHIELD_HALF_ANGLE=Math.acos(SHIELD_COVER_COSINE);
-export const shieldFaces=(shield,p)=>Math.cos(Math.atan2(p.y-shield.y,p.x-shield.x)-shield.aim)>SHIELD_COVER_COSINE;
+export const shieldCovers=(shield,angle)=>Math.cos(angle-shield.aim)>SHIELD_COVER_COSINE;
+export const shieldFaces=(shield,p)=>shieldCovers(shield,Math.atan2(p.y-shield.y,p.x-shield.x));
 export const bracingCoastEscort=e=>e.coastRaidShield===true&&!e.dead&&e.hp>0&&e.spawnAge<COAST_SHIELD_BRACE;
 export const COAST_RESPONSE={
  f:{name:'보급차 역습',hint:'옆에서 호위를 모아 분사',reach:194,
@@ -664,6 +665,7 @@ export const RAIL_SALVAGE_ROUTES={
  'rail-cache':{name:'화차 정비대',color:'#f4ca87',fight:'양쪽 대열에 일제사격',boss:'열차 정면에서 양쪽 포격 차단'},
  'rail-relay':{name:'통신 중계기',color:'#9cd4da',fight:'후방 박격포 먼저 제압',boss:'교신으로 열차 조준 유인'}
 };
+export const RAIL_WORKSHOP_FAN={approach:118,position:34,setup:.85};
 export const RAIL_GARRISONS={
  spread:{name:'갈라진 보병',crew:'보병',unit:'명',type:'rifle',range:225,hint:'열린 쪽에서 양쪽 대열을 부채꼴 안에 두세요.',guards:[
   ['rifle',-77,4,27],['rifle',-90,-24,27],['rifle',-69,-40,27],['rifle',-86,-57,27],
@@ -705,6 +707,9 @@ export function railWorkshopEntry(route,arrival){
  const [x,y]=route.path.at(-1),flankY=y+244;
  return [[arrival.x,arrival.y],[(arrival.x+x)/2,flankY],[x,flankY],[x,y]];
 }
+export function railWorkshopFan({x,y}){
+ return {x,y:y+RAIL_GARRISONS.spread.range-15,dx:0,dy:1};
+}
 export function railCenterRoute(seed,origin='arrival'){
  const entry=frontEntry(mapSeed(seed,1),1);
  const cache=entry.routes[0].path.at(-1),relay=entry.routes[1].path.at(-1);
@@ -740,8 +745,7 @@ export function activeEntry(s){
    const liveWings=site.state==='waiting'||site.state==='active'&&[0,1].every(wing=>
     s.enemies.some(e=>e.siteId===site.id&&e.railWing===wing&&!e.dead&&e.hp>0));
    if(site.guardPlan==='spread'&&liveWings&&!s.stats.railFanSweep&&s.weapons.some(isCapturedTurret)){
-    const fan={x,y:y+RAIL_GARRISONS.spread.range-15,dx:0,dy:1};
-    return [{...route,sign,path:railWorkshopEntry(route,entry.arrival),fan}];
+    return [{...route,sign,path:railWorkshopEntry(route,entry.arrival),fan:railWorkshopFan(site)}];
    }
    if(s.operation.requisition)return [{...route,sign}];
   }

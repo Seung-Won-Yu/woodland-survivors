@@ -10,10 +10,10 @@ import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} fro
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
-import {coastRoleTarget,coastRoleRank,coastFanPosition} from '../src/reboot/coast-salvage.js';
+import {coastRoleTarget,coastRoleRank,coastFanPosition,COAST_TURRET_RECOVERED} from '../src/reboot/coast-salvage.js';
 import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
 import {COAST_RAID_PATROL_DELAY,COAST_SHIELD_BRACE,bracingCoastEscort,shieldFaces,coastService} from '../src/reboot/campaign.js';
-import {createCoastSortie,railInfernoPlan,railAmmoInvestment,railRelayInvestment} from '../src/reboot/model.js';
+import {createCoastSortie,railInfernoPlan,railAmmoInvestment,railRelayInvestment,coastPartOpportunity} from '../src/reboot/model.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -82,6 +82,9 @@ test('coast rescue teaches each operator without requiring their growth target f
   assert.equal(impact.enemy.id,armor.id);
   assert.equal(impact.roleWeak,true);
   assert.equal(impact.weak,false);
+  assert.equal(focusPlan(marco,aim).manualGain,1);
+  const full=restore(snapshot(marco));full.operation.coastSalvage.progress=6;
+  assert.equal(focusPlan(full,aim).manualGain,0);
   assert.ok(action(marco,'skill',aim));
   assert.equal(marco.stats.focusWeakHits,1);
   assert.equal(marco.operation.coastSalvage.progress,1);
@@ -98,6 +101,47 @@ test('coast rescue teaches each operator without requiring their growth target f
   assert.equal(coastRoleRank(fio.operation.coastSalvage),1);
   assert.ok(fio.effects.some(f=>f.text?.includes('발사 간격 −8%')));
  }
+});
+
+test('Marco shield hits follow the incoming bullet when he moves during flight',()=>{
+ for(const [degrees,move,hp,progress] of [[20,1,72,1],[34,-1,84.6,0]]){
+  const s=createOperation(27,[],null,null,'marco','standard');
+  s.sites.forEach(site=>{site.state='done';});
+  s.blocks=[];s.spawnClock=999;s.director.officerClock=999;
+  const guard={...enemy('flank-test',930,850,'shield',90),r:20,aim:Math.PI/2,spawnAge:.01,
+   coastArmor:true,coastRescueShield:true,siteId:null};
+  s.enemies=[guard];
+  const angle=degrees*Math.PI/180;
+  Object.assign(s.player,{x:guard.x+Math.cos(angle)*190,y:guard.y+Math.sin(angle)*190});
+  s.weapons[0].cd=0;
+  step(s,dt);
+  assert.equal(s.shots.length,1);
+  for(const y of [0,move]){
+   const shot=restore(snapshot(s));
+   shot.weapons[0].cd=999;
+   tick(shot,12*dt,{x:0,y});
+   assert.ok(Math.abs(shot.enemies[0].hp-hp)<1e-6);
+   assert.equal(shot.operation.coastSalvage.progress,progress);
+  }
+ }
+});
+
+test('Fio nearby part advice matches the next bonus and yields to cover and bombardment',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ const coast=s.operation.coastSalvage;
+ Object.assign(s.player,{x:800,y:1040});
+ s.blocks=[];s.hazards=[];
+ Object.assign(coast,{progress:5,parts:[{id:'far',x:930,y:1040},{id:'near',x:900,y:1040}]});
+ assert.deepEqual(coastPartOpportunity(s),{...coast.parts[1],gap:100,until:1,bonus:24});
+ s.blocks=[{x:840,y:1010,w:14,h:70,hp:-1}];
+ assert.equal(coastPartOpportunity(s),null);
+ s.blocks=[];s.hazards=[{x:860,y:1040,r:25,timer:.5}];
+ assert.equal(coastPartOpportunity(s),null);
+ s.hazards[0].hit=true;
+ s.stage='holdout';
+ assert.equal(coastPartOpportunity(s)?.id,'near');
+ s.stage='boss';
+ assert.equal(coastPartOpportunity(s),null);
 });
 
 test('a saved one-front sortie can still unlock the alternate starter at the coast gate',()=>{
@@ -199,6 +243,12 @@ test('the same seed carries both coast outcomes through the short sortie and the
    assert.equal(action(fullRack,'gate-mount-advance'),false);
    assert.deepEqual(snapshot(fullRack),beforeSelection);
    assert.ok(action(fullRack,'gate-mount'));
+   const fullRackReload=restore(snapshot(fullRack));
+   assert.ok(choose(fullRackReload,'mount:turret:1',{mountForward:true}));
+   assert.equal(fullRackReload.operation.region,1);
+   assert.equal(fullRackReload.weapons[1].uid,COAST_TURRET_RECOVERED);
+   assert.equal(fullRackReload.weapons[1].cd,0);
+   assert.equal(fullRackReload.weapons[2].uid,'w-fused');
    const loaded=restore(snapshot(cargo));
    const tooFar=restore(snapshot(cargo));
    tooFar.player.y=900;
@@ -547,6 +597,33 @@ test('a workshop sweep requires two rays from one captured volley and survives a
  for(const e of untracked.enemies)delete e.railWing;
  for(const q of untracked.shots)delete q.railFan;
  assert.doesNotThrow(()=>restore(snapshot(untracked)));
+});
+
+test('a mounted turret saves its workshop volley while moving into the firing position',()=>{
+ for(const seed of [27,28]){
+  const s=createOperation(seed,[],null,null,'fio','turret');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{blocks:[],enemies:[],spawnClock:999,boss:regionBoss(1,seed)});
+  const site=s.sites.find(n=>n.id==='rail-cache');
+  const {fan}=activeEntry(s).routes.find(route=>route.site===site.id);
+  Object.assign(s.player,{x:fan.x,y:fan.y+95});
+  s.weapons[0].cd=0;
+  step(s,dt,{x:0,y:-1});
+  assert.equal(site.state,'active');
+  assert.equal(s.stats.turretVolleys,undefined);
+  const onApproach=restore(snapshot(s));
+  tick(onApproach,.12,{x:0,y:-1});
+  assert.equal(onApproach.stats.turretVolleys,undefined);
+  tick(onApproach,.23,{x:0,y:-1});
+  assert.equal(onApproach.stats.turretVolleys,1);
+  tick(onApproach,.5);
+  assert.equal(onApproach.stats.railFanSweep,true);
+  const stationary=restore(snapshot(s));
+  stationary.player.y=fan.y+60;
+  step(stationary,dt);
+  assert.equal(stationary.stats.turretVolleys,1);
+ }
 });
 test('a marked coast outpost can be seized for its native gun before rescuing the prisoner',()=>{
  for(const [seed,gun,guardCount] of [[17,'r',2],[19,'f',3]]){

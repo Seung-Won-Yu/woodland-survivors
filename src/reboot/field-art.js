@@ -427,10 +427,11 @@ export function paintEntryRoutes(c,entry){
   if(route.fan&&route.site==='rail-cache'){
    const {x,y}=route.fan;
    c.save();c.translate(x,y);
-   c.fillStyle='#1a2522e8';c.fillRect(-25,-21,50,42);
+   c.fillStyle='#15231fea';c.fillRect(-29,-22,58,44);
+   c.fillStyle='#d4a95638';c.fillRect(-22,-16,44,32);
    c.strokeStyle=route.color;c.lineWidth=3;
    for(const side of [-1,1]){
-    c.beginPath();c.moveTo(side*16,19);c.lineTo(side*24,19);c.lineTo(side*24,-19);c.lineTo(side*16,-19);c.stroke();
+    c.beginPath();c.moveTo(side*18,20);c.lineTo(side*27,20);c.lineTo(side*27,-20);c.lineTo(side*18,-20);c.stroke();
    }
    c.beginPath();
    for(const spread of [-15,0,15]){

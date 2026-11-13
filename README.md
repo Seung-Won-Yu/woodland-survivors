@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.153.0" src="https://img.shields.io/badge/RIFT-0.153.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.154.0" src="https://img.shields.io/badge/RIFT-0.154.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -105,6 +105,7 @@
 | 회피 | SPACE / 회피 버튼 |
 | 전탄 보급 | E / 전술기 버튼 |
 | 보스·출구 | F / 상황 버튼 |
+| 포탑 장착 후 철도 진입 | 해안 게이트에서 M / 장착 버튼 |
 | 잔류 도전 | Q / 현장 목표의 호출 버튼 |
 | 진화·합체·정비 | G / 조율권 버튼 |
 | 성장 선택·일시정지 | 표시된 숫자키 / 카드 터치, ESC / Ⅱ |

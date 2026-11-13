@@ -40,10 +40,13 @@ test('the rail transfer briefing mirrors the first move and keeps carried cargo 
  const mount={title:'노획 포탑 L4'};
  assert.match(railTransferBrief(27,cargo,mount),/data-transfer-route="rail-cache".*<\/i> 화차 정비대/s);
  assert.match(railTransferBrief(27,cargo,mount),/aria-label="오른쪽">→<\/i>.*양쪽 대열에 일제사격/s);
+ assert.match(railTransferBrief(27,cargo,mount),/data-rail-transfer-pad.*양쪽 대열에 일제사격.*열차 정면에서 양쪽 포격 차단/s);
  assert.match(railTransferBrief(28,cargo,mount),/aria-label="왼쪽">←<\/i>.*양쪽 대열에 일제사격/s);
  s.operation.coastSalvage.turret='broken';
  const broken=railHandoff(s);
  assert.match(railTransferBrief(27,broken),/data-transfer-route="rail-relay".*↖<\/i>.*교신으로 열차 조준 유인/s);
+ assert.match(railTransferBrief(27,broken),/후방 박격포 먼저 제압.*교신으로 열차 조준 유인/s);
+ assert.doesNotMatch(railTransferBrief(27,broken),/data-rail-transfer-pad/);
  assert.match(railTransferBrief(28,broken),/↗<\/i>.*교신으로 열차 조준 유인/s);
 });
 
