@@ -770,14 +770,15 @@
  .opening-weapon-copy small{font-size:9px}
  .opening-supply .choice-footer{margin-top:8px}
  :is(.control-menu,.pursuit-menu:not(:has([data-choice="pursuit:permit"]))) .choice-tools{display:none}
- :is(.control-menu,.pursuit-menu) .upgrade-deck{grid-template-columns:minmax(0,1fr);gap:7px}
- .field-menu:is(.control-menu,.pursuit-menu):not(.quick-mod) .upgrade-card{min-height:72px;padding:8px 28px 8px 60px;gap:3px}
- :is(.control-menu,.pursuit-menu) .upgrade-card kbd{right:8px;top:8px}
- :is(.control-menu,.pursuit-menu) .upgrade-copy{gap:3px}
- .field-menu:is(.control-menu,.pursuit-menu):not(.quick-mod) .upgrade-illustration{width:55px;height:57px;left:2px;top:12px}
- .field-menu:is(.control-menu,.pursuit-menu):not(.quick-mod) .upgrade-illustration .kit-sprite{width:63px;height:63px}
- :is(.control-menu,.pursuit-menu) :is(.upgrade-impact,.upgrade-detail,.upgrade-link){line-height:1.25;word-break:keep-all}
- :is(.control-menu,.pursuit-menu) .choice-footer{margin-top:8px}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu) .upgrade-deck{grid-template-columns:minmax(0,1fr);gap:7px}
+ .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu):not(.quick-mod) .upgrade-card{min-height:72px;padding:8px 28px 8px 60px;gap:3px}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu) .upgrade-card kbd{right:8px;top:8px}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu) .upgrade-copy{gap:3px}
+ .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu):not(.quick-mod) .upgrade-illustration{width:55px;height:57px;left:2px;top:12px}
+ .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu):not(.quick-mod) .upgrade-illustration .kit-sprite{width:63px;height:63px}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu) :is(.upgrade-impact,.upgrade-detail,.upgrade-link){line-height:1.25;word-break:keep-all}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu) .choice-footer{margin-top:8px}
+ .relay-supply-menu :is(.upgrade-detail,.install-label){display:none}
  .pursuit-menu [data-choice^="support:"] .upgrade-cost{display:none}
  :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-deck{gap:7px}
  :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-card{min-height:0;padding:8px 25px 8px 63px;gap:3px}

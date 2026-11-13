@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.125.0" src="https://img.shields.io/badge/RIFT-0.125.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.126.0" src="https://img.shields.io/badge/RIFT-0.126.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -22,6 +22,8 @@
 철도의 **화차 정비대**에서는 두 갈래로 배치된 보병을, **통신 중계기**에서는 후방 박격포를 상대합니다. 노획 포탑으로 정비대 남쪽에 접근해 일제사격의 서로 다른 탄을 양쪽 대열에 맞히면 착탄 표시가 뜨고 보고서에 남습니다. 일반 R은 긴 사선을 열어 박격포를 먼저 노립니다. 포격 열차를 잡으면 항구로 전진하거나 60C의 생존 귀환 수당을 받고 작전실로 돌아갈 수 있습니다. 포탑을 반출한 판에는 40C가 추가되고 새 시드에서 5발 포탑으로 시작할 수 있습니다.
 
 레벨업에서는 다음 강화 한 번으로 진화나 합체를 열 수 있는 카드를 확인할 수 있습니다. 조립을 앞당길지, 다른 총이나 전술 보조에 투자할지 고릅니다.
+
+철도 중계기를 확보하면 열차에 쓸 전술과 무장 정비 중 하나를 고릅니다. 화염으로 시작한 판은 F 강화와 촉매, 로켓으로 시작한 판은 H 강화와 축전 코일 중 부족한 재료가 표시됩니다. 두 재료가 필요해도 한 가지만 장착합니다.
 
 해안에서는 포로를 구출해 화염 F와 로켓 R 중 고르거나, 가까운 거점을 기관총 H로 기습해 해당 무기를 L2로 노획합니다. 작전도와 전장 바닥에 구조와 기습으로 갈라지는 길이 표시됩니다. 기습 거점은 시드에 따라 보급차와 박격포 진지로 달라집니다. 포로 구출로 시작하면 이후 맞춤 거점에서 특화 모듈과 수송차 공략을 노릴 수 있습니다.
 

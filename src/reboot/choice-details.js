@@ -230,7 +230,7 @@ export function choiceDetails(s,c){
   if(plan){out.art=c.key;out.impact=plan.impact;out.detail=plan.hint;out.link=plan.detail;out.cost=`지금 모듈 대신 선택 · 성공 시 철도에서 ${MODULES[COAST_APPROACHES[c.key].module].name} 보급 후보`;}
  }else if(c.kind==='control'){
   const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
-  out.art=c.infernoRank||['heat','lens','wake'].includes(c.key)?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
+  out.art=c.infernoRank||c.relayInvestment==='f'||['heat','lens','wake'].includes(c.key)?'f':c.relayInvestment==='r'||c.key==='signal'||c.key==='ember'?'coil':'ammo';
   out.cost='';
   if(tactic){out.detail=c.hint||tactic.hint;out.link='포격 주기마다 1회';}
   if(c.key==='crossfire'){
@@ -239,6 +239,10 @@ export function choiceDetails(s,c){
   if(c.infernoRank){
    out.detail='이 보급을 고르면 이번 전선의 보스 전술을 포기합니다.';
    out.link=c.infernoRank===6?'L6 장착 후 조율권 1개로 인페르노 조립':'F L5 장착 · 인페르노까지 한 단계';
+  }
+  if(c.relayInvestment){
+   out.detail='한 가지 장착 · 특수 전술 포기 · 조준 유인 1회 유지';
+   out.link=c.relayInvestment==='f'?'인페르노 · F L6와 촉매 2':'격발망 · H·R 각 L4와 축전 코일 2';
   }
  }else if(c.kind==='front-support'){
   const kit=FRONT_SUPPORTS[c.key];

@@ -3847,6 +3847,39 @@ test('relay and harbor equipment reward committed fire builds while the other ta
  assert.equal(final.weapons[1].branch,'focused');assert.equal(final.tuning,permits-1);
  assert.equal(final.powerWave.showcase,'flame');
 });
+test('standard railway relay exposes competing growth parts without giving up the tactic until chosen',()=>{
+ const build=(gun,level,rank)=>{
+  const s=createOperation(16,['medic'],['medic'],null,'fio','standard');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(s.seed,1),1,null,true),{firstNew:gun,blocks:[],enemies:[],spawnClock:999,boss:regionBoss(1,s.seed),supplyCount:2});
+  Object.assign(s.weapons[0],{level:3,cd:999});
+  s.weapons.push({...makeWeapon(gun),uid:'primary',level,branch:level===3?null:gun==='f'?'trail':'homing',cd:999});
+  s.modules=rank?[{id:gun==='f'?'catalyst':'coil',rank}]:[];
+  s.sites.forEach(site=>site.state='done');return s;
+ };
+ const fire=build('f',5,1),menu=supply(fire,'rail-relay');
+ const option=menu.find(c=>c.id==='control:supply');
+ assert.match(option.desc,/F L6.*촉매/);
+ assert.match(choiceDetails(fire,option).detail,/전술 포기/);
+ const tactic=restore(snapshot(fire));assert.ok(choose(tactic,'control:heat'));
+ assert.equal(tactic.operation.tactic,'heat');assert.equal(tactic.weapons[1].level,5);
+ assert.ok(choose(fire,option.id));
+ const wanted=['rank:f','module:catalyst','module:medic'];
+ assert.deepEqual(fire.choices.map(c=>c.id),wanted);
+ const after=restore(snapshot(fire));assert.ok(reroll(after));
+ assert.equal(after.choice.relayRepair,true);
+ assert.deepEqual(after.choices.map(c=>c.id),wanted);
+ assert.ok(choose(after,'module:catalyst'));
+ assert.equal(after.operation.tactic,undefined);assert.equal(after.weapons[1].level,5);assert.equal(after.modules[0].rank,2);
+ const fuse=build('r',6,2);supply(fuse,'rail-relay');
+ assert.ok(choose(fuse,'control:supply'));assert.equal(fuse.choices[0].id,'rank:h');
+ assert.ok(choose(fuse,'rank:h',{branch:'ricochet'}));assert.ok(assemblyOptions(fuse).some(c=>c.id==='fusion:h:r'));
+ const excluded=build('f',3,0);excluded.excluded.push('catalyst');
+ supply(excluded,'rail-relay');assert.ok(choose(excluded,'control:supply'));
+ assert.ok(!excluded.choices.some(c=>c.module==='catalyst'));
+ assert.ok(choose(excluded,'rank:f',{branch:'focused'}));assert.equal(excluded.weapons[1].branch,'focused');
+});
 test('rail workshop previews and offers the missing H branch for a rocket-first fusion',()=>{
  const s=quietRailWorkshop();s.firstNew='r';
  Object.assign(s.weapons[0],{level:3});

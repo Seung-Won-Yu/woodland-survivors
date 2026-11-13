@@ -8,7 +8,7 @@ import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampa
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,BOSS_ENTRY,HOLDOUT,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle,CAPTURED_TURRET,isCapturedTurret} from './content.js';
-import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge,conduitMortarCue} from './model.js';
+import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,railRelayInvestment,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge,conduitMortarCue} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
 import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,loadFieldArt,missionImageUrl,FIELD_ART_COUNT,operatorPortrait} from '../mission/art.js';
@@ -235,10 +235,11 @@ function showChoices(){
  const toolsAfterDeck=coastOptions||coastalService;
  const salvage=run.choices.find(c=>c.salvageLevel);
  const tacticalLoot=salvage&&run.choices.some(c=>c.salvageLevel===1);
+ const relaySupply=run.choice.type==='supply'&&run.choice.relayRepair===true;
  const type=run.choice.type,quick=isQuickMod(run),atGate=type==='clear'&&!!run.operation,atPursuit=type==='pursuit-reward',workshop=type==='rail-workshop';
  const shoreGate=atGate&&coastAtShore(run)&&carriesCoastSalvage(run),mount=type==='coast-mount',carrier=type==='coast-boss';
  const railGate=atGate&&carriesCoastSalvage(run)&&run.operation.region===1;
- const title=({level:'야전 개조',supply:run.choice.opening?'첫 무장을 골라라':run.choice.preempt?'전방 보급 선점':coastalService?esc(run.choice.source):salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:shoreGate?'철도 전진로 개방':railGate?'철도 돌파':canAdvanceFront(run)?'다음 전선이 열렸다':'귀환로 개방','coast-boss':'파괴할까, 노획할까','coast-mount':'노획 포탑 확보',control:run.choices.some(c=>c.infernoRank)?'전술과 정비 중 선택':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
+ const title=({level:'야전 개조',supply:run.choice.opening?'첫 무장을 골라라':run.choice.preempt?'전방 보급 선점':coastalService?esc(run.choice.source):relaySupply?'중계기 정비 보급':salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:shoreGate?'철도 전진로 개방':railGate?'철도 돌파':canAdvanceFront(run)?'다음 전선이 열렸다':'귀환로 개방','coast-boss':'파괴할까, 노획할까','coast-mount':'노획 포탑 확보',control:run.choices.some(c=>c.infernoRank||c.relayInvestment)?'열차 전술 또는 무장 정비':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
  const assembly=type==='assembly',gateAssembly=assembly&&run.choice.gatePrep,gateLevel=type==='level'&&run.choice.gatePrep;
  const back=assembly?run.choices.find(c=>c.kind==='back'):null;
  const capstones=assembly?run.choices.filter(isCapstone):[];
@@ -256,8 +257,8 @@ function showChoices(){
  const gateNote=run.pendingLevels?!canAdvanceFront(run)?`귀환 시 미사용 개조 ${run.pendingLevels}회 소멸`:`대기 개조 ${run.pendingLevels}회 · 전진하면 이월`:run.challenge?.state==='active'?'':'잔류하면 증원군이 강해집니다. 게이트는 계속 열려 있습니다.';
  const deck=carrier||mount?ordnanceDeck():atGate?gateChoices():assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
  const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
- panel(`<section class="sheet field-menu${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-  <header><div><span class="eyebrow">${carrier?'해안 · 장갑 수송차':mount?'해안 · 노획 병기':run.choice.opening?'포로 구출 완료':run.choice.preempt?'기습 성공':type==='level'?`LV.${run.level} · 현장 정비`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+ panel(`<section class="sheet field-menu${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':relaySupply?' relay-supply-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+  <header><div><span class="eyebrow">${carrier?'해안 · 장갑 수송차':mount?'해안 · 노획 병기':run.choice.opening?'포로 구출 완료':run.choice.preempt?'기습 성공':type==='level'?`LV.${run.level} · 현장 정비`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
   ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${deck}${railGate?gatePrep:''}${toolsAfterDeck?tools:''}
   ${coastalService||carrier||mount?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
   ${capstones.length?paths:''}
@@ -687,12 +688,13 @@ function fieldEntry(s){
  }
  if(s.operation?.region!==1||!entry)return entry;
  const relayRank=infernoControlRank(s);
+ const relay=entry.routes.some(route=>route.site==='rail-relay')?railRelayInvestment(s).material:'';
  const salvageRoutes=carriesCoastSalvage(s)&&!s.operation.requisition,fan=salvageRoutes&&s.weapons.some(isCapturedTurret);
  const rocket=salvageRoutes&&!fan&&s.weapons.some(w=>w.id==='r'||w.fusion);
  const routes=entry.routes.map(route=>{
   if(route.site!=='rail-relay')return route;
-  const rank=relayRank&&`중계기 · 유인 + F L${relayRank} 후보`;
-  return {...route,...(salvageRoutes?{color:'#9cd4da',recommended:!!(rocket||relayRank)}:null),
+  const rank=relay?`중계기 · ${relay}`:relayRank&&`중계기 · 유인 + F L${relayRank} 후보`;
+  return {...route,...(rank?{supplyHint:rank}:null),...(salvageRoutes?{color:'#9cd4da',recommended:!!(rocket||rank)}:null),
    sign:rank||(rocket?'중계기 · 로켓 사선':salvageRoutes?'중계기 · 원거리 박격포':'중계기 · 조준 유인'),
    summary:rank||(rocket?'중계기 · 로켓 원거리 공략':salvageRoutes?'중계기 · 원거리 박격포':'중계기 · 조준 유인 1회')};
  });
@@ -862,8 +864,8 @@ function updateHud(entry,focus=null,coast={}){
  else if(next.id==='rail-cache'&&workshopRoute)intel=`${workshopRoute.note}\n${next.state==='ready'?'접근해 회수':garrison?.hint||'경비 제압'}`;
  else if(next.id==='rail-relay'){
   const cue=next.state==='ready'?'접근해 회수':next.state==='active'&&!crew?'범위 안에서 해킹':garrison?.hint||'범위 안에서 해킹';
-  const fireRank=infernoControlRank(run);
-  intel=`확보 시 조준 유인 1회${fireRank?` · F L${fireRank} 보급 후보`:''}\n${cue}`;
+  const relay=entry?.routes.find(route=>route.site==='rail-relay');
+  intel=`${relay?.supplyHint?`${relay.supplyHint} 중 하나`:'확보 시 조준 유인 1회'}\n${cue}`;
  }
  else if(next.id==='rail-ammo')intel=next.state==='ready'?'추가 보급 · 접근해 회수':'경비 제압 후 무장 강화·모듈 보급';
  else if(next===bossTarget&&wireReady)intel='교신 암호 · 열차 조준 유인 1회';
