@@ -4,7 +4,7 @@ import {operatorId} from './operator.js';
 import {coastSalvage,isSalvageCampaign} from './coast-salvage.js';
 
 const nonnegative=value=>Number.isFinite(value)&&value>=0;
-const standard=operation=>!!operation&&!operation.order&&!operation.requisition&&(!operation.coastSalvage||isSalvageCampaign({operation}));
+const standard=operation=>!!operation&&!operation.order&&!operation.requisition&&!operation.openingGun&&(!operation.coastSalvage||isSalvageCampaign({operation}));
 const capstones=new Set([...Object.values(GUNS).map(gun=>gun.evolution),CAPTURED_TURRET.evolution,'압축 인페르노','전도 격발망','점화 격발망']);
 export const installedCapstones=weapons=>Array.isArray(weapons)
  ?[...new Set(weapons.filter(w=>typeof w?.id==='string'&&Object.hasOwn(GUNS,w.id)&&(w.fusion||w.evolved)).map(capstoneName))]:[];

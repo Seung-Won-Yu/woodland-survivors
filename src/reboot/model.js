@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RESPONSE,coastPreemptSite,coastPreemptGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RESPONSE,coastPreemptSite,coastOpeningGun,isOpeningGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,buildPaths,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance,CAPTURED_TURRET,COAST_FAN,coastFanAngle,isCapturedTurret} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -255,8 +255,11 @@ export function restore(raw,{allowPrevious=false}={}){
   const deliveryFront=requisitionFront(s.operation);
   if(requisitionClaimed!==undefined&&(requisitionClaimed!==true||!requisition||s.operation.region<deliveryFront))fail();
   if(requisitionClaimed&&s.operation.region===deliveryFront&&requisitionStation(s)?.state!=='done')fail();
-  if(s.sites.some(site=>site.preempt!==undefined&&(site.preempt!==true||s.operation.region!==0||order||requisition||s.operation.trialProof||s.trials.length||site.coastApproach!==coastPreemptGun(s.seed))))fail();
-  if(s.stats.coastPreempt!==undefined&&s.stats.coastPreempt!==coastPreemptGun(s.seed))fail();
+  const openingGun=s.operation.openingGun;
+  if(openingGun!==undefined&&(!isOpeningGun(openingGun)||!isSalvageCampaign(s)||coastSalvage(s).loadout!=='standard'
+   ||order||requisition||s.operation.trialProof||s.trials.length))fail();
+  if(s.sites.some(site=>site.preempt!==undefined&&(site.preempt!==true||s.operation.region!==0||order||requisition||s.operation.trialProof||s.trials.length||site.coastApproach!==coastOpeningGun(s))))fail();
+  if(s.stats.coastPreempt!==undefined&&s.stats.coastPreempt!==coastOpeningGun(s))fail();
   if(s.stats.coastResponse!==undefined&&(!Object.hasOwn(COAST_RESPONSE,s.stats.coastResponse)||s.stats.coastResponse!==s.stats.coastPreempt))fail();
   if(s.enemies.some(e=>e.coastResponse!==undefined&&(s.operation.region!==0||e.coastResponse!==s.stats.coastResponse||e.cohort!=='ambient')))fail();
   if(s.enemies.some(e=>e.coastRescueShield!==undefined&&(e.coastRescueShield!==true||!isSalvageCampaign(s)||s.operation.region!==0||s.operator!=='marco'||e.type!=='shield'||e.siteId!==null||e.coastArmor!==true)))fail();
@@ -1120,6 +1123,12 @@ function targetFor(s,w,d,candidates,lance){
  const strike=coastStrike(s);
  if(w.id==='r'&&strike&&s.operation.coastStrike==='r'&&!s.operation.coastStrikeUsed&&s.boss.mode==='windup'
    &&candidates.includes(s.boss)&&distance(s.player,s.boss)>=strike.range)return s.boss;
+ // Keep the close threat first, then give the chosen raid's guards a clear firing priority.
+ const outpost=w.id==='h'&&!w.fusion&&s.operation?.openingGun&&coastPreemptSite(s);
+ if(outpost?.preempt&&outpost.state==='active'&&candidates[0]&&distance(s.player,candidates[0])>70){
+  const guard=candidates.find(e=>e.siteId===outpost.id);
+  if(guard)return guard;
+ }
  const locked=candidates.find(e=>e.id===w.targetId);if(locked&&s.t<(w.targetUntil||0))return locked;
  let selected=candidates[0];
  const part=s.operation?.region!==2&&s.operation?.support==='breach'&&candidates.find(e=>e.type==='part');

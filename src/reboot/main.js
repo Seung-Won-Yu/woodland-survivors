@@ -6,7 +6,7 @@ import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.j
 import {coastChargeLane} from './coast-charge.js';
 import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck,coastTurretReturned} from './coast-salvage.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon,coastRescueReward,railHandoff} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire,RAIL_GUN_COLORS} from './campaign.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,isOpeningGun,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire,RAIL_GUN_COLORS} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,moduleGain,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle,isCapturedTurret} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,railRelayInvestment,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge,conduitMortarCue,railFanCutCue,armoredRaidPart} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -128,10 +128,11 @@ function openingChoiceDeck(cards){
  const role=isSalvageCampaign(run)?coastRole(run):null;
  const rack=guns.map(c=>{
   const d=choiceDetails(run,c);
+  const planned=c.weapon===run.operation?.openingGun;
   const pairing=c.weapon===role?.weapon?role.pairing:run.weapons.some(isCapturedTurret)&&c.weapon==='h'?'포탑과 H+R 합체 준비':'';
-  return `<button class="opening-weapon" data-weapon="${c.weapon}" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}>
+  return `<button class="opening-weapon" data-weapon="${c.weapon}"${planned?' data-opening-goal':''} data-choice="${esc(c.id)}"${d.blocked?' disabled':''}>
    <span class="opening-weapon-tray">${itemArt(c.weapon)}${choiceKey(c)}</span>
-   <span class="opening-weapon-copy"><strong>${esc(d.title)}</strong><small>${c.weapon==='f'?'근접 분사':c.weapon==='r'?'원거리 폭발':'직선 관통'}</small>
+   <span class="opening-weapon-copy"><strong>${esc(d.title)}</strong>${planned?'<small class="opening-goal">작전 목표 무장</small>':''}<small>${c.weapon==='f'?'근접 분사':c.weapon==='r'?'원거리 폭발':'직선 관통'}</small>
    <b>${esc(d.impact)}</b><span>${esc(d.detail)}</span>${pairing?`<small class="opening-pairing">${esc(pairing)}</small>`:''}${d.link?`<small>${esc(d.link)}</small>`:''}</span>
   </button>`;
  }).join('');
@@ -446,7 +447,7 @@ function closePreparation(cancelled=false){
 async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie||null){
  const actor=source.dataset.actor||selectedOperator,requisition=source.dataset.requisition||null;
  const delivery=source.dataset.requisitionAt||null;
- const coastLoadout=source.dataset.coastLoadout||null;
+ const coastLoadout=source.dataset.coastLoadout||null,openingGun=source.dataset.openingGun||null;
  const fullCampaign=source.dataset.action!=='coast-launch'&&!source.hasAttribute('data-legacy-coast');
  if(!Object.hasOwn(OPERATORS,actor))return;
  if(busy||pending||launchPreparation)return;
@@ -461,7 +462,7 @@ async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie
   closePreparation();
  }
  const replayFrom=source.dataset.action==='same-seed'&&source.dataset.replayFrom?Number(source.dataset.replayFrom):null;
- const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom,delivery,coastLoadout,fullCampaign);
+ const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom,delivery,coastLoadout,fullCampaign,openingGun);
  renderer=createRenderer($('world'),art,combatHud);
  await commitDraft(draft,next,art?'art':'fallback');
 }
@@ -557,7 +558,10 @@ ui.addEventListener('click',async e=>{
  if(button.dataset.exclude){await mutate(d=>banish(d,button.dataset.exclude));return;}
  const a=button.dataset.action;
  if(subpanel?.type==='replay-briefing'&&Number.isSafeInteger(subpanel.options.freshSeed)){
-  const {briefRoute,briefStarter}=button.dataset;
+  const {briefRoute,briefStarter,briefOpening}=button.dataset;
+  if(briefOpening==='auto'||isOpeningGun(briefOpening)){
+   subpanel.options.openingGun=briefOpening==='auto'?null:briefOpening;refreshReplayBriefing(`[data-brief-opening="${briefOpening}"]`);return;
+  }
   if(briefRoute==='fresh'||briefRoute==='same'){
    subpanel.options.route=briefRoute;refreshReplayBriefing(`[data-brief-route="${briefRoute}"]`);return;
   }
@@ -834,8 +838,9 @@ function updateHud(entry,focus=null,coast={}){
  const railFork=front===1&&choosingEntry;
  document.body.classList.toggle('rail-fork',front===1&&!!choosingEntry);
  document.body.classList.toggle('harbor-fork',front===2&&(!!choosingEntry||!!partStaging&&next===bossTarget));
- const trackedRoute=next.path?next:entry?.routes.find(route=>route.site===next.id);
- const direction=bearing(p,...(trackedRoute?entryWaypoint(trackedRoute.path,p):[next.x,next.y]));
+ const trackedRoute=next.path?next:(entry||opening)?.routes.find(route=>route.site===next.id);
+ const waypoint=trackedRoute&&entryWaypoint(trackedRoute.path,p);
+ const direction=bearing(p,...(waypoint||[next.x,next.y]));
  const track=$('operation-track'),trackKey=run.operation?`${run.runId}:${front}`:'';
  if(track.dataset.front!==trackKey){
   track.dataset.front=trackKey;
@@ -861,12 +866,14 @@ function updateHud(entry,focus=null,coast={}){
   :`${formation} 접근`;
  const incoming=capstoneField?`${showcaseHint}${front===2&&formationMove?` · ${formationMove}`:''}`:'';
  const reserve=wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
- const objectiveName=next.opening&&run.stats.coastPreempt?'포로 구출 · 선택':next.kind?sitePresentation(next).name:next.name;
+ const objectiveName=next===preempt&&run.operation?.openingGun?`${GUNS[preempt.coastApproach].short} 기습 · ${sitePresentation(preempt).name}`:next.opening&&run.stats.coastPreempt?'포로 구출 · 선택':next.kind?sitePresentation(next).name:next.name;
  const railCargo=railFork&&salvage?.turret==='secured'&&!run.weapons.some(isCapturedTurret);
  const railTurret=railFork&&run.weapons.find(isCapturedTurret);
  const railRocket=railFork&&!railTurret&&run.weapons.find(w=>w.id==='r');
+ const detour=next===preempt&&trackedRoute?.recommended&&waypoint!==trackedRoute.path.at(-1);
+ const goalRange=detour?Math.hypot(p.x-waypoint[0],p.y-waypoint[1]):distance(p,next);
  $('objective').textContent=choosingEntry?(front===1?(railTurret?`포탑 L${railTurret.level} · 부채꼴 ${weaponStats(railTurret).count}발`:railCargo?'포탑 운반 중':railRocket?`로켓 R L${railRocket.level} · 철도 경로`:'철도 진입 경로')
-  :front===2&&showcaseGun?`항구 · ${capstoneName(showcaseGun)}`:entry.routes.length===1?'남은 선택 경로':'하역장 갈림길'):`${direction} ${objectiveName} · ${Math.round(distance(p,next)/10)}m`;
+  :front===2&&showcaseGun?`항구 · ${capstoneName(showcaseGun)}`:entry.routes.length===1?'남은 선택 경로':'하역장 갈림길'):`${direction} ${detour?`${GUNS[preempt.coastApproach].short} 기습 · 우회 지점`:objectiveName} · ${Math.round(goalRange/10)}m`;
  const guards=next.state==='active'?run.enemies.filter(e=>!e.dead&&e.siteId===next.id).length:0;
  const garrison=railGarrison(next)||wireGarrison(run,next),crew=next.state==='active'&&next.kind==='relay'?relayCrewLeft(run,next):0;
  const hacking=crew?`${garrison.crew} ${crew}${garrison.unit} 제압 후 해킹`:`범위 안에서 해킹 ${Math.round(next.progress/5*100)}%`;
@@ -900,7 +907,7 @@ function updateHud(entry,focus=null,coast={}){
   return rewards.filter(Boolean).join(' · ')||'현장 보급';
  };
  const alternateLabel=preempt&&alternate===preempt?`${sitePresentation(preempt).name} 기습 · ${GUNS[preempt.coastApproach].short} L${COAST_SALVAGE_LEVEL}`
-  :rescue&&alternate===rescue?`포로 구출 · ${run.weapons.some(isCapturedTurret)?'F/H':'F/R'} 선택`:alternateCoast?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':wireReady?'열차 직행 · 교신 암호':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
+  :rescue&&alternate===rescue?`포로 구출 · ${rescue.state==='ready'?'접근해 회수':run.weapons.some(isCapturedTurret)?'F/H 선택':'F/R 선택'}`:alternateCoast?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':wireReady?'열차 직행 · 교신 암호':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
  direct.hidden=!((front>0||prepared||fork||crossDone||coastDelivery||openingAlternate)&&run.stage==='field'&&!raid&&next!==alternate);
  direct.dataset.coast=alternateCoast?.coastApproach||'';
  direct.textContent=`${bearing(p,...(alternate.path?entryWaypoint(alternate.path,p):[alternate.x,alternate.y]))} ${alternateLabel} · ${Math.round(distance(p,alternate)/10)}m`;
@@ -944,7 +951,8 @@ function updateHud(entry,focus=null,coast={}){
  else if(tactic&&run.stage==='field')intel=`${tactic.name} 확보 · 보스전에 적용`;
  else if(next===bossTarget&&entry?.direct&&PORT_SUPPORT[part])intel=PORT_SUPPORT[part].hint;
  else if(coastSite&&next===coastSite){
-  if(coastSite===preempt&&preempt.state==='waiting'&&!preempt.preempt)intel=interact?.id==='coast-preempt'?'기습으로 경비 유인 · 제압 후 노획':'엄폐를 돌아 거점에 접근';
+  if(coastSite===preempt&&preempt.state==='waiting'&&!preempt.preempt)intel=interact?.id==='coast-preempt'?'기습으로 경비 유인 · 제압 후 노획'
+   :run.operation.openingGun?`${detour?sitePresentation(preempt).name+'으로 우회':'거점에 접근'} · ${GUNS[preempt.coastApproach].short} L${COAST_SALVAGE_LEVEL} 노획`:'엄폐를 돌아 거점에 접근';
   else if(coastSite.opening){
    const move=touchLayout.matches?'스틱 이동':'WASD 이동';
    const role=isSalvageCampaign(run)&&roleTarget&&coastRole(run);

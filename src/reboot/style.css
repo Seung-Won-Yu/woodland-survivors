@@ -786,6 +786,19 @@
 .sortie-briefing .replay-starters button{display:flex;align-items:center;gap:6px}
 .sortie-briefing .replay-starters .kit-sprite{flex:0 0 28px;width:28px;height:26px}
 .sortie-briefing .coast-plan{margin-top:9px}
+.replay-opening{--order-ink:#f3d28a;margin-top:8px;padding:7px 8px;background:#1b2e29;border:1px solid #657961}
+.replay-opening[data-opening-theme="f"]{--order-ink:#ffc795}
+.replay-opening[data-opening-theme="r"]{--order-ink:#bce9df}
+.replay-opening h3{margin:0 0 5px;color:#ecdfb9;font-size:11px}
+.opening-orders{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.opening-orders button{display:flex;align-items:center;justify-content:center;gap:2px;min-height:44px;padding:3px 4px;font-size:10px;line-height:1.25}
+.opening-orders button .kit-sprite{width:22px;height:22px;filter:none}
+.opening-orders button[aria-pressed="true"]{background:var(--order-ink);color:#1e3028;border-color:var(--order-ink)}
+.opening-order-intel{display:grid;gap:2px;margin-top:7px;color:#cfdec9;font-size:10px;line-height:1.4;word-break:keep-all}
+.opening-order-intel b{color:var(--order-ink);font-size:11px}
+.opening-order-intel small{color:#b9c9b2;font-size:9px}
+.opening-weapon[data-opening-goal]{border-color:#ecc584}
+.opening-weapon-copy .opening-goal{color:#ffde9f}
 .replay-landing{margin:0 0 6px;color:#d7dec6;font-size:10px;line-height:1.4}
 .replay-landing b{color:#f1d690}
 .replay-rail-target{display:grid;gap:2px;margin:7px 0 0;padding:6px 8px;border-left:2px solid #a8b897;background:#1a2d28;color:#e9e1c5;font-size:11px;line-height:1.35;word-break:keep-all}
@@ -1095,6 +1108,8 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .front-transfer[data-transfer="broken"]{border-left-color:#accdd2;background:#243b3a;color:#cfebea}
 .salvage-report .salvage-cut {color:#f3d698}
 .salvage-report[data-outcome="rail-demolition"] {--salvage-ink:#b7e2df;border-left-color:var(--salvage-ink)}
+.salvage-report[data-build-summary] {--salvage-ink:#f3d499}
+.salvage-report[data-build-summary] .kit-sprite {width:39px;height:39px}
 .salvage-report[data-rail-return] .kit-sprite {width:39px;height:39px}
 .salvage-report[data-rail-return] .rail-operation-result {color:var(--salvage-ink);font-size:11px;line-height:1.45}
 .rail-debrief {

@@ -157,7 +157,7 @@ function paintCoastCue(c,s,site,guns,volley,counter,size,cx,cy,scale,hud,opening
   c.restore();return;
  }
  c.save();
- const alternate=opening&&!site.opening;
+ const alternate=opening&&!site.opening&&site.state==='waiting'&&!site.preempt;
  const label=alternate?`${prefix} L${COAST_SALVAGE_LEVEL} · 기습`:screen?'방패 옆으로':escaping?'옆으로 이동':reply?'반격탄':coastEncounterCue(s,site,volley,counter)||(site.state==='ready'&&site.opening?'접근해 구출':prefix?`${prefix} · ${name}`:name);
  c.font='bold 11px Galmuri, sans-serif';
  const width=Math.min(size.w-16,Math.ceil(c.measureText(label).width)+32);
@@ -1488,8 +1488,8 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   if(lead){
    const marker=paintCoastCue(c,s,lead,guns,volley,counter,size,cx-shake,cy,scale,combatHud.rects,!!opening&&lead.opening);
-   if(opening&&lead.opening&&Math.hypot(s.player.x-800,s.player.y-1040)<330){
-    const target=opening.preempt,hud=marker?[...combatHud.rects,marker]:combatHud.rects;
+   if(opening&&Math.hypot(s.player.x-800,s.player.y-1040)<330){
+    const target=lead.opening?opening.preempt:opening.rescue,hud=marker?[...combatHud.rects,marker]:combatHud.rects;
     paintCoastCue(c,s,target,[],null,null,size,cx-shake,cy,scale,hud,true);
    }
   }

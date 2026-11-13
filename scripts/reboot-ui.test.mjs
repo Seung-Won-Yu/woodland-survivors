@@ -455,15 +455,38 @@ test('a canonical report previews the chosen beach and starter and only compares
  const same=replayBriefingView(r,saved,'standard',null,options);
  assert.match(same,/철도[^<]*통신 중계기/);
  assert.match(same,/data-seed="27"[^>]+data-replay-from="1"/);
+ assert.match(same,/data-brief-opening="auto" aria-pressed="true"/);
+ for(const [gun,text] of [['f','이동 보급차 · 30m · 방패 호위'],['r','박격포 진지 · 64m · 박격포 2문']]){
+  const planned=replayBriefingView(r,saved,'standard',null,{...options,openingGun:gun});
+  assert.ok(planned.includes(text));
+  assert.match(planned,new RegExp(`data-brief-opening="${gun}" aria-pressed="true"`));
+  assert.match(planned,new RegExp(`data-seed="27"[^>]+data-opening-gun="${gun}"`));
+  assert.doesNotMatch(planned,/data-replay-from/);
+  const {run:nextRun,next}=freshSortie(saved,27,null,'fio',null,1,null,'standard',true,gun);
+  assert.equal(nextRun.operation.openingGun,gun);
+  assert.equal(next.active.reference,undefined);
+ }
  const alternate=replayBriefingView(r,saved,'standard',null,{...options,starter:'turret'});
  assert.match(alternate,/data-seed="27"[^>]+data-coast-loadout="turret"/);
  assert.doesNotMatch(alternate,/data-replay-from/);
+ assert.doesNotMatch(replayBriefingView(r,saved,'standard',null,{...options,starter:'turret',openingGun:'f'}),/data-brief-opening|data-opening-gun/);
  const plan=createOperationPlan(()=>27,28);
  assert.equal(plan.seed,27);
  assert.notEqual(plan.forReport(27)%4,27%4);
  assert.notEqual(plan.forReport(27)%4,28%4);
  assert.notDeepEqual(holdoutParts(plan.forReport(27),0),holdoutParts(27,0));
  assert.equal(plan.seed,27);
+});
+test('harbor wins show the final build and put fresh sortie before optional research',()=>{
+ const p=emptyProfile(),run=createOperation(27,[],null,null,'fio','standard'),active=beginProfile(p,run);
+ Object.assign(run.operation,{region:2,cleared:3,extracted:true,history:[{region:0,time:20},{region:1,time:40}],regionTime:30});
+ run.operation.coastSalvage.turret='broken';
+ run.weapons.push({id:'f',level:6,branch:'trail',evolved:true});
+ Object.assign(run.stats,{bossKilled:true,wakeKills:20,infernoCoreHits:3});
+ run.t=90;finish(run,true);
+ const saved=settleProfile(active,run),html=reportView(saved.recent[0],saved);
+ assert.match(html,/data-build-summary[\s\S]*인페르노[\s\S]*잔불 제압 20명 · 코어 직격 3회/);
+ assert.match(html,/data-replay-route="fresh"[\s\S]*data-debrief-research/);
 });
 test('briefings share distinct field terrain and recognizable site symbols',()=>{
  assert.ok(fieldScene(0).water&&fieldScene(2).water&&fieldScene(0).water!==fieldScene(2).water);

@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.133.0" src="https://img.shields.io/badge/RIFT-0.133.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.134.0" src="https://img.shields.io/badge/RIFT-0.134.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -28,6 +28,8 @@
 철도 중계기를 확보하면 열차에 쓸 전술과 무장 정비 중 하나를 고릅니다. 화염으로 시작한 판은 F 강화와 촉매, 로켓으로 시작한 판은 H 강화와 축전 코일 중 부족한 재료가 표시됩니다. 두 재료가 필요해도 한 가지만 장착합니다.
 
 해안에서는 포로를 구출해 화염 F와 로켓 R 중 고르거나, 가까운 거점을 기관총 H로 기습해 해당 무기를 L2로 노획합니다. 작전도와 전장 바닥에 구조와 기습으로 갈라지는 길이 표시됩니다. 기습 거점은 시드에 따라 보급차와 박격포 진지로 달라집니다. 포로 구출로 시작하면 이후 맞춤 거점에서 특화 모듈과 수송차 공략을 노릴 수 있습니다.
+
+귀환 보고서의 **첫 무장 작전**에서 화염 보급차와 로켓 포대 중 하나를 기습 목표로 고를 수 있습니다. 기관총 H L1으로 상륙해 호위를 직접 제압하면 해당 무장을 L2로 얻고, 기습 직후 무장에 따라 다른 반격이 들어옵니다. 상황이 어려워지면 포로 구출로 돌아가 원하는 무기를 L1로 확보할 수 있습니다.
 
 철도의 진입로는 시드에 따라 좌우가 바뀌며, 전장 표지와 작전도는 지금 장착한 무장에 맞는 경유지를 강조합니다. 항구에서는 정면과 측면 해치의 첫 포격 방향이 다릅니다. 노획 포탑은 관제소에서 **양쪽 급탄 차단**을 고를 수 있습니다. 재장전 때 차체 앞 20m 사격선에 들어가 한 일제사격의 두 탄으로 양쪽을 맞히면 다음 측면 포격을 끊습니다. 발밑 포격은 회피해야 합니다.
 

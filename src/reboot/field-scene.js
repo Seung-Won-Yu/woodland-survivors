@@ -41,6 +41,16 @@ const scenes=[
  landmarks:[[2,0,15,410,165],[2,0,1590,850,160],[2,3,1570,190,105],[2,0,448,1151,186],[2,1,1021,1118,88],[2,2,1002,1130,76]]}
 ];
 const mirrorPoints=points=>points.map(([x,y])=>[1600-x,y]);
+const COAST_INSERTION=[800,1040];
+// On the longer approach, steer past the cage's pickup radius before turning inland.
+const COAST_BYPASS=[[680,800],[920,800],[700,780],[900,780]];
+function coastOpeningRoutes(seed,rescue,preempt,planned){
+ const bypass=planned&&preempt.coastApproach!==coastPreemptGun(seed)?[COAST_BYPASS[(seed>>>0)%COAST_BYPASS.length]]:[];
+ return [
+  {site:rescue.id,kind:'rescue',sign:'포로 구출',color:coastLeadColor(rescue),path:[COAST_INSERTION,[rescue.x,rescue.y]]},
+  {site:preempt.id,kind:'preempt',sign:`${preempt.name} 기습`,color:coastLeadColor(preempt),path:[COAST_INSERTION,...bypass,[preempt.x,preempt.y]],recommended:!!planned}
+ ];
+}
 const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
  shapes:scene.shapes.map(shape=>shape.type==='rect'?{...shape,x:1600-shape.x-shape.w}:{...shape,points:mirrorPoints(shape.points)}),
  rails:scene.rails?.map(mirrorPoints),
@@ -49,10 +59,8 @@ const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
 });
 const coastScenes=Array.from({length:4},(_,index)=>{
  const [rescue,truck,,battery]=beachRoute(index).points,scene=scenes[0];
- const arrival=[800,1040];
  const {sites}=regionLayout(index,0),preempt=sites.find(site=>site.coastApproach===coastPreemptGun(index));
- const routes=[sites[0],preempt].map(site=>({site:site.id,kind:site.opening?'rescue':'preempt',
-  sign:site.opening?'포로 구출':`${site.name} 기습`,color:coastLeadColor(site),path:[arrival,[site.x,site.y]]}));
+ const routes=coastOpeningRoutes(index,sites[0],preempt);
  const tracks=[routes[0].path,[rescue,truck],[rescue,battery],routes[1].path];
  return {...scene,tracks,opening:{routes},shapes:[
   ...scene.shapes,...tracks.map(points=>line(points,'#65563831',46)),
@@ -63,8 +71,17 @@ const coastScenes=Array.from({length:4},(_,index)=>{
 export const fieldScene=(index,seed=17)=>index===0?coastScenes[(seed>>>0)%coastScenes.length]:(mapSeed(seed,index)%2===0?mirrored:scenes)[index]||scenes[0];
 export function coastOpeningGuide(s){
  const preempt=coastPreemptSite(s),rescue=preempt&&s.sites[0];
- if(rescue?.state!=='waiting'||preempt.state!=='waiting'||preempt.preempt||s.raid?.state==='active')return null;
- return {...fieldScene(0,s.seed).opening,preempt};
+ if(!preempt||s.raid?.state==='active')return null;
+ const planned=s.operation.openingGun;
+ if(planned)return {routes:coastOpeningRoutes(s.seed,rescue,preempt,true),preempt,rescue};
+ if(rescue.state!=='waiting'||preempt.state!=='waiting'||preempt.preempt)return null;
+ return {...fieldScene(0,s.seed).opening,preempt,rescue};
+}
+export function coastOpeningBrief(seed,gun){
+ const {sites}=previewLayout(seed,0),site=sites.find(site=>site.coastApproach===gun);
+ const [,route]=coastOpeningRoutes(seed,sites[0],site,true);
+ const distance=route.path.slice(1).reduce((sum,[x,y],i)=>sum+Math.hypot(x-route.path[i][0],y-route.path[i][1]),0);
+ return {site,firstTurn:route.path[1],distance,detour:route.path.length>2};
 }
 export function previewLayout(seed,index,order=null,salvageRail=false){return regionLayout(mapSeed(seed,index),index,order,salvageRail);}
 export function sitePresentation(n){

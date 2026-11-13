@@ -1,4 +1,4 @@
-import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope} from './campaign.js';
+import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope,isOpeningGun} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,createCoastSortie,restore,snapshot,finish,canResumeRun} from './model.js';
 import {coastTurretReturned,isSalvageCampaign} from './coast-salvage.js';
@@ -44,7 +44,7 @@ export function sortieResearchTrials(p){
  const cleared=clearedResearchTrials(p.active.run);
  return p.trials.filter(id=>!cleared.includes(id));
 }
-export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null,coastLoadout=null,fullCampaign=false){
+export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null,coastLoadout=null,fullCampaign=false,openingGun=null){
  if(coastLoadout!==null&&(!['standard','turret'].includes(coastLoadout)||!fullCampaign&&(order||requisition||requisitionAt)||
     coastLoadout==='turret'&&p.milestones.coastTurret!==true))throw Error('해안 노획 출격 조건을 확인하세요.');
  const priorReport=replayFrom===null?null:p.recent.find(report=>report?.sequence===replayFrom);
@@ -64,6 +64,7 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
  }
  const run=coastLoadout&&!fullCampaign?createCoastSortie(seed,operator,coastLoadout)
   :createOperation(seed,p.research,p.trials,order,operator,fullCampaign?coastLoadout||'standard':null);
+ if(isOpeningGun(openingGun)&&fullCampaign&&coastLoadout!=='turret'&&!order&&!requisition&&!run.trials.length)run.operation.openingGun=openingGun;
  if(requisition)run.operation.requisition=requisition;
  if(requisitionAt)run.operation.requisitionAt=requisitionAt;
  return {run,next:beginProfile(p,run,reference)};
@@ -98,9 +99,12 @@ export function settleProfile(p,run){
    r.newScore=!prior||r.score>prior.score;r.newTime=!prior||r.seconds<prior.time;
    orders[id]={scope,wins:(prior?.wins||0)+1,score:Math.max(prior?.score||0,r.score),time:Math.min(prior?.time??Infinity,r.seconds)};
   }else{
-   r.newScore=r.score>record.score;r.newTime=r.won&&(record.time===null||r.seconds<record.time);
-   record.score=Math.max(record.score,r.score);record.challenge=Math.max(record.challenge,r.stats.challenge);
-   if(r.won){record.time=Math.min(record.time??Infinity,r.seconds);if(marco)record.wins++;}
+   if(!r.operation?.openingGun){
+    r.newScore=r.score>record.score;r.newTime=r.won&&(record.time===null||r.seconds<record.time);
+    record.score=Math.max(record.score,r.score);record.challenge=Math.max(record.challenge,r.stats.challenge);
+    if(r.won)record.time=Math.min(record.time??Infinity,r.seconds);
+   }
+   if(r.won&&marco)record.wins++;
   }
  }
  if(r.won){n.records.wins++;n.milestones.medic=true;}

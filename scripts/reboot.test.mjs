@@ -11,6 +11,7 @@ import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
 import {coastRoleTarget,coastRoleRank} from '../src/reboot/coast-salvage.js';
+import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -521,6 +522,79 @@ test('paid and research sorties preserve their briefed coast opening',()=>{
   s.blocks=[];
   Object.assign(s.player,{x:outpost.x,y:outpost.y});
   assert.notEqual(interaction(s)?.id,'coast-preempt');
+ }
+});
+test('a briefing can dispatch either first-weapon raid on the same coast and recover the selected route',()=>{
+ const p=emptyProfile();
+ for(const gun of ['f','r']){
+  const {run,next}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,gun);
+  const s=restore(next.active.run),outpost=coastPreemptSite(s);
+  const route=coastOpeningGuide(s).routes.find(n=>n.kind==='preempt');
+  const expectedGuards=gun==='f'?['shield','rifle','rifle']:['mortar','mortar'];
+  assert.equal(run.level,1);
+  assert.deepEqual(run.weapons.map(w=>[w.id,w.level]),[['h',1]]);
+  assert.equal(outpost.coastApproach,gun);
+  assert.equal(coastLead(s),outpost);
+  assert.deepEqual(route.path.at(-1),[outpost.x,outpost.y]);
+  assert.deepEqual(route.path[1],coastOpeningBrief(27,gun).firstTurn);
+  assert.equal(route.path.length,gun==='f'?2:3);
+  s.sites[0].state='active';
+  assert.ok(coastOpeningGuide(s),'the guide stays visible while the rescue guards are active');
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  Object.assign(s.player,{x:outpost.x,y:outpost.y});
+  assert.equal(interaction(s)?.id,'coast-preempt');
+  assert.ok(action(s,'interact'));step(s,dt);
+  assert.deepEqual(s.enemies.filter(e=>e.siteId===outpost.id).map(e=>e.type),expectedGuards);
+  assert.throws(()=>restore({...snapshot(s),operation:{...s.operation,openingGun:gun==='f'?'r':'f'}}),/체크포인트/);
+  const active=restore(snapshot(s));
+  active.enemies=[];step(active,dt);
+  const draft=restore(snapshot(active));
+  assert.equal(draft.choice.preempt,true);
+  assert.ok(choose(draft,`gun:${gun}`));
+  assert.equal(draft.stats.coastPreempt,gun);
+  assert.equal(draft.weapons.find(w=>w.id===gun).level,2);
+  assert.equal(restore(snapshot(draft)).operation.openingGun,gun);
+ }
+ const {run:fallback}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,'r');
+ fallback.blocks=[];fallback.enemies=[];
+ Object.assign(fallback.sites[0],{state:'ready'});
+ Object.assign(fallback.player,{x:fallback.sites[0].x,y:fallback.sites[0].y});
+ step(fallback,dt);
+ assert.equal(coastPreemptSite(fallback),null);
+ assert.deepEqual(fallback.choices.filter(c=>c.kind==='gun').map(c=>c.weapon).sort(),['f','r']);
+ assert.ok(choose(fallback,'gun:f'));
+ assert.equal(fallback.weapons.find(w=>w.id==='f').level,1);
+ assert.equal(fallback.stats.coastPreempt,undefined);
+ p.research=['thermal'];p.trials=['thermal'];
+ assert.equal(freshSortie(p,27,null,'fio',null,null,null,'standard',true,'r').run.operation.openingGun,undefined);
+});
+test('a first-weapon raid pays completion and unlocks without replacing the standard record',()=>{
+ const p=emptyProfile();
+ Object.assign(p.records,{score:7000,time:100,challenge:2});
+ const {run,next}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,'r');
+ Object.assign(run.operation,{region:2,cleared:3,extracted:true});
+ Object.assign(run.stats,{bossKilled:true,score:12000,challenge:3});
+ run.t=80;finish(run,true);
+ const settled=settleProfile(next,run),report=settled.recent[0];
+ assert.deepEqual(settled.records,{score:7000,time:100,challenge:2,wins:1});
+ assert.equal(settled.milestones.medic,true);
+ assert.equal(report.creditBreakdown.firstClear,200);
+ assert.equal(report.newScore,false);
+ assert.equal(report.newTime,false);
+ assert.equal(report.operation.openingGun,'r');
+});
+test('a planned raid focuses the armed outpost guard after immediate threats',()=>{
+ for(const [plan,gap,expected] of [['f',110,'guard'],['f',55,'ambient'],[null,110,'ambient']]){
+  const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,plan);
+  const site=coastPreemptSite(s);
+  Object.assign(site,{preempt:true,state:'active'});
+  Object.assign(s,{blocks:[],shots:[],spawnClock:999});
+  Object.assign(s.player,{x:site.x,y:site.y+125});
+  const enemy=(id,x,y,siteId)=>({id,type:'rifle',x,y,siteId,r:13,hp:28,maxHp:28,speed:0,walk:0,aim:0,timer:1,hurt:0,spawnAge:1,death:0});
+  s.enemies=[enemy('ambient',s.player.x+gap,s.player.y,null),enemy('guard',site.x,site.y-40,site.id)];
+  s.weapons[0].cd=0;
+  step(s,dt);
+  assert.equal(s.shots[0]?.target,expected);
  }
 });
 test('opening enemies respect distance and cover even near the southern boundary',()=>{

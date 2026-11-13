@@ -168,8 +168,8 @@ function paintCoastGround(c,scene,seed,art){
  }
 }
 export function paintCoastOpening(c,{routes}){
- for(const {path,kind,color} of routes){
-  const [[ax,ay],[bx,by]]=path,dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
+ for(const {path,kind,color,recommended} of routes)for(let leg=1;leg<path.length;leg++){
+  const [ax,ay]=path[leg-1],[bx,by]=path[leg],dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
   c.save();c.translate(ax,ay);c.rotate(Math.atan2(dy,dx));
   // Scuffed paint sits on the sand. The footsteps and tire marks stay distinct without color.
   const footsteps=kind==='rescue',start=footsteps?48:52,stride=footsteps?28:34;
@@ -181,12 +181,14 @@ export function paintCoastOpening(c,{routes}){
     c.fillRect(d-4,y,5,4);c.fillRect(d+3,y-1,7,6);
    }else for(const y of [-13,10]){
     c.fillStyle='#3d413269';c.fillRect(d-3,y-1,17,6);
-    c.fillStyle=color+'b3';c.fillRect(d,y,5,4);c.fillRect(d+7,y,5,4);
+    c.fillStyle=color+(recommended?'eb':'b3');c.fillRect(d,y,5,4);c.fillRect(d+7,y,5,4);
    }
   }
-  c.fillStyle='#283b335e';c.fillRect(82,-11,24,22);
-  c.strokeStyle=color;c.lineWidth=3;c.beginPath();
-  c.moveTo(89,-6);c.lineTo(97,0);c.lineTo(89,6);c.stroke();
+  if(length>110){
+   c.fillStyle=recommended?'#223a30b8':'#283b335e';c.fillRect(82,-11,24,22);
+   c.strokeStyle=color;c.lineWidth=3;c.beginPath();
+   c.moveTo(89,-6);c.lineTo(97,0);c.lineTo(89,6);c.stroke();
+  }
   c.restore();
  }
 }

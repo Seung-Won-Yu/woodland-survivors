@@ -461,9 +461,11 @@ export function coastPreemptGun(seed){
  const gap=([x,y])=>Math.hypot(x-800,y-1040);
  return gap(truck)<gap(battery)?'f':'r';
 }
+export const isOpeningGun=id=>id==='f'||id==='r';
+export const coastOpeningGun=s=>s.operation?.openingGun||coastPreemptGun(s.seed);
 export function coastPreemptSite(s){
  if(s.operation?.region!==0||s.stage!=='field'||coastAtShore(s)&&!isSalvageCampaign(s)||s.operation.order||s.operation.requisition||s.operation.trialProof||s.trials?.length||s.firstNew||s.sites[0]?.state==='done')return null;
- const gun=coastPreemptGun(s.seed);
+ const gun=coastOpeningGun(s);
  if(s.weapons.some(w=>w.id===gun&&!w.fusion))return null;
  return s.sites.find(site=>site.coastApproach===gun&&site.state!=='done')||null;
 }
@@ -531,7 +533,8 @@ export function coastLead(s){
  if(s.operation?.region!==0||s.stage!=='field')return null;
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
  const preempt=coastPreemptSite(s);
- if(preempt&&(distance(preempt,s.player)<COAST_PREEMPT_RANGE||preempt.preempt&&distance(preempt,s.player)<260))return preempt;
+ if(s.operation.openingGun&&rescue&&rescue.state!=='waiting'&&distance(rescue,s.player)<120)return rescue;
+ if(preempt&&(s.operation.openingGun||distance(preempt,s.player)<COAST_PREEMPT_RANGE||preempt.preempt&&distance(preempt,s.player)<260))return preempt;
  if(rescue)return rescue;
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
  const needsCoil=s.firstNew==='f'&&!s.modules.some(m=>m.id==='coil');
