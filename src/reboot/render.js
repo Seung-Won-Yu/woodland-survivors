@@ -1,6 +1,6 @@
 import {paintTerrain,paintTerrainMargins,paintNorthBoundary,paintCoastOpening,paintBlock,paintCoverShadow,coverMasksPilot,paintLandmark,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintEntrySigns,paintPortGantry} from './field-art.js';
 import {fieldScene} from './field-scene.js';
-import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,portCrossfireZone,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,COAST_SALVAGE_LEVEL,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
+import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,portCrossfireZone,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,COAST_SALVAGE_LEVEL,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBossGuide,railLaneBounds} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp,coastFanAngle,isCapturedTurret} from './content.js';
 import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue,railFanCutCue} from './model.js';
@@ -695,26 +695,26 @@ function paintRailFanSweep(c,f,t,reduced){
 }
 function paintRailFanLine(c,cue){
  const {x,y,state,guns,edges,halfWidth,halfDepth,inPosition}=cue;
- const active=state==='hold'||state==='ready',color=active?'#ffedaf':'#edc382';
+ const active=cue.clear,color=active?'#fff0b9':'#edc382';
  const top=y-halfDepth,bottom=y+halfDepth;
  c.save();
- c.fillStyle=inPosition?'#725b3bbd':'#272e28bd';c.fillRect(x-halfWidth,top,halfWidth*2,halfDepth*2);
- for(const side of [-1,1]){
-  const edge=x+side*halfWidth;
-  c.beginPath();
-  c.moveTo(x+side*6,bottom);c.lineTo(edge,bottom);c.lineTo(edge,top);c.lineTo(x+side*6,top);
-  c.strokeStyle='#1a2522';c.lineWidth=7;c.stroke();
-  c.strokeStyle=color;c.lineWidth=3;c.stroke();
-  c.fillStyle=color;c.fillRect(edge+side*7-2,y-3,4,6);
- }
  for(let i=0;i<edges.length;i++){
   const edge=edges[i],gun=guns[i],ink=RAIL_GUN_COLORS[i];
-  c.setLineDash(active?[12,8]:[5,13]);c.beginPath();
-  c.moveTo(x+(i===0?-1:1)*8,top-7);c.lineTo(edge.x,edge.y+18);
-  c.strokeStyle='#1a2522aa';c.lineWidth=5;c.stroke();
-  c.strokeStyle=ink+(active?'e6':'97');c.lineWidth=2;c.stroke();
+  c.setLineDash(state==='ready'?[]:active?[14,7]:[4,13]);c.beginPath();
+  c.moveTo(x+(i===0?-1:1)*8,top-6);c.lineTo(edge.x,edge.y+12);
+  c.strokeStyle='#172322d9';c.lineWidth=state==='ready'?7:5;c.stroke();
+  c.strokeStyle=ink+(active?'ef':'a6');c.lineWidth=state==='ready'?3:2;c.stroke();
   c.setLineDash([]);
-  if(active)circle(c,gun.x,gun.y,30,null,ink,2);
+  if(active)circle(c,gun.x,gun.y,30,null,ink,state==='ready'?3:2);
+ }
+ c.fillStyle=inPosition?'#9f723c48':'#182b28d9';c.fillRect(x-halfWidth,top,halfWidth*2,halfDepth*2);
+ c.lineWidth=6;c.strokeStyle='#142422';c.strokeRect(x-halfWidth,top,halfWidth*2,halfDepth*2);
+ c.lineWidth=2;c.strokeStyle=color;c.strokeRect(x-halfWidth,top,halfWidth*2,halfDepth*2);
+ c.fillStyle=color;
+ for(const side of [-1,1])c.fillRect(x+side*(halfWidth+4)-2,top+5,4,halfDepth*2-10);
+ if(!inPosition){
+  c.beginPath();c.moveTo(x-8,y+5);c.lineTo(x,y-4);c.lineTo(x+8,y+5);
+  c.lineWidth=3;c.stroke();
  }
  c.restore();
 }
@@ -862,17 +862,17 @@ function paintRailWarning(c,h,y,forecast=false,locked=false){
 }
 function paintRailStop(c,p,slot){
  const {x,y,left,right}=slot,side=Math.sign(x-p.x);
- const from=Math.max(left,x-23),to=Math.min(right,x+23),base=y+13;
- c.save();c.fillStyle='#152d29c9';c.fillRect(from,base-10,to-from,20);
- c.strokeStyle='#c3ebce';c.lineWidth=3;c.beginPath();
- c.moveTo(from,base-12);c.lineTo(from,base+12);c.moveTo(to,base-12);c.lineTo(to,base+12);
- c.moveTo(from,base+9);c.lineTo(to,base+9);c.stroke();
+ const from=Math.max(left,x-22),to=Math.min(right,x+22);
+ c.save();
  if(Math.abs(x-p.x)>35){
-  const start=p.x+side*21,end=x-side*14;
-  c.beginPath();c.moveTo(start,base);c.lineTo(end,base);c.setLineDash([6,8]);
-  c.strokeStyle='#27362c';c.lineWidth=6;c.stroke();c.strokeStyle='#e4efce';c.lineWidth=2.5;c.stroke();
-  c.setLineDash([]);c.beginPath();c.moveTo(end-side*9,base-6);c.lineTo(end,base);c.lineTo(end-side*9,base+6);c.stroke();
+  c.beginPath();c.moveTo(p.x+side*21,y);c.lineTo(side>0?from:to,y);c.setLineDash([6,7]);
+  c.strokeStyle='#162925';c.lineWidth=6;c.stroke();c.strokeStyle='#c7f2e3';c.lineWidth=2.5;c.stroke();
+  c.setLineDash([]);
  }
+ c.fillStyle='#183935eb';c.fillRect(from,y-14,to-from,28);
+ c.strokeStyle='#142322';c.lineWidth=6;c.strokeRect(from,y-14,to-from,28);
+ c.strokeStyle='#c7f2e3';c.lineWidth=2.5;c.strokeRect(from,y-14,to-from,28);
+ c.beginPath();c.moveTo(x-side*5,y-6);c.lineTo(x+side*3,y);c.lineTo(x-side*5,y+6);c.stroke();
  c.restore();
 }
 function paintPortPerimeter(c,rounds){
@@ -924,7 +924,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
  const missileTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
- function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s),opening=null){
+ function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s),opening=null,rail=railBossGuide(s,railFanCutCue(s))){
   if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
   const gate=exitGate(s),aid=portAidCue(s),conduit=conduitMortarCue(s);
   const harborWarnings=s.operation?.region===2&&s.boss.active?s.hazards.filter(h=>!h.lane&&!h.hit):[];
@@ -1056,8 +1056,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   for(const g of s.gems)if(!g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   const salvage=coastSalvage(s),wreck=coastSalvageWreck(s),roleTarget=coastRoleTarget(s);
-  const railFanLine=railFanCutCue(s);
-  const showRailPad=railFanLine&&['approach','hold','ready','recover'].includes(railFanLine.state);
+  const railFanLine=rail?.pad;
   const railWings=s.operation?.region===1&&s.stage==='field'&&!s.stats.railFanSweep&&s.weapons.some(isCapturedTurret)
    ?[0,1].map(wing=>s.enemies.find(e=>e.railWing===wing&&!e.dead&&visible(e.x,e.y,24))):[];
   if(wreck&&visible(wreck.x,wreck.y,COAST_SALVAGE.reach)){
@@ -1129,11 +1128,12 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     }
     circle(c,e.x,e.y,14,'#263b3338');
     const wireMortar=e.cohort==='wire-guard'&&e.type==='mortar'&&s.stage!=='boss';
-    if(!e.dead&&(e.cohort==='port-battery'||wireMortar||e===conduit?.gun)){
-     const color=e===conduit?.gun&&conduit.clear?'#a4e3e3':'#ffcf9a';
+    const relayMortar=e.siteId==='rail-relay'&&e.cohort==='rail-guard'&&e.type==='mortar'&&s.stage==='field';
+    if(!e.dead&&(e.cohort==='port-battery'||wireMortar||relayMortar||e===conduit?.gun)){
+     const color=relayMortar||e===conduit?.gun&&conduit.clear?'#a4e3e3':'#ffcf9a';
      circle(c,e.x,e.y,22,'#8a4e2425',color,2);
      bar(c,e.x,e.y-58,45,e.hp/e.maxHp,'#f4be83');
-     c.fillStyle=color;c.font='10px Galmuri';c.textAlign='center';c.fillText(wireMortar?'통신소 박격포':'박격포',e.x,e.y-66);
+     c.fillStyle=color;c.font='10px Galmuri';c.textAlign='center';c.fillText(wireMortar?'통신소 박격포':relayMortar?'후방 박격포':'박격포',e.x,e.y-66);
     }
     if(e.hurt>0)c.filter='brightness(1.7)';if(art)actor(c,art.enemies,({rifle:0,shield:1,mortar:2,officer:3})[e.type],Math.floor(e.walk)%4,e.x,e.y,e.type==='officer'?62:e.type==='shield'?55:49,Math.cos(e.aim)<0);else{c.fillStyle=e.type==='officer'?'#ba6d53':'#48533c';c.fillRect(e.x-12,e.y-34,24,34);}c.filter='none';
     if(railWings.includes(e))paintRailWing(c,e);
@@ -1214,7 +1214,6 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    }if(item.kind!=='enemy'&&item.kind!=='player'&&e.burn>0&&!e.dead){for(let i=-1;i<=1;i++)flame(c,e.x+i*28,e.y-18,24,s.t*11+i);}
    c.restore();
   }
-  if(showRailPad&&visible(railFanLine.x,railFanLine.y,55))paintRailFanLine(c,railFanLine);
   for(const g of s.gems)if(g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   if(salvage)for(const part of salvage.parts)if(visible(part.x,part.y)){
    circle(c,part.x,part.y,12,'#223a38b0','#91dbc1',1.5);
@@ -1249,7 +1248,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     if(q.relay){c.fillStyle='#b8fff2';c.fillRect(-10,-6,7,2);c.fillRect(-10,4,7,2);}
    }else if(q.capturedFan){
     c.fillStyle='#a55e3d';c.fillRect(-14,-3,19,6);
-    c.fillStyle='#ffe4a4';c.fillRect(-8,-2,19,4);
+    c.fillStyle=q.railFanCut?RAIL_GUN_COLORS[q.railFanCut.gun]:'#ffe4a4';c.fillRect(-8,-2,19,4);
     c.fillStyle='#fff5ca';c.fillRect(4,-1,9,2);
    }else if(q.salvo){
     c.fillStyle='#a45734';c.fillRect(-12,-5,15,10);
@@ -1308,8 +1307,9 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     }
    }
    else if(f.type==='barrage-cancel'&&(f.crossfire||f.railFanCut)){
-    const color='#ffe4a4',r=reduced?31:24+t*28;
-    for(const [x,y] of [[f.x,f.y],[f.x2,f.y2]])if(visible(x,y,r)){
+    const r=reduced?31:24+t*28;
+    for(const [i,x,y] of [[0,f.x,f.y],[1,f.x2,f.y2]])if(visible(x,y,r)){
+     const color=f.railFanCut?RAIL_GUN_COLORS[i]:'#ffe4a4';
      circle(c,x,y,r,null,color,3);
      c.strokeStyle=color;c.lineWidth=3;c.beginPath();
      c.moveTo(x-9,y-9);c.lineTo(x+9,y+9);c.moveTo(x+9,y-9);c.lineTo(x-9,y+9);c.stroke();
@@ -1405,12 +1405,10 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(volley&&visible(volley.x,volley.y,20))paintCoastVolley(c,volley);
   if(chargeLane)paintChargeLane(c,s.boss,chargeLane,true);
   for(const q of s.enemyShots)if(visible(q.x,q.y))circle(c,q.x,q.y-18,6,'#b0422c','#ffe1a1',2);
-  const railRounds=s.hazards.filter(h=>h.lane&&!h.hit);
-  const railForecast=railBarragePreview(s),railLocked=railDecoyLocked(s);
-  for(const h of railForecast)if(visible(h.x,s.player.y,h.w))paintRailWarning(c,h,s.player.y,true,railLocked);
+  for(const h of rail?.forecast||[])if(visible(h.x,s.player.y,h.w))paintRailWarning(c,h,s.player.y,true,rail.locked);
   if(portRounds.length)paintPortPerimeter(c,portRounds.filter(h=>visible(h.x,h.y,blastContactRadius(h))));
   for(const h of s.hazards){
-   const wide=h.portRound||h.coastMortar||h.signalCut||h.portBattery||h.relayDefense||h.conduitGun||portBoss&&!h.lane;
+   const wide=h.portRound||h.coastMortar||h.signalCut||h.portBattery||h.relayDefense||h.conduitGun||(portBoss||rail)&&!h.lane;
    if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:wide?blastContactRadius(h):h.r))continue;
    if(h.lane){paintRailWarning(c,h,s.player.y);continue;}
    if(h.coastMortar||h.signalCut||h.portBattery||h.conduitGun){
@@ -1446,11 +1444,8 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     c.moveTo(h.x-10,h.y+9);c.lineTo(h.x+10,h.y-9);c.stroke();
    }
   }
-  const railLanes=railLocked?railForecast:railRounds;
-  if(railLanes.length){
-   const {slot}=railEscapeSlot(s,railLanes);
-   if(slot)paintRailStop(c,s.player,slot);
-  }
+  if(railFanLine&&visible(railFanLine.x,railFanLine.y,55))paintRailFanLine(c,railFanLine);
+  if(rail?.slot)paintRailStop(c,s.player,rail.slot);
   if(portBoss&&art&&s.player.y<s.boss.y&&s.boss.y-s.player.y<145&&Math.abs(s.player.x-s.boss.x)<97){
    const {x,y}=s.player;
    circle(c,x,y,16,null,'#182a2c',6);
@@ -1463,15 +1458,21 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
-  if(showRailPad&&['approach','hold','recover'].includes(railFanLine.state)&&distance(s.player,railFanLine)<125
-   &&!s.hazards.some(h=>!h.lane&&!h.hit&&h.timer>0&&distance(s.player,h)<blastContactRadius(h))){
-   const label=railFanLine.clear?'사격선 확보':railFanLine.inPosition?'엄폐 옆으로':'표식 안에서 정지';
+  const railMark=rail?.slot||railFanLine;
+  if(railMark&&distance(s.player,railMark)<230){
+   const ink=rail.slot?'#c7f2e3':'#ffe2a0';
+   const label=rail.slot?(rail.mortar?'안전 위치':'차선 밖'):railFanLine.clear?'발사 대기':'포탑 사격 위치';
+   const point=project(railMark.x,railMark.y);
    c.save();c.font='bold 12px Galmuri';
-   const width=Math.ceil(c.measureText(label).width)+16;
-   const at=clearBearingPosition(size,project(railFanLine.x,railFanLine.y+railFanLine.halfDepth+18),width,combatHud.rects,10);
+   const width=Math.ceil(c.measureText(label).width)+20;
+   const at=clearBearingPosition(size,{x:point.x,y:point.y+25},width,combatHud.rects,10);
    if(at){
-    c.fillStyle='#172822ee';c.fillRect(at.x-width/2,at.y-10,width,20);
-    c.fillStyle='#ffe2a0';c.textAlign='center';c.fillText(label,at.x,at.y+4);
+    c.beginPath();c.moveTo(point.x,point.y+9);c.lineTo(at.x,at.y-10);
+    c.strokeStyle='#172822';c.lineWidth=4;c.stroke();
+    c.strokeStyle=ink;c.lineWidth=1.5;c.stroke();
+    c.fillStyle='#172822f5';c.fillRect(at.x-width/2,at.y-10,width,20);
+    c.fillStyle=ink;c.fillRect(at.x-width/2,at.y-10,2,20);
+    c.textAlign='center';c.fillText(label,at.x+1,at.y+4);
    }
    c.restore();
   }

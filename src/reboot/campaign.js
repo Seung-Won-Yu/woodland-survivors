@@ -1,4 +1,4 @@
-import {FIELD,MODULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
+import {FIELD,MODULES,RULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
 import {routeCursor} from './raid.js';
 import {COAST_SALVAGE,coastAtShore,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,canAdvanceFront,railSortieReturned} from './coast-salvage.js';
 
@@ -337,6 +337,26 @@ export function railEscapeSlot(s,rounds){
  add(cursor,right);
  const slot=slots.sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0]||null;
  return {danger:true,slot};
+}
+export function railBossGuide(s,fan){
+ if(s.operation?.region!==1||!s.boss.active)return null;
+ const rounds=s.hazards.filter(h=>h.lane&&!h.hit&&h.timer>0);
+ const stray=s.hazards.filter(h=>!h.lane&&!h.hit&&h.timer>0);
+ const mortar=stray.reduce((soonest,h)=>distance(s.player,h)<blastContactRadius(h)&&
+  (!soonest||h.timer<soonest.timer)?h:soonest,null);
+ const padBlocked=fan&&stray.some(h=>{
+  const x=clamp(h.x,fan.x-fan.halfWidth,fan.x+fan.halfWidth),y=clamp(h.y,fan.y-fan.halfDepth,fan.y+fan.halfDepth);
+  return Math.hypot(h.x-x,h.y-y)<blastContactRadius(h);
+ });
+ const locked=railDecoyLocked(s),forecast=railBarragePreview(s),lanes=locked?forecast:rounds;
+ const dodge=lanes.length?railEscapeSlot(s,lanes):null;
+ const time=rounds.length?Math.min(...rounds.map(h=>h.timer)):null;
+ // Leave room to walk out after launch, even if a shell is stopped by cover.
+ const wait=fan?.state==='ready'&&!mortar&&!padBlocked&&(!dodge?.danger||!!dodge.slot&&
+  fan.cooldown+Math.abs(dodge.slot.x-s.player.x)/RULES.player.speed+.12<time);
+ const escape=!!dodge?.danger&&!wait;
+ const pad=fan&&!mortar&&!padBlocked&&!escape&&(['approach','hold','recover'].includes(fan.state)||wait)?fan:null;
+ return {fan,rounds,mortar,locked,forecast,lanes,time,wait,escape,slot:escape?dodge.slot:null,pad};
 }
 export const FRONT_TACTICS={
  1:{

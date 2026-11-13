@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,portTacticKeys} from '../src/reboot/campaign.js';
+import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,railBossGuide,portTacticKeys} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue,armoredRaidPart} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -380,6 +380,34 @@ test('captured outside rounds cut a live railway barrage from the center line',(
  assert.equal(blocked.stats.railFanCut,undefined);
  assert.equal(blocked.hazards.filter(h=>h.lane).length,2);
  assert.equal(blocked.boss.railFanCutHit,undefined);
+});
+test('rail guidance shows either the firing pad or a safe escape slot during a live salvo',()=>{
+ const s=createOperation(27,[],null,null,'fio','turret');
+ Object.assign(s.operation,{region:1,cleared:1});
+ Object.assign(s,regionLayout(mapSeed(s.seed,1),1,null,true),{stage:'boss',boss:regionBoss(1,s.seed)});
+ Object.assign(s.boss,{active:true,mode:'salvo',cycle:1});
+ Object.assign(s.player,{x:800,y:432});
+ s.hazards=[{x:800,y:600,w:180,h:900,r:0,lane:true,tracked:true,railGun:1,timer:1.25},
+  {x:500,y:600,w:180,h:900,r:0,lane:true,railGun:0,timer:1.25}];
+ const guide=()=>railBossGuide(s,railFanCutCue(s));
+ assert.equal(guide().pad.state,'ready');assert.equal(guide().slot,null);
+ s.weapons[0].cd=.68;
+ assert.equal(railFanCutCue(s).state,'ready');
+ assert.equal(guide().pad,null);assert.ok(guide().slot);
+ s.weapons[0].cd=0;
+ s.shots=[{railFanCut:{cycle:1}}];
+ assert.equal(guide().fan.state,'flying');
+ assert.equal(guide().pad,null);assert.ok(guide().slot);
+ s.shots=[];
+ const mortar={x:800,y:432,r:45,timer:.25};
+ s.hazards.push(mortar);
+ assert.equal(guide().mortar,mortar);assert.equal(guide().pad,null);assert.ok(guide().slot);
+ s.player.y=518;s.hazards=[mortar];s.boss.mode='aim';
+ assert.equal(guide().mortar,null);assert.equal(guide().pad,null);
+ s.hazards=[];
+ assert.equal(guide().pad.state,'approach');
+ s.weapons=[makeWeapon('r')];
+ assert.equal(guide().pad,null);
 });
 test('a workshop sweep requires two rays from one captured volley and survives a checkpoint between contacts',()=>{
  const prepared=seed=>{

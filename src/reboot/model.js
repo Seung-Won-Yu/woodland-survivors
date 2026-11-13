@@ -1741,7 +1741,7 @@ export function railFanCutCue(s){
  });
  const state=flight?'flying':unsafeApproach?'evade':b.mode==='recover'?'recover':!clear?'approach':b.mode==='aim'?'hold':
   lanes.length===2&&time>=travel+Math.max(0,weapon.cd)?'ready':'evade';
- return {x,y,angle,guns,edges,state,halfWidth,halfDepth,inPosition,clear};
+ return {x,y,angle,guns,edges,state,halfWidth,halfDepth,inPosition,clear,cooldown:Math.max(0,weapon.cd)};
 }
 function fireCapturedFan(s,w,target,angle,stats,damage,crossfire,railCut){
  const volley=(s.stats.turretVolleys||0)+1;
@@ -2866,7 +2866,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const b=s.boss,coreDash=p.dash>0&&portCoreWindow(s),coreReach=coreDash?portCoreReach(s):0;
  const coreEntry=coreDash&&p.portRush&&distance(p,b)>coreReach;
  if(moving){
-  const speed=p.dash>0?650:190*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);
+  const speed=p.dash>0?650:RULES.player.speed*(p.pickupTime>0?1+moduleRank(s,'magnet')*.03:1);
   move(s,p,ix/len*speed*dt,iy/len*speed*dt,16);p.walk+=speed*dt*.05;
   const trail=s.weapons.find(isTrailInferno);
   if(trail)leaveInfernoWake(s,trail,startX,startY);

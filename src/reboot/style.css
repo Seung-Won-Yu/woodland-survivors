@@ -1104,6 +1104,8 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 }
 .arsenal .weapon[data-captured] {border-color: #d3a968}
 #boss-tactic[data-fan-line] {color:#ffdf9c}
+#boss-state[data-rail="fan"],#boss-state[data-rail="cut"]{color:#ffdf9c}
+#boss-state[data-rail="decoy"]{color:#bee9db}
 .front-transfer:is([data-transfer="mounted"],[data-transfer="cargo"],[data-transfer="wreck"]) {background:#373d30;color:#ffdf9c}
 .front-transfer[data-transfer="broken"]{border-left-color:#accdd2;background:#243b3a;color:#cfebea}
 .salvage-report .salvage-cut {color:#f3d698}
