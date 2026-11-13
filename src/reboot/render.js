@@ -2,8 +2,8 @@ import {paintTerrain,paintTerrainMargins,paintNorthBoundary,paintCoastOpening,pa
 import {fieldScene} from './field-scene.js';
 import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,portCrossfireZone,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,COAST_SALVAGE_LEVEL,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
-import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp,coastFanAngle} from './content.js';
-import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue} from './model.js';
+import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp,coastFanAngle,isCapturedTurret} from './content.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue,railFanCutCue} from './model.js';
 import {DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
@@ -673,6 +673,34 @@ function paintRailFanSweep(c,f,t,reduced){
   c.moveTo(px+r,py-6);c.lineTo(px+r,py+2);c.lineTo(px+r-7,py+2);c.stroke();
  }
 }
+function paintRailFanLine(c,cue){
+ const {x,y,state,guns,edges}=cue;
+ const active=state==='hold'||state==='ready',color=active?'#fff2b4':'#e5be7b';
+ c.save();
+ c.fillStyle=active?'#51442c':'#2c3833';c.fillRect(x-23,y-9,46,18);
+ c.strokeStyle='#222d29';c.lineWidth=6;c.strokeRect(x-23,y-9,46,18);
+ c.strokeStyle=color;c.lineWidth=2;c.beginPath();
+ for(const side of [-1,1]){
+  c.moveTo(x+side*23,y+8);c.lineTo(x+side*23,y-8);c.lineTo(x+side*8,y-8);
+  c.moveTo(x+side*14,y+8);c.lineTo(x+side*8,y+3);c.lineTo(x+side*2,y+8);
+ }
+ c.stroke();
+ if(active){
+  c.strokeStyle='#f7d58b77';c.setLineDash([6,10]);c.beginPath();
+  for(const edge of edges){c.moveTo(x,y-11);c.lineTo(edge.x,edge.y+12);}
+  c.stroke();c.setLineDash([]);
+  for(const gun of guns)circle(c,gun.x,gun.y,31,null,color,2);
+ }
+ c.restore();
+}
+function paintRailWing(c,e){
+ const color=e.railWing===0?'#f2cc85':'#c3e5d7',side=e.railWing===0?-1:1;
+ const {x,y}=e;
+ c.save();c.beginPath();
+ c.moveTo(x-side*8,y+6);c.lineTo(x+side*13,y+6);c.lineTo(x+side*19,y-1);
+ c.strokeStyle='#283832';c.lineWidth=6;c.stroke();
+ c.strokeStyle=color;c.lineWidth=2;c.stroke();c.restore();
+}
 function paintInfantryFall(c,e,reduced){
  const remaining=clamp(e.death/.3,0,1),fall=1-remaining,side=Math.cos(e.aim)<0?1:-1;
  c.globalAlpha=remaining*(e.deathFlavor ? .9 : .7);
@@ -1003,6 +1031,10 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   for(const g of s.gems)if(!g.salvage&&visible(g.x,g.y))paintXp(c,g,s.player,reach,reduced);
   const salvage=coastSalvage(s),wreck=coastSalvageWreck(s),roleTarget=coastRoleTarget(s);
+  const railFanLine=railFanCutCue(s);
+  if(railFanLine&&['approach','hold','ready','recover'].includes(railFanLine.state))paintRailFanLine(c,railFanLine);
+  const railWings=s.operation?.region===1&&s.stage==='field'&&!s.stats.railFanSweep&&s.weapons.some(isCapturedTurret)
+   ?[0,1].map(wing=>s.enemies.find(e=>e.railWing===wing&&!e.dead&&visible(e.x,e.y,24))):[];
   if(wreck&&visible(wreck.x,wreck.y,COAST_SALVAGE.reach)){
    c.save();c.setLineDash([9,7]);
    circle(c,wreck.x,wreck.y,COAST_SALVAGE.reach,'#e9bf641c','#f0d290',2);
@@ -1079,6 +1111,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
      c.fillStyle=color;c.font='10px Galmuri';c.textAlign='center';c.fillText(wireMortar?'통신소 박격포':'박격포',e.x,e.y-66);
     }
     if(e.hurt>0)c.filter='brightness(1.7)';if(art)actor(c,art.enemies,({rifle:0,shield:1,mortar:2,officer:3})[e.type],Math.floor(e.walk)%4,e.x,e.y,e.type==='officer'?62:e.type==='shield'?55:49,Math.cos(e.aim)<0);else{c.fillStyle=e.type==='officer'?'#ba6d53':'#48533c';c.fillRect(e.x-12,e.y-34,24,34);}c.filter='none';
+    if(railWings.includes(e))paintRailWing(c,e);
     if(!e.dead&&roleTarget&&s.operator==='marco'&&!e.coastScanned&&(e.coastArmor||roleTarget.id===e.id)){
      const radius=e.r+(roleTarget.id===e.id?13:8);
      c.beginPath();c.arc(e.x,e.y,e.r+9,e.aim+2.03,e.aim+4.25);
@@ -1238,7 +1271,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
      c.moveTo(x+9,y-9);c.lineTo(x-9,y+9);c.stroke();
     }
    }
-   else if(f.type==='barrage-cancel'&&f.crossfire){
+   else if(f.type==='barrage-cancel'&&(f.crossfire||f.railFanCut)){
     const color='#ffe4a4',r=reduced?31:24+t*28;
     for(const [x,y] of [[f.x,f.y],[f.x2,f.y2]])if(visible(x,y,r)){
      circle(c,x,y,r,null,color,3);

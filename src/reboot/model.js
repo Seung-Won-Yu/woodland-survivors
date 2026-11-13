@@ -167,7 +167,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -206,6 +206,13 @@ export function restore(raw,{allowPrevious=false}={}){
   ||Object.entries(s.railFanContacts).some(([volley,hits])=>!s.shots.some(q=>String(q.railFan?.volley)===volley)
    ||!Array.isArray(hits)||hits.length!==2||!hits.some(Boolean)||hits.some(hit=>hit!==null&&(!hit||![hit.x,hit.y].every(Number.isFinite)
     ||!Number.isInteger(hit.ray)||hit.ray<0||hit.ray>=CAPTURED_TURRET.evolved.count)))))fail();
+ const railCutMark=mark=>rail&&s.boss.active&&Number.isSafeInteger(mark?.volley)&&mark.volley>0&&mark.volley<=s.stats.turretVolleys
+  &&Number.isSafeInteger(mark.cycle)&&mark.cycle>0&&mark.cycle<=s.boss.cycle&&[0,1].includes(mark.gun);
+ if(s.shots.some(q=>q?.railFanCut!==undefined&&(!q.capturedFan||q.homing||!railCutMark(q.railFanCut))))fail();
+ if(s.boss.railFanCutHit!==undefined&&(!railCutMark(s.boss.railFanCutHit)||s.stats.railFanCut===true
+  ||!s.shots.some(q=>q.railFanCut?.volley===s.boss.railFanCutHit.volley&&q.railFanCut.gun!==s.boss.railFanCutHit.gun)))fail();
+ if(s.stats.railFanCut!==undefined&&(s.stats.railFanCut!==true||!carriesCoastSalvage(s)||s.operation.region<1
+  ||!Number.isSafeInteger(s.stats.turretVolleys)||s.stats.turretVolleys<1))fail();
  if(s.shots.some(q=>q?.crossfire!==undefined&&(!q.capturedFan||s.operation?.region!==2||s.operation.tactic!=='crossfire'
   ||!Number.isSafeInteger(q.crossfire?.volley)||q.crossfire.volley<1||q.crossfire.volley>s.stats.turretVolleys
   ||!Number.isSafeInteger(q.crossfire.cycle)||q.crossfire.cycle<1||q.crossfire.cycle>s.boss.cycle)))fail();
@@ -1612,6 +1619,7 @@ function fire(s,w,target,a,amount,opts={}){
   ...(opts.coastSignal?{coastSignal:true}:{}),...(breachLane!==undefined?{breachLane}:{}),...(armorCycle!==undefined?{armorCycle}:{}),
   ...(opts.capturedFan?{capturedFan:true,speed,...(opts.crossfire?{crossfire:opts.crossfire}:{})}:{}),
   ...(opts.railFan?{railFan:opts.railFan}:{}),
+  ...(opts.railFanCut?{railFanCut:opts.railFanCut}:{}),
   ...(payload||(evolved&&!rocket?{pierce:1}:evolved&&w.id==='r'?{salvo:true}:{}))
  });
  return true;
@@ -1639,14 +1647,37 @@ function salvoTargets(ordered,radius,count){
  }
  return [...spread,...ordered.filter(e=>!spread.includes(e))];
 }
-function fireCapturedFan(s,w,target,angle,stats,damage,crossfire){
+// Aim the two outside lanes past the hull, into the outer edges of the gun mounts.
+export function railFanCutCue(s){
+ const {boss:b,player:p}=s;
+ const weapon=s.operation?.region===1&&s.weapons.find(isCapturedTurret);
+ if(s.operation?.region!==1||!carriesCoastSalvage(s)||s.stage!=='boss'||!b.active||b.dead||s.stats.railFanCut
+  ||b.parts.some(part=>part.hp<=0)||!weapon)return null;
+ const x=b.x,y=b.y+244,angle=Math.atan2(b.y-p.y,b.x-p.x);
+ const guns=b.parts.map(part=>partPosition(s,part));
+ const edges=guns.map(gun=>({...gun,x:gun.x+Math.sign(gun.x-x)*32}));
+ const inPosition=Math.abs(p.x-x)<=18&&Math.abs(p.y-y)<=8;
+ const clear=inPosition&&edges.every(edge=>!lineBlocked(s,p,edge));
+ const lanes=s.hazards.filter(h=>h.lane&&!h.hit&&h.timer>0);
+ const flight=s.shots.some(q=>q.railFanCut?.cycle===b.cycle);
+ const time=Math.min(...lanes.map(h=>h.timer));
+ const travel=Math.max(...guns.map(gun=>distance(p,gun)))/CAPTURED_TURRET.speed+.035;
+ const state=flight?'flying':b.mode==='recover'?'recover':!clear?'approach':b.mode==='aim'?'hold':
+  lanes.length===2&&time>=travel+Math.max(0,weapon.cd)?'ready':'evade';
+ return {x,y,angle,guns,edges,state};
+}
+function fireCapturedFan(s,w,target,angle,stats,damage,crossfire,railCut){
  const volley=(s.stats.turretVolleys||0)+1;
  const trackRail=s.operation?.region===1&&carriesCoastSalvage(s)&&!s.stats.railFanSweep&&s.sites.some(site=>site.id==='rail-cache'&&['waiting','active'].includes(site.state));
  for(let i=0;i<stats.count;i++){
   const offset=coastFanAngle(i,stats.count);
   const marking=crossfire&&offset!==0?{volley,cycle:s.boss.cycle}:null;
-  fire(s,w,offset===0?target:null,angle+offset,damage,{capturedFan:true,homing:!crossfire&&offset===0&&w.branch==='homing',crossfire:marking,
-   railFan:trackRail?{volley,ray:i}:null});
+  const side=i-(stats.count-1)/2;
+  const railFanCut=railCut&&Math.abs(side)===2?{volley,cycle:s.boss.cycle,gun:side<0?0:1}:null;
+  const edge=railFanCut&&railCut.edges[railFanCut.gun];
+  const aim=edge?Math.atan2(edge.y-s.player.y,edge.x-s.player.x):angle+offset;
+  fire(s,w,offset===0?target:null,aim,damage,{capturedFan:true,homing:!crossfire&&offset===0&&w.branch==='homing',crossfire:marking,
+   railFan:trackRail?{volley,ray:i}:null,railFanCut});
  }
  s.stats.turretVolleys=volley;
  if(volley===1)s.stats.turretFirstAt=s.t;
@@ -1681,6 +1712,9 @@ function capturedFanAim(p,targets,heading,stats){
 }
 function shoot(s,w,counter){
  const d=weaponStats(w),p=s.player;
+ const fan=isCapturedTurret(w),railCue=fan?railFanCutCue(s):null;
+ if(railCue?.state==='hold')return false;
+ const railCut=railCue?.state==='ready'?railCue:null;
  const damageScale=activeManeuver(p)==='brace'?1.25:1;
  const reply=counter?.state==='ready'?counter:null;
  const volley=w.id==='r'?coastRocketVolley(s,undefined,w):null;
@@ -1696,8 +1730,8 @@ function shoot(s,w,counter){
  if(!target){const b=s.blocks.find(b=>b.hp>0&&distance({x:b.x+b.w/2,y:b.y+b.h/2},p)<150);if(b){b.hp=Math.max(0,b.hp-d.damage);p.attack=.1;emit(s,'impact',b.x+b.w/2,b.y+b.h/2);return true;}return false;}
  if(w.id!=='f'&&s.shots.length+d.count+(w.id==='h'&&w.branch==='grenade'&&w.shots%8===7?1:0)>320)return false;
  const angle=Math.atan2(target.y-p.y,target.x-p.x);
- const fan=isCapturedTurret(w),crossfire=fan&&portCrossfireZone(s)?.ready&&s.boss.parts.every(part=>candidates.includes(part));
- const a=crossfire?Math.atan2(s.boss.y-p.y,s.boss.x-p.x):fan?capturedFanAim(p,candidates,angle,d):angle;p.aim=a;p.attack=.12;
+ const crossfire=fan&&portCrossfireZone(s)?.ready&&s.boss.parts.every(part=>candidates.includes(part));
+ const a=railCut?railCue.angle:crossfire?Math.atan2(s.boss.y-p.y,s.boss.x-p.x):fan?capturedFanAim(p,candidates,angle,d):angle;p.aim=a;p.attack=.12;
  if(w.id==='f'){
   const catalyst=moduleRank(s,'catalyst'),focused=w.branch==='focused';
   let flameBlocker;
@@ -1730,7 +1764,7 @@ function shoot(s,w,counter){
   if(!w.evolved&&w.branch==='trail'&&w.shots%6===0&&p.moving&&s.zones.filter(z=>z.owner===w.uid).length<3&&s.zones.length<RULES.limits.zones)
    s.zones.push({x:p.x,y:p.y,r:50,dps:12,life:2,tick:.25,source:'dot',owner:w.uid});
  }else if(fan){
-  fireCapturedFan(s,w,target,a,d,d.damage*damageScale,crossfire);
+  fireCapturedFan(s,w,target,a,d,d.damage*damageScale,crossfire,railCut);
  }else{
   const nearest=[target,...candidates.filter(e=>e.id!==target.id)];
   const ordered=w.id==='r'&&w.evolved&&!w.fusion&&!reply?salvoTargets(nearest,d.radius,d.count):nearest;
@@ -1762,6 +1796,18 @@ function registerCrossfireHit(s,impact,mark){
  const [a,z]=b.parts.map(part=>partPosition(s,part));
  emit(s,'barrage-cancel',a.x,a.y,{x2:z.x,y2:z.y,crossfire:true,text:'양쪽 급탄 차단 · 다음 측면 포격 취소',life:1.2});
 }
+function registerRailFanCut(s,impact,mark){
+ const b=s.boss;
+ if(impact!==b.parts[mark.gun]||b.dead||b.mode!=='salvo'||b.cycle!==mark.cycle||s.stats.railFanCut)return;
+ const prior=b.railFanCutHit;
+ if(prior?.volley!==mark.volley||prior.gun===mark.gun){b.railFanCutHit=mark;return;}
+ s.hazards=s.hazards.filter(h=>!(h.lane&&!h.hit&&h.timer>0));
+ s.stats.railFanCut=true;
+ delete b.railFanCutHit;
+ b.timer=0;
+ const [left,right]=b.parts.map(part=>partPosition(s,part));
+ emit(s,'barrage-cancel',left.x,left.y,{x2:right.x,y2:right.y,railFanCut:true,life:1.6,text:'양쪽 포대 직격 · 포격 차단'});
+}
 function detonate(s,q,impact){
  const effect=q.source==='payload'?'payload-impact':q.capturedFan?'captured-impact':q.salvo?'salvo-impact':'explosion';
  const before=s.stats.payloadKills||0;
@@ -1769,8 +1815,11 @@ function detonate(s,q,impact){
  const cut=q.conduitGun&&conduitMortarCue(s);
  const cutHit=cut?.gun&&cut.gun.id===q.conduitGun&&distance(q,cut.gun)<=q.radius+cut.gun.r&&!lineBlocked(s,q,cut.gun);
  const directHp=impact?.hp;
+ const railCut=q.railFanCut;
+ const liveLane=railCut&&s.hazards.some(h=>h.lane&&railGunOf(h)===railCut.gun&&!h.hit&&h.timer>0);
  const burst=blast(s,q.x,q.y,q.radius,q.damage,q.source,q.owner,q.incendiary,effect,q.breachLane,q.coastSignal,q.armorCycle,q.railFan);
  if(q.crossfire&&impact?.hp<directHp)registerCrossfireHit(s,impact,q.crossfire);
+ if(liveLane&&impact?.hp<directHp)registerRailFanCut(s,impact,railCut);
  q.life=0;
  if(cutHit){
   s.hazards=s.hazards.filter(h=>h!==cut.round);
@@ -1849,6 +1898,8 @@ function updateShots(s,dt){
   if(atFuse&&q.life>0)detonate(s,q);
  }
  s.shots=s.shots.filter(q=>q.life>0);
+ const railHit=s.boss.railFanCutHit;
+ if(railHit&&!s.shots.some(q=>q.railFanCut?.volley===railHit.volley&&q.railFanCut.gun!==railHit.gun))delete s.boss.railFanCutHit;
  if(s.railFanContacts){
   const pending=new Set(s.shots.map(q=>q.railFan?.volley));
   for(const volley of Object.keys(s.railFanContacts))if(!pending.has(Number(volley)))delete s.railFanContacts[volley];

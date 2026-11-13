@@ -1028,6 +1028,9 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
  font-size: 9px;
 }
 .arsenal .weapon[data-captured] {border-color: #d3a968}
+#boss-tactic[data-fan-line] {color:#ffdf9c}
+.front-transfer[data-turret] {background:#373d30;color:#ffdf9c}
+.salvage-report .salvage-cut {color:#f3d698}
 .rail-debrief {
  display: grid;
  grid-template-columns: repeat(auto-fit,minmax(70px,1fr));

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,portTacticKeys} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} from '../src/reboot/choice-details.js';
@@ -311,6 +311,57 @@ test('the captured turret inherits the boss fan and hits separated lanes, while 
 });
 
 test('reboot runtime data stays identical to the reviewed design baseline',async()=>{assert.deepEqual(RULES,JSON.parse(await readFile('docs/design/reboot-rules.json','utf8')));});
+test('captured outside rounds cut a live railway barrage from the center line',()=>{
+ const prepare=(seed,loadout='turret',x=800,y=424)=>{
+  const s=createOperation(seed,[],null,null,'fio',loadout);
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{enemies:[],stage:'boss',boss:regionBoss(1,seed)});
+  Object.assign(s.boss,{active:true,timer:.1,spawnClock:999});
+  Object.assign(s.player,{x,y});
+  if(loadout==='standard')s.weapons=[makeWeapon('r')];
+  return s;
+ };
+ for(const [seed,x,y,evolved] of [[27,800,424,false],[28,818,432,true]]){
+  const s=prepare(seed,'turret',x,y);
+  if(evolved)Object.assign(s.weapons[0],{level:6,branch:'homing',evolved:true});
+  assert.equal(railFanCutCue(s).state,'hold');
+  tick(s,.14);
+  assert.equal(railFanCutCue(s).state,'flying');
+  assert.deepEqual(s.shots.filter(q=>q.railFanCut).map(q=>q.railFanCut.gun),[0,1]);
+  const restored=restore(snapshot(s));
+  tick(s,.6);tick(restored,.6);
+  assert.equal(s.stats.railFanCut,true);assert.equal(restored.stats.railFanCut,true);
+  assert.ok(s.boss.parts.every(p=>p.hp<p.maxHp));
+  assert.equal(s.hazards.filter(h=>h.lane).length,0);
+  assert.equal(s.boss.mode,'recover');
+  assert.equal(s.effects.filter(f=>f.railFanCut).length,1);
+  tick(s,4);
+  assert.ok(s.hazards.some(h=>h.lane),'subsequent warnings still run');
+ }
+ const rocket=prepare(27,'standard'),tooFar=prepare(27,'turret',800,470);
+ assert.equal(railFanCutCue(rocket),null);
+ assert.equal(railFanCutCue(tooFar).state,'approach');
+ for(const s of [rocket,tooFar]){
+  tick(s,.75);
+  assert.equal(s.stats.railFanCut,undefined);
+  assert.equal(s.hazards.filter(h=>h.lane).length,2);
+ }
+ const lethal=prepare(27);
+ lethal.boss.parts.forEach(part=>part.hp=20);
+ tick(lethal,.75);
+ assert.ok(lethal.boss.parts.every(part=>part.hp===0));
+ assert.equal(lethal.stats.railFanCut,true);
+ assert.equal(lethal.hazards.filter(h=>h.lane).length,0);
+ const blocked=prepare(27);
+ tick(blocked,.14);
+ const shot=blocked.shots.find(q=>q.railFanCut?.gun===1);
+ blocked.blocks.push({id:'test-occlusion',x:shot.x+16,y:shot.y-65,w:30,h:44,hp:-1});
+ tick(blocked,.65);
+ assert.equal(blocked.stats.railFanCut,undefined);
+ assert.equal(blocked.hazards.filter(h=>h.lane).length,2);
+ assert.equal(blocked.boss.railFanCutHit,undefined);
+});
 test('a workshop sweep requires two rays from one captured volley and survives a checkpoint between contacts',()=>{
  const prepared=seed=>{
   const s=createOperation(seed,[],null,null,'fio','turret');

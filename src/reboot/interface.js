@@ -458,7 +458,7 @@ function salvageCampaignReport(r){
  const site=r.stats.railFirstSite==='rail-cache'?'화차 정비대':r.stats.railFirstSite==='rail-relay'?'통신 중계기':null;
  return `<section class="salvage-report" data-outcome="${returned?'returned':e(coast.turret)}" aria-label="현장 노획 성과">
   ${returned||coast.turret==='secured'?itemArt('turret'):itemArt('ammo')}
-  <div><h2>${status}</h2><p>${returned?'새 출격에서 포탑 장착 가능':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p>${r.stats.railFanSweep===true?'<p class="salvage-sweep">정비대 · 일제사격으로 양쪽 대열 명중</p>':''}</div>
+  <div><h2>${status}</h2><p>${returned?'새 출격에서 포탑 장착 가능':coastRole(r).name+' '+coastRoleRank(coast)+'단계'}</p>${r.stats.railFanSweep===true?'<p class="salvage-sweep">정비대 · 일제사격으로 양쪽 대열 명중</p>':''}${r.stats.railFanCut===true?'<p class="salvage-cut">열차 · 양쪽 포대 직격으로 포격 차단</p>':''}</div>
   ${site||returned?`<dl><div><dt>철도 경유</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'포탑 직접 제압 · 철도':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>`:''}
  </section>`;
 }
