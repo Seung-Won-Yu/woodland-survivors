@@ -1,8 +1,24 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
-import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
-import {choose,snapshot} from './model.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible,CAPTURED_TURRET,isCapturedTurret} from './content.js';
+import {canAdvanceFront,isSalvageCampaign,carriesCoastSalvage,RESCUE_COIL} from './coast-salvage.js';
+import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COUNTERBATTERY_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
+import {choose,snapshot,railInfernoPlan,railWorkshopPlan} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
+export const HARBOR_PART_ACTION={
+ breach:'보조포 선제 사격',
+ overrun:'회피로 코어 개방',
+ recovery:'화물 회수 후 지원 포격'
+};
+function harborPartAction(s,id){
+ if(id==='breach'||id==='recovery'){
+  const side=portSideName(-portTurretSide(regionBoss(2,s.seed)));
+  return id==='breach'?`${side} 보조포 · 조준 중 선제 차단`:`${side} 화물 유인점 · 회수 후 지원 포격`;
+ }
+ if(s.weapons.some(isFocusedInferno))return `${portCompressionRange}에서 좌우 회피 → 멈춰 코어 분사`;
+ if(s.weapons.some(isTrailInferno))return '회피로 코어 개방 → 냉각 배관에 잔불';
+ if(s.weapons.some(isConductiveFusion))return '회피로 코어 개방 · 코어 명중 후 포대로 역송';
+ return HARBOR_PART_ACTION.overrun;
+}
 const coastBearing=(s,site)=>`${bearing(s.player,site.x,site.y)} ${Math.round(distance(s.player,site)/10)}m`;
 function openingGunRoute(s,gun){
  const site=s.sites.find(n=>n.coastApproach===gun&&n.state!=='done');
@@ -30,10 +46,24 @@ export function gateContractDetails(s){
  const goal=contract.id==='defend'?`포격 원 밖에서 중계기 송신 ${defenseSeconds(tier)}초`:contract.id==='intercept'?`${signalLaneLabel[signalLane(s.seed)]} · ${SIGNAL_SECONDS}초 안에 차량 저지`:contract.goal;
  const quota=rare?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
  const reward=rare?holdoutParts(s.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / ')
-  :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:`완료 점수 +${tier*500}`;
+  :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:tier===2&&front===2&&isSalvageCampaign(s)?`생존 귀환 +${COUNTERBATTERY_CREDITS}C · +1,000점`:`완료 점수 +${(tier*500).toLocaleString()}`;
+ const parts=rare&&front===1?holdoutParts(s.seed,front).map(id=>({id,title:FRONT_SUPPORTS[id].name,detail:harborPartAction(s,id)})):[];
  const escort=s.challenge?.recoverCargo?signalGuardCount(s):SIGNAL_ESCORT_COUNT;
- const cost=contract.id==='battery'?'양쪽 진지 위치 표시 · 귀환로 개방':front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
- return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost};
+ const cost=contract.id==='battery'?'동·서 교차 포격 · 귀환로는 계속 열림':front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
+ return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost,parts};
+}
+
+export function gateActiveContract(s){
+ const c=s.challenge;
+ if(!s.operation||c?.state!=='active')return null;
+ const {name}=holdoutContract(s,c.tier),title=`D${c.tier} · ${name} 계속`;
+ const quota=s.operation.region<2&&c.tier===1?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
+ const progress=c.type==='defend'?`${c.secured?'송신 완료':`송신 ${c.progress.toFixed(1)}/${c.duration}초`}${quota}`
+  :c.type==='battery'?`포대 ${c.destroyed.length}/${c.targets.length}문 제압`
+  :c.type==='intercept'?signalCargo(s)?'차량 정지 · 화물 미회수':`차량 이탈까지 ${Math.ceil(c.timeLeft)}초`
+  :`지휘관 ${c.targets.filter(id=>!s.enemies.some(e=>e.id===id&&!e.dead)).length}/${c.targets.length}명 제압${quota}`;
+ const leaving=signalCargo(s)?'귀환하면 미회수 화물 포기':`귀환하면 D${c.tier} 종료 · 확보 보상 유지`;
+ return {title,progress,leaving};
 }
 
 function projectedGrowth(s,c,args,before){
@@ -54,6 +84,8 @@ function projectedGrowth(s,c,args,before){
  }
  const advanced=paths.filter(p=>p.remaining<(before.get(p.id)?.remaining??0)&&p.status!=='blocked');
  if(!advanced.length)return null;
+ const inferno=railInfernoPlan(draft);
+ if(c.id==='rank:f'&&inferno?.action==='tune')return {kind:'progress',text:inferno.missing};
  const closest=advanced.sort((a,b)=>a.remaining-b.remaining)[0];
  return {kind:'progress',text:`${closest.title}까지 ${closest.missing||'분화 조건 확인'}`};
 }
@@ -94,7 +126,7 @@ export function branchBuildPreview(s,c,branch,args={}){
  const payoff=path===pair
   ?gun==='h'?`${GUNS.h.branches[branch][0]} 유지 · R 폭발 추가`
    :branch==='incendiary'?'화약 원을 지나 회피 유폭':'추적탄으로 떨어진 무리까지 연쇄'
-  :branchPayoff[gun][branch];
+  :gun==='r'&&branch==='homing'&&draft.weapons.some(isCapturedTurret)?'가운데 탄 추적 · 바깥 탄은 부채꼴':branchPayoff[gun][branch];
  const need=path.ready?'분화 후 조립 가능':`필요 · ${[path.missing,path.status==='progress'&&!draft.tuning?'조율권 1개':''].filter(Boolean).join(' · ')}`;
  return {title:path.title,payoff,status:path.status,need};
 }
@@ -106,18 +138,23 @@ function assemblyConsequence(s,c){
  const before=buildPaths(s),after=new Map(buildPaths(draft).map(path=>[path.id,path]));
  const lock=c.kind==='evolve'&&['h','r'].includes(c.weapon);
  const delayed=before.filter(path=>path.ready&&after.get(path.id)?.status==='permit');
+ const cache=c.kind==='repair'&&s.operation?.region===1&&s.stage==='field'&&s.sites.some(site=>site.id==='rail-cache'&&site.state!=='done');
+ const inferno=c.kind==='repair'&&railInfernoPlan(s,cache?railWorkshopPlan(s):null);
+ const losesTune=inferno?.permits===2&&s.tuning===2;
  const heatBefore=before.find(path=>path.id==='heat'),heatAfter=after.get('heat');
  const heatCost=heatBefore?.complete&&!heatAfter?.complete?'열압 연계 해제'
   :heatBefore?.ready&&heatAfter?.status==='progress'?'열압 연계 재료 부족':'';
  return [c.kind==='fusion'?`현재 ${GUNS[c.primary].short}·${GUNS[c.secondary].short} 단일 진화 포기`:lock?`현재 ${GUNS[c.weapon].short}로 H+R 합체 불가`:'',
   heatCost,
-  delayed.length?`조율권 소진 · ${delayed.map(path=>path.title).join(' · ')} 대기`:''].filter(Boolean);
+  delayed.length?`조율권 소진 · ${delayed.map(path=>path.title).join(' · ')} 대기`:'',
+  losesTune?`${inferno.title} 진화에 촉매 보급 또는 조율권 추가 필요`:''].filter(Boolean);
 }
 
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
  if(c.kind==='rank'&&w){
-  const a=weaponStats(w),b=weaponStats({...w,level:rankChoiceLevel(w,c)});out.before=w.level;out.after=rankChoiceLevel(w,c);out.title=GUNS[w.id].name;
+  const a=weaponStats(w),b=weaponStats({...w,level:rankChoiceLevel(w,c)});out.before=w.level;out.after=rankChoiceLevel(w,c);out.title=isCapturedTurret(w)?CAPTURED_TURRET.name:GUNS[w.id].name;
+  if(isCapturedTurret(w))out.art='turret';
   const rate=pct(a.damage*a.count/a.interval,b.damage*b.count/b.interval);out.impact=out.after===4?'발사 방식 분화':b.count>a.count?`동시 사격 ${a.count} → ${b.count}발`:b.radius>a.radius?`폭발 반경 +${pct(a.radius,b.radius)}%`:b.range>a.range?`사거리 ${a.range} → ${b.range}`:b.cone>a.cone?`분사각 ${num(a.cone)}° → ${num(b.cone)}°`:rate?`연사 화력 +${rate}%`:'발사 성능 개조';
   out.detail=c.desc||'';const hp=RULES.enemies.rifle.hp*(s.operation?[1,1.35,1.8][s.operation.region]:1)*1.05**Math.min(s.pressure,12),power=1+s.boosts.power*.01,before=Math.ceil(hp/(a.damage*power)),after=Math.ceil(hp/(b.damage*power));
   if(w.id==='h'&&before!==after&&!(s.operation&&s.stage==='holdout'&&holdoutTier(s.holdTime)))out.detail=`일반병 직격 ${before} → ${after}발 · 피해 ${num(a.damage)} → ${num(b.damage)}`;
@@ -125,10 +162,10 @@ export function choiceDetails(s,c){
   out.link=out.after<4?`L4 분화까지 ${4-out.after}회 강화`:out.after===4?Object.values(GUNS[w.id].branches).map(([name])=>name).join(' / '):`진화 · L6 + ${modules} + 조율권1`;
   out.cost=`L${w.level} → L${out.after} · 무기 칸 유지`;
   if(c.coastLevel){
-   out.title=`${GUNS[w.id].name} 정비`;
+   out.title=`${out.title} 정비`;
    out.impact=`L${w.level} → L${out.after} · ${out.impact}`;
    out.detail='';
-   out.cost=`조율권 ${COAST_SERVICE_COST}개 사용 · 수송차 격파 +1`;
+   out.cost=`조율권 ${COAST_SERVICE_COST}개 사용 · 수송차 격파 시 +1`;
   }
   if(c.railDonor){
    const donor=s.weapons.find(gun=>gun.uid===c.railDonor);
@@ -158,13 +195,15 @@ export function choiceDetails(s,c){
   if(c.kind==='module'&&!c.id?.startsWith('requisition:')&&!compatible(s,c.module)){
    return {...out,blocked:true,impact:'호환 무장 필요',detail:'현재 무장으로 장착할 수 없습니다.',link:'',cost:''};
   }
-  if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
+  if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='포탑·로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
   out.cost=c.kind==='tune'?'조율권 1개 사용':g.current?`${g.current} → ${g.next}강화 · 같은 칸 유지${g.charge?` · 초과 충전 +${g.charge}`:''}`:`새 모듈 ${g.next}강화 · ${s.modules.length<4?'모듈 한 칸 사용':'기존 모듈 교체'}`;
+  if(c.id===RESCUE_COIL){out.title='축전 코일 I';out.impact='첫 명중에 방전 · 주변 적에게 전기 피해';}
   const proof=s.operation?.trialProof&&s.trials.includes(c.module)&&RESEARCH_PROOFS[c.module];
   if(proof)out.link=`${proof.label} · 실증 +${RESEARCH_PROOF_CREDITS}C`;
   if(c.id?.startsWith('requisition:')&&!compatible(s,c.module))out.link=`장착 후 대기 · ${RESEARCH[c.module].fitting}`;
  }else if(c.id==='utility:health'||c.kind==='repair'||c.id==='resupply:medical'){
   const extra=c.kind==='repair'?15:c.kind==='utility'?6:0,heal=c.kind==='repair'?35:c.kind==='utility'?6:c.heal;out.art='medic';out.impact=extra?`최대 체력 +${extra}`:`체력 +${Math.min(heal,s.player.maxHp-s.player.hp)}`;out.detail=`${Math.ceil(s.player.hp)}/${s.player.maxHp} → ${Math.ceil(Math.min(s.player.maxHp+extra,s.player.hp+heal))}/${s.player.maxHp+extra}`;out.link=c.kind==='repair'?'최대 체력과 체력을 함께 정비':'';out.cost=c.kind==='repair'?'조율권 1개 사용':'';
+  if(c.kind==='repair')out.consequence=assemblyConsequence(s,c);
  }else if(c.id==='utility:charge'||c.kind==='resupply'){
   const amount=c.charge??10,before=Math.floor(s.player.charge),after=Math.min(100,before+amount),hpBefore=s.player.hp,hpAfter=Math.min(s.player.maxHp,hpBefore+(c.heal||0)),healed=Math.ceil(hpAfter)-Math.ceil(hpBefore);
   out.art='ammo';out.impact=healed?`체력 +${healed}${after>before?` · 충전 +${after-before}`:''}`:after>before?`${chargeLabel(s)} 충전 +${after-before}`:`${chargeLabel(s)} 충전 최대`;out.detail=`${c.heal?`체력 ${Math.ceil(hpBefore)}/${s.player.maxHp} → ${Math.ceil(hpAfter)}/${s.player.maxHp} · `:''}충전 ${before} → ${after} / 100`;out.link='';out.cost='';
@@ -194,12 +233,18 @@ export function choiceDetails(s,c){
    out.detail='진화 직후 갈라진 편대가 접근합니다.';
    out.link='엄폐를 돌아 여러 무리의 사선을 여세요.';
   }
+  if(isCapturedTurret(w)){
+   out.art='turret';
+   out.impact='부채꼴 5발 → 7발 · 바깥 사선 확장';
+   out.link=isSalvageCampaign(s)?'항구 관제소에서 양쪽 급탄 차단 전술 선택 가능':'중거리에서 두 무리를 부채꼴 안에 두세요.';
+  }
   out.consequence=assemblyConsequence(s,c);
  }else if(c.kind==='fusion'){
-  const branch=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch,incendiary=branch==='incendiary';
+  const secondary=s.weapons.find(w=>w.id===c.secondary&&!w.fusion),branch=secondary?.branch,incendiary=branch==='incendiary';
   out.title=fusionTitle(c.primary,c.secondary,branch);
   out.art=c.primary;out.impact=incendiary?'보병 둘이 모이면 자동 유폭':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'보병 한 명이면 화약 원 안을 이동하며 회피해 점화':'첫 연쇄탄 장전 · 탄착원 밖에서 박격포에 도약';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
   out.consequence=assemblyConsequence(s,c);
+  if(isCapturedTurret(secondary))out.link=`노획 포탑 분해 · ${incendiary?'화약 유폭':'연쇄탄'}으로 전환 · 무장 1칸 회수`;
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){
@@ -209,18 +254,28 @@ export function choiceDetails(s,c){
   if(plan){out.art=c.key;out.impact=plan.impact;out.detail=plan.hint;out.link=plan.detail;out.cost=`지금 모듈 대신 선택 · 성공 시 철도에서 ${MODULES[COAST_APPROACHES[c.key].module].name} 보급 후보`;}
  }else if(c.kind==='control'){
   const tactic=FRONT_TACTICS[s.operation?.region]?.[c.key];
-  out.art=c.infernoRank||['heat','lens','wake'].includes(c.key)?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
+  out.art=c.infernoRank||c.relayInvestment==='f'||['heat','lens','wake'].includes(c.key)?'f':c.relayInvestment==='r'||c.key==='signal'||c.key==='ember'?'coil':'ammo';
   out.cost='';
-  if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';}
+  if(tactic){out.detail=c.hint||tactic.hint;out.link='포격 주기마다 1회';}
+  if(c.key==='crossfire'){
+   out.art='turret';out.link='발밑 포격과 후속 탄막은 계속 발사';
+  }
   if(c.infernoRank){
    out.detail='이 보급을 고르면 이번 전선의 보스 전술을 포기합니다.';
    out.link=c.infernoRank===6?'L6 장착 후 조율권 1개로 인페르노 조립':'F L5 장착 · 인페르노까지 한 단계';
+  }
+  if(c.relayInvestment){
+   out.detail='한 가지 장착 · 특수 전술 포기 · 조준 유인 1회 유지';
+   out.link=c.relayInvestment==='f'?'인페르노 · F L6와 촉매 2':'격발망 · H·R 각 L4와 축전 코일 2';
   }
  }else if(c.kind==='front-support'){
   const kit=FRONT_SUPPORTS[c.key];
   const index=s.operation.region+1;
   const effect=index===2?PORT_SUPPORT[c.key]||kit:kit;
   out.art=kit.art;out.impact=effect.impact.replaceAll('전탄',chargeLabel(s));out.detail=effect.detail.replaceAll('전탄',chargeLabel(s));out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
+  if(index===1&&c.key==='breach'&&carriesCoastSalvage(s)){
+   out.impact='직접 사격 부위 피해 +30%';out.detail='가까운 열차 포대를 우선 조준합니다.';
+  }
   if(index===2&&c.key==='breach'){
    const turret=portTurretSide(regionBoss(2,s.seed));
    out.impact=`${portSideName(turret)} 포탑 · ${portSideName(-turret)} 보조포`;
@@ -239,7 +294,7 @@ export function choiceDetails(s,c){
    out.link=`장갑 또는 차체 피해 ${effect.wakeDamage} · 재장전마다 한 번`;
   }else if(index===2&&c.key==='overrun'&&s.weapons.some(isConductiveFusion)){
    const side=portTurretSide(regionBoss(2,s.seed));
-   out.detail=`회피로 코어를 열고 원하는 포대 쪽에서 맞히세요. ${portSideName(side)}은 포탑, ${portSideName(-side)}은 보조포입니다.`;
+   out.detail=`회피로 코어를 열고 원하는 포대 쪽에서 코어를 맞히세요. ${portSideName(side)}은 포탑, ${portSideName(-side)}은 보조포입니다.`;
    out.link='포탑 탄막 소거 · 선택한 포대의 다음 사격 차단';
   }
   if(index===2&&c.key==='overrun')out.impact=`측면 돌입선 · 회피 직격 ${effect.damage}`;
@@ -251,6 +306,7 @@ export function choiceDetails(s,c){
   out.impact=support?`${support.name} 장착 후 전진`:vanguard?'선발 지원 받고 전진':'무장과 레벨을 이어 전진';
   out.detail=vanguard?`첫 증원까지 ${Math.ceil(HOLDOUT.grace-s.holdTime)}초 · 남겨둘 XP ${groundXp(s)}`:`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
   out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':vanguard?'다음 보스 첫 포격 경고 +1초':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
+  if(s.operation.region===1&&Object.hasOwn(HARBOR_PART_ACTION,s.operation.nextSupport))out.link=harborPartAction(s,s.operation.nextSupport);
   if(s.operation.region===0&&s.operation.coastStrikeUsed)out.detail+=' · 수송차 노획 보급 이월';
   if(s.operation.region===0&&s.operation.order==='wire'&&s.operation.orderRevision&&s.operation.orderDone)out.detail+=' · 교신 암호로 철도 조준 유인';
   if(s.operation?.region===0&&s.operation.order&&!s.operation.orderDone)out.link=s.raid?.state==='active'?'습격 철수 · 상자 소실 · 지령 보너스 없음':'해안 지령 미완료 · 전진 시 추가 보상 없음';
@@ -259,12 +315,27 @@ export function choiceDetails(s,c){
   out.cost=aid?changes.join(' · '):'현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){
-  const active=s.challenge?.state==='active';
-  out.title=active?'진행 중인 도전 계속':'전장 복귀 · XP 회수';
-  out.impact=active?holdoutContract(s).name:'바닥 XP 회수';
-  out.detail=active?`D${s.challenge.tier} · ${out.impact}`:`남은 바닥 XP ${groundXp(s)}`;
+  if(c.id==='carry:turret'){
+   out.impact='현재 무장 유지';
+   out.detail=s.choice?.gatePrep?'전진하면 포탑을 화물로 가져갑니다.':'전진 게이트에서 다시 장착할 수 있습니다.';
+   return out;
+  }
+  const active=gateActiveContract(s);
+  if(active){out.title=active.title;out.impact=active.progress;out.detail=active.progress;out.link='';return out;}
+  if(s.operation?.coastSalvage&&(!isSalvageCampaign(s)||c.title!=='전장 복귀 · XP 회수')){out.impact=c.desc;out.detail=c.desc;out.link=canAdvanceFront(s)?'전진 게이트는 열려 있습니다.':'귀환 게이트는 열려 있습니다.';return out;}
+  out.title='전장 복귀 · XP 회수';
+  out.impact='바닥 XP 회수';
+  out.detail=`남은 바닥 XP ${groundXp(s)}`;
   out.link='게이트는 계속 열려 있습니다.';out.cost='';
  }
+ else if(c.kind==='coast-boss'){
+  const breakTurret=c.id==='coast:break',rail=carriesCoastSalvage(s);
+  out.impact=breakTurret?'재장전 탄막 5발 → 3발':'5발 탄막 유지 · 차체 조준';
+  out.detail=breakTurret?(rail?'철갑 급탄 / 후송 정비 선택':'격파 뒤 바로 귀환 가능')
+   :'격파 후 증원 속에서 5초간 분리';
+  out.link=breakTurret?'':rail?'현장 장착 · 생존 반출 +40C와 시작 무장 해금':'+40C · 귀환 시 시작 무장 개방';
+ }
+ else if(c.kind==='coast-mount'){out.detail=c.detail;out.link='철도 정비대에서 양쪽 대열을 함께 공격';out.cost='이번 판 무장 변경';}
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}
  else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':signalCargo(s)?'잔해의 미회수 화물을 두고 귀환':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':'크레딧·연구·기록 유지';out.cost='다음 판은 해안 · LV.1에서 시작';}
  return out;

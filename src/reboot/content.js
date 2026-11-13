@@ -9,6 +9,15 @@ export const INFERNO_WAKE={spacing:96,radius:70,life:2.3,dps:56,limit:4,flashDam
 export const isConductiveFusion=w=>w?.id==='h'&&w.fusion?.secondary==='r'&&w.fusion.branch==='homing';
 export const CONDUIT_MORTAR={warning:1.35,radius:52,setback:84,relayReach:370};
 export const EMBER_CHARGE={impactScale:.65,arm:.45,life:3.2,damage:105};
+export const COAST_FAN={count:5,brokenCount:3,step:.19};
+export const CAPTURED_TURRET={
+ name:'노획 포탑',evolution:'광각 포탑',speed:510,
+ damage:[34,36,39,39,46,54],interval:[1.24,1.2,1.16,1.16,1.08,1],
+ range:[300,312,326,326,342,350],radius:[25,28,31,31,34,39],
+ evolved:{count:7,damage:58,interval:.92,range:385,radius:44}
+};
+export const coastFanAngle=(index,count)=> (index-(count-1)/2)*COAST_FAN.step;
+export const isCapturedTurret=w=>w?.id==='r'&&w.capturedTurret===true&&!w.fusion;
 export const GUNS={
  h:{name:'기관총 H',short:'H',color:'#ffcf75',branches:{ricochet:['산개 도탄','탄이 다른 적에게 한 번 더 튕깁니다.'],grenade:['유탄 급탄','8번 발사마다 폭발 유탄을 함께 발사합니다.']},evolution:'사중 기관포'},
  r:{name:'로켓 R',short:'R',color:'#ff9567',branches:{homing:['추적 다탄두','탄두가 살아 있는 적을 추적합니다.'],incendiary:['점화 탄두','폭발한 자리에 연소 구역을 남깁니다.']},evolution:'폭풍 발사대'},
@@ -16,13 +25,14 @@ export const GUNS={
 };
 export function capstoneName(w){
  if(w.fusion)return fusionName(w.fusion.branch);
+ if(isCapturedTurret(w))return CAPTURED_TURRET.evolution;
  return w.id==='f'&&w.branch==='focused'?'압축 인페르노':GUNS[w.id].evolution;
 }
 const fusionName=branch=>branch==='incendiary'?'점화 격발망':branch==='homing'?'전도 격발망':'격발망';
 export const fusionTitle=(primary,secondary,branch)=>`${fusionName(branch)} ${GUNS[primary].short}+${GUNS[secondary].short}`;
 export const MODULES={
  medic:{name:'응급 주사기',color:'#b9d697',desc:'정예를 처치해 생존을 회수합니다.',detail:()=> '정예 처치 체력+12 · 재사용12초'},
- shrapnel:{name:'분열 수류탄',color:'#ffca88',desc:'로켓·유탄과 합체 연쇄탄이 작은 파쇄 폭발 3개로 번집니다.',detail:()=> '파쇄 피해20×3 · 재사용0.65초 · 추가 발동 없음'},
+ shrapnel:{name:'분열 수류탄',color:'#ffca88',desc:'포탑·로켓·유탄과 합체 연쇄탄이 작은 파쇄 폭발 3개로 번집니다.',detail:()=> '파쇄 피해20×3 · 재사용0.65초 · 추가 발동 없음'},
  thermal:{name:'흡열 코일',color:'#92e4e5',desc:'연소 중인 적에 전기가 적중하면 전탄을 회수합니다.',detail:()=> '전탄 충전+2 · 재사용0.25초 · 화염+축전 코일 필요'},
  ricochet:{name:'도탄기',color:'#e7c97a',desc:'탄환이 무리 사이를 튕깁니다.',detail:r=>`추가 도탄 ${r}회 · 다음 피해 70%`},
  coil:{name:'축전 코일',color:'#92e4e5',desc:'탄환·폭발 적중이 전기 연쇄를 만듭니다.',detail:r=>`가중 적중 ${RULES.modules.coil.threshold[r-1]} → 전기 ${RULES.modules.coil.targets[r-1]}명`},
@@ -32,7 +42,7 @@ export const MODULES={
 };
 export const QUALITY={common:'일반',rare:'희귀',prototype:'원형품'};
 export const GUN_BRIEFS={h:'빠른 실탄 연사 · L4: 산개 도탄 / 유탄 급탄',r:'넓은 폭발로 무리 정리 · L4: 추적 다탄두 / 점화 탄두',f:'가까운 무리를 태우는 부채 화염 · L4: 연료 살포 / 압축 분사'};
-export const MODULE_LINKS={medic:'안전성을 얻는 대신 모듈 한 칸 사용',shrapnel:'유탄·로켓·전도 격발망의 군집 피해 확장',thermal:'연소+전기 → 전탄 보급 순환',ricochet:'H L6 + 도탄2 → 사중 기관포',coil:'H·R 각 L4 + 코일2 → 전도 합체',catalyst:'화염으로 점화 → 유탄·로켓으로 열압 폭발',magnet:'위험한 XP 회수 동선을 짧게',overcharger:'전탄 보급 종료 방출 · 받는 피해 +15%'};
+export const MODULE_LINKS={medic:'안전성을 얻는 대신 모듈 한 칸 사용',shrapnel:'포탑·로켓·유탄·격발망의 군집 피해 확장',thermal:'연소+전기 → 전탄 보급 순환',ricochet:'H L6 + 도탄2 → 사중 기관포',coil:'H·R 각 L4 + 코일2 → 전도 합체',catalyst:'화염으로 점화 → 유탄·로켓으로 열압 폭발',magnet:'위험한 XP 회수 동선을 짧게',overcharger:'전탄 보급 종료 방출 · 받는 피해 +15%'};
 export function evolutionParts(weapon,branch=weapon.branch){
  const byBranch=RULES.weapons[weapon.id].evolution.moduleByBranch;
  return branch?byBranch[branch]:[...new Set(Object.values(byBranch).flat())];
@@ -40,6 +50,13 @@ export function evolutionParts(weapon,branch=weapon.branch){
 export function canEvolve(state,weapon){
  return weapon.level===6&&!weapon.evolved&&!weapon.fusion&&!!weapon.branch&&
   evolutionParts(weapon).some(id=>moduleRank(state,id)>=2);
+}
+export function railSpareForFlame(s){
+ if(s.operation?.region!==1||s.operation.coastSalvage?.fronts!==3||s.stage!=='field'||s.firstNew!=='f')return null;
+ const flame=s.weapons.find(w=>w.id==='f'&&w.level>=5&&!w.evolved&&!w.fusion);
+ if(!flame)return null;
+ if(flame.level<6)return 'rank';
+ return moduleRank(s,'catalyst')<2&&!s.excluded.includes('catalyst')?'catalyst':null;
 }
 function sameFusion(state,primary,secondary){
  return state.weapons.some(w=>w.fusion&&w.id===primary.id&&w.branch===primary.branch&&
@@ -144,6 +161,11 @@ export function completionModules(s){
  return [...needs.keys()];
 }
 export function weaponStats(w){
+ if(isCapturedTurret(w)){
+  const spec=CAPTURED_TURRET,index=w.level-1;
+  return {count:COAST_FAN.count,damage:spec.damage[index],interval:spec.interval[index],range:spec.range[index],
+   radius:spec.radius[index],speed:spec.speed,cone:0,...(w.evolved?spec.evolved:null)};
+ }
  const d=RULES.weapons[w.id],i=(w.fusion?6:w.level)-1,e=w.evolved&&!w.fusion?d.evolution:null;
  let damage=e?.damage??d.damage[i],interval=e?.interval??d.interval[i],count=e?.count??d.count[i],range=Array.isArray(d.range)?d.range[i]:d.range,cone=d.coneDegrees||0;
  if(w.id==='f'){range+=e?.rangeAdded||0;cone+=e?.coneAdded||0;if(w.branch==='focused'){range+=d.branchB.rangeAdded;cone*=d.branchB.coneMultiplier;damage*=d.branchB.damageMultiplier;}}

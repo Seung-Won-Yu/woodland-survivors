@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b48-coast-preempt",
+  "balanceRevision": "b71-coast-specialists",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",
@@ -133,6 +133,7 @@
   },
   "marco": {
     "initialCharge": 40,
+    "studyRefund": 20,
     "directCharge": 5,
     "chargeReach": 215,
     "chargeInterval": 0.32,

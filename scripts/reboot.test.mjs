@@ -1,15 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot} from '../src/reboot/campaign.js';
-import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,makeWeapon,weaponStats,buildPaths} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue} from '../src/reboot/model.js';
+import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,railBossGuide,portTacticKeys} from '../src/reboot/campaign.js';
+import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName,distance} from '../src/reboot/content.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue,armoredRaidPart} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
 import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
+import {coastRoleTarget,coastRoleRank,coastFanPosition,COAST_TURRET_RECOVERED} from '../src/reboot/coast-salvage.js';
+import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
+import {COAST_RAID_PATROL_DELAY,COAST_SHIELD_BRACE,bracingCoastEscort,shieldFaces,coastService} from '../src/reboot/campaign.js';
+import {createCoastSortie,railInfernoPlan,railAmmoInvestment,railRelayInvestment,coastPartOpportunity} from '../src/reboot/model.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -18,7 +22,680 @@ function enemy(id,x,y,type='rifle',hp=100){const d=RULES.enemies[type];return{id
 function bullet(s,e,damage=100){return{x:e.x,y:e.y,vx:0,vy:0,life:1,damage,r:3,rocket:false,radius:0,source:'native',owner:s.weapons[0].uid,target:e.id,homing:false,incendiary:false,bounces:0,hitIds:[]};}
 function memory(){const values=new Map();let fail=false;return{values,getItem:k=>values.get(k)||null,setItem(k,v){if(fail)throw Error('quota');values.set(k,v);},setFail:v=>{fail=v;}};}
 
+test('coastal operators earn different progression by attacking or collecting',()=>{
+ const marco=freshSortie(emptyProfile(),17,null,'marco',null,null,null,'standard').run;
+ const fio=freshSortie(emptyProfile(),17,null,'fio',null,null,null,'standard').run;
+ assert.ok(coastRoleTarget(marco).x<marco.player.x);
+ assert.ok(coastRoleTarget(fio).x>fio.player.x);
+ for(const s of [marco,fio]){
+  s.blocks=[];s.spawnClock=999;s.sites.forEach(site=>site.state='done');s.weapons[0].cd=999;
+  s.enemies=[enemy('first',900,1040,s.operator?'shield':'rifle',25),enemy('second',950,1040,s.operator?'shield':'rifle',25)];
+  s.player.charge=100;
+ }
+ assert.equal(coastRoleTarget(marco).id,'first');
+ assert.ok(action(marco,'skill',{x:1,y:0}));
+ assert.equal(marco.operation.coastSalvage.progress,2);
+ assert.equal(coastRoleRank(marco.operation.coastSalvage),1);
+ assert.equal(marco.operation.coastSalvage.parts.length,0);
+
+ fio.enemies.forEach(e=>e.coastCarrier=true);
+ fio.shots=fio.enemies.map(e=>bullet(fio,e));
+ step(fio,dt);
+ assert.equal(fio.operation.coastSalvage.progress,0);
+ assert.equal(fio.operation.coastSalvage.parts.length,2);
+ fio.player.x=925;
+ step(fio,dt);
+ assert.equal(fio.operation.coastSalvage.progress,2);
+ assert.equal(coastRoleRank(fio.operation.coastSalvage),1);
+ assert.equal(fio.operation.coastSalvage.parts.length,0);
+});
+
+test('coast rescue teaches each operator without requiring their growth target for first supplies',()=>{
+ const setup=(seed,operator)=>{
+  const s=freshSortie(emptyProfile(),seed,null,operator,null,null,null,'standard',true).run;
+  assert.equal(s.enemies.filter(e=>e.cohort==='ambient').length,6);
+  s.enemies=[];s.spawnClock=999;s.weapons[0].cd=999;
+  const site=s.sites[0];
+  Object.assign(s.player,{x:site.x,y:site.y+188});
+  step(s,dt);
+  assert.equal(site.state,'active');
+  return {s,site,guards:s.enemies.filter(e=>e.siteId===site.id)};
+ };
+ for(const seed of [18,27]){
+  const {s:marco,site,guards}=setup(seed,'marco'),armor=marco.enemies.find(e=>e.coastRescueShield);
+  assert.deepEqual(guards.map(e=>e.type),['rifle','rifle','rifle','rifle']);
+  assert.equal(armor.siteId,null);
+  assert.equal(coastRoleTarget(marco).id,armor.id);
+  const loaded=restore(snapshot(marco));
+  loaded.enemies.filter(e=>e.siteId===site.id).forEach(e=>e.dead=true);
+  Object.assign(loaded.player,{x:site.x,y:site.y});step(loaded,dt);
+  assert.ok(loaded.choice.opening);
+  assert.ok(loaded.enemies.find(e=>e.id===armor.id).hp>0);
+  assert.equal(loaded.operation.coastSalvage.progress,0);
+  assert.ok(choose(loaded,'gun:r'));
+
+  marco.enemies=marco.enemies.filter(e=>e===armor);
+  const inward=Math.sign(800-armor.x);
+  Object.assign(marco.player,{x:armor.x+inward*85,y:armor.y,charge:100});
+  const aim={x:-inward,y:0};
+  const impact=focusPlan(marco,aim).impacts[0];
+  assert.equal(impact.enemy.id,armor.id);
+  assert.equal(impact.roleWeak,true);
+  assert.equal(impact.weak,false);
+  assert.equal(focusPlan(marco,aim).manualGain,1);
+  const full=restore(snapshot(marco));full.operation.coastSalvage.progress=6;
+  assert.equal(focusPlan(full,aim).manualGain,0);
+  assert.ok(action(marco,'skill',aim));
+  assert.equal(marco.stats.focusWeakHits,1);
+  assert.equal(marco.operation.coastSalvage.progress,1);
+
+  const {s:fio,guards:fioGuards}=setup(seed,'fio');
+  const carriers=fioGuards.filter(e=>e.coastCarrier);
+  assert.equal(carriers.length,2);
+  fio.shots=carriers.map(e=>bullet(fio,e));step(fio,dt);
+  assert.equal(fio.operation.coastSalvage.progress,0);
+  assert.equal(coastRoleTarget(fio).name,'회수할 부품');
+  for(const part of [...fio.operation.coastSalvage.parts]){
+   Object.assign(fio.player,{x:part.x,y:part.y});step(fio,dt);
+  }
+  assert.equal(coastRoleRank(fio.operation.coastSalvage),1);
+  assert.ok(fio.effects.some(f=>f.text?.includes('발사 간격 −8%')));
+ }
+});
+
+test('Marco shield hits follow the incoming bullet when he moves during flight',()=>{
+ for(const [degrees,move,hp,progress] of [[20,1,72,1],[34,-1,84.6,0]]){
+  const s=createOperation(27,[],null,null,'marco','standard');
+  s.sites.forEach(site=>{site.state='done';});
+  s.blocks=[];s.spawnClock=999;s.director.officerClock=999;
+  const guard={...enemy('flank-test',930,850,'shield',90),r:20,aim:Math.PI/2,spawnAge:.01,
+   coastArmor:true,coastRescueShield:true,siteId:null};
+  s.enemies=[guard];
+  const angle=degrees*Math.PI/180;
+  Object.assign(s.player,{x:guard.x+Math.cos(angle)*190,y:guard.y+Math.sin(angle)*190});
+  s.weapons[0].cd=0;
+  step(s,dt);
+  assert.equal(s.shots.length,1);
+  for(const y of [0,move]){
+   const shot=restore(snapshot(s));
+   shot.weapons[0].cd=999;
+   tick(shot,12*dt,{x:0,y});
+   assert.ok(Math.abs(shot.enemies[0].hp-hp)<1e-6);
+   assert.equal(shot.operation.coastSalvage.progress,progress);
+  }
+ }
+});
+
+test('coastal weapon routes carry each operator’s growth into the second engagement',()=>{
+ for(const seed of [24,27])for(const [actor,weapon] of [['fio','f'],['marco','r']]){
+  const s=createOperation(seed,[],null,null,actor,'standard');
+  s.enemies=[];s.spawnClock=999;s.director.officerClock=999;s.weapons[0].cd=999;
+  supply(s);assert.ok(choose(s,`gun:${weapon}`));
+  const site=coastLead(s);
+  assert.equal(site.coastApproach,weapon);
+  Object.assign(s.player,{x:site.x,y:site.y+184});
+  s.weapons[1].cd=999;
+  step(s,dt);
+  assert.equal(site.state,'active');
+  const loaded=restore(snapshot(s));
+  if(actor==='fio'){
+   const guards=loaded.enemies.filter(e=>e.siteId===site.id&&e.coastCarrier);
+   assert.equal(guards.length,2);
+   assert.equal(new Set(guards.map(e=>Math.sign(e.x-site.x))).size,2);
+   loaded.shots=guards.map(e=>bullet(loaded,e));step(loaded,dt);
+   assert.equal(loaded.operation.coastSalvage.progress,0);
+   for(const part of [...loaded.operation.coastSalvage.parts]){
+    Object.assign(loaded.player,{x:part.x,y:part.y});step(loaded,dt);
+   }
+   assert.equal(loaded.operation.coastSalvage.progress,2);
+  }else{
+   const guard=loaded.enemies.find(e=>e.coastBatteryShield),guns=loaded.enemies.filter(e=>e.siteId===site.id);
+   assert.equal(guard.siteId,null);
+   assert.deepEqual(guns.map(e=>e.type),['mortar','mortar']);
+   assert.equal(coastRoleTarget(loaded).id,guard.id);
+   assert.ok(Math.abs(guard.x-site.x)>110);
+   if(site.coastPlan!=='split')assert.equal(coastRocketVolley(loaded,site)?.state,'ready');
+   loaded.blocks=[];
+   const direction=Math.sign(site.x-guard.x);
+   Object.assign(loaded.player,{x:guard.x+direction*80,y:guard.y,charge:100});
+   assert.equal(focusPlan(loaded,{x:-direction,y:0}).manualGain,1);
+   assert.ok(action(loaded,'skill',{x:-direction,y:0}));
+   assert.equal(loaded.operation.coastSalvage.progress,1);
+  }
+ }
+});
+
+test('Fio nearby part advice matches the next bonus and yields to cover and bombardment',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ const coast=s.operation.coastSalvage;
+ Object.assign(s.player,{x:800,y:1040});
+ s.blocks=[];s.hazards=[];
+ Object.assign(coast,{progress:5,parts:[{id:'far',x:930,y:1040},{id:'near',x:900,y:1040}]});
+ assert.deepEqual(coastPartOpportunity(s),{...coast.parts[1],gap:100,until:1,bonus:24});
+ s.blocks=[{x:840,y:1010,w:14,h:70,hp:-1}];
+ assert.equal(coastPartOpportunity(s),null);
+ s.blocks=[];s.hazards=[{x:860,y:1040,r:25,timer:.5}];
+ assert.equal(coastPartOpportunity(s),null);
+ s.hazards[0].hit=true;
+ s.stage='holdout';
+ assert.equal(coastPartOpportunity(s)?.id,'near');
+ s.stage='boss';
+ assert.equal(coastPartOpportunity(s),null);
+});
+
+test('a saved one-front sortie can still unlock the alternate starter at the coast gate',()=>{
+ for(const plan of ['break','capture','abandon']){
+  const {run:s,next}=freshSortie(emptyProfile(),17,null,'fio',null,null,null,'standard');
+  delete s.operation.coastSalvage.fronts;
+  s.blocks=[];s.enemies=[];s.sites.forEach(site=>site.state='done');s.weapons[0].cd=999;s.boss.spawnClock=999;
+  Object.assign(s.player,{x:800,y:350});
+  assert.ok(action(s,'interact'));
+  assert.deepEqual(restore(snapshot(s)).choices.map(c=>c.id),['coast:break','coast:capture']);
+  assert.equal(skip(s),false);
+  assert.ok(choose(s,plan==='break'?'coast:break':'coast:capture'));
+  const turret=s.boss.parts[0];
+  s.shots=[bullet(s,{...partPosition(s,turret),id:turret.id},999)];
+  step(s,dt);
+  assert.equal(turret.hp,plan==='break'?0:turret.maxHp);
+  s.shots=[bullet(s,s.boss,10000)];
+  step(s,dt);
+  assert.equal(s.stage,'holdout');
+  s.gems=[];
+  assert.equal(s.operation.coastSalvage.turret,plan==='break'?'broken':'intact');
+  if(plan!=='break'){
+   Object.assign(s.player,{x:s.boss.x+70,y:s.boss.y});
+   assert.equal(interaction(s).id,'secure-turret');
+   assert.ok(action(s,'interact'));
+   assert.ok(s.enemies.some(e=>e.cohort==='holdout'));
+   s.enemies=[];s.spawnClock=999;
+   tick(s,2);
+   const continued=restore(snapshot(s));
+   assert.equal(continued.operation.coastSalvage.turret,'securing');
+   assert.ok(continued.operation.coastSalvage.work>1.9);
+   s.player.x=s.boss.x+120;
+   tick(s,.5);
+   assert.equal(s.operation.coastSalvage.work,continued.operation.coastSalvage.work);
+   s.player.x=s.boss.x+70;
+   tick(s,3.1);
+   assert.equal(s.operation.coastSalvage.turret,'secured');
+  }
+  if(plan==='abandon')finish(s,false);
+  else{
+   Object.assign(s.player,exitGate(s));
+   assert.ok(action(s,'interact'));
+   assert.deepEqual(s.choices.map(c=>c.id),['extract','stay']);
+   assert.ok(choose(s,'extract'));
+   assert.equal(s.result.reason,'coast-return');
+  }
+  const saved=parseProfile(JSON.stringify(settleProfile(next,s)));
+  assert.equal(saved.records.wins,0);
+  assert.equal(saved.milestones.coastTurret===true,plan==='capture');
+  assert.equal(saved.recent[0].creditBreakdown.turret,plan==='capture'?40:undefined);
+  if(plan==='capture'){
+   const sortie=freshSortie(saved,17,null,'fio',null,null,null,'turret').run;
+   assert.deepEqual(sortie.weapons.map(w=>[w.id,w.level]),[['r',1]]);
+   assert.equal(weaponStats(sortie.weapons[0]).count,5);
+   assert.equal(sortie.operation.coastSalvage.progress,0);
+  }else assert.throws(()=>freshSortie(saved,17,null,'fio',null,null,null,'turret'));
+ }
+});
+
+test('the same seed carries both coast outcomes through the short sortie and the campaign rail gate',()=>{
+ for(const [fullCampaign,plan] of [[false,'break'],[false,'capture'],[true,'break'],[true,'capture']]){
+  const {run:s,next}=freshSortie(emptyProfile(),17,null,'fio',null,null,null,'standard',fullCampaign);
+  const quietFront=()=>{
+   s.blocks=[];s.enemies=[];s.gems=[];s.sites.forEach(site=>site.state='done');
+   s.spawnClock=999;s.boss.spawnClock=999;s.weapons.forEach(w=>w.cd=999);
+  };
+  quietFront();
+  s.weapons.push({...makeWeapon('r'),uid:'w-rocket',level:2,cd:999});
+  Object.assign(s.player,{x:800,y:350});
+  assert.ok(action(s,'interact'));
+  assert.ok(choose(s,`coast:${plan}`));
+  if(plan==='break'){
+   const turret=s.boss.parts[0];
+   s.shots=[bullet(s,{...partPosition(s,turret),id:turret.id},999)];
+   step(s,dt);
+   assert.equal(turret.hp,0);
+  }
+  s.shots=[bullet(s,s.boss,10000)];
+  step(s,dt);
+  quietFront();
+  if(plan==='capture'){
+   Object.assign(s.player,{x:s.boss.x+70,y:s.boss.y});
+   assert.ok(action(s,'interact'));
+   quietFront();
+   tick(s,5.1);
+   assert.deepEqual(restore(snapshot(s)).choices.map(c=>c.id),['mount:turret','carry:turret']);
+   const cargo=restore(snapshot(s));
+   assert.ok(choose(cargo,'carry:turret'));
+   assert.equal(action(cargo,'gate-mount'),false);
+   assert.equal(action(cargo,'gate-mount-advance'),false);
+   Object.assign(cargo.player,exitGate(cargo));
+   assert.ok(action(cargo,'interact'));
+   assert.equal(gatePreparation(cargo).mounts[0].id,'mount:turret');
+   const fullRack=restore(snapshot(cargo));
+   fullRack.weapons=[fullRack.weapons[0],{...makeWeapon('f'),uid:'w-flame'},
+    {...makeWeapon('h'),uid:'w-fused',level:6,branch:'ricochet',evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}}];
+   assert.equal(gatePreparation(fullRack).mounts.length,2);
+   const beforeSelection=snapshot(fullRack);
+   assert.equal(action(fullRack,'gate-mount-advance'),false);
+   assert.deepEqual(snapshot(fullRack),beforeSelection);
+   assert.ok(action(fullRack,'gate-mount'));
+   const fullRackReload=restore(snapshot(fullRack));
+   assert.ok(choose(fullRackReload,'mount:turret:1',{mountForward:true}));
+   assert.equal(fullRackReload.operation.region,1);
+   assert.equal(fullRackReload.weapons[1].uid,COAST_TURRET_RECOVERED);
+   assert.equal(fullRackReload.weapons[1].cd,0);
+   assert.equal(fullRackReload.weapons[2].uid,'w-fused');
+   const loaded=restore(snapshot(cargo));
+   const tooFar=restore(snapshot(cargo));
+   tooFar.player.y=900;
+   assert.equal(action(tooFar,'gate-mount-advance'),false);
+   assert.equal(tooFar.operation.coastSalvage.mounted,undefined);
+   assert.ok(action(loaded,'gate-mount-advance'));
+   assert.equal(loaded.operation.region,1);
+   assert.equal(loaded.phase,'playing');
+   assert.equal(loaded.weapons[1].cd,0);
+   assert.equal(action(loaded,'gate-mount-advance'),false);
+   assert.ok(action(cargo,'gate-mount'));
+   const deferred=restore(snapshot(cargo));
+   const displaced=snapshot(deferred);
+   displaced.player.y=900;
+   assert.throws(()=>restore(displaced));
+   assert.equal(choose(displaced,'mount:turret'),false);
+   assert.ok(choose(deferred,'carry:turret'));
+   assert.equal(deferred.choice.type,'clear');
+   assert.ok(action(deferred,'gate-mount'));
+   assert.ok(choose(deferred,'mount:turret'));
+   assert.equal(deferred.choice.type,'clear');
+   assert.equal(action(deferred,'gate-mount'),false);
+   assert.deepEqual(deferred.weapons.map(w=>[w.id,w.level,!!w.capturedTurret]),[['h',1,false],['r',2,true]]);
+   assert.ok(choose(deferred,'advance'));
+   assert.equal(deferred.operation.region,1);
+   assert.equal(deferred.weapons[1].cd,0);
+   assert.equal(deferred.stats.turretVolleys,undefined);
+   assert.deepEqual(restore(snapshot(loaded)),restore(snapshot(deferred)));
+   assert.ok(choose(s,'mount:turret'));
+   assert.deepEqual(s.weapons.map(w=>[w.id,w.level,!!w.capturedTurret]),[['h',1,false],['r',2,true]]);
+   const abandoned=restore(snapshot(s));
+   finish(abandoned);
+   assert.notEqual(settleProfile(next,abandoned).milestones.coastTurret,true);
+   if(fullCampaign){
+    const coastOnly=restore(snapshot(s));
+    Object.assign(coastOnly.player,exitGate(coastOnly));
+    assert.ok(action(coastOnly,'interact'));
+    assert.ok(choose(coastOnly,'extract'));
+    assert.notEqual(settleProfile(next,coastOnly).milestones.coastTurret,true);
+   }
+  }
+  Object.assign(s.player,exitGate(s));
+  assert.ok(action(s,'interact'));
+  const shoreChoices=plan==='break'?['advance:breach','advance:vanguard','stay']:['advance','stay'];
+  assert.deepEqual(s.choices.map(c=>c.id),fullCampaign?[...shoreChoices,'extract']:shoreChoices);
+  const advance=s.choices[0].id;
+  s.weapons[1].cd=.8;
+  s.player.x=800;s.player.y=900;
+  assert.equal(choose(s,advance),false);
+  Object.assign(s.player,exitGate(s));
+  assert.ok(choose(s,advance));
+  assert.equal(s.operation.region,1);
+  assert.equal(s.operation.support,plan==='break'?'breach':null);
+  assert.equal(s.weapons[1].cd,plan==='capture'?0:.8);
+  assert.deepEqual(s.sites.slice(0,2).map(site=>[site.id,site.guardPlan]),[['rail-cache','spread'],['rail-relay','battery']]);
+  assert.equal(restore(snapshot(s)).weapons.some(w=>w.capturedTurret),plan==='capture');
+  quietFront();
+  Object.assign(s.player,{x:800,y:350});
+  assert.ok(action(s,'interact'));
+  assert.equal(s.stage,'boss');
+  if(plan==='break'){
+   const part=s.boss.parts[0];
+   s.shots=[bullet(s,{...partPosition(s,part),id:part.id},200)];
+   step(s,dt);
+   assert.equal(part.hp,fullCampaign?390:170);
+   s.shots=[bullet(s,{...partPosition(s,part),id:part.id},999)];
+   step(s,dt);
+   assert.equal(s.stats.railGunsDestroyed,1);
+  }
+  s.shots=[bullet(s,s.boss,20000)];
+  step(s,dt);
+  assert.equal(s.operation.cleared,2);
+  assert.equal(s.stage,'holdout');
+  Object.assign(s.player,exitGate(s));
+  assert.ok(action(s,'interact'));
+  assert.deepEqual(s.choices.map(c=>c.id),fullCampaign?['advance','stay','extract']:['extract','stay']);
+  if(fullCampaign){
+   const onward=restore(snapshot(s));
+   assert.ok(choose(onward,'advance'));
+   assert.equal(onward.operation.region,2);
+   assert.equal(onward.weapons.some(w=>w.capturedTurret),plan==='capture');
+   const tooFar=restore(snapshot(s));
+   Object.assign(tooFar.player,{x:800,y:1000});
+   assert.equal(choose(tooFar,'extract'),false);
+  }
+  assert.ok(choose(s,'extract'));
+  assert.equal(s.result.reason,'rail-return');
+  assert.equal(restore(snapshot(s)).result.reason,'rail-return');
+  const saved=parseProfile(JSON.stringify(settleProfile(next,s)));
+  assert.equal(saved.records.wins,0);
+  assert.equal(saved.milestones.coastTurret===true,plan==='capture');
+  assert.equal(saved.recent[0].creditBreakdown.extraction,60);
+  assert.equal(saved.recent[0].creditBreakdown.turret,plan==='capture'?40:undefined);
+  assert.equal(settleProfile(saved,s).credits,saved.credits);
+  if(fullCampaign){
+   const loadout=plan==='capture'?'turret':'standard';
+   const {run:fresh,next:restarted}=freshSortie(saved,27,null,'fio',null,null,null,loadout,true);
+   assert.equal(fresh.seed,27);
+   assert.equal(fresh.level,1);
+   assert.deepEqual(fresh.weapons.map(w=>[w.id,w.level,!!w.capturedTurret]),[plan==='capture'?['r',1,true]:['h',1,false]]);
+   assert.equal(restarted.credits,saved.credits);
+   if(plan==='capture')assert.deepEqual(supply(fresh).filter(c=>c.kind==='gun').map(c=>c.weapon),['f','h']);
+  }
+ }
+});
+
+test('the captured turret inherits the boss fan and hits separated lanes, while a regular rocket reaches farther',()=>{
+ const setup=(captured,angles,reach)=>{
+  const p=emptyProfile();p.milestones.coastTurret=true;
+  const {run:s}=freshSortie(p,17,null,'fio',null,null,null,'turret');
+  if(!captured)delete s.weapons[0].capturedTurret;
+  s.blocks=[];s.spawnClock=999;s.sites.forEach(site=>site.state='done');
+  Object.assign(s.player,{x:800,y:800});s.weapons[0].cd=0;
+  s.enemies=angles.map((offset,i)=>enemy(`target-${i}`,800+Math.sin(offset)*reach,
+   800-Math.cos(offset)*(offset===0?reach-4:reach),'rifle',28));
+  return s;
+ };
+ const bearings=Array.from({length:COAST_FAN.count},(_,i)=>coastFanAngle(i,COAST_FAN.count));
+ const wide=setup(true,bearings,296),single=setup(false,bearings,296);
+ step(wide,dt);step(single,dt);
+ assert.equal(wide.shots.length,5);
+ assert.equal(single.shots.length,1);
+ assert.ok(wide.shots.every((q,i)=>q.capturedFan&&!q.homing&&
+  Math.abs(Math.atan2(q.vy,q.vx)+Math.PI/2-bearings[i])<1e-8));
+ assert.deepEqual(selectRiftAudioEvents(new Set(['captured-volley','captured-impact'])),['turret-volley','turret-impact']);
+ tick(wide,.9);tick(single,1.01);
+ assert.equal(wide.stats.turretKills,5);
+ assert.ok(single.stats.kills<wide.stats.turretKills);
+
+ const farFan=setup(true,[0],411),farRocket=setup(false,[0],411);
+ tick(farFan,1.5);tick(farRocket,1.5);
+ assert.equal(farFan.stats.turretVolleys,undefined);
+ assert.equal(farRocket.stats.kills,1);
+
+ const old=snapshot(setup(true,[0],250));
+ delete old.weapons[0].capturedTurret;
+ const restored=restore(old);
+ assert.equal(weaponStats(restored.weapons[0]).count,5);
+ Object.assign(restored.weapons[0],{level:6,branch:'homing'});
+ restored.modules=[{id:'coil',rank:2}];
+ assert.ok(action(restored,'gear'));
+ assert.ok(choose(restored,'evolve:r'));
+ step(restored,dt);
+ assert.equal(capstoneName(restored.weapons[0]),'광각 포탑');
+ assert.equal(restored.shots.length,7);
+ assert.equal(restored.shots.filter(q=>q.homing).length,1);
+
+ const fusion=restore(old);
+ Object.assign(fusion.weapons[0],{level:4,branch:'homing'});
+ fusion.weapons.push({...makeWeapon('h'),uid:'h-pair',level:4,branch:'ricochet'});
+ fusion.modules=[{id:'coil',rank:2}];
+ assert.ok(action(fusion,'gear'));
+ const card=fusion.choices.find(c=>c.id==='fusion:h:r');
+ assert.match(choiceDetails(fusion,card).link,/노획 포탑 분해/);
+ assert.ok(choose(fusion,card.id));
+ assert.equal(fusion.weapons.length,1);
+ assert.equal(fusion.weapons[0].fusion.secondary,'r');
+});
+
 test('reboot runtime data stays identical to the reviewed design baseline',async()=>{assert.deepEqual(RULES,JSON.parse(await readFile('docs/design/reboot-rules.json','utf8')));});
+test('a returned turret can open the rescue with two independent rays on either beach flank',()=>{
+ for(const seed of [27,28]){
+  let s=createOperation(seed,[],null,null,'fio','turret');
+  s.enemies=[];s.spawnClock=999;
+  const pad=coastFanPosition(s.sites[0]);
+  assert.ok(coastOpeningGuide(s).routes.some(route=>route.fan?.x===pad.x));
+  Object.assign(s.player,{x:pad.x+24,y:pad.y});
+  tick(s,.56);
+  assert.deepEqual(s.enemies.filter(e=>e.siteId==='supply-a').map(e=>e.rescueWing),[0,0,1,1]);
+  assert.equal(s.shots.filter(q=>q.rescueFan).length,5);
+  for(let i=0;i<35&&!s.rescueFanContacts;i++)step(s,dt);
+  assert.ok(s.rescueFanContacts,'save after the first wing has been hit');
+  s=restore(snapshot(s));
+  tick(s,.6);
+  assert.equal(s.stats.rescueFanSweep,true);
+  assert.equal(s.sites[0].state,'ready');
+  assert.equal(s.effects.filter(f=>f.type==='rescue-fan-sweep').length,1);
+  assert.equal(coastOpeningGuide(s),null);
+  Object.assign(s.player,s.sites[0]);
+  step(s,dt);
+  assert.equal(s.choice.opening,true);
+  assert.deepEqual(s.choices.filter(c=>c.kind==='gun').map(c=>c.weapon),['f','h']);
+  const coil=s.choices.find(c=>c.id==='rescue:coil');
+  assert.equal(coil?.rank,1);
+  const earlier=snapshot(s);
+  earlier.balanceRevision='b68-quad-lanes';
+  earlier.choices[2]={kind:'rank',id:'rank:r',weapon:'r'};
+  assert.deepEqual(restore(earlier).choices,s.choices);
+  const forged=snapshot(s);delete forged.stats.rescueFanSweep;
+  assert.throws(()=>restore(forged));
+  assert.equal(choose(forged,coil.id),false);
+  const retainedTrial=createOperation(seed,['shrapnel'],['shrapnel'],null,'fio','turret');
+  retainedTrial.stats.rescueFanSweep=true;retainedTrial.stats.turretVolleys=1;
+  retainedTrial.sites[0].state='ready';Object.assign(retainedTrial.player,retainedTrial.sites[0]);
+  step(retainedTrial,dt);
+  assert.deepEqual(retainedTrial.choices.map(c=>c.id),['gun:f','gun:h','rescue:coil','module:shrapnel']);
+  const invested=restore(snapshot(s));
+  assert.ok(choose(invested,coil.id));
+  assert.deepEqual(invested.modules,[{id:'coil',rank:1}]);
+  assert.equal(invested.weapons.length,1);
+  const battery=coastLead(invested);
+  assert.equal(battery?.coastApproach,'r');
+  assert.equal(coastService(invested,battery)?.level,3);
+  invested.blocks=[];invested.shots=[];invested.enemies=[enemy('first',800,730),enemy('nearby',845,730)];
+  Object.assign(invested.player,{x:800,y:880});
+  invested.weapons[0].cd=999;
+  invested.shots.push(bullet(invested,invested.enemies[0],25));
+  step(invested,dt);
+  assert.equal(invested.stats.coilBursts,1);
+  assert.ok(invested.enemies[1].hp<100);
+  const missed=createOperation(seed,[],null,null,'fio','turret');
+  missed.sites[0].state='ready';Object.assign(missed.player,missed.sites[0]);
+  step(missed,dt);
+  assert.deepEqual(missed.choices.map(c=>c.id),['gun:f','gun:h','rank:r']);
+  const standard=createOperation(seed,[],null,null,'fio','standard');
+  Object.assign(standard.player,{x:pad.x,y:pad.y});
+  tick(standard,.55);
+  assert.ok(standard.enemies.some(e=>e.siteId==='supply-a'));
+  assert.ok(standard.enemies.every(e=>e.rescueWing===undefined));
+ }
+});
+test('captured outside rounds cut a live railway barrage from the center line',()=>{
+ const prepare=(seed,loadout='turret',x=800,y=424)=>{
+  const s=createOperation(seed,[],null,null,'fio',loadout);
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{enemies:[],stage:'boss',boss:regionBoss(1,seed)});
+  Object.assign(s.boss,{active:true,timer:.1,spawnClock:999});
+  Object.assign(s.player,{x,y});
+  if(loadout==='standard')s.weapons=[makeWeapon('r')];
+  return s;
+ };
+ for(const [seed,x,y,evolved] of [[27,800,424,false],[28,818,432,true]]){
+  const s=prepare(seed,'turret',x,y);
+  if(evolved)Object.assign(s.weapons[0],{level:6,branch:'homing',evolved:true});
+  assert.equal(railFanCutCue(s).state,'hold');
+  tick(s,.14);
+  assert.equal(railFanCutCue(s).state,'flying');
+  const outside=s.shots.filter(q=>q.railFanCut);
+  assert.deepEqual(outside.map(q=>q.railFanCut.gun),[0,1]);
+  const volley=s.effects.find(f=>f.type==='captured-volley');
+  for(const {gun,angle} of volley.cutRays){
+   const q=outside.find(q=>q.railFanCut.gun===gun);
+   assert.ok(Math.abs(volley.angle+angle-Math.atan2(q.vy,q.vx))<1e-9);
+  }
+  const restored=restore(snapshot(s));
+  tick(s,.6);tick(restored,.6);
+  assert.equal(s.stats.railFanCut,true);assert.equal(restored.stats.railFanCut,true);
+  assert.ok(s.boss.parts.every(p=>p.hp<p.maxHp));
+  assert.equal(s.hazards.filter(h=>h.lane).length,0);
+  assert.equal(s.boss.mode,'recover');
+  assert.equal(s.effects.filter(f=>f.railFanCut).length,1);
+  tick(s,4);
+  assert.ok(s.hazards.some(h=>h.lane),'subsequent warnings still run');
+ }
+ const rocket=prepare(27,'standard'),tooFar=prepare(27,'turret',800,470);
+ assert.equal(railFanCutCue(rocket),null);
+ assert.equal(railFanCutCue(tooFar).state,'approach');
+ for(const s of [rocket,tooFar]){
+  tick(s,.75);
+  assert.equal(s.stats.railFanCut,undefined);
+  assert.equal(s.hazards.filter(h=>h.lane).length,2);
+ }
+ for(const seed of [27,28]){
+  const rear=prepare(seed,'turret',782,448);
+  assert.equal(railFanCutCue(rear).state,'hold');
+  tick(rear,.75);
+  assert.equal(rear.stats.railFanCut,true);
+  for(const y of [415,449]){
+   const outside=prepare(seed,'turret',782,y);
+   assert.equal(railFanCutCue(outside).state,'approach');
+   tick(outside,.75);
+   assert.equal(outside.stats.railFanCut,undefined);
+  }
+ }
+ const waitingOutside=prepare(27,'turret',800,470);
+ tick(waitingOutside,.14);
+ waitingOutside.player.x=918;
+ assert.equal(railFanCutCue(waitingOutside).state,'evade');
+ assert.equal(railFanCutCue(waitingOutside).clear,false);
+ const lethal=prepare(27);
+ lethal.boss.parts.forEach(part=>part.hp=20);
+ tick(lethal,.75);
+ assert.ok(lethal.boss.parts.every(part=>part.hp===0));
+ assert.equal(lethal.stats.railFanCut,true);
+ assert.equal(lethal.hazards.filter(h=>h.lane).length,0);
+ const blocked=prepare(27);
+ tick(blocked,.14);
+ const shot=blocked.shots.find(q=>q.railFanCut?.gun===1);
+ blocked.blocks.push({id:'test-occlusion',x:shot.x+16,y:shot.y-65,w:30,h:44,hp:-1});
+ tick(blocked,.65);
+ assert.equal(blocked.stats.railFanCut,undefined);
+ assert.equal(blocked.hazards.filter(h=>h.lane).length,2);
+ assert.equal(blocked.boss.railFanCutHit,undefined);
+});
+test('rail guidance shows either the firing pad or a safe escape slot during a live salvo',()=>{
+ const s=createOperation(27,[],null,null,'fio','turret');
+ Object.assign(s.operation,{region:1,cleared:1});
+ Object.assign(s,regionLayout(mapSeed(s.seed,1),1,null,true),{stage:'boss',boss:regionBoss(1,s.seed)});
+ Object.assign(s.boss,{active:true,mode:'salvo',cycle:1});
+ Object.assign(s.player,{x:800,y:432});
+ s.hazards=[{x:800,y:600,w:180,h:900,r:0,lane:true,tracked:true,railGun:1,timer:1.25},
+  {x:500,y:600,w:180,h:900,r:0,lane:true,railGun:0,timer:1.25}];
+ const guide=()=>railBossGuide(s,railFanCutCue(s));
+ assert.equal(guide().pad.state,'ready');assert.equal(guide().slot,null);
+ assert.equal(guide().bait,null);
+ s.boss.railDecoy={x:800,lead:1,cycle:1};
+ assert.equal(guide().bait,s.hazards[0]);
+ s.boss.mode='aim';s.boss.cycle=0;
+ const locked=guide();
+ assert.ok(locked.forecast.includes(locked.bait));
+ assert.equal(locked.bait.railGun,1);
+ s.boss.mode='salvo';s.boss.cycle=1;
+ delete s.boss.railDecoy;
+ s.weapons[0].cd=.68;
+ assert.equal(railFanCutCue(s).state,'ready');
+ assert.equal(guide().pad,null);assert.ok(guide().slot);
+ s.weapons[0].cd=0;
+ s.shots=[{railFanCut:{cycle:1}}];
+ assert.equal(guide().fan.state,'flying');
+ assert.equal(guide().pad,null);assert.ok(guide().slot);
+ s.shots=[];
+ const mortar={x:800,y:432,r:45,timer:.25};
+ s.hazards.push(mortar);
+ assert.equal(guide().mortar,mortar);assert.equal(guide().pad,null);assert.ok(guide().slot);
+ s.player.y=518;s.hazards=[mortar];s.boss.mode='aim';
+ assert.equal(guide().mortar,null);assert.equal(guide().pad,null);
+ s.hazards=[];
+ assert.equal(guide().pad.state,'approach');
+ s.weapons=[makeWeapon('r')];
+ assert.equal(guide().pad,null);
+});
+test('a workshop sweep requires two rays from one captured volley and survives a checkpoint between contacts',()=>{
+ const prepared=seed=>{
+  const s=createOperation(seed,[],null,null,'fio','turret');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{blocks:[],enemies:[],spawnClock:999,boss:regionBoss(1,seed)});
+  const site=s.sites.find(site=>site.id==='rail-cache');
+  s.sites.filter(other=>other!==site).forEach(other=>other.state='done');
+  const workshopRoute=activeEntry(s).routes.find(route=>route.site===site.id);
+  assert.deepEqual(workshopRoute.path.slice(-2),[[site.x,site.y+244],[site.x,site.y]]);
+  assert.deepEqual(workshopRoute.fan,{x:site.x,y:site.y+210,dx:0,dy:1});
+  Object.assign(s.player,{x:site.x-60,y:site.y+210});
+  s.weapons[0].cd=999;step(s,dt);
+  assert.equal(site.state,'active');
+  assert.deepEqual(s.enemies.map(e=>e.railWing).sort(),[0,0,0,0,1,1,1,1]);
+  assert.deepEqual(activeEntry(s).routes.find(route=>route.site===site.id).fan,workshopRoute.fan);
+  s.weapons[0].cd=0;step(s,dt);s.weapons[0].cd=999;
+  return s;
+ };
+ for(const seed of [27,28]){
+  const s=prepared(seed);
+  for(let i=0;i<50&&!s.railFanContacts;i++)step(s,dt);
+  assert.ok(s.railFanContacts);assert.equal(s.stats.railFanSweep,undefined);
+  const resumed=restore(snapshot(s));
+  tick(s,.75);tick(resumed,.75);
+  assert.deepEqual(resumed.stats,s.stats);assert.equal(resumed.stats.railFanSweep,true);
+  assert.equal(activeEntry(resumed).routes.find(route=>route.site==='rail-cache')?.fan,undefined);
+  const [event]=resumed.effects.filter(e=>e.type==='rail-fan-sweep');
+  assert.ok(event);assert.notEqual(event.x,event.x2);
+  const events=takeEvents(resumed);
+  assert.equal(events.filter(event=>event==='rail-fan-sweep').length,1);
+  assert.deepEqual(selectRiftAudioEvents(new Set([...events,'rail-lock'])),['rail-lock','turret-sweep']);
+  assert.equal(restore(snapshot(resumed)).stats.railFanSweep,true);
+ }
+ const original=prepared(27),single=restore(snapshot(original)),untracked=restore(snapshot(original));
+ const targets=[0,1].map(wing=>single.enemies.find(e=>e.railWing===wing));
+ const makeImpact=(s,e,volley,ray)=>({...bullet(s,e,60),rocket:true,radius:9,capturedFan:true,speed:s.shots[0].speed,railFan:{volley,ray}});
+ single.stats.turretVolleys=2;
+ single.shots=targets.map((e,index)=>makeImpact(single,e,index+1,index));
+ step(single,dt);
+ assert.equal(single.stats.railFanSweep,undefined);assert.equal(single.railFanContacts,undefined);
+ const overlap=restore(snapshot(original)),left=overlap.enemies.find(e=>e.railWing===0),right=overlap.enemies.find(e=>e.railWing===1);
+ Object.assign(right,{x:left.x+11,y:left.y});
+ overlap.shots=[makeImpact(overlap,left,1,0)];step(overlap,dt);
+ assert.ok(left.dead&&right.dead);assert.equal(overlap.stats.railFanSweep,undefined);
+ for(const e of untracked.enemies)delete e.railWing;
+ for(const q of untracked.shots)delete q.railFan;
+ assert.doesNotThrow(()=>restore(snapshot(untracked)));
+});
+
+test('a mounted turret saves its workshop volley while moving into the firing position',()=>{
+ for(const seed of [27,28]){
+  const s=createOperation(seed,[],null,null,'fio','turret');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{blocks:[],enemies:[],spawnClock:999,boss:regionBoss(1,seed)});
+  const site=s.sites.find(n=>n.id==='rail-cache');
+  const {fan}=activeEntry(s).routes.find(route=>route.site===site.id);
+  Object.assign(s.player,{x:fan.x,y:fan.y+95});
+  s.weapons[0].cd=0;
+  step(s,dt,{x:0,y:-1});
+  assert.equal(site.state,'active');
+  assert.equal(s.stats.turretVolleys,undefined);
+  const onApproach=restore(snapshot(s));
+  tick(onApproach,.12,{x:0,y:-1});
+  assert.equal(onApproach.stats.turretVolleys,undefined);
+  tick(onApproach,.23,{x:0,y:-1});
+  assert.equal(onApproach.stats.turretVolleys,1);
+  tick(onApproach,.5);
+  assert.equal(onApproach.stats.railFanSweep,true);
+  const stationary=restore(snapshot(s));
+  stationary.player.y=fan.y+60;
+  step(stationary,dt);
+  assert.equal(stationary.stats.turretVolleys,1);
+ }
+});
 test('a marked coast outpost can be seized for its native gun before rescuing the prisoner',()=>{
  for(const [seed,gun,guardCount] of [[17,'r',2],[19,'f',3]]){
   const s=createOperation(seed),rescue=s.sites[0],outpost=coastPreemptSite(s);
@@ -66,6 +743,46 @@ test('a marked coast outpost can be seized for its native gun before rescuing th
   assert.deepEqual(active.choices.filter(c=>c.kind==='gun').map(c=>c.weapon).sort(),['f','r']);
  }
 });
+test('a coast preempt gun replaces one ambient pack with its own nearby counterattack',()=>{
+ for(const [seed,gun,heavy] of [[17,'r','mortar'],[19,'f','shield']]){
+  const s=createOperation(seed),outpost=coastPreemptSite(s);
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  Object.assign(s.player,{x:outpost.x,y:outpost.y});
+  assert.ok(action(s,'interact'));step(s,dt);
+  s.enemies=[];step(s,dt);
+  assert.ok(choose(s,'gun:'+gun));
+  for(const w of s.weapons)w.cd=999;
+  assert.equal(s.stats.coastResponse,undefined);
+  const restored=restore(snapshot(s));
+  tick(restored,.4);
+  const response=coastResponseCue(restored),pack=restored.enemies.filter(e=>e.coastResponse===gun);
+  assert.equal(restored.stats.coastResponse,gun);
+  assert.equal(response.target.type,heavy);
+  assert.equal(response.count,5);
+  assert.equal(pack.length,5);
+  assert.ok(pack.every(e=>Math.hypot(e.x-restored.player.x,e.y-restored.player.y)>145));
+  assert.equal(Object.values(restored.stats.directorSpawns).reduce((total,n)=>total+n,0),5);
+  const cleared=restore(snapshot(restored)),score=cleared.stats.score;
+  for(const e of cleared.enemies){e.hp=1;cleared.shots.push(bullet(cleared,e));}
+  step(cleared,dt);
+  assert.equal(cleared.stats.kills,5);
+  assert.equal(cleared.stats.score-score,50);
+  assert.equal(cleared.gems.reduce((total,g)=>total+g.value,0),5);
+  const ready=restore(snapshot(restored));
+  if(gun==='r'){
+   tick(ready,1.2);
+   const shell=ready.hazards.find(h=>h.coastMortar==='coast-response');
+   assert.ok(shell&&Number.isFinite(shell.fromX)&&Number.isFinite(shell.fromY));
+   assert.ok(shell.timer>0);
+  }
+  tick(ready,1.6);
+  assert.equal(ready.enemies.filter(e=>e.coastResponse===gun).length,5);
+  Object.assign(ready.player,{x:800,y:350});
+  assert.equal(interaction(ready)?.id,'boss');
+  assert.ok(action(ready,'interact'));
+  assert.equal(coastResponseCue(ready),null);
+ }
+});
 test('paid and research sorties preserve their briefed coast opening',()=>{
  const reservation=createOperation(19,['shrapnel']);
  reservation.operation.requisition='shrapnel';
@@ -76,6 +793,142 @@ test('paid and research sorties preserve their briefed coast opening',()=>{
   Object.assign(s.player,{x:outpost.x,y:outpost.y});
   assert.notEqual(interaction(s)?.id,'coast-preempt');
  }
+});
+test('a briefing can dispatch either first-weapon raid on the same coast and recover the selected route',()=>{
+ const p=emptyProfile();
+ for(const gun of ['f','r']){
+  const {run,next}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,gun);
+  const s=restore(next.active.run),outpost=coastPreemptSite(s);
+  const route=coastOpeningGuide(s).routes.find(n=>n.kind==='preempt');
+  const expectedGuards=gun==='f'?['shield','rifle','rifle']:['mortar','mortar'];
+  assert.equal(run.level,1);
+  assert.deepEqual(run.weapons.map(w=>[w.id,w.level]),[['h',1]]);
+  assert.equal(outpost.coastApproach,gun);
+  assert.equal(coastLead(s),outpost);
+  assert.deepEqual(route.path.at(-1),[outpost.x,outpost.y]);
+  assert.deepEqual(route.path[1],coastOpeningBrief(27,gun).firstTurn);
+  assert.equal(route.path.length,gun==='f'?2:3);
+  s.sites[0].state='active';
+  assert.ok(coastOpeningGuide(s),'the guide stays visible while the rescue guards are active');
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  Object.assign(s.player,{x:outpost.x,y:outpost.y});
+  assert.equal(interaction(s)?.id,'coast-preempt');
+  assert.ok(action(s,'interact'));step(s,dt);
+  assert.deepEqual(s.enemies.filter(e=>e.siteId===outpost.id).map(e=>e.type),expectedGuards);
+  assert.throws(()=>restore({...snapshot(s),operation:{...s.operation,openingGun:gun==='f'?'r':'f'}}),/체크포인트/);
+  const active=restore(snapshot(s));
+  active.enemies=[];step(active,dt);
+  const draft=restore(snapshot(active));
+  assert.equal(draft.choice.preempt,true);
+  assert.ok(choose(draft,`gun:${gun}`));
+  assert.equal(draft.stats.coastPreempt,gun);
+  assert.equal(draft.weapons.find(w=>w.id===gun).level,2);
+  assert.equal(restore(snapshot(draft)).operation.openingGun,gun);
+ }
+ const {run:fallback}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,'r');
+ fallback.blocks=[];fallback.enemies=[];
+ Object.assign(fallback.sites[0],{state:'ready'});
+ Object.assign(fallback.player,{x:fallback.sites[0].x,y:fallback.sites[0].y});
+ step(fallback,dt);
+ assert.equal(coastPreemptSite(fallback),null);
+ assert.deepEqual(fallback.choices.filter(c=>c.kind==='gun').map(c=>c.weapon).sort(),['f','r']);
+ assert.ok(choose(fallback,'gun:f'));
+ assert.equal(fallback.weapons.find(w=>w.id==='f').level,1);
+ assert.equal(fallback.stats.coastPreempt,undefined);
+ p.research=['thermal'];p.trials=['thermal'];
+ assert.equal(freshSortie(p,27,null,'fio',null,null,null,'standard',true,'r').run.operation.openingGun,undefined);
+});
+test('a first-weapon raid pays completion and unlocks without replacing the standard record',()=>{
+ const p=emptyProfile();
+ Object.assign(p.records,{score:7000,time:100,challenge:2});
+ const {run,next}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,'r');
+ Object.assign(run.operation,{region:2,cleared:3,extracted:true});
+ Object.assign(run.stats,{bossKilled:true,score:12000,challenge:3});
+ run.t=80;finish(run,true);
+ const settled=settleProfile(next,run),report=settled.recent[0];
+ assert.deepEqual(settled.records,{score:7000,time:100,challenge:2,wins:1});
+ assert.equal(settled.milestones.medic,true);
+ assert.equal(report.creditBreakdown.firstClear,200);
+ assert.equal(report.newScore,false);
+ assert.equal(report.newTime,false);
+ assert.equal(report.operation.openingGun,'r');
+});
+test('a committed raid focuses the armed outpost guard after immediate threats',()=>{
+ for(const [plan,gap,expected] of [['f',110,'guard'],['f',55,'ambient'],[null,110,'guard'],[null,55,'ambient']]){
+  const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,plan);
+  const site=coastPreemptSite(s);
+  Object.assign(site,{preempt:true,state:'active'});
+  Object.assign(s,{blocks:[],shots:[],spawnClock:999});
+  Object.assign(s.player,{x:site.x,y:site.y+125});
+  const enemy=(id,x,y,siteId)=>({id,type:'rifle',x,y,siteId,r:13,hp:28,maxHp:28,speed:0,walk:0,aim:0,timer:1,hurt:0,spawnAge:1,death:0});
+  s.enemies=[enemy('ambient',s.player.x+gap,s.player.y,null),enemy('guard',site.x,site.y-40,site.id)];
+  Object.assign(s.weapons[0],{cd:0,targetId:'guard',targetUntil:1});
+  if(!plan)delete s.weapons[0].targetId;
+  step(s,dt);
+  assert.equal(s.shots[0]?.target,expected);
+ }
+});
+test('fire escorts brace through restore and taking the weapon triggers a separate counterattack',()=>{
+ for(const gun of ['f','r']){
+  const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,gun);
+  const site=coastPreemptSite(run);
+  Object.assign(run,{blocks:[],enemies:[],spawnClock:.1});
+  Object.assign(run.player,{x:site.x,y:site.y+100});
+  assert.ok(action(run,'interact'));
+  assert.equal(run.spawnClock,COAST_RAID_PATROL_DELAY);
+  run.weapons[0].cd=999;
+  step(run,dt);
+  const saved=restore(snapshot(run)),guard=saved.enemies.find(e=>e.siteId===site.id&&e.type==='shield');
+  if(gun==='f'){
+   assert.ok(bracingCoastEscort(guard));
+   const y=guard.y;
+   assert.ok(shieldFaces(guard,saved.player));
+   for(const patch of [{spawnAge:-1},{spawnAge:null},{aim:0}]){
+    const invalid=snapshot(saved);
+    Object.assign(invalid.enemies.find(e=>e.id===guard.id),patch);
+    assert.throws(()=>restore(invalid),/체크포인트/);
+   }
+   const front=restore(snapshot(saved)),frontGuard=front.enemies.find(e=>e.id===guard.id);
+   front.shots=[bullet(front,frontGuard,20)];step(front,dt);
+   assert.equal(frontGuard.hp,33);
+   Object.assign(saved.player,{x:guard.x+120,y:guard.y});
+   tick(saved,.5);
+   assert.equal(guard.y,y);
+   assert.equal(guard.aim,Math.PI/2);
+   assert.equal(shieldFaces(guard,saved.player),false);
+   const side=restore(snapshot(saved)),sideGuard=side.enemies.find(e=>e.id===guard.id);
+   side.shots=[bullet(side,sideGuard,20)];step(side,dt);
+   assert.equal(sideGuard.hp,22);
+   side.enemies=[sideGuard];
+   side.shots=[bullet(side,sideGuard,100)];step(side,dt);
+   assert.equal(side.sites.find(n=>n.id===site.id).state,'ready');
+   assert.equal(restore(snapshot(side)).enemies[0].dead,true);
+   tick(saved,COAST_SHIELD_BRACE);
+   assert.equal(bracingCoastEscort(guard),false);
+   assert.ok(guard.aim<Math.PI/2);
+  }else{
+   assert.equal(guard,undefined);
+   assert.equal(saved.enemies.filter(e=>e.type==='mortar').length,2);
+  }
+  assert.equal(saved.stats.directorSpawns,undefined);
+  saved.enemies=[];
+  const liveSite=saved.sites.find(n=>n.id===site.id);
+  Object.assign(saved.player,{x:liveSite.x,y:liveSite.y});
+  step(saved,dt);
+  assert.ok(choose(saved,`gun:${gun}`));
+  assert.ok(saved.spawnClock<=.36);
+  tick(saved,.4);
+  assert.equal(saved.stats.coastResponse,gun);
+ }
+ const regular=createOperation(19,[],null,null,'fio','standard'),site=coastPreemptSite(regular);
+ Object.assign(regular,{blocks:[],enemies:[],spawnClock:.1});
+ Object.assign(regular.player,{x:site.x,y:site.y+100});
+ assert.ok(action(regular,'interact'));
+ assert.equal(regular.spawnClock,COAST_RAID_PATROL_DELAY);
+ step(regular,dt);
+ const restored=restore(snapshot(regular));
+ assert.ok(bracingCoastEscort(restored.enemies.find(e=>e.siteId===site.id&&e.type==='shield')));
+ assert.equal(restored.operation.openingGun,undefined);
 });
 test('opening enemies respect distance and cover even near the southern boundary',()=>{
  for(const seed of [17,71,109,214,3470268883]){const s=createRun(seed);assert.equal(s.enemies.length,10);for(const e of s.enemies){assert.ok(Math.hypot(e.x-s.player.x,e.y-s.player.y)>300);assert.ok(s.enemies.every(other=>e===other||Math.hypot(e.x-other.x,e.y-other.y)>=RULES.spawn.openingGap));assert.ok(!s.blocks.some(b=>e.x+e.r>b.x&&e.x-e.r<b.x+b.w&&e.y+e.r>b.y&&e.y-e.r<b.y+b.h));}}
@@ -561,6 +1414,97 @@ test('successful contracts keep distinct workshop and completion roles through r
  const armor=raidLoot('armored',configure),quality=armor.choice.quality;assert.ok(armor.choices.some(c=>c.support&&['coil','catalyst'].includes(c.module)));assert.ok(!armor.choices.some(c=>c.kind==='refit'));reroll(armor);assert.equal(armor.choice.quality,quality);assert.ok(armor.choices.some(c=>c.support));
  const early=raidLoot('light');assert.ok(early.choices.some(c=>c.kind==='rank'));assert.ok(!early.choices.some(c=>c.kind==='refit'));
 });
+function salvageArmory(guns,modules,{tuning=1,excluded=[]}={}){
+ const s=createOperation(27,[],null,null,'fio','standard');
+ s.sites.forEach(site=>site.state='done');
+ s.weapons=guns.map(([id,level,branch])=>({...makeWeapon(id),uid:`test-${id}`,level,branch,cd:999}));
+ Object.assign(s,{modules,tuning,excluded});
+ supply(s,'arsenal');
+ assert.equal(s.choice.type,'armory');
+ return s;
+}
+function collectArmoredReward(s){
+ s.shots=[bullet(s,s.raid.target,10000)];step(s,dt);
+ assert.equal(s.raid.state,'success');
+ assert.equal(s.choice.type,'raid-reward');
+ return s.choices.find(card=>card.support);
+}
+test('armored contract secures the named completion rank independently of crate quality',()=>{
+ for(const [guns,id,recipe] of [
+  [[['h',4,'ricochet'],['r',4,'homing'],['f',1,null]],'coil','fusion:h:r'],
+  [[['h',1,null],['f',6,'trail']],'catalyst','evolve:f']
+ ])for(const rank of [0,1]){
+  const s=salvageArmory(guns,rank?[{id,rank}]:[]);
+  const before=snapshot(s),plan=armoredRaidPart(s);
+  assert.equal(plan.path,recipe);
+  assert.equal(plan.closes,true);
+  assert.equal(plan.permit,false);
+  assert.deepEqual(snapshot(s),before);
+  assert.ok(action(s,'raid:armored'));
+  assert.deepEqual(s.raid.part,{module:id,rank:2});
+  s.raid.quality='common';
+  takeEvents(s);
+  const loaded=restore(snapshot(s));
+  const card=collectArmoredReward(s);
+  assert.deepEqual(collectArmoredReward(loaded),card);
+  assert.equal(s.choice.quality,'common');
+  assert.equal(card.rank,2-rank);
+  assert.ok(reroll(s));assert.ok(reroll(loaded));
+  assert.deepEqual(snapshot(s),snapshot(loaded));
+  assert.equal(s.choices.find(item=>item.support).rank,2-rank);
+  assert.ok(choose(s,card.id));
+  assert.ok(assemblyOptions(s).some(option=>option.id===recipe));
+  assert.ok(action(s,'gear'));assert.ok(choose(s,recipe));
+ }
+});
+test('armored salvage preview distinguishes missing permits, legal slots and rank three heat',()=>{
+ const s=salvageArmory([['h',4,'ricochet'],['r',4,'homing']],[],{tuning:0});
+ assert.equal(armoredRaidPart(s).permit,true);
+ const heat=salvageArmory([['f',4,'trail'],['r',4,'homing']],[{id:'catalyst',rank:2}],{tuning:0});
+ assert.deepEqual(armoredRaidPart(heat),{module:'catalyst',rank:3,closes:true,remaining:0,goal:'열압 연계',path:'heat',permit:false,replace:false});
+ assert.ok(action(heat,'raid:armored'));
+ assert.ok(choose(heat,collectArmoredReward(heat).id));
+ assert.equal(heat.stats.completedBuild.kind,'synergy');assert.equal(heat.tuning,0);
+ const full=salvageArmory([['f',6,'trail'],['r',4,'homing']],[{id:'coil',rank:2},{id:'thermal',rank:1},{id:'medic',rank:1},{id:'magnet',rank:3}]);
+ assert.equal(armoredRaidPart(full).replace,true);
+ assert.ok(action(full,'raid:armored'));
+ const card=collectArmoredReward(full);
+ assert.equal(choose(full,card.id,{slot:0}),false);
+ assert.ok(choose(full,card.id,{slot:2}));
+ assert.ok(assemblyOptions(full).some(option=>option.id==='evolve:f'));
+});
+test('armored cargo honors mid-pursuit changes, voluntary banish and legacy saves',()=>{
+ const setup=()=>salvageArmory([['h',4,'ricochet'],['r',4,'homing']],[]);
+ for(const change of [s=>s.modules.push({id:'coil',rank:2}),s=>s.excluded.push('coil')]){
+  const s=setup();assert.ok(action(s,'raid:armored'));change(s);
+  assert.equal(collectArmoredReward(s),undefined);
+  assert.ok(s.choices.some(c=>c.id==='resupply:mixed'&&c.label==='노획 부품 교환 보급'));
+  assert.ok(reroll(s));assert.ok(s.choices.some(c=>c.label==='노획 부품 교환 보급'));
+ }
+ const s=setup();assert.ok(action(s,'raid:armored'));
+ const old=snapshot(s);delete old.raid.part;
+ assert.throws(()=>restore(old),/체크포인트/);
+ old.balanceRevision='b59-carrier-prep';
+ assert.ok(collectArmoredReward(restore(old)));
+ assert.throws(()=>restore({...snapshot(s),raid:{...s.raid,part:{module:'coil',rank:3}}}),/체크포인트/);
+ const card=collectArmoredReward(s);assert.ok(banish(s,card.id));
+ assert.equal(s.raid.part,null);assert.ok(reroll(s));
+ assert.ok(s.choices.every(item=>!item.support&&item.module!=='coil'));
+});
+test('the completed raid opens its promised part before a nearby pickup can change the loadout',()=>{
+ const s=salvageArmory([['h',4,'ricochet'],['r',4,'homing']],[]);
+ assert.ok(action(s,'raid:armored'));
+ const supplySite=s.sites.find(site=>site.id==='supply-a');
+ supplySite.state='ready';Object.assign(s.player,{x:supplySite.x,y:supplySite.y});
+ const card=collectArmoredReward(s);
+ assert.equal(card.module,'coil');assert.equal(card.rank,2);
+ assert.equal(supplySite.state,'ready');
+ const resumed=restore(snapshot(s));
+ assert.ok(choose(resumed,card.id));
+ step(resumed,dt);
+ assert.equal(resumed.choice.type,'supply');
+ assert.equal(resumed.sites.find(site=>site.id===supplySite.id).state,'done');
+});
 test('field workshop changes one unfinished specialization without consuming investment or tuning',()=>{
  const s=raidLoot('light',s=>{Object.assign(s.weapons[0],{level:5,branch:'ricochet',cd:.32,shots:14});s.modules=[{id:'coil',rank:2}];});
  const before=snapshot(s);for(const args of [{},{weapon:'h',branch:'ricochet'},{weapon:'h',branch:'trail'},{weapon:'f',branch:'trail'}]){assert.equal(choose(s,'refit:field',args),false);assert.deepEqual(snapshot(s),before);}
@@ -697,6 +1641,141 @@ test('the fusion showcase waits through the boss attack and survives a quick gat
  s.boss.mode='recover';tick(s,.72);assert.equal(s.powerWave.paired,3);
  assert.ok(s.enemies.filter(e=>e.waveGroup!=null).length>=8);
  clearRegion(s);assert.ok(choose(s,'advance'));assert.equal(s.powerWave.showcase,'fusion');assert.equal(s.powerWave.paired,3);
+});
+function railwayCapstone(seed,build,fireBranch='trail'){
+ const s=createOperation(seed,[],null,null,'fio',build==='rocket'?'turret':'standard');
+ Object.assign(s.operation,{region:1,cleared:1});
+ Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+ Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{enemies:[],boss:regionBoss(1,seed)});
+ s.sites.forEach(site=>site.state='done');
+ if(build==='flame'){
+  s.weapons.push({...makeWeapon('f'),uid:'f',level:6,branch:fireBranch});
+  s.modules=[{id:'catalyst',rank:2}];
+ }else if(build==='quad'){
+  Object.assign(s.weapons[0],{level:6,branch:'ricochet'});
+  s.modules=[{id:'ricochet',rank:2}];
+ }else{
+  Object.assign(s.weapons[0],{level:build==='rocket'?6:4,branch:build==='rocket'?'homing':'ricochet'});
+  if(build==='fusion')s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});
+  s.modules=[{id:'coil',rank:2}];
+ }
+ assert.ok(action(s,'gear'));
+ assert.ok(choose(s,{flame:'evolve:f',fusion:'fusion:h:r',rocket:'evolve:r',quad:'evolve:h'}[build]));
+ return s;
+}
+test('the Quad Cannon meets two traversable columns and confirms a second target on the same bullet',()=>{
+ for(const seed of [27,28]){
+  const s=railwayCapstone(seed,'quad');
+  Object.assign(s.player,{x:800,y:650,aim:-Math.PI/2});
+  s.spawnClock=999;s.director.officerClock=999;
+  tick(s,.72);
+  assert.equal(s.powerWave.remaining,52);
+  const troops=s.enemies.filter(e=>e.showcase==='quad');
+  assert.equal(troops.length,8);
+  const headings=new Set(troops.map(e=>e.formationHeading));
+  assert.equal(headings.size,2);
+  for(const heading of headings){
+   const column=troops.filter(e=>e.formationHeading===heading);
+   assert.equal(column.length,4);
+   assert.ok(column.every(e=>distance(s.player,e)>150));
+  }
+  const loaded=restore(snapshot(s));
+  tick(loaded,.4);
+  assert.ok(loaded.stats.quadPierces>0);
+  assert.ok(loaded.stats.kills>0);
+  assert.ok(loaded.effects.some(f=>f.type==='quad-contact'));
+ }
+});
+test('prior turret build revisions can still resume on either later front',()=>{
+ for(const revision of ['b67-turret-builds','b68-quad-lanes','b69-rescue-coil','b70-relay-branch'])for(const front of [1,2]){
+  const s=railwayCapstone(27,'rocket');
+  Object.assign(s.operation,{region:front,cleared:front});
+  Object.assign(s,regionLayout(mapSeed(s.seed,front),front,null,true),{boss:regionBoss(front,s.seed)});
+  s.balanceRevision=revision;
+  const p=parseProfile(JSON.stringify(beginProfile({...emptyProfile(),recordScope:s.balanceRevision,credits:120},s)));
+  assert.equal(p.active?.run.runId,s.runId);
+  assert.equal(p.active?.run.operation.region,front);
+  assert.equal(p.credits,120);
+ }
+});
+test('a narrow rail lane can deploy a whole split wave with a clear and safe entrance',()=>{
+ const s=railwayCapstone(32,'fusion');
+ Object.assign(s.player,{x:835,y:536});
+ for(let i=0;i<45&&s.powerWave.paired===4;i++)step(s,dt);
+ const troops=s.enemies.filter(e=>e.showcase==='fusion');
+ assert.equal(troops.length,8);
+ assert.equal(new Set(troops.map(e=>e.waveGroup)).size,2);
+ assert.ok(troops.every(e=>Math.hypot(e.x-s.player.x,e.y-s.player.y)>=145));
+ for(const [i,a] of troops.entries())assert.ok(troops.slice(i+1).every(b=>Math.hypot(a.x-b.x,a.y-b.y)>=a.r+b.r-.01));
+ assert.equal(s.powerWave.paired,3);
+ assert.equal(s.powerWave.remaining,52);
+ assert.deepEqual(restore(snapshot(s)).powerWave,s.powerWave);
+});
+test('advancing with a completed loadout leads with two formations from the existing reinforcement reserve',()=>{
+ for(const build of ['flame','fusion','rocket','quad']){
+  const s=railwayCapstone(27,build);
+  Object.assign(s.player,{x:800,y:350});
+  tick(s,7);
+  assert.ok(!s.powerWave?.paired);
+  clearRegion(s);
+  assert.ok(choose(s,'advance'));
+  assert.equal(s.operation.region,2);
+  assert.deepEqual(s.powerWave,{delay:2,remaining:60,clock:0,paired:2,showcase:build});
+  const loaded=restore(snapshot(s));
+  const births=[];
+  for(let i=0;i<245&&loaded.powerWave.paired;i++){
+   const paired=loaded.powerWave.paired,previous=new Set(loaded.enemies.map(e=>e.id));
+   step(loaded,dt);
+   if(paired===loaded.powerWave.paired)continue;
+   const troops=loaded.enemies.filter(e=>e.showcase===build&&!previous.has(e.id)),count=troops.length;
+   assert.ok(count===8||build!=='flame'&&count===12,`${build}: ${count}`);
+   if(build==='rocket'||build==='fusion')assert.equal(new Set(troops.map(e=>e.waveGroup)).size,count/4);
+   births.push({time:loaded.operation.regionTime,count});
+  }
+  assert.equal(births.length,2);
+  assert.ok(births[1].time-births[0].time>=1.5);
+  assert.equal(loaded.powerWave.remaining,60-births.reduce((sum,packet)=>sum+packet.count,0));
+  assert.equal(loaded.powerWave.paired,0);
+ }
+});
+test('a compact Inferno lane fits two groups without spawning through walls or overlapping',()=>{
+ const s=railwayCapstone(27,'flame');
+ Object.assign(s.player,{x:800,y:1040,aim:-Math.PI/2});
+ for(const w of s.weapons)w.cd=999;
+ s.spawnClock=999;
+ s.blocks=[{x:80,y:756,w:665,h:400,hp:-1},{x:855,y:756,w:665,h:400,hp:-1},{x:740,y:60,w:120,h:696,hp:-1}];
+ for(let i=0;i<50&&s.powerWave.paired===4;i++)step(s,dt);
+ const troops=s.enemies.filter(e=>e.showcase==='flame');
+ assert.equal(troops.length,8);
+ assert.equal(s.powerWave.remaining,52);
+ for(const [i,a] of troops.entries()){
+  assert.ok(a.x-a.r>=745&&a.x+a.r<=855&&a.y-a.r>=756);
+  assert.ok(troops.slice(i+1).every(b=>Math.hypot(a.x-b.x,a.y-b.y)>=a.r+b.r-.01));
+ }
+});
+test('focused Inferno meets a broadside at harbor standoff range after resuming a railway gate',()=>{
+ for(const seed of [27,28]){
+  const s=railwayCapstone(seed,'flame','focused');
+  Object.assign(s.player,{x:800,y:700,aim:-Math.PI/2});
+  tick(s,15);
+  assert.ok(!s.powerWave?.paired);
+  clearRegion(s);
+  s.balanceRevision='b63-rail-spares';
+  const loaded=restore(snapshot(s));
+  assert.ok(choose(loaded,'advance'));
+  const pilot={x:loaded.player.x,y:loaded.player.y};
+  for(let i=0;i<155&&loaded.powerWave.paired===2;i++)step(loaded,dt);
+  const markers=loaded.effects.filter(e=>e.type==='formation');
+  const troops=loaded.enemies.filter(e=>e.showcase==='flame');
+  assert.equal(troops.length,8,`seed ${seed}`);
+  assert.ok(troops.every(e=>distance(pilot,e)>=200&&distance(pilot,e)<300));
+  assert.equal(markers.length,2);
+  assert.ok(markers.every(e=>e.focused));
+  const angles=troops.map(e=>Math.atan2(e.y-pilot.y,e.x-pilot.x));
+  const half=weaponStats(loaded.weapons.find(w=>w.id==='f')).cone*Math.PI/360;
+  assert.ok(angles.some(a=>angles.every(b=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)))<half)));
+  assert.equal(loaded.powerWave.remaining,52);
+ }
 });
 test('the final formation is held for another beat and deploys out of the same reserve',()=>{
  const s=quietOperation();
@@ -1025,6 +2104,21 @@ test('direct hits cancel only the destroyed gun and leave the disarmed train ope
  tick(s,6);
  assert.equal(s.player.hp,100);assert.equal(s.boss.mode,'recover');assert.equal(s.hazards.length,0);
 });
+test('a coil burst triggered by a gun hit credits its destroyed rail part only once',()=>{
+ const s=railwayCapstone(27,'rocket');
+ s.stage='boss';
+ s.blocks=[];s.enemies=[];s.powerWave=null;
+ Object.assign(s.boss,{active:true,mode:'aim',timer:3});
+ s.operation.support='breach';
+ s.weapons.forEach(w=>{w.cd=999;});
+ s.coil=RULES.modules.coil.threshold[1];
+ const part=s.boss.parts[0];
+ part.hp=10;
+ s.shots=[bullet(s,{...partPosition(s,part),id:part.id},2)];
+ step(s,dt);
+ assert.equal(part.hp,0);
+ assert.equal(s.stats.railGunsDestroyed,1);
+});
 test('a burning rail gun that breaks on the final warning tick cannot hit its lane',()=>{
  const s=railEncounter();step(s,dt);
  const lane=s.hazards.find(h=>h.tracked),part=s.boss.parts[lane.railGun];
@@ -1087,6 +2181,53 @@ test('a pending route trial keeps the signature module and prioritizes the match
   }
   assert.ok(choose(s,`module:${signature}`));
   assert.deepEqual(s.trials,['medic',experiment]);
+ }
+});
+test('a returned turret can field-test shrapnel at rescue or keep H and take the mortar route',()=>{
+ const p=emptyProfile();p.milestones.coastTurret=true;p.research=['shrapnel'];p.trials=['shrapnel'];
+ for(const opening of ['module:shrapnel','gun:h']){
+  const {run}=freshSortie(p,28,null,'fio',null,null,null,'turret',true);
+  run.enemies=[];run.spawnClock=999;run.weapons[0].cd=999;
+  assert.ok(supply(run).find(c=>c.id==='module:shrapnel')?.trial);
+  assert.ok(choose(run,opening));
+  const battery=run.sites.find(site=>site.coastApproach==='r');
+  if(opening==='gun:h'){
+   assert.equal(coastLead(run),battery);
+   assert.ok(supply(run,battery.id).find(c=>c.id==='module:shrapnel')?.trial);
+   assert.ok(run.choices.some(c=>c.id==='module:coil'));
+   assert.ok(choose(run,'module:shrapnel'));
+  }else assert.notEqual(coastLead(run),battery);
+  assert.deepEqual(run.modules,[{id:'shrapnel',rank:1}]);
+  assert.equal(run.weapons.length,opening==='gun:h'?2:1);
+ }
+ const {run}=freshSortie(p,28,null,'fio',null,null,null,'turret',true);
+ run.enemies=[];run.spawnClock=999;run.weapons[0].cd=999;supply(run);assert.ok(choose(run,'gun:f'));
+ assert.equal(coastLead(run)?.coastApproach,'r');
+});
+test('thermal preparation keeps the coastal coil when the medic trial shares its crate',()=>{
+ for(const [seed,at] of [[16,null],[17,'coast'],[18,'rail'],[27,null],[28,'coast'],[31,'rail']]){
+  const paid=at!==null;
+  const p=emptyProfile();
+  Object.assign(p,{credits:500,research:['medic','thermal'],trials:paid?['medic']:['medic','thermal']});
+  const {run}=freshSortie(p,seed,null,'fio',paid?'thermal':null,null,at==='coast'?at:null,'standard',true);
+  Object.assign(run,{enemies:[],blocks:[],spawnClock:999});
+  supply(run);assert.ok(choose(run,'gun:f'));
+  assert.equal(coastLead(run).id,'supply-c');
+  assert.equal(supply(run,'supply-c')[0].id,'module:coil');
+  assert.ok(run.choices.some(c=>c.id==='module:medic'));
+  assert.ok(reroll(run));
+  const resumed=restore(snapshot(run));
+  assert.ok(choose(resumed,'module:coil'));
+  assert.equal(coastLead(resumed).id,'supply-b');
+  if(at==='rail'){
+   assert.ok(supply(resumed,'supply-b').every(c=>c.id!=='requisition:thermal'));
+   continue;
+  }
+  const thermal=paid?'requisition:thermal':'module:thermal';
+  assert.equal(supply(resumed,'supply-b')[0].id,thermal);
+  assert.ok(choose(resumed,thermal));
+  assert.deepEqual(resumed.modules,[{id:'coil',rank:1},{id:'thermal',rank:1}]);
+  assert.deepEqual(resumed.trials,['medic']);
  }
 });
 test('the equipped thermal module retains its prerequisite coil until it is removed',()=>{
@@ -1212,6 +2353,64 @@ function supportArena(index,support,mode){
  const s=quietOperation();Object.assign(s.operation,{region:index,support});s.stage='boss';
  Object.assign(s.boss,{active:true,x:800,y:250,mode,cycle:1,timer:999,spawnClock:999});return s;
 }
+test('a real captured fan can interrupt both harbor side batteries from the same reload volley',()=>{
+ const setup=(seed,evolved=false)=>{
+  const s=createOperation(seed,[],null,null,'fio','turret');
+  Object.assign(s.operation,{region:2,cleared:2,support:null});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  s.sites=[{id:'port-control',kind:'control',state:'ready',x:800,y:535}];
+  Object.assign(s.player,{x:800,y:535});
+  Object.assign(s.weapons[0],{cd:999,...(evolved?{level:6,evolved:true,branch:'homing'}:{})});
+  step(s,dt);
+  assert.deepEqual(s.choices.map(c=>c.id),['control:crossfire','control:jam','control:loot']);
+  assert.ok(choose(s,'control:crossfire'));
+  s.stage='boss';s.boss={...regionBoss(2,seed),active:true,mode:'recover',cycle:1,timer:2.6,spawnClock:999};
+  Object.assign(s.player,{x:800,y:388});s.weapons[0].cd=0;
+  return s;
+ };
+ for(const [seed,evolved] of [[17,false],[18,true]]){
+  const s=setup(seed,evolved);
+  step(s,dt);
+  assert.equal(s.shots.filter(q=>q.crossfire).length,evolved?6:4);
+  const resumed=restore(snapshot(s));
+  tick(resumed,.5);
+  assert.equal(resumed.stats.harborCrossfires,1);
+  assert.ok(resumed.boss.parts.every(p=>p.hp>0));
+  assert.equal(resumed.boss.crossfireCycle,2);
+  assert.equal(resumed.stats.harborCrossfireRounds,undefined);
+  assert.equal(takeEvents(resumed).filter(e=>e==='barrage-cancel').length,1);
+  resumed.weapons[0].cd=999;
+  const warning=restore(snapshot(resumed));
+  tick(warning,4.05);
+  assert.equal(warning.boss.cycle,2);
+  assert.deepEqual(warning.hazards.map(h=>h.portRound),['lock']);
+  assert.equal(warning.stats.harborCrossfireRounds,4);
+  tick(warning,1.2);
+  assert.ok(warning.enemyShots.some(q=>q.portFan));
+ }
+ const offset=setup(17,true);offset.player.x+=55;
+ const late=setup(17,true);late.boss.timer=.25;
+ for(const s of [offset,late]){
+  tick(s,.55);
+  assert.equal(s.stats.harborCrossfires,undefined);
+ }
+ const corner=setup(18,true);
+ Object.assign(corner.player,{x:824,y:400});corner.boss.timer=.42;
+ tick(corner,.48);
+ assert.equal(corner.stats.harborCrossfires,1);
+ const combined=setup(17,true);
+ combined.weapons.push({...makeWeapon('h'),fusion:{secondary:'r',branch:'incendiary',overflow:0}});
+ assert.deepEqual(portTacticKeys(combined),['crossfire','ember']);
+ combined.weapons.at(-1).fusion.branch='homing';
+ assert.deepEqual(portTacticKeys(combined),['crossfire','signal']);
+ const split=setup(17,true);
+ step(split,dt);
+ for(const shot of split.shots)if(shot.crossfire&&shot.vx>0)shot.crossfire={...shot.crossfire,volley:2};
+ split.stats.turretVolleys=2;
+ tick(split,.55);
+ assert.equal(split.stats.harborCrossfires,undefined);
+});
 test('focused Inferno holds the clear harbor core line at midrange during reload only',()=>{
  const setup=(branch='focused',mode='recover')=>{
   const s=supportArena(2,null,mode);
@@ -2199,7 +3398,7 @@ test('conductive hits relay from a dash-opened harbor core once per reload',()=>
  const card=choiceDetails({...s,operation:{region:1}},{
   id:'support:overrun',key:'overrun',kind:'front-support',title:'돌격 신관'
  });
- assert.match(card.detail,/원하는 포대 쪽에서 맞히세요.*왼쪽은 포탑, 오른쪽은 보조포/);
+ assert.match(card.detail,/원하는 포대 쪽에서 코어를 맞히세요.*왼쪽은 포탑, 오른쪽은 보조포/);
 });
 test('harbor conductive relay cuts the chosen side on the next volley only, including after restore',()=>{
  for(const turretSide of [-1,1])for(const selected of ['turret','armor']){
@@ -2673,6 +3872,59 @@ test('harbor D2 uses two fixed firing positions, leaves extraction open and rota
   const old=restore(snapshot(reload));
   assert.equal(holdoutContract(old).id,'intercept');
  }
+});
+test('canonical rail reserves reach the relay earlier and harbor D2 cargo is paid once on live extraction',async()=>{
+ const {operationPayout,COUNTERBATTERY_CREDITS}=await import('../src/reboot/campaign.js');
+ const {gateActiveContract}=await import('../src/reboot/choice-details.js');
+ const fresh=createOperation(27,[],null,null,'fio','standard'),p=beginProfile(emptyProfile(),fresh);
+ const leave=s=>{Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));};
+ const prepare=front=>{
+  const s=restore(snapshot(fresh));
+  Object.assign(s.operation,{region:front,cleared:front});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  s.blocks=regionLayout(mapSeed(s.seed,front),front).blocks;
+  s.sites=regionLayout(mapSeed(s.seed,front),front).sites.map(site=>({...site,state:'done'}));
+  downBoss(s);
+  Object.assign(s.player,exitGate(s));
+  return s;
+ };
+ const rail=prepare(1);
+ assert.ok(action(rail,'interact'));
+ assert.deepEqual(gateContractDetails(rail).parts.map(part=>part.detail),['오른쪽 보조포 · 조준 중 선제 차단','오른쪽 화물 유인점 · 회수 후 지원 포격']);
+ assert.ok(action(rail,'gate-challenge'));
+ const early=restore(snapshot(rail)),passive=restore(snapshot(rail));
+ const withdrawn=restore(snapshot(rail));leave(withdrawn);
+ assert.equal(restore(snapshot(withdrawn)).challenge.state,'withdrawn');
+ delete passive.challenge;
+ tick(early,HOLDOUT.railReserveDelay+.05);tick(passive,HOLDOUT.railReserveDelay+.05);
+ assert.ok(early.enemies.some(e=>e.cohort==='holdout'));
+ assert.ok(takeEvents(early).includes('relay-reserve'));
+ assert.ok(!passive.enemies.some(e=>e.cohort==='holdout'));
+ assert.match(gateActiveContract(early).leaving,/D1 종료/);
+
+ const port=prepare(2);
+ port.operation.challengeTier=1;port.stats.challengeWins=3;port.stats.holdoutCargo=true;
+ assert.match(gateContractDetails(port).reward,/생존 귀환 \+60C/);
+ assert.ok(action(port,'interact'));assert.ok(action(port,'gate-challenge'));
+ const earlyExit=restore(snapshot(port));leave(earlyExit);
+ assert.equal(operationPayout(earlyExit.result).lines.counterbattery,undefined);
+ const old=restore(snapshot(port));old.balanceRevision='b53-harbor-signal';
+ for(const s of [port,old]){
+  s.shots=portBatteries(s).map(gun=>bullet(s,gun,10000));step(s,dt);
+  assert.equal(s.challenge.state,'complete');
+  assert.equal(s.stats.challengeWins,4);
+ }
+ const saved=restore(snapshot(port)),dead=restore(snapshot(port));
+ dead.player.hp=0;finish(dead,false,'hp');
+ assert.equal(operationPayout(dead.result).lines.counterbattery,undefined);
+ leave(saved);
+ const next=settleProfile(p,saved),r=next.recent[0];
+ assert.equal(r.creditBreakdown.holdout,60);
+ assert.equal(r.creditBreakdown.counterbattery,COUNTERBATTERY_CREDITS);
+ assert.equal(settleProfile(next,saved).credits,next.credits);
+ assert.equal(operationPayout({...r,stats:{...r.stats,portBatteriesCleared:4}}).lines.counterbattery,COUNTERBATTERY_CREDITS);
+ delete old.stats.portCounterbatteryCargo;leave(old);
+ assert.equal(operationPayout(old.result).lines.counterbattery,undefined);
 });
 test('new harbor vehicles take mirrored cover-free paths while older interceptions resume in place',()=>{
  const routes=[];
@@ -3244,6 +4496,48 @@ test('campaign level drafts leave combat time between choices without consuming 
  assert.equal(next.choice.type,'level');
  assert.equal(next.pendingLevels,0);
 });
+test('coast XP can be spent before choosing a carrier tactic without starting the boss',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ Object.assign(s.player,BOSS_ENTRY);
+ Object.assign(s,{level:4,pendingLevels:3,t:8});
+ assert.ok(action(s,'interact'));
+ assert.ok(action(s,'coast-upgrade'));
+ assert.equal(s.choice.source,'LEVEL 2');
+ assert.equal(s.choice.coastPrep,true);
+ assert.equal(s.pendingLevels,2);
+ const loaded=restore(snapshot(s));
+ assert.ok(choose(loaded,'rank:h'));
+ assert.equal(loaded.weapons[0].level,2);
+ assert.equal(loaded.choice.type,'coast-boss');
+ assert.equal(loaded.t,8);
+ assert.equal(loaded.boss.active,false);
+ assert.equal(loaded.operation.coastSalvage.plan,undefined);
+ assert.ok(action(loaded,'coast-upgrade'));
+ assert.equal(loaded.choice.source,'LEVEL 3');
+ assert.ok(skip(loaded));
+ assert.ok(choose(loaded,'coast:capture'));
+ assert.equal(loaded.stage,'boss');
+ assert.equal(loaded.pendingLevels,1);
+ assert.equal(loaded.operation.coastSalvage.plan,'capture');
+});
+test('automatic coast boss drafts wait for reload while manual XP upgrades remain available',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ Object.assign(s,{level:3,pendingLevels:2,stage:'boss',t:11});
+ s.operation.coastSalvage.plan='break';
+ Object.assign(s.boss,{active:true,mode:'windup',timer:1.2,spawnClock:100});
+ step(s,dt);
+ assert.equal(s.phase,'playing');
+ assert.equal(s.pendingLevels,2);
+ const manual=restore(snapshot(s));
+ assert.ok(action(manual,'upgrade'));
+ assert.equal(manual.choice.type,'level');
+ assert.equal(manual.boss.mode,'windup');
+ assert.equal(manual.pendingLevels,1);
+ s.boss.mode='recover';
+ step(s,dt);
+ assert.equal(s.choice.type,'level');
+ assert.equal(s.pendingLevels,1);
+});
 test('field supplies still open while routine level drafts are banked',()=>{
  const s=quietOperation();s.level=2;s.pendingLevels=1;
  const site=s.sites.find(site=>site.id==='supply-b');site.state='ready';
@@ -3321,6 +4615,55 @@ test('rail workshop protects a weak build from a random new weapon and provides 
  assert.ok(choose(s,'module:catalyst'));assert.equal(s.tuning,ready);
  assert.ok(assemblyOptions(s).some(c=>c.id==='evolve:f'));
 });
+test('a thermal build can follow the second rail stop and finish Inferno with the permits shown',()=>{
+ for(const seed of [27,28]){
+  const s=createOperation(seed,['thermal'],null,null,'fio','standard');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  const layout=regionLayout(mapSeed(seed,1),1,null,true);
+  Object.assign(s,layout,{enemies:[],spawnClock:999,boss:regionBoss(1,seed),firstNew:'f',tuning:2});
+  s.weapons.push({...makeWeapon('f'),uid:'flame',level:5,branch:'trail',cd:999});
+  s.modules=[{id:'coil',rank:1},{id:'thermal',rank:1},{id:'catalyst',rank:1}];
+  const [workshop,relay]=s.sites;
+  relay.state='done';
+  const path=activeEntry(s).routes.find(route=>route.site===workshop.id).path;
+  assert.deepEqual(path[0],[relay.x,relay.y]);
+  assert.deepEqual(path.at(-1),[workshop.x,workshop.y]);
+  for(let i=1;i<path.length;i++){
+   const [[x,y],[tx,ty]]=path.slice(i-1,i+1);
+   assert.ok(layout.blocks.every(b=>Math.max(x,tx)+24<=b.x||Math.min(x,tx)-24>=b.x+b.w
+    ||Math.max(y,ty)+24<=b.y||Math.min(y,ty)-24>=b.y+b.h));
+  }
+  const plan=railWorkshopPlan(s);
+  assert.equal(railInfernoPlan(s,plan).supply,'F L6');
+  assert.equal(railInfernoPlan(s,plan).permits,2);
+  assert.ok(action(s,'gear'));
+  assert.match(choiceDetails(s,s.choices.find(c=>c.id==='tune:repair')).consequence.join(' '),/인페르노.*촉매 보급/);
+  assert.ok(choose(s,'back'));
+  supply(s,workshop.id);
+  assert.match(growthForecast(s,s.choices.find(c=>c.id==='rank:f')).text,/조율권 2개/);
+  const resumed=restore(snapshot(s));
+  assert.ok(choose(resumed,'rank:f'));
+  assert.equal(railInfernoPlan(resumed).action,'tune');
+  assert.equal(railInfernoPlan({...resumed,tuning:1}),null);
+  assert.ok(action(resumed,'gear'));assert.ok(choose(resumed,'tune:catalyst'));
+  assert.ok(action(resumed,'gear'));assert.ok(choose(resumed,'evolve:f'));
+  assert.equal(resumed.tuning,0);assert.equal(resumed.weapons[1].evolved,true);
+  assert.equal(railAmmoInvestment(resumed),null);
+  const spare=restore(snapshot(s));spare.tuning=1;spare.balanceRevision='b62-rail-firing-pad';
+  assert.ok(choose(spare,'module:catalyst'));
+  const ammo=spare.sites.find(site=>site.id==='rail-ammo');
+  const withSidearm=restore(snapshot(spare));
+  Object.assign(withSidearm.weapons[0],{level:6,branch:'ricochet',evolved:true});
+  assert.ok(activeEntry(withSidearm).routes.some(route=>route.site===ammo.id));
+  assert.deepEqual(supply(spare,ammo.id).slice(0,1).map(({id,label})=>[id,label]),[['rank:f','분사기 예비 부품']]);
+  assert.ok(reroll(spare));
+  assert.equal(spare.choices[0].id,'rank:f');
+  const saved=restore(snapshot(spare));
+  assert.ok(choose(saved,'rank:f'));
+  assert.ok(assemblyOptions(saved).some(c=>c.id==='evolve:f'));
+ }
+});
 test('relay and harbor equipment reward committed fire builds while the other tactics remain selectable',()=>{
  const rail=quietRailWorkshop();
  rail.weapons.push({...makeWeapon('f'),uid:'flame',level:4,branch:'focused',cd:999});
@@ -3358,6 +4701,39 @@ test('relay and harbor equipment reward committed fire builds while the other ta
  assert.equal(final.weapons[1].branch,'focused');assert.equal(final.tuning,permits-1);
  assert.equal(final.powerWave.showcase,'flame');
 });
+test('standard railway relay exposes competing growth parts without giving up the tactic until chosen',()=>{
+ const build=(gun,level,rank)=>{
+  const s=createOperation(16,['medic'],['medic'],null,'fio','standard');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(s.seed,1),1,null,true),{firstNew:gun,blocks:[],enemies:[],spawnClock:999,boss:regionBoss(1,s.seed),supplyCount:2});
+  Object.assign(s.weapons[0],{level:3,cd:999});
+  s.weapons.push({...makeWeapon(gun),uid:'primary',level,branch:level===3?null:gun==='f'?'trail':'homing',cd:999});
+  s.modules=rank?[{id:gun==='f'?'catalyst':'coil',rank}]:[];
+  s.sites.forEach(site=>site.state='done');return s;
+ };
+ const fire=build('f',5,1),menu=supply(fire,'rail-relay');
+ const option=menu.find(c=>c.id==='control:supply');
+ assert.match(option.desc,/F L6.*촉매/);
+ assert.match(choiceDetails(fire,option).detail,/전술 포기/);
+ const tactic=restore(snapshot(fire));assert.ok(choose(tactic,'control:heat'));
+ assert.equal(tactic.operation.tactic,'heat');assert.equal(tactic.weapons[1].level,5);
+ assert.ok(choose(fire,option.id));
+ const wanted=['rank:f','module:catalyst','module:medic'];
+ assert.deepEqual(fire.choices.map(c=>c.id),wanted);
+ const after=restore(snapshot(fire));assert.ok(reroll(after));
+ assert.equal(after.choice.relayRepair,true);
+ assert.deepEqual(after.choices.map(c=>c.id),wanted);
+ assert.ok(choose(after,'module:catalyst'));
+ assert.equal(after.operation.tactic,undefined);assert.equal(after.weapons[1].level,5);assert.equal(after.modules[0].rank,2);
+ const fuse=build('r',6,2);supply(fuse,'rail-relay');
+ assert.ok(choose(fuse,'control:supply'));assert.equal(fuse.choices[0].id,'rank:h');
+ assert.ok(choose(fuse,'rank:h',{branch:'ricochet'}));assert.ok(assemblyOptions(fuse).some(c=>c.id==='fusion:h:r'));
+ const excluded=build('f',3,0);excluded.excluded.push('catalyst');
+ supply(excluded,'rail-relay');assert.ok(choose(excluded,'control:supply'));
+ assert.ok(!excluded.choices.some(c=>c.module==='catalyst'));
+ assert.ok(choose(excluded,'rank:f',{branch:'focused'}));assert.equal(excluded.weapons[1].branch,'focused');
+});
 test('rail workshop previews and offers the missing H branch for a rocket-first fusion',()=>{
  const s=quietRailWorkshop();s.firstNew='r';
  Object.assign(s.weapons[0],{level:3});
@@ -3383,6 +4759,81 @@ test('rail workshop previews and offers the missing H branch for a rocket-first 
  assert.equal(assemblyOptions(noPermit).some(c=>c.id==='fusion:h:r'),false);
  clearRegion(noPermit);
  assert.ok(gatePreparation(noPermit).capstones.some(c=>c.id==='fusion:h:r'));
+});
+test('turret starters can tune the captured gun on the beach and finish either build on the railway',()=>{
+ const legacy=createCoastSortie(27,'fio','turret');
+ legacy.firstNew='h';
+ assert.equal(coastService(legacy,legacy.sites.find(site=>site.coastApproach==='r')),null);
+ const s=createOperation(27,[],null,null,'fio','turret');
+ s.enemies=[];s.blocks=[];s.spawnClock=999;
+ assert.ok(supply(s).some(c=>c.id==='gun:h'));
+ assert.ok(choose(s,'gun:h'));
+ Object.assign(s.weapons[0],{level:2,cd:999});
+ const battery=s.sites.find(site=>site.coastApproach==='r');
+ assert.equal(coastLead(s),battery);
+ const options=supply(s,battery.id),service=options.find(c=>c.id==='coast-service:r');
+ assert.equal(service.coastLevel,4);
+ assert.ok(options.some(c=>c.id==='module:coil'));
+ const loaded=restore(snapshot(s)),before=loaded.tuning;
+ assert.ok(choose(loaded,service.id,{branch:'homing'}));
+ assert.equal(loaded.tuning,before-1);
+ assert.ok(loaded.weapons[0].capturedTurret);
+ assert.equal(loaded.weapons[0].level,4);
+ Object.assign(loaded.player,BOSS_ENTRY);
+ assert.ok(action(loaded,'interact'));
+ assert.ok(choose(loaded,'coast:break'));
+ const turret=loaded.boss.parts[0];
+ loaded.shots=[bullet(loaded,{...partPosition(loaded,turret),id:turret.id},10000)];
+ step(loaded,dt);
+ loaded.shots=[bullet(loaded,loaded.boss,20000)];
+ step(loaded,dt);
+ Object.assign(loaded.player,exitGate(loaded));
+ assert.ok(action(loaded,'interact'));
+ assert.ok(choose(loaded,'advance:breach'));
+ loaded.blocks=[];loaded.enemies=[];loaded.sites.forEach(site=>site.state='done');
+ loaded.modules=[{id:'coil',rank:2}];
+ const underleveled=snapshot(loaded);
+ Object.assign(underleveled.weapons[0],{level:3,branch:null});
+ assert.equal(railRelayInvestment(underleveled).material,'포탑 L4');
+ const tooEarly=snapshot(underleveled);tooEarly.weapons[0].level=2;
+ assert.deepEqual(railRelayInvestment(tooEarly).cards,[]);
+ for(const branch of ['homing','incendiary']){
+  const short=restore(snapshot(underleveled));
+  Object.assign(short.weapons[1],{level:4,branch:'ricochet'});
+  const dispatch=supply(short,'rail-relay').find(c=>c.id==='control:supply');
+  assert.match(dispatch.desc,/포탑 L4/);
+  assert.ok(choose(short,dispatch.id));
+  assert.equal(choose(short,'rank:r'),false);
+  const saved=restore(snapshot(short));
+  assert.ok(choose(saved,'rank:r',{branch}));
+  assert.ok(action(saved,'gear'));
+  assert.ok(choose(saved,'fusion:h:r'));
+  assert.equal(saved.weapons[0].fusion.branch,branch);
+ }
+ Object.assign(loaded.weapons[0],{level:5,cd:999});
+ Object.assign(loaded.weapons[1],{level:3,cd:999});
+ const wide=restore(snapshot(loaded)),fusion=restore(snapshot(loaded));
+ assert.equal(railWorkshopPlan(wide).finish.recipe.id,'evolve:r');
+ assert.ok(supply(wide,'rail-cache').some(c=>c.id==='rank:r'));
+ assert.ok(choose(wide,'rank:r'));
+ assert.ok(action(wide,'gear'));
+ const evolve=wide.choices.find(c=>c.id==='evolve:r');
+ assert.equal(choiceDetails(wide,evolve).art,'turret');
+ assert.ok(choose(wide,evolve.id));
+ assert.equal(weaponStats(wide.weapons[0]).count,7);
+ assert.ok(!assemblyOptions(wide).some(c=>c.id==='fusion:h:r'));
+ const relay=supply(fusion,'rail-relay').find(c=>c.id==='control:supply');
+ assert.equal(relay.relayInvestment,'r');
+ assert.match(relay.desc,/H L4/);
+ assert.ok(choose(fusion,relay.id));
+ assert.ok(reroll(fusion));
+ const saved=restore(snapshot(fusion));
+ assert.ok(choose(saved,'rank:h',{branch:'ricochet'}));
+ assert.ok(action(saved,'gear'));
+ assert.ok(choose(saved,'fusion:h:r'));
+ assert.equal(saved.weapons.length,1);
+ assert.equal(saved.weapons[0].fusion.branch,'homing');
+ assert.equal(restore(snapshot(saved)).weapons[0].fusion.secondary,'r');
 });
 test('the railway rebuild trades F for two ranks and uses the real L4 branch before saving',()=>{
  const s=quietRailWorkshop();s.firstNew='f';
@@ -3589,6 +5040,71 @@ test('a ranged signal arcs once to the other part and changes the next boss acti
   if(index===1){s.boss.timer=0;step(s,dt);assert.equal(s.boss.timer,3);}
   else assert.ok(s.boss.spawnClock>2.9);
  }
+});
+test('the standard campaign conductive signal interrupts the selected side on the next harbor barrage',()=>{
+ const arena=(seed,index)=>{
+  const s=createOperation(seed,[],null,null,'fio','standard');
+  Object.assign(s.operation,{region:2,cleared:2,support:'vanguard'});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  s.sites=[{id:'port-control',kind:'control',state:'ready',x:800,y:535}];
+  Object.assign(s.player,{x:800,y:535});
+  Object.assign(s.weapons[0],{level:4,branch:'ricochet',cd:999,fusion:{secondary:'r',branch:'homing',overflow:0},payload:0,payloadCd:0});
+  step(s,dt);
+  assert.deepEqual(s.choices.map(c=>c.id),['control:signal','control:jam','control:loot']);
+  assert.equal(s.choices.find(c=>c.id==='control:signal').title,'측면 교신 역송');
+  assert.ok(choose(s,'control:signal'));
+  s.stage='boss';s.boss={...regionBoss(2,seed),active:true,mode:'recover',cycle:1,timer:2.6,spawnClock:999};
+  Object.assign(s.player,{x:800+Math.sign(s.boss.parts[index].ox)*125,y:440});
+  return s;
+ };
+ for(const seed of [17,18])for(const index of [0,1]){
+  const s=arena(seed,index),part=index===0?'turret':'armor';
+  const near=restore(snapshot(s));near.player.y=360;near.shots=[bullet(near,near.boss,10)];step(near,dt);
+  assert.equal(near.stats.harborSignalHits,undefined);
+  const covered=restore(snapshot(s));covered.blocks=[{x:690,y:265,w:220,h:95,hp:-1}];covered.shots=[bullet(covered,covered.boss,10)];step(covered,dt);
+  assert.equal(covered.stats.harborSignalHits,undefined);
+  const alternate=restore(snapshot(s));alternate.weapons.push({...makeWeapon('r'),uid:'ordinary-r',cd:999});
+  alternate.shots=[{...bullet(alternate,alternate.boss,10),owner:'ordinary-r'}];step(alternate,dt);
+  assert.equal(alternate.stats.harborSignalHits,undefined);
+
+  s.weapons[0].cd=0;
+  for(let i=0;i<30&&!s.stats.harborSignalHits;i++)step(s,dt);
+  assert.equal(s.stats.harborSignalHits,1);
+  assert.deepEqual(s.boss.portSignal,{cycle:1,part});
+  assert.equal(s.boss.parts[index].hp,s.boss.parts[index].maxHp-210);
+  assert.equal(s.boss.parts[1-index].hp,s.boss.parts[1-index].maxHp);
+  s.weapons[0].cd=999;
+  s.shots=[bullet(s,s.boss,10)];step(s,dt);
+  assert.equal(s.stats.harborSignalHits,1);
+  const restored=restore(snapshot(s));
+  const key=index===0?'harborSignalTurretCuts':'harborSignalArmorCuts';
+  restored.boss.mode='aim';restored.boss.timer=0;step(restored,dt);
+  assert.deepEqual(restored.hazards.map(h=>h.portRound),index===0?['lock','battery','battery']:['lock','turret','turret']);
+  assert.equal(restored.stats[key],1);
+  restored.boss.timer=0;step(restored,dt);
+  assert.equal(restored.enemyShots.filter(q=>q.portFan).length,index===0?0:9);
+  restored.boss.mode='aim';restored.boss.timer=0;step(restored,dt);
+  assert.equal(restored.stats[key],1);
+ }
+ const broken=arena(17,0);
+ broken.boss.parts[0].hp=100;broken.shots=[bullet(broken,broken.boss,10)];step(broken,dt);
+ assert.equal(broken.boss.parts[0].hp,0);
+ broken.boss.mode='aim';broken.boss.timer=0;step(broken,dt);
+ assert.equal(broken.stats.harborSignalHits,1);
+ assert.equal(broken.stats.harborSignalTurretBreaks,1);
+ assert.equal(broken.stats.harborSignalTurretCuts,undefined);
+
+ const breach=arena(17,0);
+ breach.operation.support='breach';breach.operation.harborPayoff={};
+ breach.shots=[bullet(breach,breach.boss,10)];step(breach,dt);
+ breach.boss.mode='aim';breach.boss.timer=0;step(breach,dt);
+ const turret=breach.boss.parts[0];
+ breach.shots=[{...bullet(breach,partPosition(breach,turret),10),breachLane:true}];step(breach,dt);
+ assert.equal(breach.boss.turretSuppressedCycle,undefined);
+ breach.boss.timer=0;step(breach,dt);
+ assert.equal(breach.stats.harborSignalTurretCuts,1);
+ assert.equal(breach.operation.harborPayoff.fans,undefined);
 });
 test('harbor armor parts change actual body vulnerability and rare unique banish keeps crate quality',()=>{
  const hit=broken=>{const s=quietOperation();s.operation.region=2;s.stage='boss';s.boss.active=true;s.boss.x=1000;s.boss.y=800;s.boss.mode='aim';s.boss.timer=999;s.boss.spawnClock=999;if(broken)s.boss.parts.forEach(p=>p.hp=0);const hp=s.boss.hp;s.shots=[bullet(s,s.boss,100)];step(s,dt);return hp-s.boss.hp;};assert.ok(hit(true)>hit(false)*1.5);
@@ -3805,6 +5321,34 @@ test('coast orders are optional, debit once on committed launch, and keep a fres
  const saved=checkpointProfile(store.get(),run);await store.commit(saved);assert.equal(store.get().credits,900-fee);
 });
 
+test('a demolition rail return with a decoy earns wire before the first harbor win',()=>{
+ for(const [turret,decoys,reason,earned] of [
+  ['broken',1,'rail-return',true],['broken',0,'rail-return',false],
+  ['secured',1,'rail-return',false],['broken',1,'retreat',false]
+ ]){
+  const {run,next}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+  Object.assign(run.operation,{region:1,cleared:2});
+  Object.assign(run.operation.coastSalvage,{turret,extracted:reason==='rail-return'});
+  run.stats.railDecoys=decoys;
+  finish(run,false,reason);
+  const settled=settleProfile(next,run);
+  assert.equal(settled.records.wins,0);
+  assert.equal(settled.milestones.wireOrder===true,earned);
+  const legacy=structuredClone(settled);
+  delete legacy.milestones.wireOrder;
+  const restored=parseProfile(JSON.stringify(legacy));
+  assert.equal(restored.milestones.wireOrder===true,earned);
+  assert.equal(canLaunchOrder({...restored,credits:70},'convoy'),false);
+  if(!earned){assert.equal(canLaunchOrder({...restored,credits:70},'wire'),false);continue;}
+  assert.equal(canLaunchOrder({...restored,credits:69},'wire'),false);
+  const {run:sortie,next:paid}=freshSortie({...restored,credits:70},28,'wire','fio',null,null,null,'standard',true);
+  assert.equal(paid.credits,0);
+  assert.equal(sortie.level,1);
+  assert.equal(orderTarget(sortie).name,'해안 통신소');
+  assert.equal(parseProfile(JSON.stringify({...restored,recent:[]})).milestones.wireOrder,true);
+ }
+});
+
 test('wire order requires recovering the completed relay and pays only after the final gate',()=>{
  const base=emptyProfile(),p={...base,records:{...base.records,wins:1,score:999},credits:900,milestones:{medic:true}};
  const {run:s,next}=freshSortie(p,19,'wire'),relay=orderTarget(s);
@@ -3863,6 +5407,56 @@ test('recovered coast codes allow one rail decoy without the relay and preserve 
  const tracked=loaded.hazards.find(h=>h.tracked);
  assert.equal(tracked.x,800);
  assert.equal(tracked.duration,RAIL_BARRAGE.warning+1);
+});
+
+test('the coastal cipher provides one loadout-specific supply on rail arrival and leaves relay control optional',()=>{
+ for(const build of ['fusion','coil','flame']){
+  for(const order of ['current','with-recovery','no-cipher','previous']){
+   const s=createOperation(28,[],null,'wire','fio','standard');
+   if(order==='previous')s.operation.orderRevision='rail-lure';
+   if(order!=='no-cipher'){
+    orderTarget(s).state='done';
+    s.operation.orderDone=true;
+   }
+   const flame=build==='flame';
+   s.firstNew=flame?'f':'r';
+   const rifle=s.weapons[0];
+   Object.assign(rifle,build==='coil'?{level:4,branch:'ricochet'}:{level:3});
+   s.weapons.push({...makeWeapon(s.firstNew),uid:'opening-weapon',level:flame?5:4,branch:flame?'trail':'homing'});
+   s.modules=flame?[{id:'catalyst',rank:2}]:[{id:'coil',rank:build==='coil'?1:2}];
+   s.stage='holdout';
+   Object.assign(s.boss,{dead:true,hp:0});
+   Object.assign(s.operation,{cleared:1});
+   Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+   if(order==='with-recovery')Object.assign(s.operation,{coastStrike:s.firstNew,coastStrikeUsed:true});
+   Object.assign(s.player,exitGate(s));
+   assert.ok(action(s,'interact'));
+   assert.ok(choose(s,'advance:breach'));
+   let draft=restore(snapshot(s));
+   if(order==='with-recovery'){
+    assert.equal(draft.choice.coastRecovery,true);
+    assert.ok(skip(draft));
+    draft=restore(snapshot(draft));
+   }
+   if(order==='no-cipher'||order==='previous'){
+    assert.notEqual(draft.choice?.wireSupply,true);
+    continue;
+   }
+   assert.equal(draft.choice.wireSupply,true);
+   assert.equal(draft.operation.regionTime,0);
+   assert.equal(draft.sites.find(site=>site.id==='rail-relay').state,'waiting');
+   const upgrade=build==='coil'?'module:coil':flame?'rank:f':'rank:h';
+   assert.equal(draft.choices[0].id,upgrade);
+   assert.equal(reroll(draft),false);
+   assert.deepEqual(banishOptions(draft),[]);
+   const corrupted=snapshot(draft);
+   corrupted.choices[0].weapon='r';
+   assert.throws(()=>restore(corrupted));
+   assert.ok(choose(draft,upgrade,build==='fusion'?{branch:'ricochet'}:{}));
+   assert.notEqual(draft.choice?.wireSupply,true);
+   assert.ok(assemblyOptions(draft).some(c=>c.id===(flame?'evolve:f':'fusion:h:r')));
+  }
+ }
 });
 
 test('an older wire checkpoint preserves its active coastal hack and original record scope',()=>{
@@ -3980,6 +5574,40 @@ test('focused aim hits one exposed boss plate and sweep covers a wider infantry 
  const wider=quietOperation('marco'),e=enemy('side',852,680);
  wider.enemies=[e];wider.player.doctrine='sweep';wider.player.charge=60;
  assert.ok(action(wider,'skill'));assert.equal(e.hp,0);
+});
+
+test('Marco studies one real reload weak point per later front and keeps the limit after saving',()=>{
+ const s=createOperation(27,[],null,null,'marco','standard');
+ Object.assign(s.operation,{region:1,cleared:1});
+ Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken',progress:3});
+ Object.assign(s,regionLayout(mapSeed(s.seed,1),1,null,true),{stage:'boss',enemies:[],boss:regionBoss(1,s.seed)});
+ Object.assign(s.boss,{active:true,mode:'aim',cycle:1});
+ const aim={x:0,y:-1};
+ Object.assign(s.player,{x:740,y:345,charge:60});
+ assert.equal(focusPlan(s,aim).impacts[0]?.study,undefined);
+ assert.ok(action(s,'skill',aim));assert.equal(s.player.charge,0);
+ assert.equal(s.stats.focusStudy,undefined);
+ Object.assign(s.player,{charge:60,skillCd:0});
+ s.boss.mode='recover';
+ assert.ok(focusPlan(s,aim).impacts.some(hit=>hit.study));
+ assert.ok(action(s,'skill',aim));
+ assert.equal(s.player.charge,RULES.marco.studyRefund);
+ assert.equal(s.operation.coastSalvage.progress,4);
+ assert.deepEqual(s.stats.focusStudy,[1]);
+ const loaded=restore(snapshot(s));
+ Object.assign(loaded.player,{x:860,charge:60,skillCd:0});
+ assert.equal(focusPlan(loaded,aim).impacts[0]?.study,undefined);
+ assert.ok(action(loaded,'skill',aim));assert.equal(loaded.player.charge,0);
+ assert.equal(loaded.operation.coastSalvage.progress,4);
+ assert.deepEqual(loaded.stats.focusStudy,[1]);
+ clearRegion(loaded);
+ assert.ok(choose(loaded,'advance'));
+ Object.assign(loaded.boss,{active:true,mode:'recover',cycle:1});
+ loaded.stage='boss';
+ Object.assign(loaded.player,{x:loaded.boss.x+loaded.boss.parts[1].ox,y:355,charge:60,skillCd:0});
+ assert.ok(action(loaded,'skill',aim));
+ assert.deepEqual(loaded.stats.focusStudy,[1,2]);
+ assert.equal(loaded.operation.coastSalvage.progress,5);
 });
 
 test('Marco wins keep a separate standard and order record and preserve Fio marks',()=>{
