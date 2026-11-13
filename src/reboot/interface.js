@@ -332,10 +332,10 @@ function openingOrders(seed,goal){
  const standard=!goal,gun=goal||coastPreemptGun(seed);
  const {site,firstTurn,distance:approachLength,detour}=coastOpeningBrief(seed,gun);
  const start={x:800,y:1040},rescue=previewLayout(seed,0).sites.find(site=>site.opening);
- const range=Math.round(approachLength/10),guard=gun==='f'?'방패 호위':'박격포 2문';
+ const range=Math.round(approachLength/10),guard=gun==='f'?'방패 측면 공략':'박격포 2문';
  const approach=`${bearing(start,...firstTurn)} ${sitePresentation(site).name} · ${range}m · ${guard}`;
  const note=standard?`포로 구출에서 F/R 선택 · 기습으로 ${GUNS[gun].short} L2 확보 가능`
-  :`제압 후 ${GUNS[gun].short} L2 → ${COAST_RESPONSE[gun].name}`;
+  :`초기 경비 제압 → ${GUNS[gun].short} L2 → ${COAST_RESPONSE[gun].name}`;
  return `<section class="replay-opening" data-opening-theme="${goal||'auto'}">
   <h3>첫 무장 작전</h3>
   <div class="opening-orders" role="group" aria-label="첫 무장 작전">

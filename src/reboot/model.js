@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RESPONSE,coastPreemptSite,coastOpeningGun,isOpeningGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RAID_PATROL_DELAY,COAST_SHIELD_BEARING,bracingCoastEscort,shieldFaces,COAST_RESPONSE,coastPreemptSite,coastOpeningGun,isOpeningGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,buildPaths,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance,CAPTURED_TURRET,COAST_FAN,coastFanAngle,isCapturedTurret} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -262,6 +262,10 @@ export function restore(raw,{allowPrevious=false}={}){
   if(s.stats.coastPreempt!==undefined&&s.stats.coastPreempt!==coastOpeningGun(s))fail();
   if(s.stats.coastResponse!==undefined&&(!Object.hasOwn(COAST_RESPONSE,s.stats.coastResponse)||s.stats.coastResponse!==s.stats.coastPreempt))fail();
   if(s.enemies.some(e=>e.coastResponse!==undefined&&(s.operation.region!==0||e.coastResponse!==s.stats.coastResponse||e.cohort!=='ambient')))fail();
+  if(s.enemies.some(e=>e.coastRaidShield!==undefined&&(e.coastRaidShield!==true||openingGun!=='f'||s.operation.region!==0
+   ||e.type!=='shield'||e.cohort!=='coast-guard'||!Number.isFinite(e.spawnAge)||e.spawnAge<0||!Number.isFinite(e.aim)
+   ||bracingCoastEscort(e)&&e.aim!==COAST_SHIELD_BEARING
+   ||!s.sites.some(site=>site.id===e.siteId&&site.coastApproach==='f'&&site.preempt&&(site.state==='active'||e.dead&&['ready','done'].includes(site.state))))))fail();
   if(s.enemies.some(e=>e.coastRescueShield!==undefined&&(e.coastRescueShield!==true||!isSalvageCampaign(s)||s.operation.region!==0||s.operator!=='marco'||e.type!=='shield'||e.siteId!==null||e.coastArmor!==true)))fail();
   // The first b30 release opened the hatch before the site stored its variant.
   if(s.operation.region===2&&s.balanceRevision==='b30-port-gantry'){
@@ -995,7 +999,6 @@ function clearCoastOverlap(s,entity,r,fallback){
 function move(s,e,dx,dy,r){const x=clamp(e.x+dx,FIELD.left+r,FIELD.right-r),y=clamp(e.y+dy,FIELD.top+r,FIELD.bottom-r);if(!blocked(s,x,e.y,r))e.x=x;if(!blocked(s,e.x,y,r))e.y=y;}
 function lineBlocked(s,a,b){const n=Math.ceil(distance(a,b)/20);for(let i=1;i<=n;i++)if(blocked(s,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return true;return false;}
 function attackTargets(s,range){return targets(s).filter(e=>e.hp>0&&distance(e,s.player)<range+e.r&&!lineBlocked(s,s.player,e)).sort((a,b)=>distance(a,s.player)-distance(b,s.player));}
-const shieldFaces=(shield,p)=>Math.cos(Math.atan2(p.y-shield.y,p.x-shield.x)-shield.aim)>.45;
 function coastFlameShield(s,guard){
  if(s.operation?.region!==0||s.stage!=='field'||guard.type!=='rifle'||guard.cohort!=='coast-guard'||!guard.coastWing)return null;
  const p=s.player,dx=guard.x-p.x,dy=guard.y-p.y,reach=dx*dx+dy*dy;
@@ -1125,7 +1128,8 @@ function targetFor(s,w,d,candidates,lance){
    &&candidates.includes(s.boss)&&distance(s.player,s.boss)>=strike.range)return s.boss;
  // Keep the close threat first, then give the chosen raid's guards a clear firing priority.
  const outpost=w.id==='h'&&!w.fusion&&s.operation?.openingGun&&coastPreemptSite(s);
- if(outpost?.preempt&&outpost.state==='active'&&candidates[0]&&distance(s.player,candidates[0])>70){
+ if(outpost?.preempt&&outpost.state==='active'&&candidates[0]){
+  if(distance(s.player,candidates[0])<=70)return candidates[0];
   const guard=candidates.find(e=>e.siteId===outpost.id);
   if(guard)return guard;
  }
@@ -1993,6 +1997,7 @@ function updateEnemies(s,dt){
  for(const e of s.enemies){if(e.dead){e.death-=dt;continue;}e.spawnAge+=dt;e.hurt=Math.max(0,e.hurt-dt);e.timer-=dt;e.walk+=dt*e.speed*.12;
   updateBurn(s,e,dt);if(e.dead)continue;
   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1,desired=Math.atan2(dy,dx);
+  if(bracingCoastEscort(e))continue;
   // The rescue shield covers the beach entrance before it starts tracking the pilot.
   const covering=e.coastRescueShield&&!e.coastScanned&&e.spawnAge<2.2;
   if(e.type==='shield'&&!covering){const delta=Math.atan2(Math.sin(desired-e.aim),Math.cos(desired-e.aim)),turn=RULES.enemies.shield.turnRadiansPerSecond*dt;e.aim+=clamp(delta,-turn,turn);}else if(!covering)e.aim=desired;
@@ -2267,6 +2272,9 @@ function updateSites(s,dt){
     if(s.operation?.region===1&&carriesCoastSalvage(s)&&site.id==='rail-cache'&&site.guardPlan==='spread')extra.railWing=Number((mirrored?-x:x)>0);
     if(rescue&&s.operator!=='marco'&&(i===0||i===3))extra.coastCarrier=true;
     if(isSalvageCampaign(s)&&site.preempt&&type==='shield'&&s.operator==='marco')extra.coastArmor=true;
+    if(type==='shield'&&site.preempt&&s.operation?.openingGun==='f'){
+     extra.coastRaidShield=true;extra.aim=COAST_SHIELD_BEARING;
+    }
     if(wire&&type==='mortar')extra.timer=.8;
     if(site.coastPlan==='split'&&site.coastApproach==='f')extra.coastWing=Math.sign(x);
     if(site.coastApproach==='r'&&approach.firstSalvo){
@@ -2687,7 +2695,11 @@ export function action(s,kind,input){
  if(kind==='challenge')return startChallenge(s);
  if(kind==='interact'){
   const item=interaction(s);if(!item||item.blocked)return false;
-  if(item.id==='coast-preempt'){item.site.preempt=true;return true;}
+  if(item.id==='coast-preempt'){
+   item.site.preempt=true;
+   if(s.operation.openingGun)s.spawnClock=Math.max(s.spawnClock,COAST_RAID_PATROL_DELAY);
+   return true;
+  }
   if(item.id==='secure-turret'){
    const coast=coastSalvage(s);
    coast.turret='securing';

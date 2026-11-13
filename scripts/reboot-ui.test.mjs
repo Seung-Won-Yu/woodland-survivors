@@ -456,7 +456,7 @@ test('a canonical report previews the chosen beach and starter and only compares
  assert.match(same,/철도[^<]*통신 중계기/);
  assert.match(same,/data-seed="27"[^>]+data-replay-from="1"/);
  assert.match(same,/data-brief-opening="auto" aria-pressed="true"/);
- for(const [gun,text] of [['f','이동 보급차 · 30m · 방패 호위'],['r','박격포 진지 · 64m · 박격포 2문']]){
+ for(const [gun,text] of [['f','이동 보급차 · 30m · 방패 측면 공략'],['r','박격포 진지 · 64m · 박격포 2문']]){
   const planned=replayBriefingView(r,saved,'standard',null,{...options,openingGun:gun});
   assert.ok(planned.includes(text));
   assert.match(planned,new RegExp(`data-brief-opening="${gun}" aria-pressed="true"`));

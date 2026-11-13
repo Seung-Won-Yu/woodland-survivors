@@ -443,6 +443,13 @@ const BEACH_ROUTES=[
 export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
 export const COAST_PREEMPT_RANGE=155;
 export const COAST_PREEMPT_ESCORT=[['shield',0,35,42],['rifle',-47,-22],['rifle',47,-22]];
+export const COAST_RAID_PATROL_DELAY=4;
+export const COAST_SHIELD_BRACE=1.65;
+export const COAST_SHIELD_BEARING=Math.PI/2;
+const SHIELD_COVER_COSINE=.45;
+export const SHIELD_HALF_ANGLE=Math.acos(SHIELD_COVER_COSINE);
+export const shieldFaces=(shield,p)=>Math.cos(Math.atan2(p.y-shield.y,p.x-shield.x)-shield.aim)>SHIELD_COVER_COSINE;
+export const bracingCoastEscort=e=>e.coastRaidShield===true&&!e.dead&&e.hp>0&&e.spawnAge<COAST_SHIELD_BRACE;
 export const COAST_RESPONSE={
  f:{name:'보급차 역습',hint:'옆에서 호위를 모아 분사',reach:194,
   guards:[['shield',-30,0],['rifle',-8,-33],['rifle',-8,33],['rifle',24,-25],['rifle',24,25]]},
@@ -589,6 +596,11 @@ export function coastEncounterCue(s,site,volley,counter){
  if(site.state!=='active')return null;
  const guards=s.enemies.filter(e=>!e.dead&&e.siteId===site.id);
  if(site.coastApproach==='f'){
+  const shield=guards.find(bracingCoastEscort);
+  if(shield){
+   const direction=s.player.x<shield.x?'←':'→';
+   return shieldFaces(shield,s.player)?`방패 정면 · ${direction} 옆으로 이동`:'방패 옆 노출 · 사선 유지';
+  }
   if(!coastStrikeArmed(s,'f'))return `${coastStrikeArmed(s,'r')?'거리 유지 · 호위를 모아 폭발':'호위를 따라 측면 사격'} · 경비 ${guards.length}명`;
   const wings=new Set(guards.map(e=>e.coastWing).filter(Boolean)).size;
   const screened=coastShieldImpact(s,site);

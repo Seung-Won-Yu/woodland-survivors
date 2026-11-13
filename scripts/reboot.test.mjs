@@ -12,6 +12,7 @@ import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
 import {coastRoleTarget,coastRoleRank} from '../src/reboot/coast-salvage.js';
 import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
+import {COAST_RAID_PATROL_DELAY,COAST_SHIELD_BRACE,bracingCoastEscort,shieldFaces} from '../src/reboot/campaign.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -592,10 +593,71 @@ test('a planned raid focuses the armed outpost guard after immediate threats',()
   Object.assign(s.player,{x:site.x,y:site.y+125});
   const enemy=(id,x,y,siteId)=>({id,type:'rifle',x,y,siteId,r:13,hp:28,maxHp:28,speed:0,walk:0,aim:0,timer:1,hurt:0,spawnAge:1,death:0});
   s.enemies=[enemy('ambient',s.player.x+gap,s.player.y,null),enemy('guard',site.x,site.y-40,site.id)];
-  s.weapons[0].cd=0;
+  Object.assign(s.weapons[0],{cd:0,targetId:'guard',targetUntil:1});
+  if(!plan)delete s.weapons[0].targetId;
   step(s,dt);
   assert.equal(s.shots[0]?.target,expected);
  }
+});
+test('planned fire escorts brace through restore and taking the weapon triggers a separate counterattack',()=>{
+ for(const gun of ['f','r']){
+  const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,gun);
+  const site=coastPreemptSite(run);
+  Object.assign(run,{blocks:[],enemies:[],spawnClock:.1});
+  Object.assign(run.player,{x:site.x,y:site.y+100});
+  assert.ok(action(run,'interact'));
+  assert.equal(run.spawnClock,COAST_RAID_PATROL_DELAY);
+  run.weapons[0].cd=999;
+  step(run,dt);
+  const saved=restore(snapshot(run)),guard=saved.enemies.find(e=>e.siteId===site.id&&e.type==='shield');
+  if(gun==='f'){
+   assert.ok(bracingCoastEscort(guard));
+   const y=guard.y;
+   assert.ok(shieldFaces(guard,saved.player));
+   for(const patch of [{spawnAge:-1},{spawnAge:null},{aim:0}]){
+    const invalid=snapshot(saved);
+    Object.assign(invalid.enemies.find(e=>e.id===guard.id),patch);
+    assert.throws(()=>restore(invalid),/체크포인트/);
+   }
+   const front=restore(snapshot(saved)),frontGuard=front.enemies.find(e=>e.id===guard.id);
+   front.shots=[bullet(front,frontGuard,20)];step(front,dt);
+   assert.equal(frontGuard.hp,33);
+   Object.assign(saved.player,{x:guard.x+120,y:guard.y});
+   tick(saved,.5);
+   assert.equal(guard.y,y);
+   assert.equal(guard.aim,Math.PI/2);
+   assert.equal(shieldFaces(guard,saved.player),false);
+   const side=restore(snapshot(saved)),sideGuard=side.enemies.find(e=>e.id===guard.id);
+   side.shots=[bullet(side,sideGuard,20)];step(side,dt);
+   assert.equal(sideGuard.hp,22);
+   side.enemies=[sideGuard];
+   side.shots=[bullet(side,sideGuard,100)];step(side,dt);
+   assert.equal(side.sites.find(n=>n.id===site.id).state,'ready');
+   assert.equal(restore(snapshot(side)).enemies[0].dead,true);
+   tick(saved,COAST_SHIELD_BRACE);
+   assert.equal(bracingCoastEscort(guard),false);
+   assert.ok(guard.aim<Math.PI/2);
+  }else{
+   assert.equal(guard,undefined);
+   assert.equal(saved.enemies.filter(e=>e.type==='mortar').length,2);
+  }
+  assert.equal(saved.stats.directorSpawns,undefined);
+  saved.enemies=[];
+  const liveSite=saved.sites.find(n=>n.id===site.id);
+  Object.assign(saved.player,{x:liveSite.x,y:liveSite.y});
+  step(saved,dt);
+  assert.ok(choose(saved,`gun:${gun}`));
+  assert.ok(saved.spawnClock<=.36);
+  tick(saved,.4);
+  assert.equal(saved.stats.coastResponse,gun);
+ }
+ const regular=createOperation(19,[],null,null,'fio','standard'),site=coastPreemptSite(regular);
+ Object.assign(regular,{blocks:[],enemies:[],spawnClock:.1});
+ Object.assign(regular.player,{x:site.x,y:site.y+100});
+ assert.ok(action(regular,'interact'));
+ assert.equal(regular.spawnClock,.1);
+ step(regular,dt);
+ assert.equal(regular.enemies.find(e=>e.siteId===site.id&&e.type==='shield').coastRaidShield,undefined);
 });
 test('opening enemies respect distance and cover even near the southern boundary',()=>{
  for(const seed of [17,71,109,214,3470268883]){const s=createRun(seed);assert.equal(s.enemies.length,10);for(const e of s.enemies){assert.ok(Math.hypot(e.x-s.player.x,e.y-s.player.y)>300);assert.ok(s.enemies.every(other=>e===other||Math.hypot(e.x-other.x,e.y-other.y)>=RULES.spawn.openingGap));assert.ok(!s.blocks.some(b=>e.x+e.r>b.x&&e.x-e.r<b.x+b.w&&e.y+e.r>b.y&&e.y-e.r<b.y+b.h));}}
