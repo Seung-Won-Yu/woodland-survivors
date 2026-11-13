@@ -170,7 +170,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -334,6 +334,8 @@ export function restore(raw,{allowPrevious=false}={}){
  if(s.choice?.relayRepair!==undefined&&!validRelayRepair({type:s.choice.type,extra:s.choice}))fail();
  if(s.choice?.type==='coast-boss'&&(!coastAtShore(s)||s.stage!=='field'||coastSalvage(s).plan||
   s.choices.length!==2||s.choices.some(c=>c.kind!=='coast-boss'||!['coast:break','coast:capture'].includes(c.id))))fail();
+ if(s.choice?.coastPrep!==undefined&&(s.choice.coastPrep!==true||s.choice.type!=='level'||s.choice.gatePrep||
+  !isSalvageCampaign(s)||s.stage!=='field'||!coastAtShore(s)||coastSalvage(s).plan||!atCarrierEntrance(s)))fail();
  if(s.choice?.type==='coast-mount'){
   const options=coastMountCards(s);
   if(!options.length||s.choices.length!==options.length+1||s.choices.some((c,i)=>
@@ -685,12 +687,13 @@ function deferContactDraft(s){
 }
 function openLevel(s,extra){
  s.pendingLevels--;
- openChoice(s,'level',levelCards(s),`LEVEL ${s.level}`,extra);
+ openChoice(s,'level',levelCards(s),`LEVEL ${s.level-s.pendingLevels}`,extra);
 }
 function nextChoice(s){
  if(s.phase!=='playing')return;
  if(s.queue.length){const item=s.queue.shift();openChoice(s,item.type,item.cards,item.source,item.extra);return;}
  if(s.t<(s.levelReadyAt||0)||!canOpenLevel(s)||deferContactDraft(s))return;
+ if(isSalvageCampaign(s)&&coastAtShore(s)&&s.stage==='boss'&&s.boss.mode!=='recover')return;
  // Let nearby field objectives take precedence over routine upgrades.
  if(s.operation&&s.stage==='holdout'&&interaction(s))return;
  if(s.operation&&s.stage!=='boss'&&s.sites.some(site=>site.state==='ready'&&distance(site,s.player)<LEVEL_PICKUP_PRIORITY))return;
@@ -715,6 +718,7 @@ function openAssembly(s,options,gatePrep=false){
 }
 function closeChoice(s,next=false){
  if(s.choice.gatePrep){openChoice(s,'clear',exitCards(s),'열린 출구');return;}
+ if(s.choice.coastPrep){openCoastBoss(s);return;}
  s.phase='playing';s.choice=null;s.choices=[];
  if(next)nextChoice(s);
 }
@@ -2518,6 +2522,16 @@ export function interaction(s){
  const cargo=signalCargo(s);
  return cargo&&distance(s.player,cargo)<=SIGNAL_CARGO_REACH&&!lineBlocked(s,s.player,cargo)?{id:'signal-cargo',label:'통신 화물 회수'}:null;
 }
+function atCarrierEntrance(s){
+ const item=interaction({...s,phase:'playing'});
+ return item?.id==='boss'&&!item.blocked;
+}
+function openCoastBoss(s){
+ openChoice(s,'coast-boss',[
+  {id:'coast:break',kind:'coast-boss',title:'포탑부터 파괴',desc:'포탑을 먼저 조준합니다. 파괴하면 수송차의 부채꼴 탄막이 5발에서 3발로 줄어듭니다.',label:'안전한 돌파'},
+  {id:'coast:capture',kind:'coast-boss',title:'포탑을 살려 노획',desc:`차체만 조준합니다. 증원 속에서 포탑을 반출하면 +${COAST_SALVAGE.credits}C와 부채꼴 시작 무장을 얻습니다.`,label:'노획 보상'}
+ ],'장갑 수송차 교전');
+}
 function focusWeakPoint(s,target){
  const b=s.boss,front=s.operation?.region;
  if(b.mode!=='recover')return false;
@@ -2575,6 +2589,10 @@ export function action(s,kind,input){
   if(!canCallGateChallenge(s)||!startChallenge(s))return false;
   closeChoice(s);return true;
  }
+ if(kind==='coast-upgrade'){
+  if(s.phase!=='choice'||s.choice?.type!=='coast-boss'||!isSalvageCampaign(s)||s.pendingLevels<1||!atCarrierEntrance(s))return false;
+  openLevel(s,{coastPrep:true});return true;
+ }
  if(s.phase!=='playing')return false;const p=s.player;
  if(kind==='upgrade'){if(!canOpenLevel(s))return false;openLevel(s);return true;}
  if(kind==='gear'){openAssembly(s,assemblyOptions(s));return true;}
@@ -2620,10 +2638,7 @@ export function action(s,kind,input){
    return true;
   }
   if(coastAtShore(s)){
-   openChoice(s,'coast-boss',[
-    {id:'coast:break',kind:'coast-boss',title:'포탑부터 파괴',desc:'포탑을 먼저 조준합니다. 파괴하면 수송차의 부채꼴 탄막이 5발에서 3발로 줄어듭니다.',label:'안전한 돌파'},
-    {id:'coast:capture',kind:'coast-boss',title:'포탑을 살려 노획',desc:`차체만 조준합니다. 증원 속에서 포탑을 반출하면 +${COAST_SALVAGE.credits}C와 부채꼴 시작 무장을 얻습니다.`,label:'노획 보상'}
-   ],'장갑 수송차 교전');
+   openCoastBoss(s);
    return true;
   }
   return beginBoss(s,item);

@@ -11,6 +11,7 @@ export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padSta
 const splitClockText=t=>{const tenths=tenthsOfSecond(t);return `${clockText(tenths/10)}.${tenths%10}`;};
 const svg=(body,box='0 0 160 100')=>`<svg viewBox="${box}" aria-hidden="true" focusable="false">${body}</svg>`;
 export function itemArt(id,extra=''){return `<span class="kit-sprite kit-${id} ${extra}" aria-hidden="true"></span>`;}
+export const coastRescueReward=(turret,preempted=false)=>preempted?'추가 정비':turret?'화염 F / 기관총 H 선택':'화염 F / 로켓 R 선택';
 export function moduleIcon(id){
  const body=({
  medic:'<path d="M26 9h12v17h17v12H38v17H26V38H9V26h17z"/>',
@@ -53,7 +54,7 @@ function coastPlan(seed,order,suggested=null,researchNotes={},showPreempt=false,
  const {sites}=previewLayout(seed,0,order),rescue=sites.find(site=>site.opening);
  const start={x:800,y:1040};
  const turret=loadout==='turret';
- const rescueKit=turret?'화염 F / 기관총 H 선택':'화염 F / 로켓 R 선택';
+ const rescueKit=coastRescueReward(turret);
  if(showPreempt){
   const id=coastPreemptGun(seed),site=sites.find(site=>site.coastApproach===id);
   const direction=bearing(start,site.x,site.y);
@@ -92,9 +93,10 @@ function launchDock(profile,id,operator,requisition,requisitionAt,plan,loadout){
  const title=request?`${delivery} 예약 · ${request.name}`:order?`지령 · ${order.name}`:'첫 목표 · 포로 구출';
  const briefing=request?`출격 시 −${REQUISITION_FEE}C · 현장 보급 중 한 가지 · ${request.fitting}`:order?`${order.fee}C 선납 · 목표 확보 후 최종 귀환 +${order.bonus}C`:'포로를 구출해 화염방사기나 로켓을 확보하세요.';
  const note=!plan||order||request?`<div class="launch-note"><b>${title}</b><small>${briefing}</small>${request?'<button class="text-button cancel-requisition" data-reserve="">예약 취소</button>':''}</div>`:'';
+ const rescue=plan?`<p class="launch-payoff"><b>포로 구출</b><span aria-hidden="true">→</span> ${coastRescueReward(loadout==='turret')}</p>`:'';
  const label=`${actor.name} · ${request?'예약 출격':order?'지령 출격':'새 출격'}`;
  const action=profile.active?`<span>${label}<small class="launch-checkpoint">이전 판 정산 후 시작</small></span>`:label;
- return `<div class="launch-dock${plan?' has-coast-plan':''}"><div class="launch-briefing">${plan}${note}</div><div class="launch-controls"><button class="primary launch-button" data-action="launch"${loadout==='turret'?' data-coast-loadout="turret"':''}${order?` data-sortie="${id}"`:request?` data-requisition="${requisition}"${requisitionAt?' data-requisition-at="coast"':''}`:''}>${action}<span aria-hidden="true">▶</span></button></div></div>`;
+ return `<div class="launch-dock${plan?' has-coast-plan':''}"><div class="launch-briefing">${plan}${note}</div><div class="launch-controls">${rescue}<button class="primary launch-button" data-action="launch"${loadout==='turret'?' data-coast-loadout="turret"':''}${order?` data-sortie="${id}"`:request?` data-requisition="${requisition}"${requisitionAt?' data-requisition-at="coast"':''}`:''}>${action}<span aria-hidden="true">▶</span></button></div></div>`;
 }
 function orderOptions(p,selected,operator,reserved){
  if(!p.records.wins||p.active)return '';

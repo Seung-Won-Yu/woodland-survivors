@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,portTacticKeys} from '../src/reboot/campaign.js';
+import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,portTacticKeys} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -3833,6 +3833,48 @@ test('campaign level drafts leave combat time between choices without consuming 
  tick(next,RULES.levelChoiceSpacing-1+.1);
  assert.equal(next.choice.type,'level');
  assert.equal(next.pendingLevels,0);
+});
+test('coast XP can be spent before choosing a carrier tactic without starting the boss',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ Object.assign(s.player,BOSS_ENTRY);
+ Object.assign(s,{level:4,pendingLevels:3,t:8});
+ assert.ok(action(s,'interact'));
+ assert.ok(action(s,'coast-upgrade'));
+ assert.equal(s.choice.source,'LEVEL 2');
+ assert.equal(s.choice.coastPrep,true);
+ assert.equal(s.pendingLevels,2);
+ const loaded=restore(snapshot(s));
+ assert.ok(choose(loaded,'rank:h'));
+ assert.equal(loaded.weapons[0].level,2);
+ assert.equal(loaded.choice.type,'coast-boss');
+ assert.equal(loaded.t,8);
+ assert.equal(loaded.boss.active,false);
+ assert.equal(loaded.operation.coastSalvage.plan,undefined);
+ assert.ok(action(loaded,'coast-upgrade'));
+ assert.equal(loaded.choice.source,'LEVEL 3');
+ assert.ok(skip(loaded));
+ assert.ok(choose(loaded,'coast:capture'));
+ assert.equal(loaded.stage,'boss');
+ assert.equal(loaded.pendingLevels,1);
+ assert.equal(loaded.operation.coastSalvage.plan,'capture');
+});
+test('automatic coast boss drafts wait for reload while manual XP upgrades remain available',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ Object.assign(s,{level:3,pendingLevels:2,stage:'boss',t:11});
+ s.operation.coastSalvage.plan='break';
+ Object.assign(s.boss,{active:true,mode:'windup',timer:1.2,spawnClock:100});
+ step(s,dt);
+ assert.equal(s.phase,'playing');
+ assert.equal(s.pendingLevels,2);
+ const manual=restore(snapshot(s));
+ assert.ok(action(manual,'upgrade'));
+ assert.equal(manual.choice.type,'level');
+ assert.equal(manual.boss.mode,'windup');
+ assert.equal(manual.pendingLevels,1);
+ s.boss.mode='recover';
+ step(s,dt);
+ assert.equal(s.choice.type,'level');
+ assert.equal(s.pendingLevels,1);
 });
 test('field supplies still open while routine level drafts are banked',()=>{
  const s=quietOperation();s.level=2;s.pendingLevels=1;
