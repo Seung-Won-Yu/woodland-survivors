@@ -1503,15 +1503,53 @@ function railwayCapstone(seed,build,fireBranch='trail'){
  if(build==='flame'){
   s.weapons.push({...makeWeapon('f'),uid:'f',level:6,branch:fireBranch});
   s.modules=[{id:'catalyst',rank:2}];
+ }else if(build==='quad'){
+  Object.assign(s.weapons[0],{level:6,branch:'ricochet'});
+  s.modules=[{id:'ricochet',rank:2}];
  }else{
   Object.assign(s.weapons[0],{level:build==='rocket'?6:4,branch:build==='rocket'?'homing':'ricochet'});
   if(build==='fusion')s.weapons.push({...makeWeapon('r'),uid:'r',level:4,branch:'homing'});
   s.modules=[{id:'coil',rank:2}];
  }
  assert.ok(action(s,'gear'));
- assert.ok(choose(s,{flame:'evolve:f',fusion:'fusion:h:r',rocket:'evolve:r'}[build]));
+ assert.ok(choose(s,{flame:'evolve:f',fusion:'fusion:h:r',rocket:'evolve:r',quad:'evolve:h'}[build]));
  return s;
 }
+test('the Quad Cannon meets two traversable columns and confirms a second target on the same bullet',()=>{
+ for(const seed of [27,28]){
+  const s=railwayCapstone(seed,'quad');
+  Object.assign(s.player,{x:800,y:650,aim:-Math.PI/2});
+  s.spawnClock=999;s.director.officerClock=999;
+  tick(s,.72);
+  assert.equal(s.powerWave.remaining,52);
+  const troops=s.enemies.filter(e=>e.showcase==='quad');
+  assert.equal(troops.length,8);
+  const headings=new Set(troops.map(e=>e.formationHeading));
+  assert.equal(headings.size,2);
+  for(const heading of headings){
+   const column=troops.filter(e=>e.formationHeading===heading);
+   assert.equal(column.length,4);
+   assert.ok(column.every(e=>distance(s.player,e)>150));
+  }
+  const loaded=restore(snapshot(s));
+  tick(loaded,.4);
+  assert.ok(loaded.stats.quadPierces>0);
+  assert.ok(loaded.stats.kills>0);
+  assert.ok(loaded.effects.some(f=>f.type==='quad-contact'));
+ }
+});
+test('the prior turret build revision can still resume on either later front',()=>{
+ for(const front of [1,2]){
+  const s=railwayCapstone(27,'rocket');
+  Object.assign(s.operation,{region:front,cleared:front});
+  Object.assign(s,regionLayout(mapSeed(s.seed,front),front,null,true),{boss:regionBoss(front,s.seed)});
+  s.balanceRevision='b67-turret-builds';
+  const p=parseProfile(JSON.stringify(beginProfile({...emptyProfile(),recordScope:s.balanceRevision,credits:120},s)));
+  assert.equal(p.active?.run.runId,s.runId);
+  assert.equal(p.active?.run.operation.region,front);
+  assert.equal(p.credits,120);
+ }
+});
 test('a narrow rail lane can deploy a whole split wave with a clear and safe entrance',()=>{
  const s=railwayCapstone(32,'fusion');
  Object.assign(s.player,{x:835,y:536});
@@ -1526,7 +1564,7 @@ test('a narrow rail lane can deploy a whole split wave with a clear and safe ent
  assert.deepEqual(restore(snapshot(s)).powerWave,s.powerWave);
 });
 test('advancing with a completed loadout leads with two formations from the existing reinforcement reserve',()=>{
- for(const build of ['flame','fusion','rocket']){
+ for(const build of ['flame','fusion','rocket','quad']){
   const s=railwayCapstone(27,build);
   Object.assign(s.player,{x:800,y:350});
   tick(s,7);
@@ -1543,7 +1581,7 @@ test('advancing with a completed loadout leads with two formations from the exis
    if(paired===loaded.powerWave.paired)continue;
    const troops=loaded.enemies.filter(e=>e.showcase===build&&!previous.has(e.id)),count=troops.length;
    assert.ok(count===8||build!=='flame'&&count===12,`${build}: ${count}`);
-   if(build!=='flame')assert.equal(new Set(troops.map(e=>e.waveGroup)).size,count/4);
+   if(build==='rocket'||build==='fusion')assert.equal(new Set(troops.map(e=>e.waveGroup)).size,count/4);
    births.push({time:loaded.operation.regionTime,count});
   }
   assert.equal(births.length,2);
@@ -1917,6 +1955,21 @@ test('direct hits cancel only the destroyed gun and leave the disarmed train ope
  assert.equal(s.boss.mode,'recover');assert.equal(s.hazards.length,0);
  tick(s,6);
  assert.equal(s.player.hp,100);assert.equal(s.boss.mode,'recover');assert.equal(s.hazards.length,0);
+});
+test('a coil burst triggered by a gun hit credits its destroyed rail part only once',()=>{
+ const s=railwayCapstone(27,'rocket');
+ s.stage='boss';
+ s.blocks=[];s.enemies=[];s.powerWave=null;
+ Object.assign(s.boss,{active:true,mode:'aim',timer:3});
+ s.operation.support='breach';
+ s.weapons.forEach(w=>{w.cd=999;});
+ s.coil=RULES.modules.coil.threshold[1];
+ const part=s.boss.parts[0];
+ part.hp=10;
+ s.shots=[bullet(s,{...partPosition(s,part),id:part.id},2)];
+ step(s,dt);
+ assert.equal(part.hp,0);
+ assert.equal(s.stats.railGunsDestroyed,1);
 });
 test('a burning rail gun that breaks on the final warning tick cannot hit its lane',()=>{
  const s=railEncounter();step(s,dt);

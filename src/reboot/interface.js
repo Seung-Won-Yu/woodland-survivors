@@ -13,11 +13,24 @@ export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padSta
 const splitClockText=t=>{const tenths=tenthsOfSecond(t);return `${clockText(tenths/10)}.${tenths%10}`;};
 const svg=(body,box='0 0 160 100')=>`<svg viewBox="${box}" aria-hidden="true" focusable="false">${body}</svg>`;
 export function itemArt(id,extra=''){return `<span class="kit-sprite kit-${id} ${extra}" aria-hidden="true"></span>`;}
+function railApproachBrief(seed,site,fan){
+ const {arrival,routes}=frontEntry(mapSeed(seed,1),1);
+ const route=routes.find(item=>item.site===site),path=fan?railWorkshopEntry(route,arrival):route.path;
+ return {...RAIL_SALVAGE_ROUTES[site],direction:bearing(arrival,...path[1]),side:path[1][0]<arrival.x?'왼쪽':'오른쪽'};
+}
+export function railTransferBrief(seed,handoff,mountOption){
+ const site=mountOption?'rail-cache':handoff.route;
+ if(!site)return '';
+ const fan=site==='rail-cache',{name,color,direction,side,fight,boss}=railApproachBrief(seed,site,fan);
+ const goal=fan?fight:boss;
+ return `<div class="transfer-route" data-transfer-route="${site}" style="--route-ink:${color}"><div>${railSalvagePreview(seed,site,fan)}</div><span><b><i role="img" aria-label="${side}">${direction}</i> ${name}</b><small>${goal}</small></span></div>`;
+}
 export function railHandoff(s){
  const turret=s.weapons.find(isCapturedTurret),coast=coastSalvage(s);
  if(turret){
   const name=turret.evolved?capstoneName(turret):CAPTURED_TURRET.name;
-  return {state:'mounted',art:'turret',route:'rail-cache',gateNote:`포탑 L${turret.level} · 화차 정비대`,title:`${name} L${turret.level} 이월`,detail:`${weaponStats(turret).count}발 부채꼴 · 정비대의 양쪽 대열과 열차의 두 포대 공략`};
+  const weapon=`${weaponStats(turret).count}발 부채꼴`;
+  return {state:'mounted',art:'turret',route:'rail-cache',gateNote:`포탑 L${turret.level} · 화차 정비대`,title:`${name} L${turret.level} 이월`,detail:`${weapon} · 정비대의 양쪽 대열과 열차의 두 포대 공략`,gateDetail:weapon};
  }
  if(coast.turret==='secured')return {state:'cargo',art:'turret',gateNote:'노획 포탑 운반 중',title:'포탑 운반 중',detail:'현재 무장으로 교전 · 철도 생존 귀환 시 포탑 반출'};
  if(coastSalvageWreck(s))return {state:'wreck',art:'turret',title:'포탑이 잔해에 남아 있음',detail:'잔해에서 5초간 분리하면 이번 판에 장착 가능'};
@@ -25,7 +38,8 @@ export function railHandoff(s){
   const support=FRONT_SUPPORTS[s.operation.nextSupport];
   const name=s.operation.nextSupport==='vanguard'?'후송 정비':support?.name;
   const rocket=s.weapons.find(w=>w.id==='r'&&!w.fusion);
-  return {state:'broken',art:rocket?'r':support?.art||'ammo',route:'rail-relay',gateNote:rocket?`로켓 R L${rocket.level} · 통신 중계기`:'통신 중계기 · 조준 유인',title:rocket?`로켓 R L${rocket.level} 이월`:'현재 무장 이월',detail:name?`${name} 장비 이월 · 중계기 조준 유인`:'철갑 급탄 또는 후송 정비 · 통신 중계기 경유'};
+  return {state:'broken',art:rocket?'r':support?.art||'ammo',route:'rail-relay',gateNote:rocket?`로켓 R L${rocket.level} · 통신 중계기`:'통신 중계기 · 조준 유인',title:rocket?`로켓 R L${rocket.level} 이월`:'현재 무장 이월',detail:name?`${name} 장비 이월 · 중계기 조준 유인`:'철갑 급탄 또는 후송 정비 · 통신 중계기 경유',
+   gateDetail:name?`${name} 장비 이월`:'지원 장비를 골라 전진'};
  }
  return {state:'standard',art:'ammo',title:'현재 무장 이월',detail:'통신 중계기를 확보하면 열차 조준을 한 번 유인'};
 }
@@ -461,14 +475,11 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  const railTip=railReservation?`경비 제압 후 ${request.name} 수령`:starter==='turret'?'포탑을 유지하면 남쪽에서 양쪽 대열 일제사격':'로켓 R을 유지하면 후방 박격포부터 제압';
  let nextRoute='';
  if(sortie&&!wire&&(!thermalRoute||railReservation)){
-  const {arrival,routes}=frontEntry(mapSeed(seed,1),1);
-  const route=routes.find(item=>item.site===railId),fan=starter==='turret';
-  const path=fan?railWorkshopEntry(route,arrival):route.path;
-  const {color,name}=RAIL_SALVAGE_ROUTES[railId];
+  const fan=starter==='turret',{color,name,direction}=railApproachBrief(seed,railId,fan);
   const conditional=!railReservation&&starter!=='turret';
   nextRoute=conditional&&openingGun!=='r'
-   ?`<div class="replay-rail-target" data-replay-rail="field" style="--route-ink:#c9c8a6">${railSalvagePreview(seed,null,false)}<div><b>철도 · 해안에서 고른 무장으로 공략</b><span>${openingGun==='f'?'화염 F를 유지하면 분사기 강화·촉매 후보':`R이면 ${bearing(arrival,...path[1])} 통신 중계기 · 포탑이면 화차 정비대`}</span></div></div>`
-   :`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed,railId,fan)}<div><b>철도 ${bearing(arrival,...path[1])} ${name}</b><span>${e(railTip)}</span></div></div>`;
+   ?`<div class="replay-rail-target" data-replay-rail="field" style="--route-ink:#c9c8a6">${railSalvagePreview(seed,null,false)}<div><b>철도 · 해안에서 고른 무장으로 공략</b><span>${openingGun==='f'?'화염 F를 유지하면 분사기 강화·촉매 후보':`R이면 ${direction} 통신 중계기 · 포탑이면 화차 정비대`}</span></div></div>`
+   :`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed,railId,fan)}<div><b>철도 ${direction} ${name}</b><span>${e(railTip)}</span></div></div>`;
  }
  return `<section class="sheet replay-briefing${experiment?' research-sortie-briefing':sortie?' sortie-briefing':''}" role="dialog" aria-modal="true" aria-labelledby="replay-brief-title">
   <header><div><span class="section-index">${experiment?`병기 연구 · ${operatorOf(r).name}`:`${trial?'실전 시험 · 같은 전장 · ':''}작전 #${r.sequence??'–'} · ${operatorOf(r).name}`}</span><h2 id="replay-brief-title">${trial?trial.name:experiment?(shrapnelRoute?request.name:'연구 장비 배치'):sortie?'다음 출격 준비':'같은 전장 재도전'}</h2></div>${configurable?'':`<b>${splitClockText(r.seconds)}<small>${n(r.score)}점</small></b>`}</header>
@@ -622,7 +633,7 @@ function debriefDetails(r,p,lines){
   ['화약 유폭',r.stats.emberBursts],['회피 유폭',r.stats.emberDashBursts],['철도 병기 유폭',r.stats.emberRailBursts],['화약 유폭 처치',r.stats.emberKills],['압축 코어 직격',r.stats.infernoCoreHits],
   ['코어 재장전 지연',lensUses],['냉각 배관 점화',wakeUses],['화약 포탑탄 차단',r.stats.emberIntercepts],
   ['인페르노 장판 처치',r.stats.wakeKills],['잔불 연결 점화',r.stats.wakeFlashes],['연결 점화 처치',r.stats.wakeFlashKills],
-  ['구출 양쪽 대열 명중',Number(r.stats.rescueFanSweep)],['철도 조준 유인',r.stats.railDecoys],['관통 사격 명중',r.stats.focusHits],['약점 직격',r.stats.focusWeakHits],
+  ['구출 양쪽 대열 명중',Number(r.stats.rescueFanSweep)],['철도 조준 유인',r.stats.railDecoys],['사중 기관포 두 번째 표적 명중',r.stats.quadPierces],['관통 사격 명중',r.stats.focusHits],['약점 직격',r.stats.focusWeakHits],
   ['철도·항구 첫 약점 관통',r.stats.focusStudy?.length]].filter(([,v])=>v>0);
  const fee=r.orderFee??r.requisitionFee,paid=Number.isSafeInteger(fee)&&fee>0,net=r.credits-fee;
  const ledger=lines?`<section class="payout-ledger"><h2>보급 크레딧 지급 내역</h2><dl>

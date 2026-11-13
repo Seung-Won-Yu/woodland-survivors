@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff} from '../src/reboot/interface.js';
+import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
@@ -29,6 +29,22 @@ test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a
  assert.equal(railHandoff(s).route,'rail-relay');
  s.operation.nextSupport='vanguard';
  assert.match(railHandoff(s).detail,/후송 정비.*이월/);
+});
+
+test('the rail transfer briefing mirrors the first move and keeps carried cargo distinct from a mount',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ s.stage='holdout';
+ s.operation.coastSalvage.turret='secured';
+ const cargo=railHandoff(s);
+ assert.equal(railTransferBrief(27,cargo), '');
+ const mount={title:'노획 포탑 L4'};
+ assert.match(railTransferBrief(27,cargo,mount),/data-transfer-route="rail-cache".*<\/i> 화차 정비대/s);
+ assert.match(railTransferBrief(27,cargo,mount),/aria-label="오른쪽">→<\/i>.*양쪽 대열에 일제사격/s);
+ assert.match(railTransferBrief(28,cargo,mount),/aria-label="왼쪽">←<\/i>.*양쪽 대열에 일제사격/s);
+ s.operation.coastSalvage.turret='broken';
+ const broken=railHandoff(s);
+ assert.match(railTransferBrief(27,broken),/data-transfer-route="rail-relay".*↖<\/i>.*교신으로 열차 조준 유인/s);
+ assert.match(railTransferBrief(28,broken),/↗<\/i>.*교신으로 열차 조준 유인/s);
 });
 
 test('the harbor forecast matches the mounted build and the actual control tactic',()=>{
@@ -70,6 +86,8 @@ test('portrait HUD clearance uses confirmed contact and live warning shapes with
  assert.deepEqual(covered([{...relay,relayArrival:false}],[]),[]);
  assert.deepEqual(covered([{...relay,contact:{x:328,y:207}}],[]),[]);
  assert.deepEqual(covered([{type:'fire-spread',x2:82,y2:364,age:.04,life:.25}],[]),['weapons']);
+ assert.deepEqual(covered([{type:'quad-contact',x:102,y:371,age:.03,life:.24}],[]),['weapons']);
+ assert.deepEqual(covered([{type:'quad-contact',x:102,y:371,age:.16,life:.24}],[]),[]);
  assert.deepEqual(covered([{type:'formation',x:92,y:360,age:.2},{type:'formation',x:225,y:135,age:.2}],[]),['weapons']);
  assert.deepEqual(covered([{type:'formation',x:225,y:135,age:.2,focused:true}],[]),['map-panel','field-objective']);
  assert.deepEqual(covered([{type:'formation',x:92,y:360,age:.5}],[]),[]);

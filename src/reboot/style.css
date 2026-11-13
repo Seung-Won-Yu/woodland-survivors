@@ -173,6 +173,7 @@
 #threat[data-formation="flame"]{color:#f5c695}
 #threat[data-formation="fusion"]{color:#bcece3}
 #threat[data-formation="rocket"]{color:#f7dba3}
+#threat[data-formation="quad"]{color:#e4e5a9}
 #field-intel[data-rail-fork]{display:grid;gap:4px;white-space:normal}
 .rail-route-row{display:grid;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:6px;padding:4px 5px;border-left:2px solid #a0b1a26b;color:#c6d1bd;background:#14272276;line-height:1.35}
 .rail-route-row[data-recommended]{border-color:var(--route-ink);color:#f0ebd6;background:color-mix(in srgb,var(--route-ink) 18%,#1b2c28)}
@@ -1122,13 +1123,27 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .front-transfer small {margin-top: .15rem; color: #c3d3bb; line-height: 1.4}
 .front-transfer > .kit-sprite {flex:none}
 .front-transfer > div {flex:1;min-width:0}
+.front-transfer:has(.transfer-route) {
+ display:grid;grid-template-columns:48px minmax(0,1fr) minmax(180px,1fr);gap:6px 10px;
+}
+.transfer-route {
+ display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:8px;
+ padding:3px 6px 3px 3px;border:1px solid #7b8266;border-left:2px solid var(--route-ink);
+ background:#182b29;color:var(--route-ink);
+}
+.transfer-route .rail-salvage-map {height:36px;border:1px solid #647870}
+.transfer-route b {font-size:12px;line-height:1.25}
+.transfer-route b i {font-style:normal}
+.transfer-route small {font-size:10px;line-height:1.25}
 .front-transfer > button {flex:none;min-height:44px;padding:4px 10px;border:1px solid #e1ba79;background:#edc988;color:#26332d;font-size:12px;font-weight:bold}
 .front-transfer > button:is(:hover,:focus-visible) {background:#ffe6ae;color:#1c2e27}
+.front-transfer:has(.transfer-route):not([data-mount-forward]) > button {grid-column:1/-1;justify-self:end}
 .front-transfer[data-mount-forward] {
  display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:9px 12px;padding:8px 10px;
  border:1px solid #a48050;border-left:4px solid #f4ca87;
  background:linear-gradient(100deg,#3a3225,#232e26);color:#ffdf9c;
 }
+.front-transfer[data-mount-forward]:has(.transfer-route) {grid-template-columns:56px minmax(0,1fr) minmax(180px,1fr) auto}
 .front-transfer[data-mount-forward] > .kit-sprite {width:56px;height:48px;background-color:#1b2722}
 .front-transfer[data-mount-forward] small {color:#e3d4ad}
 .front-transfer[data-mount-forward] > button {padding-inline:12px;background:#f0cb88;border-color:#f8da9d;box-shadow:0 2px #171f1c}
@@ -1379,6 +1394,13 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .front-transfer[data-mount-forward] {grid-template-columns:48px minmax(0,1fr);gap:6px 9px}
  .front-transfer[data-mount-forward] > .kit-sprite {width:48px;height:42px}
  .front-transfer[data-mount-forward] > button {grid-column:1/-1;font-size:13px}
+ .front-transfer:has(.transfer-route),
+ .front-transfer[data-mount-forward]:has(.transfer-route) {grid-template-columns:42px minmax(0,1fr);gap:5px 8px}
+ .front-transfer:has(.transfer-route) > .kit-sprite {width:42px;height:36px}
+ .front-transfer .transfer-route {grid-column:1/-1;grid-template-columns:48px minmax(0,1fr);padding:2px 5px 2px 2px}
+ .transfer-route .rail-salvage-map {height:30px}
+ .front-transfer .transfer-route b {font-size:11px}
+ .front-transfer .transfer-route small {margin:0}
 }
 @media(max-width:700px) and (orientation:portrait) {
  .shore-transfer .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}

@@ -10,7 +10,7 @@ import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
 import {operatorOf,focusLane,canUseSkill} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastRoleTarget,coastTurretLane,coastSalvageWreck} from './coast-salvage.js';
 const TAU=Math.PI*2;
-const FORMATION_INK={flame:'#f1b477',fusion:'#abe5d7',rocket:'#edd3a3'};
+const FORMATION_INK={flame:'#f1b477',fusion:'#abe5d7',rocket:'#edd3a3',quad:'#e4e5a9'};
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
 const relaySet={x:DEFENSE_ZONE.x,y:DEFENSE_ZONE.y-13};
 function paintRelayGround(c,s,round){
@@ -258,9 +258,10 @@ export function coveredCombatPanels(s,panels,project,scale){
   if(f.relayArrival&&f.contact&&f.age<f.life*relayContactLife)mark(f.contact.x,f.contact.y-7,21);
   else if(f.type==='fire-spread'&&f.age<f.life*fireSpreadContactLife)mark(f.x2,f.y2-4,13);
   else if(f.type==='kill'&&f.wake&&f.age<f.life*.52)mark(f.x,f.y-3,13);
+  else if(f.type==='quad-contact'&&f.age<.12)mark(f.x,f.y-16,19);
   else if(f.type==='wake-flash'&&f.age<f.life*.65){mark(f.x,f.y,f.r);mark(f.x2,f.y2,f.r);}
   else if((f.type==='rail-fan-sweep'||f.type==='rescue-fan-sweep')&&f.age<f.life*.6){mark(f.x,f.y-3,17);mark(f.x2,f.y2-3,17);}
-  else if(f.type==='formation'&&f.age<.4)formations.push({...project(f.x,f.y),r:28*scale,focused:f.focused});
+  else if(f.type==='formation'&&f.age<.4)formations.push({...project(f.x,f.y),r:28*scale,focused:f.focused||f.showcase==='quad'});
   else if(s.operation?.region===2&&s.stage==='field'&&f.type==='flame'&&f.evolved&&f.focused)mark(f.x,f.y-18,22);
  }
  for(const h of s.hazards){
@@ -651,10 +652,11 @@ function paintFormationEntry(c,f,reduced){
  const fire=f.showcase==='flame',t=f.age/f.life;
  const line=f.focused?'#ffe0ae':FORMATION_INK[f.showcase]||FORMATION_INK.fusion;
  const dust=fire?'#e4bc79':f.showcase==='rocket'?'#f8e3af':'#b8e1cd';
+ const rear=f.showcase==='quad'?-60:-27;
  c.save();c.globalAlpha=Math.min(1,(1-t)*2);c.translate(f.x,f.y);c.rotate(f.angle??0);
  c.lineJoin='bevel';c.beginPath();
  for(const side of [-1,1]){
-  c.moveTo(-9,side*23);c.lineTo(-27,side*23);c.lineTo(-27,side*8);
+  c.moveTo(-9,side*23);c.lineTo(rear,side*23);c.lineTo(rear,side*8);
   if(!reduced){c.fillStyle=dust;c.fillRect(-33-t*14,side*19-2,5,4);}
  }
  if(f.focused){
@@ -708,13 +710,23 @@ function paintCapturedMount(c,art,p,volley,reduced){
  c.restore();
 }
 function paintFanSweep(c,f,t,reduced){
- const color='#ffe3a4';
+ const rail=f.type==='rail-fan-sweep';
  c.globalAlpha=Math.min(1,(1-t)*2.4);
  for(const [px,py] of [[f.x,f.y],[f.x2,f.y2]]){
-  const r=reduced?12:11+Math.min(t*20,9);
-  c.lineWidth=2;c.strokeStyle=color;c.beginPath();
-  c.moveTo(px-r,py-6);c.lineTo(px-r,py+2);c.lineTo(px-r+7,py+2);
-  c.moveTo(px+r,py-6);c.lineTo(px+r,py+2);c.lineTo(px+r-7,py+2);c.stroke();
+  const r=rail?(reduced?18:15+Math.min(t*28,11)):(reduced?12:11+Math.min(t*20,9));
+  c.beginPath();
+  c.moveTo(px-r,py-7);c.lineTo(px-r,py+2);c.lineTo(px-r+8,py+2);
+  c.moveTo(px+r,py-7);c.lineTo(px+r,py+2);c.lineTo(px+r-8,py+2);
+  if(rail){c.lineWidth=5;c.strokeStyle='#182925';c.stroke();}
+  c.lineWidth=2;c.strokeStyle='#ffe3a4';c.stroke();
+  if(rail&&t<.5){
+   c.save();
+   c.globalAlpha*=reduced?.7:1-t*1.6;
+   c.strokeStyle='#ffe3a4';c.beginPath();
+   c.moveTo(px,py-13);c.lineTo(px,py-26);
+   c.moveTo(px-5,py-19);c.lineTo(px+5,py-19);
+   c.stroke();c.restore();
+  }
  }
 }
 function paintRailFanLine(c,cue){
@@ -1001,7 +1013,8 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    const wake=showcase==='flame'&&s.effects.findLast(f=>f.type==='wake-flash'&&f.age<.22);
    const strike=wake||showcase&&s.effects.findLast(f=>{
     if(f.type==='formation')return true;
-    if(showcase==='rocket')return f.type==='salvo-impact';
+    if(showcase==='rocket')return f.type==='salvo-impact'||f.type==='captured-impact';
+    if(showcase==='quad')return f.type==='quad-contact';
     return showcase==='flame'?f.type==='flame'&&f.evolved:f.type==='payload-impact'||f.type==='payload-relay';
    });
    const relay=showcase==='fusion'&&s.shots.findLast(q=>q.source==='payload'&&q.relay);
@@ -1437,6 +1450,17 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     }
    }
    else if(f.type==='pierce'){c.translate(f.x,f.y-18);c.rotate(f.angle);c.fillStyle='#fff2ae';c.fillRect(-12,-2,34+t*24,4);}
+   else if(f.type==='quad-contact'&&visible(f.x,f.y,45)){
+    c.translate(f.x,f.y-16);c.rotate(f.angle);
+    c.globalAlpha=Math.min(1,(1-t)*2);
+    c.fillStyle='#463729';c.fillRect(-33,-3,42,6);
+    c.fillStyle='#f2dfa3';c.fillRect(-30,-1,39,2);
+    c.fillStyle='#fff4bf';c.fillRect(-3,-5,9,10);
+    if(!reduced){
+     c.fillStyle='#efbd67';
+     for(const side of [-1,1])c.fillRect(8+t*22,side*(4+t*12),5,2);
+    }
+   }
    else if(f.type==='thermal-charge'&&visible(f.x,f.y)){
     c.globalAlpha=Math.min(1,(1-t)*2);
     const y=f.y-63-(reduced?0:t*18);
