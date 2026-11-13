@@ -632,7 +632,7 @@ function paintFormationEntry(c,f,reduced){
   c.moveTo(-9,side*23);c.lineTo(-27,side*23);c.lineTo(-27,side*8);
   if(!reduced){c.fillStyle=dust;c.fillRect(-33-t*14,side*19-2,5,4);}
  }
- c.moveTo(14,-10);c.lineTo(24,0);c.lineTo(14,10);
+ if(Number.isFinite(f.angle)){c.moveTo(14,-10);c.lineTo(24,0);c.lineTo(14,10);}
  c.strokeStyle='#29332b';c.lineWidth=7;c.stroke();
  c.strokeStyle=line;c.lineWidth=3;c.stroke();
  c.restore();

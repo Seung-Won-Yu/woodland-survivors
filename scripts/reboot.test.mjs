@@ -1148,11 +1148,12 @@ function railwayCapstone(seed,build){
 test('a narrow rail lane can deploy a whole split wave with a clear and safe entrance',()=>{
  const s=railwayCapstone(32,'fusion');
  Object.assign(s.player,{x:835,y:536});
- tick(s,.72);
+ for(let i=0;i<45&&s.powerWave.paired===4;i++)step(s,dt);
  const troops=s.enemies.filter(e=>e.showcase==='fusion');
  assert.equal(troops.length,8);
  assert.equal(new Set(troops.map(e=>e.waveGroup)).size,2);
  assert.ok(troops.every(e=>Math.hypot(e.x-s.player.x,e.y-s.player.y)>=145));
+ for(const [i,a] of troops.entries())assert.ok(troops.slice(i+1).every(b=>Math.hypot(a.x-b.x,a.y-b.y)>=a.r+b.r-.01));
  assert.equal(s.powerWave.paired,3);
  assert.equal(s.powerWave.remaining,52);
  assert.deepEqual(restore(snapshot(s)).powerWave,s.powerWave);

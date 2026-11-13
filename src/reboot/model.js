@@ -2299,9 +2299,10 @@ function spawnShowcaseWave(s,pulse,showcase,remaining,compact=false){
    const heading=approach+(i%8+Math.floor(i/8)*(8/directions))*TAU/8;
    const centers=lanes.map(([offset,reach])=>({x:p.x+Math.cos(heading+offset)*reach,y:p.y+Math.sin(heading+offset)*reach}));
    const aligned=flame||compact,cos=aligned?Math.cos(heading):1,sin=aligned?Math.sin(heading):0;
-   const rows=compact?[[-17,-16],[17,-16],[-17,16],[17,16]]:[[-18,-20],[18,-20],[-18,20],[18,20]];
+   const rows=compact?[[-17,-17],[17,-17],[-17,17],[17,17]]:[[-18,-20],[18,-20],[-18,20],[18,20]];
    const packs=centers.map(({x,y})=>rows.map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
    if(centers.some((q,j)=>j>0&&lineBlocked(s,centers[j-1],q))||!packs.flat().every(fits))continue;
+   if(compact&&packs[0].some(a=>packs[1].some(b=>distance(a,b)<34)))continue;
    let mortar=null;
    if(canDeployMortar&&packs.length===3){
     const [offset,reach]=lanes[2],a=heading+offset;
