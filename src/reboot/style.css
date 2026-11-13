@@ -665,6 +665,14 @@
 .debrief-replays{display:grid;grid-template-columns:1.25fr 1fr;gap:6px}
 .debrief-replays button{min-width:0;min-height:48px;padding:6px 7px;text-align:left;background:#32423a;color:#f1e7cb;font-size:12px;line-height:1.35;word-break:keep-all}
 .debrief-replays button small{display:block;margin-top:2px;color:#cbdcb3;font-size:10px}
+.debrief-sortie{grid-template-columns:1fr}
+.debrief-sortie button{display:flex;align-items:center;gap:9px;padding:8px 10px}
+.debrief-sortie button:first-child{background:#dac694;color:#23352c;border-color:#f2dba3}
+.debrief-sortie button:first-child:hover{background:#eed9a7}
+.debrief-sortie button:first-child small{color:#384a37}
+.debrief-sortie button b{font-size:14px}
+.debrief-sortie button i{margin-left:auto;font-size:19px;font-style:normal}
+.debrief-sortie .kit-sprite{flex:0 0 32px;width:32px;height:28px}
 .debrief-details{margin-top:15px;border-block:1px solid #657560}
 .debrief-details summary{min-height:46px;display:flex;align-items:center;gap:8px;cursor:pointer;color:#ece4c8;font-size:13px}
 .debrief-details summary::before{content:'+';display:grid;place-items:center;width:22px;height:22px;background:#3c4e43;color:var(--gold);font-size:16px}
@@ -715,6 +723,14 @@
 .replay-launch-options button{min-height:44px;padding:6px 8px;font-size:12px;text-align:left}
 .replay-launch-options button[aria-pressed="true"]{border-color:#e3b777;background:#433b2b;color:#ffe3a3;box-shadow:inset 3px 0 #efc480}
 .research-sortie-briefing>footer{margin:9px 0 14px}
+.sortie-briefing .replay-launch-options small{display:block;margin-top:2px;color:inherit;font-size:10px}
+.sortie-briefing .replay-starters button{display:flex;align-items:center;gap:6px}
+.sortie-briefing .replay-starters .kit-sprite{flex:0 0 28px;width:28px;height:26px}
+.sortie-briefing .coast-plan{margin-top:9px}
+.replay-landing{margin:0 0 6px;color:#d7dec6;font-size:10px;line-height:1.4}
+.replay-landing b{color:#f1d690}
+.replay-rail-target{display:grid;gap:2px;margin:7px 0 0;padding:6px 8px;border-left:2px solid #a8b897;background:#1a2d28;color:#e9e1c5;font-size:11px;line-height:1.35;word-break:keep-all}
+.replay-rail-target span{color:#ccd7be}
 @media(max-width:700px){
  body[data-scene=lobby] #ui:has(>:is(.report-sheet,.replay-briefing)){padding:12px}
  .sheet.report-sheet{padding:15px 14px 13px}
@@ -731,7 +747,7 @@
  .gate-pace,.debrief-pace{font-size:10px}
  .debrief-header p,.debrief-scorecard span,.debrief-scorecard small{font-size:10px}
  .earned-pay b small{font-size:14px}
- .debrief-replays{grid-template-columns:1.4fr 1fr}
+ .debrief-replays:not(.debrief-sortie){grid-template-columns:1.4fr 1fr}
  .debrief-replays button{font-size:11px}
 }
 

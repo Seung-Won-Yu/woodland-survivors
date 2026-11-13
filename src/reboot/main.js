@@ -4,7 +4,7 @@ import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractD
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview,coastOpeningGuide} from './field-scene.js';
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
-import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck} from './coast-salvage.js';
+import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck,coastTurretReturned} from './coast-salvage.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
 import {REGIONS,BOSS_ENTRY,HOLDOUT,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle,CAPTURED_TURRET,isCapturedTurret} from './content.js';
@@ -277,11 +277,13 @@ function openReplayBriefing(source){
  const p=profile(),sequence=Number(source.dataset.replayFrom);
  const report=p.recent.find(r=>r?.sequence===sequence&&isReport(r));
  const trial=source.dataset.trialFocus;
- const experiment=source.hasAttribute('data-experiment');
- const options=experiment?{freshSeed:operationPlan.seed}:{};
- const html=report&&replayBriefingView(report,p,source.dataset.dispatch,trial,options);
+ const experiment=source.hasAttribute('data-experiment'),route=source.dataset.replayRoute;
+ if(!report){notice('지난 전장의 작전 보고서를 읽지 못했습니다.');return;}
+ const options=experiment||route?{freshSeed:operationPlan.forReport(report.seed),route,sortie:!!route}:{};
+ if(route==='fresh'&&coastTurretReturned(report)&&p.milestones.coastTurret)options.starter='turret';
+ const html=replayBriefingView(report,p,source.dataset.dispatch,trial,options);
  if(!html){notice('지난 전장의 작전 보고서를 읽지 못했습니다.');return;}
- const selector=experiment?'[data-experiment]':'[data-action="replay-brief"]:not([data-experiment])';
+ const selector=experiment?'[data-experiment]':route?`[data-replay-route="${route}"]`:'[data-action="replay-brief"]:not([data-experiment])';
  subpanel={type:'replay-briefing',report,trial,dispatch:source.dataset.dispatch,options,origin:{scroll:ui.scrollTop,selector}};
  panel(html);
 }
@@ -458,6 +460,7 @@ ui.addEventListener('change',async e=>{
  if(e.target.id==='replay-dispatch'&&subpanel?.type==='replay-briefing'){
   if(busy||pending)return;
   subpanel.dispatch=e.target.value;
+  subpanel.options.showDispatch=true;
   refreshReplayBriefing('#replay-dispatch');
   return;
  }
@@ -542,7 +545,7 @@ ui.addEventListener('click',async e=>{
  }
  if(a==='replay-brief'){openReplayBriefing(button);return;}
  if(a==='replay-brief-back'){closeReplayBriefing();return;}
- if(a==='launch'||a==='coast-launch'){await launch(button);return;}if(a==='same-seed'){const seed=Number(button.dataset.seed);if(Number.isSafeInteger(seed)&&seed>=0&&seed<=4294967295)await launch(button,seed);else notice('지난 전장의 코드를 읽지 못했습니다.');return;}if(a==='home'){if(mode==='report'){closeArchivedReport();return;}lobbyTab=button.dataset.target||'mission';briefRegion=null;showHome();return;}if(a==='settings-menu'){showSettings();return;}if(a==='settings-back'){closeSettings();return;}if(a==='last-report'){const report=profile().recent[0];if(!report?.stats||!Array.isArray(report.weapons)||!Array.isArray(report.modules)){notice('전투 보고서를 읽지 못했습니다.');return;}reportOrigin=null;mode='report';showResult(report,true);return;}
+ if(a==='launch'||a==='coast-launch'){await launch(button,subpanel?.type==='replay-briefing'?subpanel.options.freshSeed:undefined);return;}if(a==='same-seed'){const seed=Number(button.dataset.seed);if(Number.isSafeInteger(seed)&&seed>=0&&seed<=4294967295)await launch(button,seed);else notice('지난 전장의 코드를 읽지 못했습니다.');return;}if(a==='home'){if(mode==='report'){closeArchivedReport();return;}lobbyTab=button.dataset.target||'mission';briefRegion=null;showHome();return;}if(a==='settings-menu'){showSettings();return;}if(a==='settings-back'){closeSettings();return;}if(a==='last-report'){const report=profile().recent[0];if(!report?.stats||!Array.isArray(report.weapons)||!Array.isArray(report.modules)){notice('전투 보고서를 읽지 못했습니다.');return;}reportOrigin=null;mode='report';showResult(report,true);return;}
  if(a==='end-saved'){run=restore(profile().active.run);showRetreat(true);return;}
  if(a==='retreat'){showRetreat();return;}if(a==='retreat-cancel'){if(subpanel?.fromHome)showHome();else present(true);return;}if(a==='retreat-confirm'){mode='battle';document.body.dataset.scene='battle';await mutate(d=>d.result?true:finish(d,false));return;}
  if(a==='retry'){const {next,draft,launchMode}=pending;pending=null;await commitDraft(draft,next,launchMode);return;}
