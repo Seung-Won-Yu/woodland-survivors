@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.141.0" src="https://img.shields.io/badge/RIFT-0.141.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.142.0" src="https://img.shields.io/badge/RIFT-0.142.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -23,7 +23,7 @@
 
 레벨업에서는 다음 강화 한 번으로 진화나 합체를 열 수 있는 카드를 확인할 수 있습니다. 해안 수송차의 파괴·노획을 결정하기 전에 **XP 개조**로 쌓아 둔 보상을 사용할 수 있습니다. 교전 중 자동 개조는 수송차가 재장전할 때 열립니다.
 
-완성 무장을 들고 항구에 들어가면 증원이 두 차례에 걸쳐 무장에 맞는 대열로 접근합니다. 인페르노는 밀집 보병을 잔불로 유인하고, 전도 격발망은 떨어진 편대로 탄을 잇습니다. 광각 포탑은 갈라진 대열을 부채꼴로 겨냥합니다. 목표판에 접근 방향과 거리, 지금 장착한 무장의 공략이 표시됩니다. [항구 증원과 모바일 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#0132-항구의-두-차례-증원)
+완성 무장을 들고 항구에 들어가면 증원이 무장에 맞는 대열로 접근합니다. 연료 살포는 이동하며 밀집 보병을 잔불로 유인하고, 압축 인페르노는 중거리에서 횡대 보병을 한 사선에 담습니다. 지휘 병기의 재장전 때는 각각 측면 냉각 배관과 정면 코어를 노립니다. 전도 격발망은 떨어진 편대로 탄을 잇고, 광각 포탑은 갈라진 대열을 부채꼴로 겨냥합니다. [항구 증원과 모바일 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#0142-항구에서-갈리는-두-인페르노)
 
 철도 중계기를 확보하면 열차에 쓸 전술과 무장 정비 중 하나를 고릅니다. 화염으로 시작한 판은 F 강화와 촉매, 로켓으로 시작한 판은 H 강화와 축전 코일 중 부족한 재료가 표시됩니다. 두 재료가 필요해도 한 가지만 장착합니다.
 

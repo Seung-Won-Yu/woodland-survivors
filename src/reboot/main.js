@@ -917,8 +917,9 @@ function updateHud(entry,focus=null,coast={},rail=null){
   const gap=distance(p,e);
   if(gap<contactGap){contact=e;contactGap=gap;}
  }
- const formation=showcase==='flame'?'밀집 보병':showcase==='rocket'&&isCapturedTurret(showcaseGun)?'갈라진 대열':'분산 편대';
- const formationMove=!showcaseGun?'':showcase==='flame'?(isTrailInferno(showcaseGun)?'잔불로 유인':'한 사선에 모아 분사')
+ const focusedFormation=front===2&&isFocusedInferno(showcaseGun);
+ const formation=focusedFormation?'횡대 보병':showcase==='flame'?'밀집 보병':showcase==='rocket'&&isCapturedTurret(showcaseGun)?'갈라진 대열':'분산 편대';
+ const formationMove=!showcaseGun?'':showcase==='flame'?(isFocusedInferno(showcaseGun)?'중거리에서 멈춰 분사':'잔불로 유인')
   :isConductiveFusion(showcaseGun)?'앞 대열부터 연쇄':showcaseGun.fusion?'적을 모아 유폭':isCapturedTurret(showcaseGun)?'중거리 양쪽 사격':'대열마다 일제사격';
  const showcaseHint=contact?`${bearing(p,contact.x,contact.y)} ${formation} · ${Math.round(contactGap/10)}m`
   :`${formation} 접근`;

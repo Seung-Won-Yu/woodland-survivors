@@ -174,7 +174,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -2395,12 +2395,15 @@ function arrivalShowcase(s){
 function spawnShowcaseWave(s,pulse,showcase,remaining,compact=false){
  const p=s.player,crowd=alive(s);
  const flame=showcase==='flame';
+ const focused=flame&&s.operation?.region===2&&s.stage==='field'&&s.weapons.some(isFocusedInferno);
  const fan=showcase==='rocket'&&isSalvageCampaign(s)&&s.weapons.some(w=>w.evolved&&isCapturedTurret(w));
  const trail=flame&&s.stage!=='boss'&&s.weapons.find(isTrailInferno);
  const wake=trail&&s.zones.filter(z=>z.source==='wake'&&z.owner===trail.uid&&z.life>.55&&distance(p,z)>=58&&distance(p,z)<170&&!lineBlocked(s,p,z))
   .sort((a,b)=>distance(p,b)-distance(p,a))[0];
- const approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x):wake?Math.atan2(wake.y-p.y,wake.x-p.x):p.aim;
- const pair=compact?(flame?[[0,173],[0,243]]:[[-.27,183],[.27,216]])
+ const approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x)
+  :focused?Math.atan2(BOSS_ENTRY.y-p.y,BOSS_ENTRY.x-p.x):wake?Math.atan2(wake.y-p.y,wake.x-p.x):p.aim;
+ const pair=focused?(compact?[[-.18,237],[.18,237]]:[[-.18,248],[.18,248]])
+  :compact?(flame?[[0,173],[0,243]]:[[-.27,183],[.27,216]])
   :flame?[[0,190],[0,264]]:fan?[[-.29,218],[.29,218]]:[[-.34,205],[.48,248]];
  const spread=fan?[[-.4,232],[0,232],[.4,232]]:[[-.75,208],[.1,224],[.93,242]];
  const plans=!compact&&!flame&&remaining-(pulse-1)*8>=12?[spread,pair]:[pair];
@@ -2413,10 +2416,11 @@ function spawnShowcaseWave(s,pulse,showcase,remaining,compact=false){
   // Try the original directions first. A compact column searches finer gaps in cover.
   const directions=compact?32:16;
   for(let i=0;i<directions;i++){
-   const heading=approach+(i%8+Math.floor(i/8)*(8/directions))*TAU/8;
+   const turn=focused?Math.ceil(i/2)*(i%2?1:-1):(i%8)*(directions/8)+Math.floor(i/8);
+   const heading=approach+turn*TAU/directions;
    const centers=lanes.map(([offset,reach])=>({x:p.x+Math.cos(heading+offset)*reach,y:p.y+Math.sin(heading+offset)*reach}));
    const aligned=flame||compact,cos=aligned?Math.cos(heading):1,sin=aligned?Math.sin(heading):0;
-   const rows=compact?[[-17,-17],[17,-17],[-17,17],[17,17]]:[[-18,-20],[18,-20],[-18,20],[18,20]];
+   const rows=focused||compact?[[-17,-17],[17,-17],[-17,17],[17,17]]:[[-18,-20],[18,-20],[-18,20],[18,20]];
    const packs=centers.map(({x,y})=>rows.map(([dx,dy])=>({x:x+dx*cos-dy*sin,y:y+dx*sin+dy*cos})));
    if(centers.some((q,j)=>j>0&&lineBlocked(s,centers[j-1],q))||!packs.flat().every(fits))continue;
    if(compact&&packs[0].some(a=>packs[1].some(b=>distance(a,b)<34)))continue;
@@ -2439,7 +2443,7 @@ function spawnShowcaseWave(s,pulse,showcase,remaining,compact=false){
     emit(s,'warning',p.x,p.y,{r,life:duration});
     emit(s,'mortar-fire',gun.x,gun.y,{life:.21});
    }
-   for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase,angle:formationHeading});
+   for(const q of centers)emit(s,'formation',q.x,q.y,{life:.75,showcase,angle:formationHeading,...(focused?{focused:true}:null)});
    return count;
   }
  }

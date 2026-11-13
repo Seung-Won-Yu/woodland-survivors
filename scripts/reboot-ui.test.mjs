@@ -39,6 +39,7 @@ test('portrait HUD clearance uses confirmed contact and live warning shapes with
  assert.deepEqual(covered([{...relay,contact:{x:328,y:207}}],[]),[]);
  assert.deepEqual(covered([{type:'fire-spread',x2:82,y2:364,age:.04,life:.25}],[]),['weapons']);
  assert.deepEqual(covered([{type:'formation',x:92,y:360,age:.2},{type:'formation',x:225,y:135,age:.2}],[]),['weapons']);
+ assert.deepEqual(covered([{type:'formation',x:225,y:135,age:.2,focused:true}],[]),['map-panel','field-objective']);
  assert.deepEqual(covered([{type:'formation',x:92,y:360,age:.5}],[]),[]);
  assert.deepEqual(covered([{type:'wake-flash',x:24,y:348,x2:136,y2:272,r:21,age:.02,life:.42}],[]),['weapons','field-feedback']);
  assert.deepEqual(covered([],[{x:280,y:230,w:20,h:220,lane:true,timer:.7}]),['map-panel']);

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,railBossGuide,portTacticKeys} from '../src/reboot/campaign.js';
-import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName} from '../src/reboot/content.js';
+import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName,distance} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue,armoredRaidPart} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
@@ -1413,14 +1413,14 @@ test('the fusion showcase waits through the boss attack and survives a quick gat
  assert.ok(s.enemies.filter(e=>e.waveGroup!=null).length>=8);
  clearRegion(s);assert.ok(choose(s,'advance'));assert.equal(s.powerWave.showcase,'fusion');assert.equal(s.powerWave.paired,3);
 });
-function railwayCapstone(seed,build){
+function railwayCapstone(seed,build,fireBranch='trail'){
  const s=createOperation(seed,[],null,null,'fio',build==='rocket'?'turret':'standard');
  Object.assign(s.operation,{region:1,cleared:1});
  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
  Object.assign(s,regionLayout(mapSeed(seed,1),1,null,true),{enemies:[],boss:regionBoss(1,seed)});
  s.sites.forEach(site=>site.state='done');
  if(build==='flame'){
-  s.weapons.push({...makeWeapon('f'),uid:'f',level:6,branch:'trail'});
+  s.weapons.push({...makeWeapon('f'),uid:'f',level:6,branch:fireBranch});
   s.modules=[{id:'catalyst',rank:2}];
  }else{
   Object.assign(s.weapons[0],{level:build==='rocket'?6:4,branch:build==='rocket'?'homing':'ricochet'});
@@ -1484,6 +1484,30 @@ test('a compact Inferno lane fits two groups without spawning through walls or o
  for(const [i,a] of troops.entries()){
   assert.ok(a.x-a.r>=745&&a.x+a.r<=855&&a.y-a.r>=756);
   assert.ok(troops.slice(i+1).every(b=>Math.hypot(a.x-b.x,a.y-b.y)>=a.r+b.r-.01));
+ }
+});
+test('focused Inferno meets a broadside at harbor standoff range after resuming a railway gate',()=>{
+ for(const seed of [27,28]){
+  const s=railwayCapstone(seed,'flame','focused');
+  Object.assign(s.player,{x:800,y:700,aim:-Math.PI/2});
+  tick(s,15);
+  assert.ok(!s.powerWave?.paired);
+  clearRegion(s);
+  s.balanceRevision='b63-rail-spares';
+  const loaded=restore(snapshot(s));
+  assert.ok(choose(loaded,'advance'));
+  const pilot={x:loaded.player.x,y:loaded.player.y};
+  for(let i=0;i<155&&loaded.powerWave.paired===2;i++)step(loaded,dt);
+  const markers=loaded.effects.filter(e=>e.type==='formation');
+  const troops=loaded.enemies.filter(e=>e.showcase==='flame');
+  assert.equal(troops.length,8,`seed ${seed}`);
+  assert.ok(troops.every(e=>distance(pilot,e)>=200&&distance(pilot,e)<300));
+  assert.equal(markers.length,2);
+  assert.ok(markers.every(e=>e.focused));
+  const angles=troops.map(e=>Math.atan2(e.y-pilot.y,e.x-pilot.x));
+  const half=weaponStats(loaded.weapons.find(w=>w.id==='f')).cone*Math.PI/360;
+  assert.ok(angles.some(a=>angles.every(b=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)))<half)));
+  assert.equal(loaded.powerWave.remaining,52);
  }
 });
 test('the final formation is held for another beat and deploys out of the same reserve',()=>{

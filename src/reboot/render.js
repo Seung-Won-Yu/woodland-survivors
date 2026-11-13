@@ -256,7 +256,8 @@ export function coveredCombatPanels(s,panels,project,scale){
   else if(f.type==='kill'&&f.wake&&f.age<f.life*.52)mark(f.x,f.y-3,13);
   else if(f.type==='wake-flash'&&f.age<f.life*.65){mark(f.x,f.y,f.r);mark(f.x2,f.y2,f.r);}
   else if(f.type==='rail-fan-sweep'&&f.age<f.life*.6){mark(f.x,f.y-3,17);mark(f.x2,f.y2-3,17);}
-  else if(f.type==='formation'&&f.age<.4)formations.push({...project(f.x,f.y),r:28*scale});
+  else if(f.type==='formation'&&f.age<.4)formations.push({...project(f.x,f.y),r:28*scale,focused:f.focused});
+  else if(s.operation?.region===2&&s.stage==='field'&&f.type==='flame'&&f.evolved&&f.focused)mark(f.x,f.y-18,22);
  }
  for(const h of s.hazards){
   if(h.hit||h.timer<=0)continue;
@@ -266,7 +267,7 @@ export function coveredCombatPanels(s,panels,project,scale){
   }else mark(h.x,h.y,blastContactRadius(h));
  }
  return panels.filter(({id,rect})=>(id!=='field-objective'||s.stage==='field')&&
-  (circles.some(circle=>touchesCircle(circle,rect))||id==='weapons'&&formations.some(formation=>touchesCircle(formation,rect))||lanes.some(lane=>
+  (circles.some(circle=>touchesCircle(circle,rect))||formations.some(formation=>(formation.focused||id==='weapons')&&touchesCircle(formation,rect))||lanes.some(lane=>
    lane.left<rect.right&&lane.right>rect.left&&lane.top<rect.bottom&&lane.bottom>rect.top))).map(({id})=>id);
 }
 const bearingObscured=(size,{x,y},r,hud)=>x<r||x>size.w-r||y<r||y>size.h-r||hud.some(box=>overlapsBox(x,y,r,r,box));
@@ -644,7 +645,7 @@ function paintMissileTrail(c,q,points){
 }
 function paintFormationEntry(c,f,reduced){
  const fire=f.showcase==='flame',t=f.age/f.life;
- const line=FORMATION_INK[f.showcase]||FORMATION_INK.fusion;
+ const line=f.focused?'#ffe0ae':FORMATION_INK[f.showcase]||FORMATION_INK.fusion;
  const dust=fire?'#e4bc79':f.showcase==='rocket'?'#f8e3af':'#b8e1cd';
  c.save();c.globalAlpha=Math.min(1,(1-t)*2);c.translate(f.x,f.y);c.rotate(f.angle??0);
  c.lineJoin='bevel';c.beginPath();
@@ -652,7 +653,9 @@ function paintFormationEntry(c,f,reduced){
   c.moveTo(-9,side*23);c.lineTo(-27,side*23);c.lineTo(-27,side*8);
   if(!reduced){c.fillStyle=dust;c.fillRect(-33-t*14,side*19-2,5,4);}
  }
- if(Number.isFinite(f.angle)){c.moveTo(14,-10);c.lineTo(24,0);c.lineTo(14,10);}
+ if(f.focused){
+  c.moveTo(14,-23);c.lineTo(23,-23);c.lineTo(23,23);c.lineTo(14,23);
+ }else if(Number.isFinite(f.angle)){c.moveTo(14,-10);c.lineTo(24,0);c.lineTo(14,10);}
  c.strokeStyle='#29332b';c.lineWidth=7;c.stroke();
  c.strokeStyle=line;c.lineWidth=3;c.stroke();
  c.restore();
