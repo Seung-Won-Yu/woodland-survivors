@@ -1,6 +1,6 @@
 import {OPERATORS,operatorOf,operatorId,skillRules,canUseSkill,chargeLabel} from './operator.js';
 import {createOperationPlan} from './operation-plan.js';
-import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractDetails,gateActiveContract} from './choice-details.js';
+import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractDetails,gateActiveContract,HARBOR_PART_ACTION} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview,coastOpeningGuide,railSalvagePreview} from './field-scene.js';
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
@@ -218,6 +218,7 @@ function gateChoices(){
  const coast=coastSalvage(run),final=run.operation.region===2,vanguard=canAdvanceWithVanguard(run);
  const active=gateActiveContract(run);
  const railReturn=carriesCoastSalvage(run)&&run.operation.region===1;
+ const part=railReturn&&Object.hasOwn(HARBOR_PART_ACTION,run.operation.nextSupport)?FRONT_SUPPORTS[run.operation.nextSupport]:null;
  const operation={...run.operation,extracted:final,...(coast?{coastSalvage:{...coast,extracted:final||railReturn||!isSalvageCampaign(run)}}:{})};
  const payout={operation,stats:run.stats,won:final,reason:railReturn?'rail-return':coast&&!isSalvageCampaign(run)?'coast-return':'retreat'};
  const p=profile(),proofs=completedResearchProofs(payout).filter(id=>p.trials.includes(id));
@@ -235,9 +236,10 @@ function gateChoices(){
   const lines=card.kind==='advance'&&carriesCoastSalvage(run)&&coastAtShore(run)?[card.desc]
    :card.kind==='advance'?[d.impact,d.link,vanguard?d.cost:'',run.operation.region===0&&run.operation.coastStrikeUsed?'수송차 노획 보급 이월':'']
    :card.kind==='stay'?[d.detail,d.link]
-   :[`${extraction.credits.toLocaleString()}C 정산${payoutNote?` · ${payoutNote} 포함`:''}`,active?.leaving||unlock||(coast?card.desc:d.link),active?unlock:''];
+   :[`${extraction.credits.toLocaleString()}C 정산${payoutNote?` · ${payoutNote} 포함`:''}`,active?.leaving||unlock||(part?'':coast?card.desc:d.link),active?unlock:'',part?`${part.name} 항구 지원 종료`:''];
+  const art=card.kind==='extract'&&extraction.lines.turret?'turret':card.kind==='advance'&&part?part.art:null;
   const icon={advance:'route',stay:'stay',extract:'extract'}[card.kind];
-  return `<button class="gate-order" data-choice="${esc(card.id)}"><span class="gate-order-icon" aria-hidden="true">${card.kind==='extract'&&extraction.lines.turret?itemArt('turret'):moduleIcon(icon)}</span><span class="gate-order-copy"><strong>${esc(d.title)}</strong>${lines.filter(Boolean).map(text=>`<small>${esc(text)}</small>`).join('')}</span><kbd>${index+1}</kbd></button>`;
+  return `<button class="gate-order" data-choice="${esc(card.id)}"><span class="gate-order-icon" aria-hidden="true">${art?itemArt(art):moduleIcon(icon)}</span><span class="gate-order-copy"><strong>${esc(d.title)}</strong>${lines.filter(Boolean).map(text=>`<small>${esc(text)}</small>`).join('')}</span><kbd>${index+1}</kbd></button>`;
  }).join('');
  return `<div class="gate-deck" data-count="${run.choices.length}">${orders}</div>`;
 }

@@ -4,6 +4,21 @@ import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStati
 import {choose,snapshot,railInfernoPlan,railWorkshopPlan} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
+export const HARBOR_PART_ACTION={
+ breach:'보조포 선제 사격',
+ overrun:'회피로 코어 개방',
+ recovery:'화물 회수 후 지원 포격'
+};
+function harborPartAction(s,id){
+ if(id==='breach'||id==='recovery'){
+  const side=portSideName(-portTurretSide(regionBoss(2,s.seed)));
+  return id==='breach'?`${side} 보조포 · 조준 중 선제 차단`:`${side} 화물 유인점 · 회수 후 지원 포격`;
+ }
+ if(s.weapons.some(isFocusedInferno))return `${portCompressionRange}에서 좌우 회피 → 멈춰 코어 분사`;
+ if(s.weapons.some(isTrailInferno))return '회피로 코어 개방 → 냉각 배관에 잔불';
+ if(s.weapons.some(isConductiveFusion))return '회피로 코어 개방 → 원하는 포대로 역송';
+ return HARBOR_PART_ACTION.overrun;
+}
 const coastBearing=(s,site)=>`${bearing(s.player,site.x,site.y)} ${Math.round(distance(s.player,site)/10)}m`;
 function openingGunRoute(s,gun){
  const site=s.sites.find(n=>n.coastApproach===gun&&n.state!=='done');
@@ -32,8 +47,7 @@ export function gateContractDetails(s){
  const quota=rare?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
  const reward=rare?holdoutParts(s.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / ')
   :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:tier===2&&front===2&&isSalvageCampaign(s)?`생존 귀환 +${COUNTERBATTERY_CREDITS}C · +1,000점`:`완료 점수 +${(tier*500).toLocaleString()}`;
- const portEffect={breach:'포대 급탄 차단',overrun:'회피로 코어 개방',recovery:'구급 화물·지원 포격'};
- const parts=rare&&front===1?holdoutParts(s.seed,front).map(id=>({id,title:FRONT_SUPPORTS[id].name,detail:portEffect[id]})):[];
+ const parts=rare&&front===1?holdoutParts(s.seed,front).map(id=>({id,title:FRONT_SUPPORTS[id].name,detail:harborPartAction(s,id)})):[];
  const escort=s.challenge?.recoverCargo?signalGuardCount(s):SIGNAL_ESCORT_COUNT;
  const cost=contract.id==='battery'?'동·서 교차 포격 · 귀환로는 계속 열림':front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
  return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost,parts};
@@ -290,6 +304,7 @@ export function choiceDetails(s,c){
   out.impact=support?`${support.name} 장착 후 전진`:vanguard?'선발 지원 받고 전진':'무장과 레벨을 이어 전진';
   out.detail=vanguard?`첫 증원까지 ${Math.ceil(HOLDOUT.grace-s.holdTime)}초 · 남겨둘 XP ${groundXp(s)}`:`남겨둘 바닥 XP ${groundXp(s)} · 미회수 보급`;
   out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':vanguard?'다음 보스 첫 포격 경고 +1초':supportTactic(s.operation?.nextSupport,s.operation.region+1)||'새 전선에 도착';
+  if(s.operation.region===1&&Object.hasOwn(HARBOR_PART_ACTION,s.operation.nextSupport))out.link=harborPartAction(s,s.operation.nextSupport);
   if(s.operation.region===0&&s.operation.coastStrikeUsed)out.detail+=' · 수송차 노획 보급 이월';
   if(s.operation.region===0&&s.operation.order==='wire'&&s.operation.orderRevision&&s.operation.orderDone)out.detail+=' · 교신 암호로 철도 조준 유인';
   if(s.operation?.region===0&&s.operation.order&&!s.operation.orderDone)out.link=s.raid?.state==='active'?'습격 철수 · 상자 소실 · 지령 보너스 없음':'해안 지령 미완료 · 전진 시 추가 보상 없음';

@@ -3587,7 +3587,7 @@ test('canonical rail reserves reach the relay earlier and harbor D2 cargo is pai
  };
  const rail=prepare(1);
  assert.ok(action(rail,'interact'));
- assert.deepEqual(gateContractDetails(rail).parts.map(part=>part.detail),['포대 급탄 차단','구급 화물·지원 포격']);
+ assert.deepEqual(gateContractDetails(rail).parts.map(part=>part.detail),['오른쪽 보조포 · 조준 중 선제 차단','오른쪽 화물 유인점 · 회수 후 지원 포격']);
  assert.ok(action(rail,'gate-challenge'));
  const early=restore(snapshot(rail)),passive=restore(snapshot(rail));
  const withdrawn=restore(snapshot(rail));leave(withdrawn);

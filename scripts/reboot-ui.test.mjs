@@ -477,6 +477,22 @@ test('a canonical report previews the chosen beach and starter and only compares
  assert.notDeepEqual(holdoutParts(plan.forReport(27),0),holdoutParts(27,0));
  assert.equal(plan.seed,27);
 });
+test('a returned rail part appears in the receipt and the selected replay map previews its own pair',()=>{
+ const {run,next}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+ Object.assign(run.operation,{region:1,cleared:2,nextSupport:'recovery'});
+ Object.assign(run.operation.coastSalvage,{turret:'broken',extracted:true});
+ run.stats.challenge=1;
+ run.stats.challengeWins=1;
+ finish(run,false,'rail-return');
+ const saved=settleProfile(next,run),report=saved.recent[0];
+ assert.match(reportView(report,saved),/rail-part-receipt" data-part="recovery"[^]*회수 의무 장비<\/b><p>항구 투입 전 작전 종료 · 잔류 \+20C/);
+ const fresh=replayBriefingView(report,saved,'standard',null,{sortie:true,freshSeed:28,route:'fresh'});
+ const same=replayBriefingView(report,saved,'standard',null,{sortie:true,freshSeed:28,route:'same'});
+ assert.match(fresh,/data-rail-options><summary><b>철도 잔류 보급<\/b><small>철갑 급탄 · 돌격 신관/);
+ assert.match(fresh,/이번 전장에서는 위 두 부품 중 선택/);
+ assert.match(same,/data-rail-options><summary><b>철도 잔류 보급<\/b><small>철갑 급탄 · 회수 의무 장비/);
+ assert.match(same,/이번 전장의 방어 보상으로 다시 확보 가능/);
+});
 test('harbor wins show the final build and put its unlocked research before optional replays',()=>{
  const p=emptyProfile(),run=createOperation(27,[],null,null,'fio','standard'),active=beginProfile(p,run);
  Object.assign(run.operation,{region:2,cleared:3,extracted:true,history:[{region:0,time:20},{region:1,time:40}],regionTime:30});

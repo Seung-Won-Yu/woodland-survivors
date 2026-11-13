@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.142.0" src="https://img.shields.io/badge/RIFT-0.142.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.143.0" src="https://img.shields.io/badge/RIFT-0.143.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -35,7 +35,7 @@
 
 **전도 격발망**은 관제소에서 측면 교신 역송을 고를 수 있습니다. 재장전 중 차체와 22m 이상 거리를 두고 좌우로 움직여 명중하면 그쪽의 다음 포격을 끊습니다. 포탑 쪽을 골랐다면 해당 주기의 후속 탄막도 막습니다.
 
-철도에 잔류해 고른 부품은 항구 보스전의 동선을 바꿉니다. **철갑 급탄**은 측면에서 포탑탄과 후속 탄막을 차단하고, **돌격 신관**은 재장전 중 코어 원으로 돌입하거나 원 안에서 좌우로 회피해 장갑을 엽니다. **회수 의무 장비**는 포격을 유도한 뒤 측면 화물을 회수해 체력과 전탄을 채웁니다.
+철도에 잔류해 고른 부품은 항구 보스전의 동선을 바꿉니다. **철갑 급탄**은 측면에서 포탑탄과 후속 탄막을 차단하고, **돌격 신관**은 재장전 중 코어 원으로 돌입하거나 원 안에서 좌우로 회피해 장갑을 엽니다. **회수 의무 장비**는 포격을 유도한 뒤 측면 화물을 회수해 체력과 전탄을 채웁니다. 게이트에서 부품으로 취할 행동과 철도 귀환 시 종료되는 지원을 확인합니다. 보고서에는 확보한 부품과 전과가, 새 전장 준비에는 해당 시드의 보급 후보가 표시됩니다. [같은 철도 게이트 비교](docs/RIFT-GAMEPLAY-V1.md#0143-철도-잔류-선택과-귀환-보고서)
 
 기본 주소와 `reboot.html`은 **같은 RIFT**를 실행합니다. 구형 작전실·동물 원정·이전 전투 실험의 진입점은 공개 빌드에서 제외했습니다. 과거 원본과 설계 이력은 Git에 남깁니다.
 

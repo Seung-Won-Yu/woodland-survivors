@@ -705,6 +705,9 @@
 .debrief-route .front-pace{font-weight:700;color:#244a33}
 .debrief-route .front-pace[data-trend="behind"]{color:#582e21}
 .debrief-summary .harbor-payoff{margin:10px 0 0}
+.rail-part-receipt{grid-area:rail-part;margin:0}
+.debrief-overview:has(.rail-part-receipt){grid-template-areas:"score next" "rail-part next" "details next";row-gap:8px}
+.debrief-overview[data-salvage]:has(.rail-part-receipt){grid-template-areas:"score next" "salvage next" "rail-part next" "details next"}
 .debrief-equipment{display:grid;gap:5px;margin:8px 0 0;padding:8px;background:#1b2c27;color:#d4dec5;font-size:11px;line-height:1.45}
 .debrief-equipment div{display:grid;grid-template-columns:66px minmax(0,1fr);gap:4px}
 .debrief-equipment dd{margin:0;word-break:keep-all}
@@ -770,6 +773,7 @@
 .replay-briefing .coast-plan+.replay-dispatch-note{margin:7px 0 0}
 .replay-rail-note{margin-top:8px;border-top:1px solid var(--line)}
 .replay-rail-note summary{padding:10px 0;color:#e8deb9;font-size:11px;cursor:pointer}
+.replay-rail-note[data-rail-options] summary small{display:block;margin:4px 0 0 14px;color:#c7d7bb;font-size:10px}
 .replay-rail-note .rail-gate-brief{margin:0;padding-top:0;border:0}
 .replay-rail-note h3{display:none}
 .replay-briefing [data-suggested]{border-top:2px solid var(--route-color)}
@@ -1279,6 +1283,8 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .turret-docket-art .kit-sprite {width:74px;height:67px}
  .turret-docket-build {grid-column:1/-1;padding:8px 0 0;border-left:0;border-top:1px solid #7d8062}
  .debrief-overview[data-salvage] {grid-template-areas:"score" "salvage" "next" "details"}
+ .debrief-overview:has(.rail-part-receipt){grid-template-areas:"score" "rail-part" "next" "details"}
+ .debrief-overview[data-salvage]:has(.rail-part-receipt){grid-template-areas:"score" "salvage" "rail-part" "next" "details"}
  #operation-track {width:max-content;max-width:calc(100% - 24px);padding:2px 4px}
  .track-stop {padding:3px 7px}
  .holdout-active #banner[data-kind="gate-notice"] {top:83px;font-size:10px}

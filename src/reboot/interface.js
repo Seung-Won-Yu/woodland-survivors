@@ -5,6 +5,7 @@ import {canLaunchOrder,canReserveResearch,marcoRecord,sortieResearchTrials} from
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount} from './coast-salvage.js';
 import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
+import {HARBOR_PART_ACTION} from './choice-details.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
 export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
@@ -92,13 +93,14 @@ function frontIntel(index,seed){
  const [cache,order]=rail?[`화차 정비대 · ${rail[0].name}`,`통신 중계기 · ${rail[1].name}`]:['해치 · 측면 기습','관제소 · 전술 선택'];
  return `<div class="front-intel"><div class="front-intel-heading"><span>투입 지점의 두 갈래</span><strong>${REGIONS[index].boss}</strong></div><div class="front-intel-stop"><span>${cache}</span><b>${index===1?'중거리 부채꼴 사격 · 무장 정비':'방패와 박격포 제압 · 포탑 측면 진입'}</b></div><div class="front-intel-stop"><span>${order}</span><b>${index===1?'긴 사선에서 박격포 제압 · 조준 유인 1회':'첫 장갑탄 교란 또는 화력 전술'}</b></div></div>`;
 }
-function railGateBrief(seed){
+function railGateBrief(seed,previousPart){
  const parts=holdoutParts(seed,1);
  return `<section class="rail-gate-brief" aria-label="철도 게이트 선택">
    <h3>철도 게이트</h3>
    <p><b>전진</b> 격파 뒤 ${HOLDOUT.grace}초 내 출발 · 첫 예고 +1초</p>
    <p><b>잔류</b> 중계기 방어 ${defenseSeconds(1)}초 · 증원 ${HOLDOUT.rareKills}명 제압</p>
    <ul>${parts.map(id=>`<li><strong>${FRONT_SUPPORTS[id].name}</strong><small>${PORT_SUPPORT[id].hint}</small></li>`).join('')}</ul>
+   ${previousPart?`<p>지난 판 ${FRONT_SUPPORTS[previousPart].name} · ${parts.includes(previousPart)?'이번 전장의 방어 보상으로 다시 확보 가능':'이번 전장에서는 위 두 부품 중 선택'}</p>`:''}
   </section>`;
 }
 
@@ -249,18 +251,25 @@ function requisitionReceipt(r){
  return `<section class="sortie-receipt" aria-label="장비 예약 정산"><span class="order-stamp" aria-hidden="true">${moduleIcon(id)}</span><div><span class="section-index">${delivery} · ${picked?'예약품 장착':'미회수'}</span><b>${RESEARCH[id].name}</b><small>${picked?'이번 작전에서 장착':'이번 판에 장착하지 않음'}</small></div><div class="sortie-pay"><small>출격 시 −${n(r.requisitionFee??REQUISITION_FEE)}C</small></div></section>`;
 }
 function harborPayoff(r){
- const part=r.operation?.support,log=r.operation?.harborPayoff;
+ const part=railReportPart(r.operation),log=r.operation?.harborPayoff;
  const labels={
   breach:[['turrets','측면 포탑 파괴'],['salvos','포탑탄 차단'],['fans','후속 탄막 차단'],['armorPreps','보조포 선제 급탄 차단'],['armorSalvos','예고 중 보조 포격 차단']],
   overrun:[['dives','코어 돌입'],['sidesteps','측면 회피'],['compressionHits','장갑 해제 중 중거리 압축 직격'],['wakeHits','배관 점화로 측면 장갑 타격'],['wakeBreaks','배관 점화로 측면 장갑 파괴'],['wakeHull','배관 점화로 차체 직격'],['arcArmor','측면 장갑 역송'],['arcTurret','포탑 역송'],['arcFanClears','발사된 포탑 탄막 제거'],['arcArmorCuts','전도 보조 포격 차단'],['arcTurretCuts','전도 포탑 사격 차단'],['arcBreaks','역송으로 부위 파괴']],
   recovery:[...Object.values(PORT_AID_INTERCEPT).map(({key,label})=>[key,label]),['counterHull','차체 반격'],['counterfire','측면 장갑 타격'],['safeAid','경고 중 안전 회수'],['aid','일반 회수']]
  };
- if(!log||!Object.hasOwn(labels,part))return '';
- const results=labels[part].filter(([key])=>Number.isSafeInteger(log[key])&&log[key]>0)
+ if(!part)return '';
+ const results=labels[part].filter(([key])=>Number.isSafeInteger(log?.[key])&&log[key]>0)
   .map(([key,label])=>`${label} ${n(log[key])}회`);
- if(log.stagedEntry)results.unshift({breach:'보조포 측면 교전',overrun:'측면 돌입선 교전',recovery:'화물 유인점 교전'}[part]);
- if(!results.length)return '';
- return `<section class="harbor-payoff" data-part="${part}"><span>철도 부품 · 항구 전과</span><b>${FRONT_SUPPORTS[part].name}</b><p>${results.join(' / ')}</p></section>`;
+ if(log?.stagedEntry)results.unshift({breach:'보조포 측면 교전',overrun:'측면 돌입선 교전',recovery:'화물 유인점 교전'}[part]);
+ const rail=r.operation.region===1;
+ if(!rail&&!results.length&&!isSalvageCampaign(r))return '';
+ const detail=rail?`항구 투입 전 작전 종료${r.creditBreakdown?.holdout?` · 잔류 +${n(r.creditBreakdown.holdout)}C`:''}`
+  :results.join(' / ')||'항구 장착 · 전술 발동 기록 없음';
+ return `<section class="harbor-payoff rail-part-receipt" data-part="${part}"><span>${rail?'철도 잔류 · 부품 확보':'철도 부품 · 항구 전과'}</span><b>${FRONT_SUPPORTS[part].name}</b><p>${detail}</p></section>`;
+}
+function railReportPart(operation){
+ const part=operation?.region===1?operation.nextSupport:operation?.region===2?operation.support:null;
+ return Object.hasOwn(HARBOR_PART_ACTION,part)?part:null;
 }
 function crossfireReport(r){
  if(r.operation?.tactic!=='crossfire')return '';
@@ -366,6 +375,8 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  const configurable=Number.isSafeInteger(options.freshSeed),sortie=configurable&&options.sortie;
  const experiment=configurable&&!sortie;
  const fresh=configurable&&options.route!=='same',seed=fresh?options.freshSeed:r.seed;
+ const railPart=railReportPart(r.operation);
+ const railOptions=holdoutParts(seed,1);
  const previousStarter=isSalvageCampaign(r)?coastSalvage(r).loadout:'standard';
  const starter=p.milestones.coastTurret&&(configurable?(options.starter??previousStarter):previousStarter)==='turret'?'turret':'standard';
  const matchingStart=!fresh&&starter===previousStarter;
@@ -413,7 +424,7 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
   ${sortie&&selector?`<details class="replay-rail-note"${dispatch||options.showDispatch?' open':''}><summary>지령·연구 장비 예약</summary>${selector}${detail?`<p class="replay-dispatch-note">${e(detail)}</p>`:''}</details>`:''}
   ${trials&&!trial?`<p class="replay-dispatch-note">실전 시험 대기 · ${e(trials)}</p>`:''}
   ${alternate&&!sortie&&!dispatch&&!trial&&!thermalRoute?`<p class="replay-route-hint" data-coast="${suggested}"><strong>${alternate.name}</strong><span>${alternate.materials}</span></p>`:''}
-  <details class="replay-rail-note"><summary>철도 잔류 보급</summary>${railGateBrief(seed)}</details>
+  <details class="replay-rail-note"${sortie?' data-rail-options':''}><summary><b>철도 잔류 보급</b>${sortie?`<small>${railOptions.map(id=>FRONT_SUPPORTS[id].name).join(' · ')}</small>`:''}</summary>${railGateBrief(seed,railPart)}</details>
   ${configurable?'':footer}
  </section>`;
 }
@@ -589,9 +600,9 @@ export function reportView(r,p,{archived=false}={}){
      ${hasPayout(r)?`<div class="earned-pay"><span>지급 크레딧</span><b>+${n(r.credits)}<small>C</small></b>${first?`<small class="first-clear">첫 완주 +${n(first)}C 포함</small>`:''}</div>`:''}
      <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>일반 적 ${n(r.stats.kills)}명 · 잔류 D${r.stats.challenge}</small></div>
     </section>
-   ${salvageCampaignReport(r)}${debriefActions(r,p,archived,!!reference)}
+   ${salvageCampaignReport(r)}${harborPayoff(r)}${debriefActions(r,p,archived,!!reference)}
    <section class="debrief-summary" aria-label="전선과 장비 기록">
-    ${coast&&!carriesCoastSalvage(r)?'':debriefPace(r,reference)+debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${crossfireReport(r)}${signalReport(r)}${harborPayoff(r)}
+    ${coast&&!carriesCoastSalvage(r)?'':debriefPace(r,reference)+debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${crossfireReport(r)}${signalReport(r)}
    </section>
   </div>
   ${debriefDetails(r,p,lines)}
