@@ -466,9 +466,15 @@ test('the launch briefing offers rescue and the seeded nearby outpost before the
  assert.match(seed25,/박격포 진지 기습<\/strong><span>↖ 박격포 2문 제압<\/span><small>R L2 노획/);
  const lobby=lobbyView(emptyProfile(),{seed:22});
  assert.ok(lobby.indexOf(seed22)<lobby.indexOf('data-action="launch"'));
+ assert.match(lobby,/class="launch-payoff"[^<]*<b>포로 구출<\/b>.*화염 F \/ 로켓 R 선택/);
  assert.match(lobby,/data-rescue-role="fio">호위가 떨어뜨린 부품 회수/);
  assert.match(lobbyView(emptyProfile(),{seed:22,operator:'marco'}),/data-rescue-role="marco">방패병 옆으로 돌아 약점 타격/);
  assert.doesNotMatch(lobbyView(emptyProfile(),{seed:22,brief:1}),/class="coast-plan"/);
+ const unlocked=emptyProfile();unlocked.milestones.coastTurret=true;
+ for(const brief of [1,2]){
+  assert.match(lobbyView(unlocked,{seed:22,brief,loadout:'turret'}),/첫 목표 · 포로 구출<\/b><small>화염 F \/ 기관총 H 선택/);
+  assert.match(lobbyView(unlocked,{seed:22,brief,loadout:'standard'}),/첫 목표 · 포로 구출<\/b><small>화염 F \/ 로켓 R 선택/);
+ }
 });
 test('the harbor quay follows the field boundary and bay marks follow mirrored loading sites',()=>{
  const port=fieldScene(2,19),mirror=fieldScene(2,18);
