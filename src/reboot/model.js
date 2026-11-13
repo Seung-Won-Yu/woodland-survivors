@@ -87,7 +87,8 @@ function advanceRegion(s,card){
   s.powerWave.remaining=Math.max(s.powerWave.remaining,60);s.powerWave.delay=1;delete s.powerWave.retried;
  }else if(s.stats.completedBuild){
   const showcase=isSalvageCampaign(s)&&arrivalShowcase(s);
-  s.powerWave={delay:showcase?2:3,remaining:60,clock:0,...(showcase?{paired:1,showcase}:{})};
+  const arrivalFormations=s.operation.region===2?2:1;
+  s.powerWave={delay:showcase?2:3,remaining:60,clock:0,...(showcase?{paired:arrivalFormations,showcase}:{})};
  }
  if(recoverStrike)s.queue.unshift({type:'supply',source:'장갑 수송차 노획',cards:supplyCards(s,coastRecovery(s)),extra:{coastRecovery:true}});
  for(let i=0;i<(coast?5:10);i++)spawnAround(s,!coast&&i===0?'officer':'rifle',{cohort:'ambient'},360,30);
@@ -170,7 +171,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -382,7 +383,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
   if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
   const part=s.raid.part,designated=isSalvageCampaign(s)&&contract==='armored';
-  if(designated&&s.balanceRevision===RULES.balanceRevision&&part===undefined)fail();
+  if(designated&&[RULES.balanceRevision,'b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
   if(part!==undefined&&(!designated||part!==null&&(
    !['coil','catalyst','ricochet'].includes(part?.module)||part.rank!==2&&!(part.module==='catalyst'&&part.rank===3))))fail();
   if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
@@ -944,7 +945,8 @@ function buildCompleted(s,kind,{weapon,incendiary=false,captured=false}={}){
   s.powerWave={delay:.65,remaining,clock:0,paired:Math.min(4,Math.floor(remaining/8)),showcase};
   s.powerDone=true;
   const text=showcase==='fusion'?`${incendiary?'점화 격발망':'전도 격발망'} 가동 · 분산 편대 접근`
-   :showcase==='rocket'?`${captured?CAPTURED_TURRET.evolution:'폭풍 발사대'} 가동 · 갈라진 편대 접근`:'인페르노 가동 · 밀집 보병 접근';
+   :showcase==='rocket'?`${captured?CAPTURED_TURRET.evolution:'폭풍 발사대'} 가동 · 갈라진 편대 접근`
+   :`${capstoneName(s.weapons.find(w=>w.id==='f'&&w.evolved))} 가동 · 밀집 보병 접근`;
   emit(s,'complete',s.player.x,s.player.y,{life:1.2,showcase,text});
  }else if(!s.powerDone){
   s.powerDone=true;s.powerWave={delay:4,remaining:60,clock:0};
@@ -2339,7 +2341,7 @@ function spawnShowcaseWave(s,pulse,showcase,remaining,compact=false){
  const wake=trail&&s.zones.filter(z=>z.source==='wake'&&z.owner===trail.uid&&z.life>.55&&distance(p,z)>=58&&distance(p,z)<170&&!lineBlocked(s,p,z))
   .sort((a,b)=>distance(p,b)-distance(p,a))[0];
  const approach=s.stage==='boss'?Math.atan2(p.y-s.boss.y,p.x-s.boss.x):wake?Math.atan2(wake.y-p.y,wake.x-p.x):p.aim;
- const pair=compact?(flame?[[0,173],[0,239]]:[[-.27,183],[.27,216]])
+ const pair=compact?(flame?[[0,173],[0,243]]:[[-.27,183],[.27,216]])
   :flame?[[0,190],[0,264]]:fan?[[-.29,218],[.29,218]]:[[-.34,205],[.48,248]];
  const spread=fan?[[-.4,232],[0,232],[.4,232]]:[[-.75,208],[.1,224],[.93,242]];
  const plans=!compact&&!flame&&remaining-(pulse-1)*8>=12?[spread,pair]:[pair];

@@ -10,6 +10,7 @@ import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
 import {operatorOf,focusLane,canUseSkill} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastRoleTarget,coastTurretLane,coastSalvageWreck} from './coast-salvage.js';
 const TAU=Math.PI*2;
+const FORMATION_INK={flame:'#f1b477',fusion:'#abe5d7',rocket:'#edd3a3'};
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
 const relaySet={x:DEFENSE_ZONE.x,y:DEFENSE_ZONE.y-13};
 function paintRelayGround(c,s,round){
@@ -624,7 +625,7 @@ function paintMissileTrail(c,q,points){
 }
 function paintFormationEntry(c,f,reduced){
  const fire=f.showcase==='flame',t=f.age/f.life;
- const line=fire?'#f1b477':f.showcase==='rocket'?'#edd3a3':'#abe5d7';
+ const line=FORMATION_INK[f.showcase]||FORMATION_INK.fusion;
  const dust=fire?'#e4bc79':f.showcase==='rocket'?'#f8e3af':'#b8e1cd';
  c.save();c.globalAlpha=Math.min(1,(1-t)*2);c.translate(f.x,f.y);c.rotate(f.angle??0);
  c.lineJoin='bevel';c.beginPath();
@@ -1442,6 +1443,21 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   paintPortEscape(c,s,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
+  const equipped=s.stage==='field'&&s.phase==='playing'&&s.effects.findLast(f=>f.type==='complete'&&f.showcase&&f.text);
+  if(equipped&&!s.hazards.some(h=>!h.hit&&h.timer>0&&distance(h,s.player)<blastContactRadius(h)+56)){
+   const label=equipped.text.split(' · ')[0],ink=FORMATION_INK[equipped.showcase];
+   c.save();c.font='bold 13px Galmuri';
+   const width=Math.ceil(c.measureText(label).width)+27;
+   const at=clearBearingPosition(size,project(s.player.x,s.player.y-77),width,combatHud.rects,12);
+   if(at){
+    const x=at.x-width/2,y=at.y-11;
+    c.globalAlpha=reduced?1:clamp((1-equipped.age/equipped.life)*3,0,1);
+    c.fillStyle='#162925ed';c.fillRect(x,y,width,22);
+    c.fillStyle=ink;c.fillRect(x,y,3,22);c.fillRect(x+8,y+9,5,5);
+    c.textAlign='left';c.fillText(label,x+19,at.y+4);
+   }
+   c.restore();
+  }
   if(railSweep&&s.phase==='playing'&&!s.hazards.some(h=>!h.hit&&h.timer>0)){
    const {x,y,x2,y2,age,life}=railSweep,label='양쪽 대열 명중';
    const center=project((x+x2)/2,(y+y2)/2-40);

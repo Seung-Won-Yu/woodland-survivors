@@ -1249,7 +1249,7 @@ test('a narrow rail lane can deploy a whole split wave with a clear and safe ent
  assert.equal(s.powerWave.remaining,52);
  assert.deepEqual(restore(snapshot(s)).powerWave,s.powerWave);
 });
-test('advancing with a completed loadout leads with its formation from the existing reinforcement reserve',()=>{
+test('advancing with a completed loadout leads with two formations from the existing reinforcement reserve',()=>{
  for(const build of ['flame','fusion','rocket']){
   const s=railwayCapstone(27,build);
   Object.assign(s.player,{x:800,y:350});
@@ -1258,14 +1258,37 @@ test('advancing with a completed loadout leads with its formation from the exist
   clearRegion(s);
   assert.ok(choose(s,'advance'));
   assert.equal(s.operation.region,2);
-  assert.deepEqual(s.powerWave,{delay:2,remaining:60,clock:0,paired:1,showcase:build});
+  assert.deepEqual(s.powerWave,{delay:2,remaining:60,clock:0,paired:2,showcase:build});
   const loaded=restore(snapshot(s));
-  for(let i=0;i<145&&loaded.powerWave.paired;i++)step(loaded,dt);
-  const troops=loaded.enemies.filter(e=>e.showcase===build),count=troops.length;
-  assert.ok(count===8||build!=='flame'&&count===12,`${build}: ${count}`);
-  if(build!=='flame')assert.equal(new Set(troops.map(e=>e.waveGroup)).size,count/4);
-  assert.equal(loaded.powerWave.remaining,60-count);
+  const births=[];
+  for(let i=0;i<245&&loaded.powerWave.paired;i++){
+   const paired=loaded.powerWave.paired,previous=new Set(loaded.enemies.map(e=>e.id));
+   step(loaded,dt);
+   if(paired===loaded.powerWave.paired)continue;
+   const troops=loaded.enemies.filter(e=>e.showcase===build&&!previous.has(e.id)),count=troops.length;
+   assert.ok(count===8||build!=='flame'&&count===12,`${build}: ${count}`);
+   if(build!=='flame')assert.equal(new Set(troops.map(e=>e.waveGroup)).size,count/4);
+   births.push({time:loaded.operation.regionTime,count});
+  }
+  assert.equal(births.length,2);
+  assert.ok(births[1].time-births[0].time>=1.5);
+  assert.equal(loaded.powerWave.remaining,60-births.reduce((sum,packet)=>sum+packet.count,0));
   assert.equal(loaded.powerWave.paired,0);
+ }
+});
+test('a compact Inferno lane fits two groups without spawning through walls or overlapping',()=>{
+ const s=railwayCapstone(27,'flame');
+ Object.assign(s.player,{x:800,y:1040,aim:-Math.PI/2});
+ for(const w of s.weapons)w.cd=999;
+ s.spawnClock=999;
+ s.blocks=[{x:80,y:756,w:665,h:400,hp:-1},{x:855,y:756,w:665,h:400,hp:-1},{x:740,y:60,w:120,h:696,hp:-1}];
+ for(let i=0;i<50&&s.powerWave.paired===4;i++)step(s,dt);
+ const troops=s.enemies.filter(e=>e.showcase==='flame');
+ assert.equal(troops.length,8);
+ assert.equal(s.powerWave.remaining,52);
+ for(const [i,a] of troops.entries()){
+  assert.ok(a.x-a.r>=745&&a.x+a.r<=855&&a.y-a.r>=756);
+  assert.ok(troops.slice(i+1).every(b=>Math.hypot(a.x-b.x,a.y-b.y)>=a.r+b.r-.01));
  }
 });
 test('the final formation is held for another beat and deploys out of the same reserve',()=>{

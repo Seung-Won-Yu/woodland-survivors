@@ -166,6 +166,9 @@
 .front-intel strong,.front-intel b{font-size:13px;line-height:1.4}
 .front-intel strong{color:#f7cf80}
 #field-intel{color:#fae1a3;line-height:1.5;white-space:pre-line}
+#threat[data-formation="flame"]{color:#f5c695}
+#threat[data-formation="fusion"]{color:#bcece3}
+#threat[data-formation="rocket"]{color:#f7dba3}
 #field-intel[data-rail-fork]{display:grid;gap:4px;white-space:normal}
 .rail-route-row{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;padding:3px 5px;border-left:2px solid #a0b1a26b;color:#c6d1bd;background:#14272276;line-height:1.4}
 .rail-route-row[data-recommended]{border-color:var(--route-ink);color:#efe8cb;background:color-mix(in srgb,var(--route-ink) 14%,#1b2c28)}
@@ -290,6 +293,7 @@
  .coast-lead.capstone-approach .objective #threat{display:block}
  .capstone-approach .objective #stage{display:none}
  :is(.coast-lead,.capstone-approach) #map-panel{width:84px;justify-self:end}
+ .capstone-approach .arsenal .weapon.empty{display:none}
  #dash .key-hint,#gear .key-hint{display:none}
  #gear[data-view]{min-height:48px}
 }
