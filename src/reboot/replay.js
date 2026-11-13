@@ -1,10 +1,11 @@
 import {REGIONS,FRONT_SUPPORTS} from './campaign.js';
-import {GUNS,capstoneName} from './content.js';
+import {GUNS,CAPTURED_TURRET,capstoneName} from './content.js';
 import {operatorId} from './operator.js';
+import {coastSalvage,isSalvageCampaign} from './coast-salvage.js';
 
 const nonnegative=value=>Number.isFinite(value)&&value>=0;
-const standard=operation=>!!operation&&!operation.order&&!operation.requisition;
-const capstones=new Set([...Object.values(GUNS).map(gun=>gun.evolution),'압축 인페르노','전도 격발망','점화 격발망']);
+const standard=operation=>!!operation&&!operation.order&&!operation.requisition&&(!operation.coastSalvage||isSalvageCampaign({operation}));
+const capstones=new Set([...Object.values(GUNS).map(gun=>gun.evolution),CAPTURED_TURRET.evolution,'압축 인페르노','전도 격발망','점화 격발망']);
 export const installedCapstones=weapons=>Array.isArray(weapons)
  ?[...new Set(weapons.filter(w=>typeof w?.id==='string'&&Object.hasOwn(GUNS,w.id)&&(w.fusion||w.evolved)).map(capstoneName))]:[];
 const isHarborSupport=id=>typeof id==='string'&&Object.hasOwn(FRONT_SUPPORTS,id);
@@ -22,7 +23,7 @@ function validReference(ref){
   &&['fio','marco'].includes(ref.operator)&&typeof ref.scope==='string'&&nonnegative(ref.score)&&nonnegative(ref.seconds)&&ref.seconds>0
   &&Array.isArray(ref.fronts)&&ref.fronts.length===REGIONS.length&&Array.from(ref.fronts).every(nonnegative)
   &&(ref.capstones===undefined||Array.isArray(ref.capstones)&&ref.capstones.length<=3&&Array.from(ref.capstones).every(name=>capstones.has(name)))
-  &&(ref.harborSupport==null||isHarborSupport(ref.harborSupport))
+  &&(ref.harborSupport==null||isHarborSupport(ref.harborSupport))&&(ref.loadout===undefined||['standard','turret'].includes(ref.loadout))
   &&Math.abs(ref.fronts.reduce((sum,time)=>sum+time,0)-ref.seconds)<.1;
 }
 
@@ -32,13 +33,14 @@ export function replayReference(report,scope){
    ||operation.cleared!==REGIONS.length||operation.region!==REGIONS.length-1)return null;
  const reference={sequence:report.sequence,seed:report.seed,operator:operatorId(report),scope,score:report.score,seconds:report.seconds,
   fronts:REGIONS.map((_,index)=>frontElapsed(operation,index)),
-  capstones:installedCapstones(report.weapons),harborSupport:harborLoadout(operation)};
+  capstones:installedCapstones(report.weapons),harborSupport:harborLoadout(operation),
+  ...(isSalvageCampaign(report)?{loadout:coastSalvage(report).loadout}:{})};
  return validReference(reference)?reference:null;
 }
 
 export function referenceMatches(reference,run,sequence){
  return validReference(reference)&&standard(run.operation)&&Number.isSafeInteger(sequence)&&reference.sequence<sequence&&reference.scope===run.balanceRevision
-  &&reference.seed===run.seed&&reference.operator===operatorId(run);
+  &&reference.seed===run.seed&&reference.operator===operatorId(run)&&reference.loadout===coastSalvage(run)?.loadout;
 }
 
 export function timeDifference(current,reference){

@@ -1,6 +1,7 @@
 import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope} from './campaign.js';
 import {VERSION,RULES} from './content.js';
-import {createOperation,restore,snapshot,finish,canResumeRun} from './model.js';
+import {createOperation,createCoastSortie,restore,snapshot,finish,canResumeRun} from './model.js';
+import {coastTurretReturned,isSalvageCampaign} from './coast-salvage.js';
 import {operatorId} from './operator.js';
 import {replayReference,referenceMatches} from './replay.js';
 export const STORAGE_KEY='operation-rift-profile-v2';
@@ -43,7 +44,9 @@ export function sortieResearchTrials(p){
  const cleared=clearedResearchTrials(p.active.run);
  return p.trials.filter(id=>!cleared.includes(id));
 }
-export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null){
+export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null,coastLoadout=null,fullCampaign=false){
+ if(coastLoadout!==null&&(!['standard','turret'].includes(coastLoadout)||!fullCampaign&&(order||requisition||requisitionAt)||
+    coastLoadout==='turret'&&p.milestones.coastTurret!==true))throw Error('해안 노획 출격 조건을 확인하세요.');
  const priorReport=replayFrom===null?null:p.recent.find(report=>report?.sequence===replayFrom);
  const reference=replayReference(priorReport,p.recordScope);
  if(requisition!==null||requisitionAt!==null){
@@ -59,7 +62,8 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
   finish(prior,false,'new-run');
   p=settleProfile(p,prior);
  }
- const run=createOperation(seed,p.research,p.trials,order,operator);
+ const run=coastLoadout&&!fullCampaign?createCoastSortie(seed,operator,coastLoadout)
+  :createOperation(seed,p.research,p.trials,order,operator,fullCampaign?coastLoadout||'standard':null);
  if(requisition)run.operation.requisition=requisition;
  if(requisitionAt)run.operation.requisitionAt=requisitionAt;
  return {run,next:beginProfile(p,run,reference)};
@@ -86,7 +90,7 @@ export function settleProfile(p,run){
   r.orderFee=order.fee;r.orderBonus=lines.order;
  }
  if(r.operation?.requisition)r.requisitionFee=REQUISITION_FEE;
- if(sameScope&&(!order||r.orderBonus)){
+ if(sameScope&&(!r.operation?.coastSalvage||isSalvageCampaign(r))&&(!order||r.orderBonus)){
   const record=marco?(n.marcoRecords=marcoRecord(n)||{scope:n.recordScope,score:0,time:null,challenge:0,wins:0,orders:{}}):n.records;
   if(order){
    const orders=marco?record.orders:(n.orderRecords??={}),id=r.operation.order;
@@ -102,6 +106,7 @@ export function settleProfile(p,run){
  if(r.won){n.records.wins++;n.milestones.medic=true;}
  if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;
  if(r.stats.flameBosses>0)n.milestones.thermal=true;
+ if(coastTurretReturned(r))n.milestones.coastTurret=true;
  r.researchUnlocked=Object.keys(RESEARCH).filter(id=>n.milestones[id]&&!p.milestones[id]);
  const clearedTrials=clearedResearchTrials(r,proofs);
  n.credits+=r.credits;n.trials=n.trials.filter(id=>!clearedTrials.includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;

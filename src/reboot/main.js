@@ -4,13 +4,14 @@ import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractD
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview,coastOpeningGuide} from './field-scene.js';
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
+import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck} from './coast-salvage.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
-import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle} from './content.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railBarragePreview,railDecoyLocked,railLaneBounds,railEscapeSlot,railHasRelay,railHasWire} from './campaign.js';
+import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle,CAPTURED_TURRET,isCapturedTurret} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,showcaseWindow,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge,conduitMortarCue} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
 import {createRenderer} from './render.js';
-import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,missionImageUrl,MISSION_ART_COUNT,operatorPortrait} from '../mission/art.js';
+import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,loadFieldArt,missionImageUrl,FIELD_ART_COUNT,operatorPortrait} from '../mission/art.js';
 import {bindTouchControls} from '../game/touch-controls.js';
 import {createAudio} from '../game/audio.js';
 import {selectRiftAudioEvents} from './sound.js';
@@ -31,7 +32,7 @@ function revealCombatHud(covered,now,reduced=false,stage){
 }
 function watchCombatHud(){
  if(typeof ResizeObserver!=='function')return;
- const panels=[...document.querySelectorAll('.vitals,.score,#boss-hud,#map-panel,#weapons,#field-objective,#field-feedback,#synergy,#maneuver-status,.field-workbench,#stick,#dash,#skill,#interact')];
+ const panels=[...document.querySelectorAll('.vitals,.score,#boss-hud,#map-panel,#weapons,#field-objective,#field-feedback,#synergy,#maneuver-status,#support-status,.field-workbench,#stick,#dash,#skill,#interact')];
  let pendingMeasure=false,bodyClass=document.body.className;
  const measure=()=>{
   pendingMeasure=false;
@@ -53,7 +54,7 @@ function watchCombatHud(){
  window.visualViewport?.addEventListener('resize',schedule);
  schedule();
 }
-let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,requisitionSelection=null,requisitionAt=null,selectedOperator='fio',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,reportOrigin=null,equippedUntil=0,equippedWeapon=null;
+let store,run,operationPlan,renderer,controls,mode='home',busy=false,committingPlay=false,pauseQueued=false,pending=null,stamp='',inventoryStamp='',mapStamp='',lastFrame=0,accumulator=0,saveClock=0,touch={x:0,y:0},selectedDoctrine='reserve',subpanel=null,noticeTimer,bannerUntil=0,bannerRunId=null,lobbyTab='mission',briefRegion=null,sortieOrderSelection=null,requisitionSelection=null,requisitionAt=null,selectedOperator='fio',selectedStarter='standard',nextPanelFocus=null,choiceOrigin=null,settingsOrigin=null,reportOrigin=null,equippedUntil=0,equippedWeapon=null;
 let focusGesture=null,queuedFocus=null,coastGuideId=null,panelPointerButton=null;
 let battleArt=null,portraitArt=null,marcoArt=null,marcoArtWork=null,artWork=null,launchPreparation=null,kitPreloaded=false,firstBattleFrame=false;
 const profile=()=>store.get();
@@ -69,7 +70,7 @@ function drawPortrait(){
  if(art){requestAnimationFrame(()=>{if(mode==='home'&&canvas.isConnected)operatorPortrait(canvas,art,id,240);});return;}
  if(id==='marco'&&!marcoArtWork)marcoArtWork=loadOperatorPortrait().then(loaded=>{marcoArt=loaded;drawPortrait();}).catch(()=>{}).finally(()=>{marcoArtWork=null;});
 }
-function showHome(){mode='home';subpanel=null;stamp='home';document.body.dataset.scene='lobby';panel(lobbyView(profile(),{tab:lobbyTab,brief:briefRegion,seed:operationPlan.seed,order:sortieOrderSelection,operator:selectedOperator,requisition:requisitionSelection,requisitionAt}));drawPortrait();}
+function showHome(){mode='home';subpanel=null;stamp='home';document.body.dataset.scene='lobby';panel(lobbyView(profile(),{tab:lobbyTab,brief:briefRegion,seed:operationPlan.seed,order:sortieOrderSelection,operator:selectedOperator,requisition:requisitionSelection,requisitionAt,loadout:selectedStarter}));drawPortrait();}
 function doctrineChoices(){
  if(run.choice.type!=='level'||run.level<6||run.player.branchChosen)return '';
  const actor=operatorOf(run);
@@ -77,7 +78,12 @@ function doctrineChoices(){
 }
 function showSettings(){if(!settingsOrigin)settingsOrigin={mode,scroll:ui.scrollTop,subpanel};subpanel={type:'settings'};panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="settings-title"><span class="eyebrow">야전 환경 설정</span><h2 id="settings-title">전투를 편하게.</h2>${settings()}<p class="stat-note">이동 WASD · 회피 SPACE<br>${mode==='home'?OPERATORS[selectedOperator].skill:operatorOf(run).skill} E · 상황 행동 F<br>대기 개조 R · 진화·합체 G<br>전투는 자동 사격합니다. 메뉴에서는 정지합니다.</p><button class="primary" data-action="settings-back">설정 완료</button></section>`);}
 function closeSettings(){const origin=settingsOrigin;settingsOrigin=null;subpanel=origin?.subpanel||null;nextPanelFocus={scroll:origin?.scroll||0,selector:'[data-action="settings-menu"]'};if(mode==='home')showHome();else present(true);}
-function showRetreat(fromHome=false){subpanel={type:'retreat',fromHome};const secured=operationCredits({operation:run.operation,stats:run.stats,won:false}),cleared=run.operation?.cleared||0;panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="retreat-title"><span class="eyebrow">작전 종료</span><h2 id="retreat-title">확보한 성과로 귀환할까요?</h2><p>${cleared}/3 전선 돌파 · ${fmt(run.t)} · LV.${run.level}<br>지금 귀환하면 <strong>${secured}C</strong>를 정산합니다. 이번 무장과 레벨은 다음 판에 초기화됩니다.</p><p class="inline-note">${run.raid?.state==='active'?'진행 중인 습격과 걸었던 상자는 포기합니다. ':''}최종 보스 뒤 출구로 탈출해야 완주로 기록됩니다.</p><div class="buttons"><button class="primary" data-action="retreat-cancel">작전 유지</button><button class="danger" data-action="retreat-confirm">종료하고 ${secured}C 정산</button></div></section>`);}
+function showRetreat(fromHome=false){
+ subpanel={type:'retreat',fromHome};
+ const secured=operationCredits({operation:run.operation,stats:run.stats,won:false}),cleared=run.operation?.cleared||0;
+ const condition=isCoastRailSortie(run)?'포격 열차 격파 후 귀환 게이트를 통과하면 생존 귀환 수당을 받습니다.':'최종 보스 뒤 출구로 탈출해야 완주로 기록됩니다.';
+ panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="retreat-title"><span class="eyebrow">작전 종료</span><h2 id="retreat-title">확보한 성과로 귀환할까요?</h2><p>${cleared}/${sortieFrontCount(run)} 전선 돌파 · ${fmt(run.t)} · LV.${run.level}<br>지금 귀환하면 <strong>${secured}C</strong>를 정산합니다. 이번 무장과 레벨은 다음 판에 초기화됩니다.</p><p class="inline-note">${run.raid?.state==='active'?'진행 중인 습격과 걸었던 상자는 포기합니다. ':''}${condition}</p><div class="buttons"><button class="primary" data-action="retreat-cancel">작전 유지</button><button class="danger" data-action="retreat-confirm">종료하고 ${secured}C 정산</button></div></section>`);
+}
 
 const isCapstone=c=>c.kind==='evolve'||c.kind==='fusion';
 function choiceKey(c){
@@ -90,7 +96,7 @@ function choiceCards(cards){
   const art=d.art?itemArt(d.art):`<span class="module-engraving">${moduleIcon(c.module||({advance:'route',extract:'extract',stay:'stay'})[c.kind]||'gear')}</span>`;
   const consequence=d.consequence?.length?`<span class="upgrade-consequence">${d.consequence.map(note=>`<small>${esc(note)}</small>`).join('')}</span>`:'';
   const levels=d.before?`<span class="upgrade-levels" aria-label="레벨 ${d.before}에서 ${d.after}로">${Array.from({length:6},(_,i)=>`<i class="${i<d.before?'owned':i<d.after?'added':''}"></i>`).join('')}<b>L${d.before} → ${d.after}</b></span>`:'';
-  const verb=({evolve:'진화',fusion:'합체',advance:'결정',stay:'결정',extract:'결정',permit:'확보',resupply:'보급 받기'})[c.kind]||'장착';
+  const verb=({evolve:'진화',fusion:'합체',advance:'결정',stay:'결정',extract:'결정','coast-boss':'교전',permit:'확보',resupply:'보급 받기'})[c.kind]||'장착';
   return `<button class="upgrade-card${isCapstone(c)?' capstone':''}" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}${c.trial?' data-trial="true"':''}${c.workshopFinish?' data-finish="true"':''}>
    <span class="upgrade-category">${esc(c.label||'전술 결정')}</span>${choiceKey(c)}<span class="upgrade-illustration">${art}</span>
    <span class="upgrade-copy"><h3>${esc(d.title)}</h3><strong class="upgrade-impact">${esc(d.impact)}</strong>${d.detail?`<span class="upgrade-detail">${esc(d.detail)}</span>`:''}</span>
@@ -102,15 +108,31 @@ function choiceCards(cards){
 function choiceDeck(cards){
  return `<div class="upgrade-deck${cards.length===2?' two-options':''}">${choiceCards(cards)}</div>`;
 }
+function ordnanceDeck(){
+ const cards=run.choices.map(c=>{
+  const d=choiceDetails(run,c),broken=c.id==='coast:break',carry=c.id==='carry:turret';
+  const count=broken?3:c.fanCount===7?7:5;
+  const art=carry?moduleIcon('crate'):`${itemArt('turret')}<span class="ordnance-rays">${Array.from({length:count},(_,i)=>
+   `<i style="--angle:${(i-(count-1)/2)*11}deg"></i>`).join('')}</span>`;
+  return `<button class="ordnance-card" data-choice="${esc(c.id)}"${!broken&&!carry?' data-salvage':''}>
+   <span class="ordnance-preview" aria-hidden="true">${art}</span>
+   <span class="ordnance-copy"><small>${esc(c.label||'귀환 보상')}</small><strong>${esc(d.title)}</strong>
+    <b>${esc(d.impact)}</b>${d.detail?`<span>${esc(d.detail)}</span>`:''}${d.link?`<span>${esc(d.link)}</span>`:''}</span>${choiceKey(c)}
+  </button>`;
+ }).join('');
+ return `<div class="ordnance-deck">${cards}</div>`;
+}
 function openingChoiceDeck(cards){
- const guns=cards.filter(c=>c.kind==='gun'&&Object.hasOwn(COAST_APPROACHES,c.weapon));
+ const guns=cards.filter(c=>c.kind==='gun');
  if(!guns.length)return choiceDeck(cards);
+ const role=isSalvageCampaign(run)?coastRole(run):null;
  const rack=guns.map(c=>{
   const d=choiceDetails(run,c);
+  const pairing=c.weapon===role?.weapon?role.pairing:run.weapons.some(isCapturedTurret)&&c.weapon==='h'?'포탑과 H+R 합체 준비':'';
   return `<button class="opening-weapon" data-weapon="${c.weapon}" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}>
    <span class="opening-weapon-tray">${itemArt(c.weapon)}${choiceKey(c)}</span>
-   <span class="opening-weapon-copy"><strong>${esc(d.title)}</strong><small>${c.weapon==='f'?'근접 분사':'원거리 폭발'}</small>
-   <b>${esc(d.impact)}</b><span>${esc(d.detail)}</span>${d.link?`<small>${esc(d.link)}</small>`:''}</span>
+   <span class="opening-weapon-copy"><strong>${esc(d.title)}</strong><small>${c.weapon==='f'?'근접 분사':c.weapon==='r'?'원거리 폭발':'직선 관통'}</small>
+   <b>${esc(d.impact)}</b><span>${esc(d.detail)}</span>${pairing?`<small class="opening-pairing">${esc(pairing)}</small>`:''}${d.link?`<small>${esc(d.link)}</small>`:''}</span>
   </button>`;
  }).join('');
  const alternatives=cards.filter(c=>!guns.includes(c)).map(c=>{
@@ -166,9 +188,10 @@ function gatePreparationView(){
  const prep=gatePreparation(run);
  if(!prep)return '';
  const recipes=buildPaths(run);
- const targetId=(run.stats.railRebuild||run.firstNew==='r')?'fusion:h:r':run.firstNew==='f'?'evolve:f':'evolve:h';
+ const fan=run.weapons.find(isCapturedTurret);
+ const targetId=fan?'evolve:r':(run.stats.railRebuild||run.firstNew==='r')?'fusion:h:r':run.firstNew==='f'?'evolve:f':'evolve:h';
  const target=recipes.find(p=>p.id===targetId);
- const equipped=run.weapons.find(w=>w.evolved&&(w.id===run.firstNew||w.fusion?.secondary===run.firstNew));
+ const equipped=fan?.evolved?fan:run.weapons.find(w=>w.evolved&&(w.id===run.firstNew||w.fusion?.secondary===run.firstNew));
  const installed=equipped?.fusion?fusionTitle(equipped.id,equipped.fusion.secondary,equipped.fusion.branch):equipped?capstoneName(equipped):recipes.find(p=>p.complete&&p.id!=='heat')?.title;
  const remaining=!equipped&&target?.missing&&['progress','permit'].includes(target.status)?target:null;
  const capstones=prep.capstones;
@@ -180,19 +203,24 @@ function gatePreparationView(){
  return build||xp?`<div class="gate-prep" role="group" aria-label="전진 전 정비">${build}${xp}</div>`:'';
 }
 function gateChoices(){
- const final=run.operation.region===2,vanguard=canAdvanceWithVanguard(run);
- const extraction=final?operationCredits({operation:run.operation,stats:run.stats,won:true},!profile().milestones.medic):0;
+ const coast=coastSalvage(run),final=run.operation.region===2,vanguard=canAdvanceWithVanguard(run);
+ const railReturn=carriesCoastSalvage(run)&&run.operation.region===1;
+ const operation={...run.operation,extracted:final,...(coast?{coastSalvage:{...coast,extracted:final||railReturn||!isSalvageCampaign(run)}}:{})};
+ const payout={operation,stats:run.stats,won:final,reason:railReturn?'rail-return':coast&&!isSalvageCampaign(run)?'coast-return':'retreat'};
+ const p=profile(),proofs=completedResearchProofs(payout).filter(id=>p.trials.includes(id));
+ const extraction=operationPayout(payout,!p.milestones.medic,proofs);
  const orders=run.choices.map((card,index)=>{
   const d=choiceDetails(run,card);
   if(card.kind==='stay'&&canCallGateChallenge(run)){
    const {title,goal,reward,cost}=gateContractDetails(run);
    return `<div class="gate-holdout"><button class="gate-order gate-contract" data-action="gate-challenge" aria-keyshortcuts="Q"><span class="gate-order-icon" aria-hidden="true">${moduleIcon('stay')}</span><span class="gate-order-copy"><strong>${esc(title)}</strong><small>${esc(goal)}</small><small>${esc(reward)}</small>${cost?`<small>${esc(cost)}</small>`:''}</span><kbd>Q</kbd></button><button class="gate-passive" data-choice="stay">${esc(d.title)} <kbd>${index+1}</kbd></button></div>`;
   }
-  const lines=card.kind==='advance'?[d.impact,d.link,vanguard?d.cost:'',run.operation.region===0&&run.operation.coastStrikeUsed?'수송차 노획 보급 이월':'']
+  const lines=card.kind==='advance'&&carriesCoastSalvage(run)&&coastAtShore(run)?[card.desc]
+   :card.kind==='advance'?[d.impact,d.link,vanguard?d.cost:'',run.operation.region===0&&run.operation.coastStrikeUsed?'수송차 노획 보급 이월':'']
    :card.kind==='stay'?[d.detail,d.link]
-   :[final?`지금 귀환 · ${extraction.toLocaleString()}C 확정`:'확보 보상 정산 · 완주 보너스 없음',d.link];
+   :[`${extraction.credits.toLocaleString()}C 정산${extraction.lines.turret?` · 포탑 반출 +${extraction.lines.turret}C 포함`:railReturn?' · 생존 귀환 +60C 포함':''}`,coast?card.desc:d.link];
   const icon={advance:'route',stay:'stay',extract:'extract'}[card.kind];
-  return `<button class="gate-order" data-choice="${esc(card.id)}"><span class="gate-order-icon" aria-hidden="true">${moduleIcon(icon)}</span><span class="gate-order-copy"><strong>${esc(d.title)}</strong>${lines.filter(Boolean).map(text=>`<small>${esc(text)}</small>`).join('')}</span><kbd>${index+1}</kbd></button>`;
+  return `<button class="gate-order" data-choice="${esc(card.id)}"><span class="gate-order-icon" aria-hidden="true">${card.kind==='extract'&&extraction.lines.turret?itemArt('turret'):moduleIcon(icon)}</span><span class="gate-order-copy"><strong>${esc(d.title)}</strong>${lines.filter(Boolean).map(text=>`<small>${esc(text)}</small>`).join('')}</span><kbd>${index+1}</kbd></button>`;
  }).join('');
  return `<div class="gate-deck" data-count="${run.choices.length}">${orders}</div>`;
 }
@@ -202,30 +230,34 @@ function showChoices(){
  const toolsAfterDeck=coastOptions||coastalService;
  const salvage=run.choices.find(c=>c.salvageLevel);
  const tacticalLoot=salvage&&run.choices.some(c=>c.salvageLevel===1);
- const type=run.choice.type,quick=isQuickMod(run),atGate=type==='clear'&&!!run.operation,atPursuit=type==='pursuit-reward',workshop=type==='rail-workshop',title=({level:'야전 개조',supply:run.choice.opening?'첫 무장을 골라라':run.choice.preempt?'전방 보급 선점':coastalService?esc(run.choice.source):salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:run.operation&&run.operation.region<2?'다음 전선이 열렸다':'작전 목표 달성',control:run.choices.some(c=>c.infernoRank)?'전술과 정비 중 선택':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
+ const type=run.choice.type,quick=isQuickMod(run),atGate=type==='clear'&&!!run.operation,atPursuit=type==='pursuit-reward',workshop=type==='rail-workshop';
+ const shoreGate=atGate&&coastAtShore(run)&&carriesCoastSalvage(run),mount=type==='coast-mount',carrier=type==='coast-boss';
+ const railGate=atGate&&carriesCoastSalvage(run)&&run.operation.region===1;
+ const title=({level:'야전 개조',supply:run.choice.opening?'첫 무장을 골라라':run.choice.preempt?'전방 보급 선점':coastalService?esc(run.choice.source):salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:shoreGate?'철도 전진로 개방':railGate?'철도 돌파':canAdvanceFront(run)?'다음 전선이 열렸다':'귀환로 개방','coast-boss':'파괴할까, 노획할까','coast-mount':'노획 포탑 확보',control:run.choices.some(c=>c.infernoRank)?'전술과 정비 중 선택':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
  const assembly=type==='assembly',gateAssembly=assembly&&run.choice.gatePrep,gateLevel=type==='level'&&run.choice.gatePrep;
  const back=assembly?run.choices.find(c=>c.kind==='back'):null;
  const capstones=assembly?run.choices.filter(isCapstone):[];
  const other=assembly?run.choices.filter(c=>c!==back&&!isCapstone(c)):[];
  const quality=run.choice.quality,receipt=type==='raid-reward'?`<div class="loot-receipt"><span>걸었던 ${QUALITY[run.choice.wagerQuality]||'기존'} 상자</span><b>→ ${QUALITY[quality]} 보급 탈취</b><small>${run.choice.contract==='light'?'보급차 작업대 · 무기의 발사 방식을 바꿀 기회':'장갑 수송대 · 미완성 병기의 부품을 노린다'}</small></div>`:'',paths=assembly&&!gateAssembly?workshopBlueprints():'';
  const orderArmory=type==='armory'&&run.choice.siteId==='arsenal'&&run.operation?.region===0&&run.operation.order==='convoy'&&!run.raidUsed;
- const gateIntel=atGate?`<div class="gate-intel"><span><small>돌파 전선</small><b>${esc(region(run).name)}</b></span><span><small>목적지</small><b>${esc(REGIONS[run.operation.region+1]?.name||'작전실')}</b></span><span><small>미회수 XP</small><b>${groundXp(run)}</b></span></div>`:'';
+ const gateIntel=atGate?`<div class="gate-intel"><span><small>돌파 전선</small><b>${esc(region(run).name)}</b></span><span><small>다음 전선</small><b>${canAdvanceFront(run)?esc(REGIONS[run.operation.region+1].name):'작전실'}</b></span><span><small>미회수 XP</small><b>${groundXp(run)}</b></span></div>`:'';
+ const transfer=shoreGate?`<div class="front-transfer">${itemArt(run.weapons.some(isCapturedTurret)?'turret':'ammo')}<div><b>${run.weapons.some(isCapturedTurret)?'노획 포탑 이월':coastSalvageWreck(run)?'수송차 잔해에 포탑이 남아 있습니다':'현재 무장 이월'}</b><small>${run.weapons.some(isCapturedTurret)?'정비대의 갈라진 보병 대열을 노리세요.':'철도에서 차선 포격과 양쪽 포대를 상대합니다.'}</small></div></div>`:'';
  const currentKit=type==='level'?`<span class="draft-loadout" aria-label="보유 무장">${run.weapons.map(w=>`<b>${GUNS[w.id].short}${w.fusion?`+${GUNS[w.fusion.secondary].short}`:` L${w.level}`}</b>`).join('')}<small>모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</small></span>`
   :`<span>공격 ${run.weapons.length}/3 · 모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</span>`;
  const compactSkip=coastalService?'<button data-action="skip" aria-label="건너뛰기 · 소량 회복">건너뛰기</button>':'';
- const tools=atGate?gateIntel+gatePace(run.operation,profile().active?.reference)+gatePreparationView():assembly||run.choice.preempt||run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools">${currentKit}<div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>${compactSkip}`:''}</div></div>`;
- const lead=gateLevel?'개조를 확정하면 게이트로 돌아갑니다.':type==='level'?(run.pendingLevels?`대기 개조 ${run.pendingLevels}회 · 전장에서 이어서 사용`:''):atGate?(run.operation.region<2?'전진하거나 현장에 남아 XP를 회수하세요.':'귀환하거나 남아서 추가 점수를 노리세요.'):workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':coastalService?'보급 한 가지 선택':run.choice.preempt?'노획 무장 또는 현장 정비':coastOptions?'무장을 강화하거나 보스 공략을 고르세요.':tacticalLoot?'L2 무장 또는 L1 무장과 수송차 전술':salvage?`${run.choice.source} · 빈 무기 칸에 L${salvage.salvageLevel} 장착`:assembly?'':type==='control'&&run.operation?.region===1&&run.stage==='field'?'중계기 확보 · 포대 조준 중 유인 신호 1회':run.choice.opening?`${beachRoute(run.seed).name} · 현재 위치 기준`:run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차');
- const gateNote=run.pendingLevels?run.operation?.region===2?`귀환 시 미사용 개조 ${run.pendingLevels}회 소멸`:`대기 개조 ${run.pendingLevels}회 · 전진하면 이월`:'잔류하면 증원군이 강해집니다. 게이트는 계속 열려 있습니다.';
- const deck=atGate?gateChoices():assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
+ const tools=atGate?gateIntel+transfer+gatePace(run.operation,profile().active?.reference)+gatePreparationView():carrier||mount||assembly||run.choice.preempt||run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools">${currentKit}<div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>${compactSkip}`:''}</div></div>`;
+ const lead=carrier||mount?'':gateLevel?'개조를 확정하면 게이트로 돌아갑니다.':type==='level'?(run.pendingLevels?`대기 개조 ${run.pendingLevels}회 · 전장에서 이어서 사용`:''):atGate?(railGate?'':canAdvanceFront(run)?'전진하거나 현장에 남아 보급을 회수하세요.':'귀환하거나 남아서 추가 점수를 노리세요.'):workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':coastalService?'보급 한 가지 선택':run.choice.preempt?'노획 무장 또는 현장 정비':coastOptions?'무장을 강화하거나 보스 공략을 고르세요.':tacticalLoot?'L2 무장 또는 L1 무장과 수송차 전술':salvage?`${run.choice.source} · 빈 무기 칸에 L${salvage.salvageLevel} 장착`:assembly?'':type==='control'&&run.operation?.region===1&&run.stage==='field'?'중계기 확보 · 포대 조준 중 유인 신호 1회':run.choice.opening?`${beachRoute(run.seed).name} · 현재 위치 기준`:run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차');
+ const gateNote=run.pendingLevels?!canAdvanceFront(run)?`귀환 시 미사용 개조 ${run.pendingLevels}회 소멸`:`대기 개조 ${run.pendingLevels}회 · 전진하면 이월`:'잔류하면 증원군이 강해집니다. 게이트는 계속 열려 있습니다.';
+ const deck=carrier||mount?ordnanceDeck():atGate?gateChoices():assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
  const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
- panel(`<section class="sheet field-menu${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-  <header><div><span class="eyebrow">${run.choice.opening?'포로 구출 완료':run.choice.preempt?'기습 성공':type==='level'?`LV.${run.level} · 현장 정비`:assembly?`조율권 ${run.tuning}개`:type==='clear'?'게이트 통과':atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+ panel(`<section class="sheet field-menu${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+  <header><div><span class="eyebrow">${carrier?'해안 · 장갑 수송차':mount?'해안 · 노획 병기':run.choice.opening?'포로 구출 완료':run.choice.preempt?'기습 성공':type==='level'?`LV.${run.level} · 현장 정비`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
   ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${deck}${toolsAfterDeck?tools:''}
-  ${coastalService?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
+  ${coastalService||carrier||mount?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
   ${capstones.length?paths:''}
  </section>`);
 }
-function showPause(){panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="pause-title"><span class="eyebrow">작전 일시정지</span><h2 id="pause-title">다음 한 수를 준비하라.</h2><p>${run.operation?`${run.operation.region+1}/3 ${region(run).name} · ${fmt(run.t)} · LV.${run.level}`:'전투 중'}<br>${run.stage==='holdout'?'게이트 개방. 남아서 XP를 회수하거나 게이트로 이동하세요.':region(run).mission}</p>${loadoutChips(run.weapons,run.modules)}<div class="pause-actions"><button class="primary" data-action="continue">전투 이어하기 ▶</button><button data-action="retreat">작전 정산</button></div><div class="pause-secondary">${run.raid?.state==='active'?'<button data-action="withdraw">습격 철수 · 건 상자 소실</button>':''}${run.stage==='holdout'&&(!run.challenge||run.operation&&['complete','failed'].includes(run.challenge.state))?`<button data-action="challenge">${holdoutContract(run).name} · D ${(run.operation?.challengeTier||0)+1}</button>`:''}<button class="text-button" data-action="settings-menu">환경 설정</button></div></section>`);}
+function showPause(){panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="pause-title"><span class="eyebrow">작전 일시정지</span><h2 id="pause-title">다음 한 수를 준비하라.</h2><p>${run.operation?`${run.operation.region+1}/${sortieFrontCount(run)} ${region(run).name} · ${fmt(run.t)} · LV.${run.level}`:'전투 중'}<br>${run.stage==='holdout'?'게이트 개방. 남아서 XP를 회수하거나 게이트로 이동하세요.':region(run).mission}</p>${loadoutChips(run.weapons,run.modules)}<div class="pause-actions"><button class="primary" data-action="continue">전투 이어하기 ▶</button><button data-action="retreat">작전 정산</button></div><div class="pause-secondary">${run.raid?.state==='active'?'<button data-action="withdraw">습격 철수 · 건 상자 소실</button>':''}${run.stage==='holdout'&&(!coastSalvage(run)||isSalvageCampaign(run))&&(!run.challenge||run.operation&&['complete','failed'].includes(run.challenge.state))?`<button data-action="challenge">${holdoutContract(run).name} · D ${(run.operation?.challengeTier||0)+1}</button>`:''}<button class="text-button" data-action="settings-menu">환경 설정</button></div></section>`);}
 function showResult(r=run.result,archived=false){
  const p=profile();
  if(!archived&&r?.runId)r=p.recent.find(x=>x?.runId===r.runId&&isReport(x))||r;
@@ -273,7 +305,7 @@ function showBranches(c,args){
  const gun=GUNS[c.weapon],rank=c.kind==='rank',current=rank&&run.weapons.find(w=>w.id===c.weapon&&!w.fusion),level=rank?rankChoiceLevel(current,c):gunEquipLevel(run,c,run.weapons[args.slot]);
  const branches=Object.entries(gun.branches).map(([id,[name,desc]])=>
   `<button data-branch="${id}" data-branch-style="${id}">
-   <strong>${name}</strong><small>${desc}</small>${branchOutcome(c,id,args)}
+   <strong>${name}</strong><small>${isCapturedTurret(current)&&id==='homing'?'가운데 탄만 추적합니다. 바깥 탄은 부채꼴 사선을 유지합니다.':desc}</small>${branchOutcome(c,id,args)}
   </button>`).join('');
  panel(`<section class="sheet branch-sheet" role="dialog" aria-modal="true" aria-labelledby="branch-title">
   <header class="branch-heading">${itemArt(c.weapon)}<div><span class="eyebrow">${rank?`L${current.level} → L${level}${c.railDonor?' · F 분해':c.coastLevel?` · 조율권 ${COAST_SERVICE_COST}개 사용`:''}`:`개장 · L${level}`}</span><h2 id="branch-title">${gun.name} 분화</h2></div><span class="paused">Ⅱ 정비 중</span></header>
@@ -311,6 +343,8 @@ async function commitDraft(draft,next,launchMode){
   run=draft;saveClock=0;pending=null;
   if(launchMode){
    mode='battle';sortieOrderSelection=null;requisitionSelection=null;requisitionAt=null;document.body.dataset.scene='battle';selectedOperator=operatorId(draft);selectedDoctrine=draft.player.doctrine;$('world').setAttribute('aria-label',`${operatorOf(draft).name}의 빌드 서바이버 전투`);firstBattleFrame=true;pauseQueued||=document.hidden;
+   equippedUntil=0;equippedWeapon=null;
+   const feedback=$('field-feedback');feedback.replaceChildren();feedback.hidden=true;
    if(launchMode==='fallback')notice('전장 원화를 불러오지 못해 기본 표시로 실행합니다.');
   }
   setBusy(false);committingPlay=false;present(true);
@@ -326,7 +360,7 @@ function updatePreparation(count){
  if(!launchPreparation)return;
  const {overlay}=launchPreparation;
  overlay.querySelector('progress').value=count;
- overlay.querySelector('.prep-count').textContent=`전장 원화 ${count}/${MISSION_ART_COUNT} 준비`;
+ overlay.querySelector('.prep-count').textContent=`전장 원화 ${count}/${FIELD_ART_COUNT} 준비`;
 }
 function prepareBattleArt(priority='low'){
  if(artWork)return artWork.promise;
@@ -338,10 +372,12 @@ function prepareBattleArt(priority='low'){
  }
  const work={completed:0,promise:null};
  artWork=work;
- work.promise=loadMissionArt({priority,onProgress:count=>{
+ const onProgress=()=>{
   if(artWork!==work)return;
-  work.completed=count;updatePreparation(count);
- }}).then(art=>{
+  updatePreparation(++work.completed);
+ };
+ work.promise=Promise.all([loadMissionArt({priority,onProgress}),loadFieldArt(priority,onProgress)]).then(([art,fieldArt])=>{
+  Object.assign(art,fieldArt);
   battleArt=art;
   drawPortrait();
   return art;
@@ -354,7 +390,7 @@ function prepareBattleArt(priority='low'){
 function showPreparation(source){
  const overlay=document.createElement('div');
  overlay.className='sortie-prep';
- overlay.innerHTML=`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="prep-title"><span class="eyebrow">01 / 해안 침투</span><h2 id="prep-title" tabindex="-1">해안 상륙 준비</h2><p>전장 원화를 불러오는 중입니다.</p><progress max="${MISSION_ART_COUNT}" value="0" aria-label="전장 원화 준비"></progress><small class="prep-count" role="status"></small><button data-action="cancel-launch">출격 취소</button></section>`;
+ overlay.innerHTML=`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="prep-title"><span class="eyebrow">01 / 해안 침투</span><h2 id="prep-title" tabindex="-1">해안 상륙 준비</h2><p>전장 원화를 불러오는 중입니다.</p><progress max="${FIELD_ART_COUNT}" value="0" aria-label="전장 원화 준비"></progress><small class="prep-count" role="status"></small><button data-action="cancel-launch">출격 취소</button></section>`;
  const covered=[...ui.children].map(node=>({node,inert:node.inert}));
  for(const {node} of covered)node.inert=true;
  ui.prepend(overlay);
@@ -373,6 +409,8 @@ function closePreparation(cancelled=false){
 async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie||null){
  const actor=source.dataset.actor||selectedOperator,requisition=source.dataset.requisition||null;
  const delivery=source.dataset.requisitionAt||null;
+ const coastLoadout=source.dataset.coastLoadout||null;
+ const fullCampaign=source.dataset.action!=='coast-launch'&&!source.hasAttribute('data-legacy-coast');
  if(!Object.hasOwn(OPERATORS,actor))return;
  if(busy||pending||launchPreparation)return;
  if(order&&!canLaunchOrder(profile(),order)){notice('지령 출격 조건을 확인하세요.');return;}
@@ -386,7 +424,7 @@ async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie
   closePreparation();
  }
  const replayFrom=source.dataset.action==='same-seed'&&source.dataset.replayFrom?Number(source.dataset.replayFrom):null;
- const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom,delivery);
+ const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom,delivery,coastLoadout,fullCampaign);
  renderer=createRenderer($('world'),art,combatHud);
  await commitDraft(draft,next,art?'art':'fallback');
 }
@@ -397,7 +435,7 @@ async function selectCard(id,args={}){const c=run.choices.find(c=>c.id===id);if(
  if(c.kind==='gun'&&!c.salvageLevel&&args.slot===undefined&&(run.weapons.length>=3||!run.choice.opening&&run.refits>0&&run.weapons.some(w=>w.level>1&&!w.evolved))){showSlots(c);return;}
  if(c.kind==='module'&&!moduleRank(run,c.module)&&run.modules.length>=4&&args.slot===undefined){showSlots(c);return;}
  const before=run.stats.choices.length,hadHeat=heatSynergyReady(run);
- const openingGun=!!(run.choice.opening&&c.kind==='gun'&&COAST_APPROACHES[c.weapon]);
+ const openingGun=!!((run.choice.opening||run.choice.preempt)&&c.kind==='gun'&&COAST_APPROACHES[c.weapon]);
  unlockSound();
  await mutate(d=>choose(d,id,{...args,doctrine:selectedDoctrine}));
  if(run.stats.choices.length>before&&!pending)equippedFeedback(c,details,openingGun,!hadHeat&&heatSynergyReady(run));
@@ -439,6 +477,11 @@ ui.addEventListener('click',async e=>{
   selectedOperator=button.dataset.pilot;
   nextPanelFocus={scroll:ui.scrollTop,selector:`[data-pilot="${selectedOperator}"]`};showHome();return;
  }
+ if(['standard','turret'].includes(button.dataset.starter)){
+  if(button.dataset.starter==='turret'&&!profile().milestones.coastTurret)return;
+  selectedStarter=button.dataset.starter;
+  nextPanelFocus={scroll:ui.scrollTop,selector:`[data-starter="${selectedStarter}"]`};showHome();return;
+ }
  if(button.dataset.order!==undefined){
   const id=button.dataset.order;
   if(id&&!canLaunchOrder(profile(),id))return;
@@ -477,7 +520,7 @@ ui.addEventListener('click',async e=>{
  const a=button.dataset.action;
  if(a==='replay-brief'){openReplayBriefing(button);return;}
  if(a==='replay-brief-back'){closeReplayBriefing();return;}
- if(a==='launch'){await launch(button);return;}if(a==='same-seed'){const seed=Number(button.dataset.seed);if(Number.isSafeInteger(seed)&&seed>=0&&seed<=4294967295)await launch(button,seed);else notice('지난 전장의 코드를 읽지 못했습니다.');return;}if(a==='home'){if(mode==='report'){closeArchivedReport();return;}lobbyTab=button.dataset.target||'mission';briefRegion=null;showHome();return;}if(a==='settings-menu'){showSettings();return;}if(a==='settings-back'){closeSettings();return;}if(a==='last-report'){const report=profile().recent[0];if(!report?.stats||!Array.isArray(report.weapons)||!Array.isArray(report.modules)){notice('전투 보고서를 읽지 못했습니다.');return;}reportOrigin=null;mode='report';showResult(report,true);return;}
+ if(a==='launch'||a==='coast-launch'){await launch(button);return;}if(a==='same-seed'){const seed=Number(button.dataset.seed);if(Number.isSafeInteger(seed)&&seed>=0&&seed<=4294967295)await launch(button,seed);else notice('지난 전장의 코드를 읽지 못했습니다.');return;}if(a==='home'){if(mode==='report'){closeArchivedReport();return;}lobbyTab=button.dataset.target||'mission';briefRegion=null;showHome();return;}if(a==='settings-menu'){showSettings();return;}if(a==='settings-back'){closeSettings();return;}if(a==='last-report'){const report=profile().recent[0];if(!report?.stats||!Array.isArray(report.weapons)||!Array.isArray(report.modules)){notice('전투 보고서를 읽지 못했습니다.');return;}reportOrigin=null;mode='report';showResult(report,true);return;}
  if(a==='end-saved'){run=restore(profile().active.run);showRetreat(true);return;}
  if(a==='retreat'){showRetreat();return;}if(a==='retreat-cancel'){if(subpanel?.fromHome)showHome();else present(true);return;}if(a==='retreat-confirm'){mode='battle';document.body.dataset.scene='battle';await mutate(d=>d.result?true:finish(d,false));return;}
  if(a==='retry'){const {next,draft,launchMode}=pending;pending=null;await commitDraft(draft,next,launchMode);return;}
@@ -515,11 +558,11 @@ function pauseWhenAway(){
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.suspend();pauseWhenAway();}});
 window.addEventListener('blur',()=>{keys.clear();controls?.reset();pauseWhenAway();});
-function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast,conduit,opening){
+function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast,conduit,opening,response){
  const warnings=run.hazards.filter(h=>!h.hit);
  const railLocked=railDecoyLocked(run);
- const activeFire=warnings.filter(h=>h.lane||h.portRound||h.signalCut||h.portBattery||h.conduitGun).map(h=>`${h.portRound||h.conduitGun||(h.signalCut?'cut':h.portBattery?'battery':'lane')}:${h.x}:${h.y}`).join();
- const key=`${run.seed}:${Math.floor(run.t*5)}:${run.stage}:${run.boss.active?run.boss.mode:''}:${run.operation?.region}:${run.operation?.order}:${run.raid?.state}:${run.challenge?.state}:${!!run.challenge?.secured}:${lead?.id}:${otherCoast?.id}:${!!dispatch}:${!!reserved}:${!!entry}:${!!gantry}:${aid?.state}:${railLocked}:${activeFire}:${!!conduit?.gun}:${!!conduit?.clear}:${!!opening}:${run.sites.map(n=>n.state).join()}`;if(key===mapStamp)return;mapStamp=key;
+ const activeFire=warnings.filter(h=>h.lane||h.portRound||h.signalCut||h.portBattery||h.conduitGun||h.coastMortar==='coast-response').map(h=>`${h.portRound||h.conduitGun||h.coastMortar||(h.signalCut?'cut':h.portBattery?'battery':'lane')}:${h.x}:${h.y}`).join();
+ const key=`${run.seed}:${Math.floor(run.t*5)}:${run.stage}:${run.boss.active?run.boss.mode:''}:${run.operation?.region}:${run.operation?.order}:${run.raid?.state}:${run.challenge?.state}:${!!run.challenge?.secured}:${lead?.id}:${otherCoast?.id}:${!!dispatch}:${!!reserved}:${!!entry}:${!!gantry}:${aid?.state}:${railLocked}:${activeFire}:${!!conduit?.gun}:${!!conduit?.clear}:${!!opening}:${response?.target.id}:${run.sites.map(n=>n.state).join()}`;if(key===mapStamp)return;mapStamp=key;
  const dot=(cls,x,y,r,color,label='')=>`<circle class="${cls}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}"${label?` aria-label="${esc(label)}"`:''}/>`;
  const railLane=(h,forecast=false)=>{
   const {left,top,width,height}=railLaneBounds(h);
@@ -528,10 +571,13 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast,conduit,op
   return `<rect class="${forecast?'map-forecast-lane':'map-danger-lane'}" x="${left}" y="${top}" width="${width}" height="${height}" ${paint} stroke-width="8"><title>${railLaneLabel(h,railLocked)}</title></rect>`;
  };
  let map=terrainSvg(run.operation?.region||0,run.seed)+entryRouteSvg(entry||opening)+railBarragePreview(run).map(h=>railLane(h,true)).join('')
-  +warnings.map(h=>h.lane?railLane(h):dot('map-danger',h.x,h.y,h.portRound||h.signalCut||h.portBattery||h.conduitGun?blastContactRadius(h):h.r,h.portRound==='rake'?'#f99354bb':h.portRound==='turret'?'#f9bf83b0':'#f77e778c',h.signalCut?'차량 진로 포격':h.portBattery||h.conduitGun?'박격포 탄착 범위':h.portRound==='lock'?'집중 포격 조준점':h.portRound==='rake'?'측면 장갑 가로 포격':h.portRound==='battery'?'측면 장갑 세로 포격':h.portRound==='turret'?'포탑 측면 포격':'')).join('');
+  +warnings.map(h=>h.lane?railLane(h):dot('map-danger',h.x,h.y,h.portRound||h.signalCut||h.portBattery||h.conduitGun||h.coastMortar==='coast-response'?blastContactRadius(h):h.r,h.portRound==='rake'?'#f99354bb':h.portRound==='turret'?'#f9bf83b0':'#f77e778c',h.signalCut?'차량 진로 포격':h.portBattery||h.conduitGun||h.coastMortar==='coast-response'?'박격포 탄착 범위':h.portRound==='lock'?'집중 포격 조준점':h.portRound==='rake'?'측면 장갑 가로 포격':h.portRound==='battery'?'측면 장갑 세로 포격':h.portRound==='turret'?'포탑 측면 포격':'')).join('');
  map+=run.blocks.filter(b=>b.hp!==0).map(b=>`<rect class="map-block" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#71837e"/>`).join('');
  map+=run.gems.map(g=>dot('map-xp',g.x,g.y,g.salvage?14:9,g.salvage?'#f5d487':'#a5ddcc')).join('');
+ const target=coastRoleTarget(run)||coastSalvageWreck(run);
+ if(target)map+=dot('map-coast-role',target.x,target.y,37,'#f5d487',target.name||'포탑 노획 지점');
  map+=run.enemies.filter(e=>!e.dead).map(e=>dot('map-enemy',e.x,e.y,e.cohort==='challenge'?24:e.type==='officer'?19:13,e.cohort==='challenge'?'#efb6ff':e.type==='officer'?'#f7b58d':'#d28257')).join('');
+ if(response)map+=dot('map-coast-response',response.target.x,response.target.y,26,'#f4a275',response.name);
  if(conduit?.gun){const {gun,clear}=conduit;map+=dot('map-conduit-gun',gun.x,gun.y,34,clear?'#a4e3e3':'#ffcf9a',clear?'도약 목표 · 박격포':'포격 중인 박격포');}
  map+=run.sites.filter(n=>n.state!=='done').map(n=>dot('map-site',n.x,n.y,n.state==='ready'?36:25,n.kind==='armory'?'#c5a8f5':'#ffe0a1',`${n.name} · ${n.state==='ready'?'회수 가능':n.state==='active'?n.kind==='relay'?`해킹 ${Math.round(n.progress/5*100)}%`:'경비 교전':'미확보'}`)).join('');
  map+=run.sites.filter(n=>n.state!=='done').map(n=>siteSymbol(n,n.x,n.y,22)).join('');
@@ -546,6 +592,11 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast,conduit,op
  }
  if(run.boss.active){const b=run.boss;map+=dot('map-boss',b.x,b.y,50,'#ef8e64',run.operation?region(run).boss:'장갑 수송차')+`<line class="map-boss-facing" x1="${b.x}" y1="${b.y}" x2="${b.x+Math.cos(b.body)*120}" y2="${b.y+Math.sin(b.body)*120}" stroke="#ef8e64" stroke-width="16"/>`;}
  const boss=run.boss;
+ const crossfire=portCrossfireZone(run);
+ if(crossfire&&!portCrossfireCuts(run,boss.mode==='salvo'?boss.cycle:boss.cycle+1)){
+  const {x,y,halfWidth,halfDepth}=crossfire;
+  map+=`<rect x="${x-halfWidth}" y="${y-halfDepth}" width="${2*halfWidth}" height="${2*halfDepth}" fill="#f2cb8f40" stroke="#f2cb8f" stroke-width="8" aria-label="노획 포탑 사격 위치"/>`;
+ }
  const charge=coastChargeLane(run);
  if(charge){
   const x=boss.mode==='charge'?boss.x:charge.x,y=boss.mode==='charge'?boss.y:charge.y;
@@ -596,7 +647,7 @@ const workshopForecasts=new WeakMap();
 function fieldEntry(s){
  const entry=activeEntry(s),inferno=entry&&infernoControlRank(s);
  if(s.operation?.region===2&&entry){
-  const key=portTacticKeys(s).find(id=>['lens','wake','ember'].includes(id));
+  const keys=portTacticKeys(s),key=keys.includes('crossfire')?'crossfire':keys.find(id=>['lens','wake','ember'].includes(id));
   const part=s.operation.support;
   const routes=entry.routes.map(route=>{
    if(route.site==='port-control'&&inferno)return {...route,sign:'관제소 · F L6 또는 보스 전술'};
@@ -608,6 +659,19 @@ function fieldEntry(s){
   return {...entry,routes};
  }
  if(s.operation?.region!==1||!entry)return entry;
+ if(carriesCoastSalvage(s)&&!s.operation.requisition){
+  const fan=s.weapons.some(isCapturedTurret);
+  return {...entry,routes:entry.routes.map(route=>{
+   const spread=route.site==='rail-cache';
+   if(!spread&&route.site!=='rail-relay')return route;
+   const recommended=spread?fan:!fan&&s.weapons.some(w=>w.id==='r'||w.fusion);
+   return {...route,color:spread?'#f4ca87':'#9cd4da',recommended,
+    sign:spread?(fan?'정비대 · 부채꼴 사선':'정비대 · 갈라진 보병'):(recommended?'중계기 · 로켓 사선':'중계기 · 원거리 박격포'),
+    note:spread?'제압 후 화차 정비대 개방':'제압 후 조준 유인 신호 확보',
+    summary:spread?(fan?'정비대 · 부채꼴 포탑 사선':'정비대 · 양쪽 보병')
+     :(fan?'중계기 · 박격포에 접근':'중계기 · 로켓 원거리 공략')};
+  })};
+ }
  const relayRank=infernoControlRank(s);
  const routes=entry.routes.map(route=>route.site==='rail-relay'?{
   ...route,sign:relayRank?`중계기 · 유인 + F L${relayRank} 후보`:'중계기 · 조준 유인',
@@ -664,11 +728,14 @@ function updateHud(entry,focus=null,coast={}){
  const battle=mode==='battle'&&renderer&&run;$('hud').hidden=!battle;$('hud').inert=!!battle&&run.phase!=='playing';$('controls').hidden=!battle||run.phase!=='playing'||!!pending;if(!battle){$('field-feedback').hidden=true;return;}
  const {primary:primaryCoast,fork,lead:coastSite,opening}=coast;
  const p=run.player,actor=operatorOf(run),gantry=portGantry(run),dispatch=orderTarget(run),reserved=requisitionSite(run),order=sortieOrder(run.operation?.order);
+ const salvage=coastSalvage(run),roleTarget=coastRoleTarget(run);
+ document.body.classList.toggle('coast-salvage-run',!!salvage);
  const aid=portAidCue(run),conduit=run.stage==='field'?conduitMortarCue(run):null;
- const preempt=coastPreemptSite(run),rescue=preempt&&run.sites[0];
+ const preempt=coastPreemptSite(run),rescue=preempt&&run.sites[0],response=coastResponseCue(run);
  const openingAlternate=preempt&&(coastSite===preempt?rescue:preempt);
- updateMap(coastSite,entry,gantry,dispatch,reserved,aid,fork?.other||openingAlternate,conduit,opening);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
- document.body.classList.toggle('coast-insertion',!!opening);
+ updateMap(coastSite,entry,gantry,dispatch,reserved,aid,fork?.other||openingAlternate,conduit,opening,response);$('map-panel').querySelector('span').textContent=`${region(run).name} · 작전도`;
+ const firstFire=run.operation?.region===0&&run.stage==='field'&&run.t<(run.openingFireUntil||0);
+ document.body.classList.toggle('coast-insertion',!!opening||firstFire);
  document.body.classList.toggle('coast-lead',!!coastSite);
  document.body.classList.toggle('coast-contact',!!coastSite?.coastApproach&&coastSite.state==='active');
  document.body.classList.toggle('coast-warning',run.operation?.region===0&&run.hazards.some(h=>h.coastMortar&&!h.hit));
@@ -676,8 +743,10 @@ function updateHud(entry,focus=null,coast={}){
  $('kills').textContent=`${run.stats.kills} K.O.`;$('score').textContent=`${run.stats.score.toLocaleString()}점 · 확보 ${operationCredits({operation:run.operation,stats:run.stats,won:false})}C`;$('time').textContent=fmt(run.t);$('xp-fill').style.width=`${run.xp/xpNeeded(run)*100}%`;
  const front=run.operation?.region;
  const localSite=run.stage!=='boss'?run.sites.filter(n=>['active','ready'].includes(n.state)&&distance(n,p)<260).sort((a,b)=>distance(a,p)-distance(b,p))[0]:null;
- document.body.classList.toggle('rail-contact',front===1&&localSite?.state==='active');
+ const railPickup=carriesCoastSalvage(run)&&localSite?.state==='ready';
+ document.body.classList.toggle('rail-contact',front===1&&(localSite?.state==='active'||railPickup));
  const gate=exitGate(run),holdout=!!(gate&&run.operation),interact=interaction(run);
+ document.body.classList.toggle('gate-near',holdout&&interact?.id==='extract'&&run.challenge?.state!=='active');
  document.body.classList.toggle('gantry-near',!!interact?.gantry);
  const bossName=run.operation?region(run).boss:'장갑 수송차';
  const staging=coastStagingPoint(run),partStaging=portPartStaging(run);
@@ -697,22 +766,27 @@ function updateHud(entry,focus=null,coast={}){
   site.coastApproach&&site.coastApproach!==run.firstNew&&site.state==='done'&&coastStrikeArmed(run,site.coastApproach));
  const partGap=partStaging?distance(p,partStaging):Infinity;
  const nearPart=partGap<145&&(!localSite||partGap<distance(p,localSite));
- const next=convoy||gate||(front>0?entrance:null)||(nearPart?bossTarget:null)||(coastSite?.opening?coastSite:dispatch||coastSite)||(prepared&&coastArmed?bossTarget:null)||localSite||reserved||gantry||(focusBoss||prepared&&fork?bossTarget:orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
+ const next=convoy||gate||(front>0||run.stats.coastPreempt?entrance:null)||(nearPart?bossTarget:null)||(coastSite?.opening?coastSite:dispatch||coastSite)||(prepared&&coastArmed?bossTarget:null)||localSite||reserved||gantry||(focusBoss||prepared&&fork?bossTarget:orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
  const choosingEntry=entry?.routes.length&&!raid&&!localSite&&!focusBoss&&!gantry;
  document.body.classList.toggle('rail-fork',front===1&&!!choosingEntry);
  document.body.classList.toggle('harbor-fork',front===2&&(!!choosingEntry||!!partStaging&&next===bossTarget));
  const trackedRoute=next.path?next:entry?.routes.find(route=>route.site===next.id);
  const direction=bearing(p,...(trackedRoute?entryWaypoint(trackedRoute.path,p):[next.x,next.y]));
- $('operation-track').textContent=run.operation?REGIONS.map((d,i)=>`${i<run.operation.region?'✓':i===run.operation.region?'▶':'○'} ${d.name}`).join('  /  '):'';
- $('stage').textContent=run.operation?`${run.operation.region+1}/3 ${region(run).name}${run.stage==='holdout'?' · 돌파 완료':run.stage==='boss'?' · 보스 교전':''}`:run.powerWave&&run.stage==='field'?'POWER TEST / 완성 화력 전개':run.stage==='holdout'?'MISSION CLEAR / 잔류 가능':run.stage==='boss'?'ARMORED CARRIER':'BEACHHEAD / 해안 침투';
+ const track=$('operation-track'),trackKey=run.operation?`${run.runId}:${front}`:'';
+ if(track.dataset.front!==trackKey){
+  track.dataset.front=trackKey;
+  track.innerHTML=run.operation?REGIONS.slice(0,sortieFrontCount(run)).map((d,i)=>
+   `<span class="track-stop"${i===front?' aria-current="step"':i<front?' data-cleared':''}><i aria-hidden="true"></i>${d.name}</span>`).join(''):'';
+ }
+ $('stage').textContent=run.operation?`${run.operation.region+1}/${sortieFrontCount(run)} ${region(run).name}${run.stage==='holdout'?' · 돌파 완료':run.stage==='boss'?' · 보스 교전':''}`:run.powerWave&&run.stage==='field'?'POWER TEST / 완성 화력 전개':run.stage==='holdout'?'MISSION CLEAR / 잔류 가능':run.stage==='boss'?'ARMORED CARRIER':'BEACHHEAD / 해안 침투';
  const wave=run.powerWave,forming=wave?.paired>0&&wave.showcase;
  const showcase=forming||run.enemies.findLast(e=>e.showcase&&!e.dead&&e.hp>0)?.showcase;
  document.body.classList.toggle('capstone-approach',run.stage==='field'&&!!showcase);
  const mounted=showcase&&run.effects.some(f=>f.type==='complete'&&f.showcase);
- const response=showcase&&(showcase==='flame'?(run.weapons.some(isTrailInferno)?'이동해 잔불 연결 · 보병 유도':'밀집 보병까지 접근')
+ const showcaseHint=showcase&&(showcase==='flame'?(run.weapons.some(isTrailInferno)?'이동해 잔불 연결 · 보병 유도':'밀집 보병까지 접근')
   :showcase==='rocket'?'엄폐 밖에서 분산 포격'
   :run.weapons.some(isConductiveFusion)?'두 편대 사선 확보':'화약 원으로 보병 유도');
- const incoming=showcase?`${mounted?(showcase==='rocket'?'폭풍 발사대 · ':'장착 완료 · '):''}${forming&&!showcaseWindow(run)?'재장전 때 후속 편대':response}`:'';
+ const incoming=showcase?`${mounted?(showcase==='rocket'?`${run.weapons.some(w=>w.evolved&&isCapturedTurret(w))?CAPTURED_TURRET.evolution:'폭풍 발사대'} · `:'장착 완료 · '):''}${forming&&!showcaseWindow(run)?'재장전 때 후속 편대':showcaseHint}`:'';
  const reserve=incoming?` · ${incoming}`:wave&&run.stage==='field'?` · 증원 ${wave.remaining}명 남음`:'';
  const objectiveName=next.opening&&run.stats.coastPreempt?'포로 구출 · 선택':next.kind?sitePresentation(next).name:next.name;
  $('objective').textContent=choosingEntry?(entry.routes.length===1?'남은 선택 경로':front===1?'선로 갈림길':'하역장 갈림길'):`${direction} ${objectiveName} · ${Math.round(distance(p,next)/10)}m`;
@@ -723,8 +797,10 @@ function updateHud(entry,focus=null,coast={}){
  const siteHint=coastFight?'':next.state==='active'?next.kind==='relay'?` · ${hacking}`:` · 경비 ${guards}명, 이동하며 제압`:next.state==='ready'?next.kind==='relay'?' · 해킹 완료, 접근해 회수':' · 제압 완료, 접근해 회수':'';
  const cut=run.effects.some(f=>f.conduitCut&&f.type==='barrage-cancel');
  const mortarTime=conduit&&(Math.ceil(conduit.round.timer*10)/10).toFixed(1);
- $('threat').textContent=conduit?`박격포 ${mortarTime}초 · ${conduit.safe?'탄착원 밖':'원 밖으로 회피'}`:cut?'전도 도약 · 포격 차단':incoming&&run.stage==='field'?incoming
-  :`경계 ${run.pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${reserve}`;
+ const threat=$('threat');
+ const pressure=run.pressure>0?`경계 ${run.pressure}`:'';
+ threat.textContent=conduit?`박격포 ${mortarTime}초 · ${conduit.safe?'탄착원 밖':'원 밖으로 회피'}`:cut?'전도 도약 · 포격 차단':response?`${response.name} · ${response.count}명`:incoming&&run.stage==='field'?incoming
+  :`${pressure}${siteHint}${run.challenge?` · 도전${run.challenge.tier||1} ${run.challenge.state==='complete'?'완료':'진행'}`:''}${reserve}`.replace(/^ · /,'');
  const fieldIntel=$('field-intel'),direct=$('field-direct');
  const armory=prepared&&next===bossTarget?run.sites.find(site=>site.kind==='armory'&&site.state!=='done'):null;
  const coastDelivery=front===0&&reserved&&next!==reserved&&!primaryCoast?.opening?reserved:null;
@@ -745,7 +821,7 @@ function updateHud(entry,focus=null,coast={}){
   return rewards.filter(Boolean).join(' · ')||'현장 보급';
  };
  const alternateLabel=preempt&&alternate===preempt?`${sitePresentation(preempt).name} 기습 · ${GUNS[preempt.coastApproach].short} L${COAST_SALVAGE_LEVEL}`
-  :rescue&&alternate===rescue?'포로 구출 · F/R 선택':alternateCoast?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':wireReady?'열차 직행 · 교신 암호':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
+  :rescue&&alternate===rescue?`포로 구출 · ${run.weapons.some(isCapturedTurret)?'F/H':'F/R'} 선택`:alternateCoast?`${sitePresentation(alternate).name} · ${coastReward(alternate)}`:armory?'무기고 경유':alternate===gantry?part==='breach'?'철갑 권장 · 측면 해치':'측면 해치':wireReady?'열차 직행 · 교신 암호':entry?.direct?.sign||(crossDone&&!run.stats.completedBuild?'수송차 직행 · 조립 전':'보스 직행');
  direct.hidden=!((front>0||prepared||fork||crossDone||coastDelivery||openingAlternate)&&run.stage==='field'&&!raid&&next!==alternate);
  direct.dataset.coast=alternateCoast?.coastApproach||'';
  direct.textContent=`${bearing(p,...(alternate.path?entryWaypoint(alternate.path,p):[alternate.x,alternate.y]))} ${alternateLabel} · ${Math.round(distance(p,alternate)/10)}m`;
@@ -753,7 +829,7 @@ function updateHud(entry,focus=null,coast={}){
  if(raid)intel='';
  else if(choosingEntry)intel=entry.routes.map(route=>{
   const plan=railGarrison(run.sites.find(site=>site.id===route.site));
-  return `${bearing(p,...entryWaypoint(route.path,p))} ${route.summary||route.sign}${plan?` · ${plan.crew}`:''}`;
+ return `${bearing(p,...entryWaypoint(route.path,p))} ${route.summary||route.sign}${route.recommended?' · 추천':plan?` · ${plan.crew}`:''}`;
  }).join('\n');
  else if(next===reserved&&front===0){
   const shipment=RESEARCH[run.operation.requisition];
@@ -787,7 +863,13 @@ function updateHud(entry,focus=null,coast={}){
   if(coastSite===preempt&&preempt.state==='waiting'&&!preempt.preempt)intel=interact?.id==='coast-preempt'?'기습으로 경비 유인 · 제압 후 노획':'엄폐를 돌아 거점에 접근';
   else if(coastSite.opening){
    const move=touchLayout.matches?'스틱 이동':'WASD 이동';
-   intel=coastSite.state==='ready'?(run.stats.coastPreempt?'접근해 구출 · 추가 정비':'감옥에 가까이 가면 구출됩니다.'):coastSite.state==='active'?`경비 ${guards}명 제압 후 접근`:`${move} · 사격은 자동`;
+   const role=isSalvageCampaign(run)&&roleTarget&&coastRole(run);
+   const parts=role&&run.operator!=='marco'&&salvage.parts.length;
+   const cue=parts?`${bearing(p,roleTarget.x,roleTarget.y)} 부품 회수 · ${Math.ceil(distance(p,roleTarget)/10)}m`
+    :role&&run.operator==='marco'&&coastSite.state==='active'?'방패 옆에서 자동 사격 · 약점 타격':role?.rescue||'';
+   intel=coastSite.state==='ready'?`${run.stats.coastPreempt?'접근해 구출 · 추가 정비':'감옥에 접근해 구출'}${parts?`\n${cue}`:''}`
+    :coastSite.state==='active'?[`경비 ${guards}명 · 제압 후 감옥 접근`,cue].filter(Boolean).join('\n')
+    :run.stats.coastPreempt?'구출 시 추가 정비':[`${move} · 사격은 자동`,cue].filter(Boolean).join('\n');
   }else if((run.operation?.requisition==='thermal'||run.trials?.includes('thermal'))&&coastSite.coastApproach==='r'&&!moduleRank(run,'coil'))intel='흡열 코일 준비 · 여기서 축전 코일 선택';
   else intel=coastEncounterCue(run,coastSite,coastRocketVolley(run,coastSite),coastRocketCounter(run,coastSite))||(fork?`${coastReward(coastSite)} · ${coastApproach(coastSite).formation}`:coastApproach(coastSite).hint);
  }
@@ -799,6 +881,7 @@ function updateHud(entry,focus=null,coast={}){
  else if(front===2&&run.operation.jammed)intel='통신 교란 중 · 증원 6 → 3';
  const otherMortar=front===0&&run.stage==='field'&&run.hazards.find(h=>h.coastMortar&&h.coastMortar!==coastSite?.id&&!h.hit&&distance(p,h)<blastContactRadius(h));
  if(otherMortar)intel=`박격포 · 탄착원 밖으로 ${(Math.ceil(otherMortar.timer*10)/10).toFixed(1)}초`;
+ else if(response)intel=`${bearing(p,response.target.x,response.target.y)} ${response.hint}`;
  else if(conduit?.gun){
   const direction=bearing(p,conduit.gun.x,conduit.gun.y);
   const flight=run.shots.some(q=>q.conduitGun===conduit.gun.id);
@@ -825,7 +908,7 @@ function updateHud(entry,focus=null,coast={}){
   const contract=holdoutContract(run,active?challenge.tier:undefined);
   pursuit.disabled=!canStartChallenge(run);
   const tier=holdoutTier(run.holdTime),nextWave=Math.ceil(HOLDOUT.grace+tier*HOLDOUT.tierSeconds-run.holdTime);
-  const nearGate=interact?.id==='extract',finalFront=run.operation.region===REGIONS.length-1;
+  const nearGate=interact?.id==='extract',finalFront=!canAdvanceFront(run);
   const contractTier=(run.operation.challengeTier||0)+1;
   const rewardTier=active?challenge.tier:contractTier;
   const rare=!finalFront&&rewardTier===1;
@@ -859,7 +942,8 @@ function updateHud(entry,focus=null,coast={}){
   if(run.raid?.state==='active')detail='습격 종료 후 잔류 도전 가능';
   const target=defending?DEFENSE_ZONE:cargo||courier||battery||quarry;
   const targetName=defending?'중앙 중계기':cargo?'통신 화물':courier?'통신 차량':battery?`${portBatterySide(battery)} 포대`:'지휘관';
-  $('objective').textContent=defending&&(relayGap<=DEFENSE_ZONE.r||relayComplete)?`중계기 송신 · ${relayTime}`:target?`${bearing(p,target.x,target.y)} ${targetName} · ${Math.round(distance(p,target)/10)}m`:nearGate?finalFront?'게이트 · 귀환 또는 잔류':'게이트 · 전진 또는 잔류':`${direction} ${finalFront?'귀환':'전진'} 게이트 · ${Math.round(distance(p,gate)/10)}m`;
+  const gatePrompt=isSalvageCampaign(run)&&front===1?'게이트 · 귀환 또는 전진':finalFront?'게이트 · 귀환 또는 잔류':'게이트 · 전진 또는 잔류';
+  $('objective').textContent=defending&&(relayGap<=DEFENSE_ZONE.r||relayComplete)?`중계기 송신 · ${relayTime}`:target?`${bearing(p,target.x,target.y)} ${targetName} · ${Math.round(distance(p,target)/10)}m`:nearGate?gatePrompt:`${direction} ${gate.name} · ${Math.round(distance(p,gate)/10)}m`;
   const reserveAt=active?challenge.reserveAt:null;
   $('threat').textContent=relayRound&&(relayInterrupted||relayComplete)?`착탄까지 ${(Math.ceil(relayRound.timer*10)/10).toFixed(1)}초`:reserveAt>run.holdTime?`지휘부 역습까지 ${Math.ceil(reserveAt-run.holdTime)}초`:tier===0?`${active&&challenge.type==='hunt'?'정규 공세':'첫 증원'}까지 ${nextWave}초`:tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대 증원`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${nextWave}초`;
   const steps=$('holdout-steps');
@@ -877,10 +961,48 @@ function updateHud(entry,focus=null,coast={}){
  if(p.maneuver)maneuver.textContent=`${MANEUVERS[p.maneuver].name} · ${active?'가동':p.maneuver==='assault'?'회피하며 이동':'정지해 조준'}`;
  const support=FRONT_SUPPORTS[run.operation?.support];
  $('support-status').hidden=!support;
- if(support)$('support-status').textContent=front===2&&part!=='breach'&&Object.hasOwn(PORT_SUPPORT,part)&&!run.boss.active&&run.stage==='field'
-  ?supportTactic(run.operation.support,front):`${support.name} · ${support.role}`;
+ if(support)$('support-status').textContent=carriesCoastSalvage(run)&&front===1&&run.operation.support==='vanguard'?'후송 정비 · 첫 경보 +1초'
+  :front===2&&part!=='breach'&&Object.hasOwn(PORT_SUPPORT,part)&&!run.boss.active&&run.stage==='field'
+   ?supportTactic(run.operation.support,front):`${support.name} · ${support.role}`;
+ if(salvage){
+  const rank=coastRoleRank(salvage),bonus=Math.round(coastRoleBonus(run.operator,rank)*100),wreck=coastSalvageWreck(run),turret=run.boss.parts[0];
+  const name=coastRole(run).name,marco=run.operator==='marco';
+  if(coastAtShore(run)||!support){
+   $('support-status').hidden=false;
+   $('support-status').textContent=`${name} ${salvage.progress}/${COAST_SALVAGE.steps.at(-1)}${rank?marco?` · 관통 피해 +${bonus}%`:` · 발사 간격 −${bonus}%`:''}`;
+  }
+  if(roleTarget&&!isSalvageCampaign(run)){
+   $('objective').textContent=`${bearing(p,roleTarget.x,roleTarget.y)} ${roleTarget.name} · ${Math.round(distance(p,roleTarget)/10)}m`;
+   fieldIntel.hidden=false;
+   fieldIntel.textContent=run.operator==='marco'?'측면으로 돌아 방패 뒤를 쏘세요.':salvage.parts.length?'떨어진 부품에 다가가 회수하세요.':'수송 호위를 제압해 부품을 떨구세요.';
+  }
+  if(coastAtShore(run)&&run.stage==='boss'){
+   $('objective').textContent=coastTurretLane(run)?`포탑 우선 조준 · HP ${Math.ceil(turret.hp/turret.maxHp*100)}%`:'차체 조준 · 측후면 공략';
+   fieldIntel.hidden=false;
+   fieldIntel.textContent=coastTurretLane(run)?'포탑 파괴 시 재장전 탄막 약화':turret.hp>0?coastHullFront(run)?'포탑 보존 중 · 측면으로 돌아 장갑 우회':'포탑 보존 중 · 재장전 때 약점 공략':'포탑 파괴 · 재장전 탄막 약화';
+  }
+  if(gate&&(!isSalvageCampaign(run)||wreck)){
+   pursuit.hidden=true;
+   $('objective').textContent=wreck?`${bearing(p,wreck.x,wreck.y)} 수송차 잔해 · ${salvage.turret==='securing'?`${salvage.work.toFixed(1)} / ${COAST_SALVAGE.seconds}초`:'포탑 분리 가능'}`:
+    `${bearing(p,gate.x,gate.y)} ${gate.name} · ${Math.round(distance(p,gate)/10)}m`;
+   $('pursuit-goal').textContent=wreck?'포탑 노획':canAdvanceFront(run)?salvage.turret==='secured'?'포탑 확보':'철도 전진 가능':'귀환 가능';
+   $('pursuit-intel').textContent=wreck?salvage.turret==='intact'?'잔해에서 행동 · 증원 속 5초 분리':'잔해 가까이에서 분리 진행':canAdvanceFront(run)?'전진 게이트에서 철도로 이동하세요.':'귀환 게이트에서 생존 귀환을 확정하세요.';
+   $('pursuit-pay').textContent=canAdvanceFront(run)?wreck?'분리 후 이번 판 장착':salvage.turret==='secured'?'포탑을 확보한 상태로 철도 진입':'철도 전진 시 현재 무장 이월':wreck?`반출 +${COAST_SALVAGE.credits}C · 부채꼴 포탑`:salvage.turret==='secured'?`게이트로 반출 +${COAST_SALVAGE.credits}C · 부채꼴 포탑`:'';
+   if(salvage.turret==='securing')$('threat').textContent='노획을 막는 증원 접근';
+  }
+ }
  $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
- const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion]),run.modules,run.tuning]);if(key!==inventoryStamp){inventoryStamp=key;$('weapons').innerHTML=run.weapons.map(w=>`<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}">${itemArt(w.id)}<b>${w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:GUNS[w.id].short}</b><small>${w.evolved?capstoneName(w):`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`}</small></div>`).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');$('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');}
+ const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion,isCapturedTurret(w)]),run.modules,run.tuning]);
+ if(key!==inventoryStamp){
+  inventoryStamp=key;
+  $('weapons').innerHTML=run.weapons.map(w=>{
+   const captured=isCapturedTurret(w);
+   const label=w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:captured?'포탑':GUNS[w.id].short;
+   const detail=w.evolved?capstoneName(w):captured?`L${w.level} · 부채꼴`:`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`;
+   return `<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}"${captured?' data-captured':''}>${itemArt(captured?'turret':w.id)}<b>${label}</b><small>${detail}</small></div>`;
+  }).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');
+  $('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');
+ }
  const fusion=run.weapons.find(w=>w.fusion),focused=run.weapons.find(isFocusedInferno),synergy=$('synergy');
  synergy.classList.toggle('conductive',!!fusion);
  synergy.textContent=fusion?.fusion.branch==='incendiary'?`화약탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 유폭 ${run.stats.emberBursts||0}회`:fusion?`연쇄탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 도약 ${run.stats.payloadRelays||0}회`:moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
@@ -995,7 +1117,7 @@ function updateHud(entry,focus=null,coast={}){
    const rake=rounds.some(h=>h.portRound==='rake');
    const cut=boss.armorSuppressedCycle===boss.cycle;
    const warning=!lock?'포격 범위 밖 · 착탄 대기':rake?'가로 포격':rounds.some(h=>h.portRound==='battery')?'세로 포격'
-    :lock.jammed?'관제소 · 발밑 포격':portRelayCuts(run,boss.cycle,'armor')?'전도 · 발밑 포격':cut?'철갑 · 발밑 포격':'발밑 조준 고정';
+    :portCrossfireCuts(run,boss.cycle)?'측면 차단 · 발밑 포격':lock.jammed?'관제소 · 발밑 포격':portRelayCuts(run,boss.cycle,'armor')?'전도 · 발밑 포격':cut?'철갑 · 발밑 포격':'발밑 조준 고정';
    const lanes=portDanger?portEscapeLanes(run,harborWarnings,combatHud.analog):[];
    const escape=lanes.length?`${lanes.map(lane=>lane.label).join('·')}${lanes[0].dy?'로':'으로'} 회피`:'탄착 범위 밖으로';
    const lead=counterCovers&&!counterLeavesDanger?`스킬 · ${counterShort}`:portDanger?escape:warning;
@@ -1008,8 +1130,10 @@ function updateHud(entry,focus=null,coast={}){
   const names=front===1?[railGunLabel(0),railGunLabel(1)]:front===2?['포탑','측면 장갑']:['포탑','궤도'];
   const turretCut=rounds.length&&(boss.emberCycle===boss.cycle||boss.turretSuppressedCycle===boss.cycle);
   const relayCycle=boss.mode==='salvo'?boss.cycle:boss.cycle+1;
-  $('boss-parts').textContent=names.map((name,i)=>{
+  $('boss-parts').textContent=coastAtShore(run)?(boss.parts[0].hp<=0?'포탑 파괴 · 3발 사격':
+   salvage.plan==='capture'?'포탑 보존 · 격파 후 분리':'포탑 우선 조준 · 5발 사격'):names.map((name,i)=>{
    if(boss.parts[i].hp<=0)return `${name} 파괴`;
+   if(front===2&&portCrossfireCuts(run,relayCycle))return `${name} 급탄 차단`;
    if(front===2&&portRelayCuts(run,relayCycle,i===0?'turret':'armor'))return `${i===0?'포탑':'보조포'} ${boss.mode==='salvo'?'전도 차단':'다음 사격 정지'}`;
    if(i===0&&turretCut)return '포탑탄 차단';
    if(front===2&&i===1&&!recovering&&boss.armorSuppressedCycle===(boss.mode==='aim'?boss.cycle+1:boss.cycle))return '보조포 급탄 차단';
@@ -1054,6 +1178,14 @@ function updateHud(entry,focus=null,coast={}){
   if(portTactic==='wake'){
    const hit=run.effects.findLast(f=>f.portWake);
    hint=hit?.text||(active?'냉각 배관 점화 완료':recovering?`${boss.parts[1].ox<0?'왼쪽':'오른쪽'} 배관 옆을 달려 불길 남기기`:'포격 뒤 측면 냉각 배관으로');
+  }
+  if(portTactic==='crossfire'){
+   const zone=portCrossfireZone(run);
+   if(portCrossfireCuts(run,relayCycle))hint=boss.mode==='salvo'?'양쪽 포격 차단 · 발밑 원 회피':'급탄 차단 · 다음 발밑 포격 대비';
+   else if(!zone)hint=boss.parts.some(part=>part.hp<=0)?'남은 장갑을 깨고 차체를 노리세요.':'노획 포탑 장착 필요';
+   else if(!recovering)hint='포격 회피 후 차체 앞 사격선으로';
+   else if(zone.inside)hint=zone.ready?'사선 확보 · 바깥 탄으로 양쪽 직격':'다음 재장전 준비';
+   else hint=`${bearing(p,zone.x,zone.y)} 사격선까지 ${Math.ceil(distance(p,zone)/10)}m · 정면 20m`;
   }
   if(!(front>0)&&boss.mode==='windup'){
    const blockId=boss.chargePath?.blockId;
@@ -1191,11 +1323,16 @@ function processEvents(){
  bannerUntil=run.t+(bannerPriority.includes(fx.type)?2.1:1.5);
  if(fx.type==='region-entry'){
   const kit=FRONT_SUPPORTS[run.operation.support];
-  banner.innerHTML=`<span>전선 ${String(run.operation.region+1).padStart(2,'0')} / 03</span><strong>${esc(region(run).name)}</strong><small>${esc(kit?`${kit.name} 장착 · ${kit.role}`:region(run).mission)}</small>`;
+  const fan=run.weapons.some(isCapturedTurret),railArrival=carriesCoastSalvage(run)&&run.operation.region===1;
+  bannerUntil=run.t+1.15;
+  const message=railArrival&&fan?'포탑 이월 · 화차 정비대':railArrival&&run.operation.support==='breach'?'철갑 급탄 · 통신 중계기':kit?`${kit.name} 장착 · ${kit.role}`:region(run).mission;
+  banner.innerHTML=`<span>전선 ${String(run.operation.region+1).padStart(2,'0')} / ${String(sortieFrontCount(run)).padStart(2,'0')}</span><strong>${esc(region(run).name)}</strong><small>${esc(message)}</small>`;
  }else if(fx.type==='port-hatch'){
   banner.innerHTML='<span>하역장 경비 제압</span><strong>측면 해치 개방</strong><small>초록 경로를 따라 포탑 쪽으로</small>';
  }else if(fx.type==='gate-open'){
-  banner.innerHTML=`<span>${esc(region(run).boss)} 격파</span><strong>${esc(exitGate(run).name)} 개방</strong><small>현장 XP 회수 · ${HOLDOUT.grace}초 후 증원</small>`;
+  banner.dataset.kind='gate-notice';
+  bannerUntil=run.t+1.1;
+  banner.textContent=coastSalvageWreck(run)?'수송차 격파 · 포탑 분리 가능':`${region(run).boss} 격파 · ${exitGate(run).name} 개방`;
  }else{
   banner.textContent=fx.text||({'boss-arrival':region(run).boss,'boss-down':`${region(run).name} 돌파`,'raid-start':'수송대 습격 시작'})[fx.type];
  }
@@ -1229,6 +1366,7 @@ function boot(){
   controls=bindTouchControls({
    stick:$('stick'),actions:{dash:$('dash'),skill:$('skill'),interact:$('interact')},
    canPlay:()=>mode==='battle'&&run?.phase==='playing'&&!busy&&!pending,
+   canMove:()=>mode==='battle'&&run?.phase==='playing'&&!pending&&(!busy||committingPlay),
    canAim:a=>a==='skill'&&run?.operator==='marco',
    canCompleteAim:()=>mode==='battle'&&run?.phase==='playing'&&!pending&&(!busy||committingPlay),
    onMove:v=>{touch=v;},onAim:aim=>{focusGesture=aim;},

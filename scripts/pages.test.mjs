@@ -35,7 +35,7 @@ test('runtime illustrations and font files are served as actual binary assets',a
   assert.equal(images.length,8);
   for(const name of images){const response=await fetch(new URL(`art/v2/${name}`,base)),bytes=new Uint8Array(await response.arrayBuffer());assert.equal(response.status,200,name);assert.deepEqual([...bytes.slice(0,4)],[137,80,78,71],name);}
   for(const name of ['Galmuri11.woff2','Galmuri11-Bold.woff2']){const response=await fetch(new URL(`fonts/woodland/${name}`,base)),bytes=Buffer.from(await response.arrayBuffer());assert.equal(bytes.toString('ascii',0,4),'wOF2',name);}
-  const missionImages=['operators','enemies','vehicles','environment-v014','hangar-v014','vehicle-layers-v015','field-kit-v018','fio-hangar-v033'];
+  const missionImages=['operators','enemies','vehicles','environment-v014','hangar-v014','vehicle-layers-v015','field-kit-v018','fio-hangar-v033','field-materials-v120','rail-boxcar-v120','rail-artillery-v120','port-command-v120'];
   for(const name of missionImages){
     const response=await fetch(new URL(`art/mission/${name}.webp`,base));
     const bytes=Buffer.from(await response.arrayBuffer());

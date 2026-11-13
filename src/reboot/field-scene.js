@@ -7,38 +7,38 @@ const rect=(x,y,w,h,fill)=>({type:'rect',x,y,w,h,fill});
 const path=(points,fill,stroke=null,width=1)=>({type:'path',points,fill,stroke,width});
 const line=(points,stroke,width=1,dash=[])=>({type:'line',points,stroke,width,dash});
 const scenes=[
- {ground:'#ab966c',grain:['#c6ac7b','#6f624a'],water:'#365766',shapes:[
-  path([[0,0],[128,0],[110,245],[165,470],[113,680],[139,883],[234,1030],[415,1080],[610,1064],[833,1095],[1022,1063],[1260,1080],[1460,1040],[1600,1075],[1600,1200],[0,1200]],'#938466'),
-  path([[0,0],[74,0],[68,270],[95,509],[61,692],[90,916],[149,1044],[332,1112],[549,1103],[800,1133],[1028,1113],[1230,1116],[1473,1089],[1600,1113],[1600,1200],[0,1200]],'#a08f6e'),
-  path([[667,1091],[747,930],[738,749],[777,528],[759,319],[800,0],[1042,0],[1020,314],[975,522],[969,752],[1021,938],[1038,1106],[966,1153],[728,1151]],'#948360'),
-  path([[707,1096],[783,923],[780,753],[818,522],[800,311],[830,0],[1007,0],[986,308],[940,521],[927,747],[981,939],[1006,1098],[954,1136],[744,1134]],'#79745e'),
-  line([[855,1111],[876,931],[854,751],[879,524],[888,311],[918,0]],'#c2aa7c',3,[21,27]),
-  rect(160,62,1280,182,'#938367'),line([[160,244],[1440,244]],'#bea879',3,[18,12])
- ],landmarks:[[0,0,18,800,96],[0,0,14,420,80],[0,3,1622,188,120],[0,0,1587,804,86]]},
- {ground:'#4b4840',grain:['#a99873','#282c2a'],water:null,shapes:[
-  rect(80,122,1440,206,'#3c3c33'),rect(642,300,116,900,'#403a2e'),rect(941,270,120,930,'#403a2e'),
-  path([[763,1190],[933,1190],[930,478],[804,505]],'#504b3e'),
-  rect(429,787,179,160,'#6a6551'),rect(439,795,158,142,'#575546'),
-  rect(1080,528,120,130,'#53564c'),line([[1090,650],[1189,650]],'#9a9272',3),
+ {ground:'#b49562',grain:['#d5b584','#6e5b3d'],water:'#285669',shapes:[
+  path([[40,970],[168,986],[278,1052],[421,1084],[596,1079],[774,1104],[964,1082],[1144,1095],[1340,1054],[1560,1080],[1600,1069],[1600,1160],[40,1160]],'#957c55'),
+  path([[40,1050],[169,1061],[291,1115],[465,1111],[594,1115],[777,1131],[968,1119],[1145,1128],[1350,1098],[1519,1110],[1600,1093],[1600,1160],[40,1160]],'#7e7354'),
+  path([[650,1075],[720,915],[716,750],[751,526],[748,321],[777,0],[1044,0],[1034,327],[992,526],[994,746],[1044,944],[1058,1075],[970,1140],[710,1137]],'#a5895d'),
+  path([[704,1089],[769,925],[769,747],[805,522],[791,320],[826,0],[1009,0],[990,310],[954,524],[944,746],[997,939],[1018,1093],[948,1139],[750,1136]],'#817257'),
+  line([[852,1114],[873,932],[854,748],[878,524],[886,322],[918,0]],'#c6ad78',3,[22,28]),
+  rect(160,62,1280,182,'#726c57'),line([[160,244],[1440,244]],'#d1b783',4,[18,12])
+ ],landmarks:[[0,0,18,800,96],[0,0,14,420,80],[0,3,1622,188,120],[0,0,1587,804,86],[0,0,518,1113,136],[0,0,1099,1140,155],[3,1,1109,1133,78]]},
+ {ground:'#53544c',grain:['#a89873','#252d2d'],water:null,shapes:[
+  rect(80,122,1440,206,'#32382f'),rect(642,300,116,900,'#41392e'),rect(941,270,120,930,'#41392e'),
+  path([[763,1190],[933,1190],[930,478],[804,505]],'#615b49'),
+  rect(429,787,179,160,'#8b7f60'),rect(439,795,158,142,'#646b5b'),
+  rect(1080,528,120,130,'#5c6f68'),line([[1090,650],[1189,650]],'#aaa17c',3),
   rect(135,599,495,25,'#59513f'),rect(1070,598,393,25,'#59513f'),
   line([[429,947],[608,947]],'#b8a56b',4),line([[617,810],[617,927]],'#a99461',3,[17,12]),
   line([[770,1156],[940,1156]],'#827759',3,[19,16])
  ],rails:[[[40,180],[1560,180]],[[40,270],[1560,270]],[[700,1190],[700,440],[890,270]],[[1000,1190],[1000,330]]],
- marks:[[510,926,'02'],[1135,634,'04']],landmarks:[[2,1,24,780,100],[2,1,1572,500,110],[1,2,1534,240,160]]},
- {ground:'#43575f',grain:['#a0b4af','#293c45'],water:'#234b5e',shapes:[
-  rect(38,0,81,1160,'#3a5059'),rect(1481,0,81,1160,'#3a5059'),
-  rect(38,943,1524,217,'#4d6468'),rect(570,103,460,305,'#4e6164'),
-  rect(440,855,180,117,'#546b6e'),rect(1115,572,144,156,'#536a6b'),
+ marks:[[510,926,'02'],[1135,634,'04']],landmarks:[[2,1,24,780,100],[2,1,1572,500,110],[1,2,1534,240,160],[2,1,596,1080,82],[2,1,1065,975,87],[2,2,1084,983,57]]},
+ {ground:'#415662',grain:['#9eb6b9','#263744'],water:'#204b61',shapes:[
+  rect(38,0,81,1160,'#344a54'),rect(1481,0,81,1160,'#344a54'),
+  rect(38,943,1524,217,'#536d73'),rect(570,103,460,305,'#607473'),
+  rect(440,855,180,117,'#5b7778'),rect(1115,572,144,156,'#527275'),
   rect(763,210,79,950,'#354951'),
   line([[768,421],[768,1152]],'#8a987e',3,[22,25]),line([[837,432],[837,1152]],'#82947d',3,[22,25]),
   line([[573,407],[766,407]],'#95a08a',3),line([[840,407],[1027,407]],'#95a08a',3),
   line([[438,854],[619,854],[619,959]],'#a8a787',4),line([[1115,729],[1259,729],[1259,578]],'#a8a787',4),
   line([[129,1008],[430,1008]],'#7e9290',2),line([[885,1030],[1465,1030]],'#7e9290',2),
   line([[229,698],[518,698],[518,803]],'#738883',2),line([[1070,416],[1450,416]],'#738883',2),
-  rect(0,0,38,1200,'#234b5e'),rect(1562,0,38,1200,'#234b5e'),rect(0,FIELD.bottom,1600,1200-FIELD.bottom,'#234b5e'),
+  rect(0,0,38,1200,'#204b61'),rect(1562,0,38,1200,'#204b61'),rect(0,FIELD.bottom,1600,1200-FIELD.bottom,'#204b61'),
   rect(38,FIELD.bottom-14,1524,14,'#768d8b'),rect(38,FIELD.bottom-3,1524,3,'#20383f')
  ],marks:[[530,950,'01'],[1187,713,'02'],[971,394,'03']],
- landmarks:[[2,0,15,410,165],[2,0,1590,850,160],[2,3,1570,190,105]]}
+ landmarks:[[2,0,15,410,165],[2,0,1590,850,160],[2,3,1570,190,105],[2,0,448,1151,186],[2,1,1021,1118,88],[2,2,1002,1130,76]]}
 ];
 const mirrorPoints=points=>points.map(([x,y])=>[1600-x,y]);
 const mirrored=scenes.map((scene,index)=>index===0?scene:{...scene,
@@ -66,7 +66,7 @@ export function coastOpeningGuide(s){
  if(rescue?.state!=='waiting'||preempt.state!=='waiting'||preempt.preempt||s.raid?.state==='active')return null;
  return {...fieldScene(0,s.seed).opening,preempt};
 }
-export function previewLayout(seed,index,order=null){return regionLayout(mapSeed(seed,index),index,order);}
+export function previewLayout(seed,index,order=null,salvageRail=false){return regionLayout(mapSeed(seed,index),index,order,salvageRail);}
 export function sitePresentation(n){
  if(n.kind==='relay')return{icon:'relay',name:n.name,verb:'범위 안에서 해킹'};
  if(n.kind==='control')return{icon:'control',name:'항구 관제소',verb:'경비를 제압하라'};
@@ -83,14 +83,34 @@ export function siteSymbol(n,x=n.x,y=n.y,size=23){
  const symbol=t==='workshop'?'<path d="m-12 8 13-13-1-7 7-3-1 7 6 1 4-5 1 8-5 6-7-1-12 13Z"/>':t==='gantry'?'<path d="M-14 12V-10h28v22M-8 4 0-2l8 6M-8 11l8-6 8 6"/>':body;
  return `<g transform="translate(${x} ${y}) scale(${r/18})" fill="#263d35" stroke="${stroke}" stroke-width="3" stroke-linejoin="round">${symbol}</g>`;
 }
-export function terrainSvg(index,seed){const scene=fieldScene(index,seed);return `<rect width="1600" height="1200" fill="${scene.ground}"/>${scene.shapes.map(s=>s.type==='rect'?`<rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" fill="${s.fill}"/>`:`<${s.type==='line'?'polyline':'polygon'} points="${s.points.map(p=>p.join(',')).join(' ')}" fill="${s.fill||'none'}" ${s.stroke?`stroke="${s.stroke}" stroke-width="${s.width}" stroke-dasharray="${s.dash?.join(' ')||''}"`:''}/>`).join('')}${(scene.rails||[]).map(points=>`<polyline points="${points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#adb7a5" stroke-width="16"/><polyline points="${points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#303e39" stroke-width="8"/>`).join('')}`;}
+export function terrainSvg(index,seed){
+ const scene=fieldScene(index,seed);
+ const shapes=scene.shapes.map(s=>{
+  if(s.type==='rect')return `<rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" fill="${s.fill}"/>`;
+  const tag=s.type==='line'?'polyline':'polygon';
+  return `<${tag} points="${s.points.map(p=>p.join(',')).join(' ')}" fill="${s.fill||'none'}" ${s.stroke?`stroke="${s.stroke}" stroke-width="${s.width}" stroke-dasharray="${s.dash?.join(' ')||''}"`:''}/>`;
+ }).join('');
+ const rails=(scene.rails||[]).map(points=>{
+  const geometry=points.map(p=>p.join(',')).join(' ');
+  return `<polyline points="${geometry}" fill="none" stroke="#27302a" stroke-width="58" stroke-linejoin="round"/><polyline points="${geometry}" fill="none" stroke="#a2aa91" stroke-width="31" stroke-linejoin="round"/><polyline points="${geometry}" fill="none" stroke="#414439" stroke-width="18" stroke-linejoin="round"/>`;
+ }).join('');
+ return `<rect width="1600" height="1200" fill="${scene.ground}"/>${shapes}${rails}`;
+}
+function briefingCover(b,index){
+ const {x,y,w,h}=b,roof=index===1?'#68877d':index===2?'#708b90':'#c3b28c';
+ return `<g aria-hidden="true"><rect x="${x+12}" y="${y+11}" width="${w}" height="${h}" fill="#1a25255c"/><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#344843" stroke="#213533" stroke-width="9"/><path d="M${x+7} ${y+7}h${w-14}v${h-30}h-${w-14}Z" fill="${roof}"/></g>`;
+}
 export function gateSymbol({x,y,name}){
  return `<g class="map-exit" transform="translate(${x} ${y})" aria-label="${name}"><rect x="-39" y="-32" width="78" height="64" rx="8" fill="#23473a" stroke="#b8efbd" stroke-width="9"/><path d="m-18 7 18-16 18 16" fill="none" stroke="#b8efbd" stroke-width="8"/></g>`;
 }
 export function entryRouteSvg(entry){
  if(!entry)return '';
  const routes=entry.direct?[entry.direct,...entry.routes]:entry.routes;
- return routes.map(route=>`<polyline data-approach="${route.site}"${route.kind?` data-coast-opening="${route.kind}"`:''} points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="${route.kind?23:13}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${route.kind==='preempt'?'33 14':route.kind==='rescue'?'5 31':'22 18'}" aria-label="${route.sign} 경로"/>`).join('');
+ return routes.map(route=>{
+  const [x,y]=route.path.at(-1),recommended=route.recommended===true;
+  const line=`<polyline data-approach="${route.site}"${route.kind?` data-coast-opening="${route.kind}"`:''} points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="${recommended?30:route.kind?23:13}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${route.kind==='preempt'||recommended?'33 14':route.kind==='rescue'?'5 31':'22 18'}" aria-label="${route.sign} ${recommended?'추천 경로':'경로'}"/>`;
+  return recommended?`${line}<circle cx="${x}" cy="${y}" r="65" fill="none" stroke="${route.color}" stroke-width="18" aria-hidden="true"/>`:line;
+ }).join('');
 }
 export function escapeRouteSvg(route,marker,color,name,dash='12 16'){
  const start=route[0],end=route.at(-1),previous=route.at(-2);
@@ -121,5 +141,5 @@ export function regionPreview(index,seed=17,current=null,order=null,showPreempt=
  const insertion=entryRouteSvg(entry||coastRoutes)||'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';
  const numbers=stops.filter(site=>!showPreempt||site.coastApproach).map(site=>`<g transform="translate(${site.x+52} ${site.y-55})" aria-hidden="true"><circle r="43" fill="${coastLeadColor(site)}" stroke="#263d35" stroke-width="8"/><text y="20" text-anchor="middle" fill="#263d35" font-size="60" font-weight="bold">${site.coastApproach?.toUpperCase()||'1'}</text></g>`).join('');
  const orderPin=index===0?orderPinSvg(map.sites.find(site=>site.id==='arsenal'),order):'';
- return `<svg class="sector-preview" viewBox="0 0 1600 1200" role="img" aria-label="${REGIONS[index].name} · 전장과 같은 지형과 보급 위치">${terrainSvg(index,seed)}${map.blocks.filter(b=>b.hp!==0).map(b=>`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#354a40" stroke="#b6b394" stroke-width="10"/>`).join('')}${gate?gateSymbol(gate):`${insertion}<path d="m800 315-40 60h80Z" fill="#e6a36a"/>`}${map.sites.map(n=>siteSymbol(n,n.x,n.y,40)).join('')}${numbers}${orderPin}<circle cx="${player.x}" cy="${player.y}" r="22" fill="#fff1bf" stroke="#263d35" stroke-width="10"/></svg>`;
+ return `<svg class="sector-preview" viewBox="0 0 1600 1200" role="img" aria-label="${REGIONS[index].name} · 전장과 같은 지형과 보급 위치">${terrainSvg(index,seed)}${map.blocks.filter(b=>b.hp!==0).map(b=>briefingCover(b,index)).join('')}${gate?gateSymbol(gate):`${insertion}<path d="m800 315-40 60h80Z" fill="#e6a36a" stroke="#293532" stroke-width="8"/>`}${map.sites.map(n=>siteSymbol(n,n.x,n.y,40)).join('')}${numbers}${orderPin}<circle cx="${player.x}" cy="${player.y}" r="37" fill="none" stroke="#e2d5a380" stroke-width="6"/><circle cx="${player.x}" cy="${player.y}" r="22" fill="#fff1bf" stroke="#263d35" stroke-width="10"/></svg>`;
 }

@@ -1,4 +1,5 @@
-import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible} from './content.js';
+import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible,CAPTURED_TURRET,isCapturedTurret} from './content.js';
+import {canAdvanceFront,isSalvageCampaign,carriesCoastSalvage} from './coast-salvage.js';
 import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
@@ -117,7 +118,7 @@ function assemblyConsequence(s,c){
 export function choiceDetails(s,c){
  const w=s.weapons.find(w=>w.id===c.weapon&&!w.fusion),out={art:c.weapon||null,title:c.title,impact:c.desc||'',detail:'',link:'',cost:'선택 즉시 적용',before:0,after:0};
  if(c.kind==='rank'&&w){
-  const a=weaponStats(w),b=weaponStats({...w,level:rankChoiceLevel(w,c)});out.before=w.level;out.after=rankChoiceLevel(w,c);out.title=GUNS[w.id].name;
+  const a=weaponStats(w),b=weaponStats({...w,level:rankChoiceLevel(w,c)});out.before=w.level;out.after=rankChoiceLevel(w,c);out.title=isCapturedTurret(w)?CAPTURED_TURRET.name:GUNS[w.id].name;
   const rate=pct(a.damage*a.count/a.interval,b.damage*b.count/b.interval);out.impact=out.after===4?'발사 방식 분화':b.count>a.count?`동시 사격 ${a.count} → ${b.count}발`:b.radius>a.radius?`폭발 반경 +${pct(a.radius,b.radius)}%`:b.range>a.range?`사거리 ${a.range} → ${b.range}`:b.cone>a.cone?`분사각 ${num(a.cone)}° → ${num(b.cone)}°`:rate?`연사 화력 +${rate}%`:'발사 성능 개조';
   out.detail=c.desc||'';const hp=RULES.enemies.rifle.hp*(s.operation?[1,1.35,1.8][s.operation.region]:1)*1.05**Math.min(s.pressure,12),power=1+s.boosts.power*.01,before=Math.ceil(hp/(a.damage*power)),after=Math.ceil(hp/(b.damage*power));
   if(w.id==='h'&&before!==after&&!(s.operation&&s.stage==='holdout'&&holdoutTier(s.holdTime)))out.detail=`일반병 직격 ${before} → ${after}발 · 피해 ${num(a.damage)} → ${num(b.damage)}`;
@@ -194,12 +195,17 @@ export function choiceDetails(s,c){
    out.detail='진화 직후 갈라진 편대가 접근합니다.';
    out.link='엄폐를 돌아 여러 무리의 사선을 여세요.';
   }
+  if(isCapturedTurret(w)){
+   out.impact='부채꼴 5발 → 7발 · 바깥 사선 확장';
+   out.link=isSalvageCampaign(s)?'항구 관제소에서 양쪽 급탄 차단 전술 선택 가능':'중거리에서 두 무리를 부채꼴 안에 두세요.';
+  }
   out.consequence=assemblyConsequence(s,c);
  }else if(c.kind==='fusion'){
-  const branch=s.weapons.find(w=>w.id===c.secondary&&!w.fusion)?.branch,incendiary=branch==='incendiary';
+  const secondary=s.weapons.find(w=>w.id===c.secondary&&!w.fusion),branch=secondary?.branch,incendiary=branch==='incendiary';
   out.title=fusionTitle(c.primary,c.secondary,branch);
   out.art=c.primary;out.impact=incendiary?'보병 둘이 모이면 자동 유폭':'연쇄탄이 두 명을 잡으면 한 번 더 도약';out.detail=incendiary?'보병 한 명이면 화약 원 안을 이동하며 회피해 점화':'첫 연쇄탄 장전 · 탄착원 밖에서 박격포에 도약';out.link='총 두 개를 합치고 무기 한 칸 회수';out.cost='조율권 1개 사용';
   out.consequence=assemblyConsequence(s,c);
+  if(isCapturedTurret(secondary))out.link='노획 포탑 분해 · 부채꼴 사격을 격발망으로 전환';
  }else if(c.kind==='maneuver'){
   const m=MANEUVERS[c.key];out.art=c.key==='assault'?'ammo':'h';out.impact=m.impact;out.detail=m.detail;out.link='다음 전선에도 이어집니다.';out.cost='이번 작전에 하나 · 조율권 소비 없음';
  }else if(c.kind==='permit'){
@@ -212,6 +218,9 @@ export function choiceDetails(s,c){
   out.art=c.infernoRank||['heat','lens','wake'].includes(c.key)?'f':c.key==='signal'||c.key==='ember'?'coil':'ammo';
   out.cost='';
   if(tactic){out.detail=tactic.hint;out.link='포격 주기마다 1회';}
+  if(c.key==='crossfire'){
+   out.art='turret';out.link='발밑 포격과 후속 탄막은 계속 발사';
+  }
   if(c.infernoRank){
    out.detail='이 보급을 고르면 이번 전선의 보스 전술을 포기합니다.';
    out.link=c.infernoRank===6?'L6 장착 후 조율권 1개로 인페르노 조립':'F L5 장착 · 인페르노까지 한 단계';
@@ -221,6 +230,9 @@ export function choiceDetails(s,c){
   const index=s.operation.region+1;
   const effect=index===2?PORT_SUPPORT[c.key]||kit:kit;
   out.art=kit.art;out.impact=effect.impact.replaceAll('전탄',chargeLabel(s));out.detail=effect.detail.replaceAll('전탄',chargeLabel(s));out.link=supportTactic(c.key,index);out.cost=`${REGIONS[index].name}에서만 장착`;
+  if(index===1&&c.key==='breach'&&carriesCoastSalvage(s)){
+   out.impact='직접 사격 부위 피해 +30%';out.detail='가까운 열차 포대를 우선 조준합니다.';
+  }
   if(index===2&&c.key==='breach'){
    const turret=portTurretSide(regionBoss(2,s.seed));
    out.impact=`${portSideName(turret)} 포탑 · ${portSideName(-turret)} 보조포`;
@@ -259,12 +271,22 @@ export function choiceDetails(s,c){
   out.cost=aid?changes.join(' · '):'현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){
+  if(c.id==='carry:turret'){out.impact='현재 무장 유지';out.detail='철도 보스 격파 후 포탑 반출';return out;}
+  if(s.operation?.coastSalvage&&(!isSalvageCampaign(s)||c.title!=='전장 복귀 · XP 회수')){out.impact=c.desc;out.detail=c.desc;out.link=canAdvanceFront(s)?'전진 게이트는 열려 있습니다.':'귀환 게이트는 열려 있습니다.';return out;}
   const active=s.challenge?.state==='active';
   out.title=active?'진행 중인 도전 계속':'전장 복귀 · XP 회수';
   out.impact=active?holdoutContract(s).name:'바닥 XP 회수';
   out.detail=active?`D${s.challenge.tier} · ${out.impact}`:`남은 바닥 XP ${groundXp(s)}`;
   out.link='게이트는 계속 열려 있습니다.';out.cost='';
  }
+ else if(c.kind==='coast-boss'){
+  const breakTurret=c.id==='coast:break',rail=carriesCoastSalvage(s);
+  out.impact=breakTurret?'재장전 탄막 5발 → 3발':'5발 탄막 유지 · 차체 조준';
+  out.detail=breakTurret?(rail?'철갑 급탄 또는 후송 정비를 받아 철도로 전진':'격파 뒤 바로 귀환 가능')
+   :'격파 뒤 증원 속에서 5초간 포탑 분리';
+  out.link=breakTurret?'':rail?'철도에서 발사 · 생존 귀환 시 시작 무장 해금':'+40C · 귀환 시 시작 무장 개방';
+ }
+ else if(c.kind==='coast-mount'){out.detail=c.detail;out.link='철도 정비대에서 양쪽 대열을 함께 공격';out.cost='이번 판 무장 변경';}
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}
  else if(c.kind==='extract'){out.impact='이번 작전을 정산';out.detail=c.desc||'';out.link=s.raid?.state==='active'?'진행 중인 습격 철수 · 건 상자 소실':signalCargo(s)?'잔해의 미회수 화물을 두고 귀환':s.challenge?.state==='active'?'진행 중인 잔류 도전 종료':'크레딧·연구·기록 유지';out.cost='다음 판은 해안 · LV.1에서 시작';}
  return out;

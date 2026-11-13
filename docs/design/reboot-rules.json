@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b48-coast-preempt",
+  "balanceRevision": "b52-coast-role-rescue",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",

@@ -1,10 +1,10 @@
 // Each control owns its pointer. A right-thumb tap must never release movement.
-export function bindTouchControls({stick,actions,canPlay,onMove,onAction,onUnlock=()=>{},canAim=()=>false,onAim=()=>{},canCompleteAim=canPlay}){
+export function bindTouchControls({stick,actions,canPlay,onMove,onAction,onUnlock=()=>{},canAim=()=>false,onAim=()=>{},canCompleteAim=canPlay,canMove=canPlay}){
  let owner=null;const removers=[];
  const listen=(el,type,handler)=>{el.addEventListener(type,handler);removers.push(()=>el.removeEventListener(type,handler));};
  function update(event){if(event.pointerId!==owner)return;const box=stick.getBoundingClientRect(),x=event.clientX-box.left-box.width/2,y=event.clientY-box.top-box.height/2,length=Math.hypot(x,y),force=Math.min(1,Math.max(0,(length-7)/31)),reach=Math.min(34,length);stick.firstElementChild.style.transform=`translate(${x/(length||1)*reach}px,${y/(length||1)*reach}px)`;onMove({x:x/(length||1)*force,y:y/(length||1)*force});}
  function release(event){if(event&&event.pointerId!==owner)return;const old=owner;owner=null;stick.classList.remove('active');stick.firstElementChild.style.transform='';onMove({x:0,y:0});if(old!==null)try{stick.releasePointerCapture(old);}catch{}}
- listen(stick,'pointerdown',event=>{if(!canPlay()||owner!==null||event.button>0)return;event.preventDefault();owner=event.pointerId;try{stick.setPointerCapture(owner);}catch{}stick.classList.add('active');update(event);onUnlock();});
+ listen(stick,'pointerdown',event=>{if(!canMove()||owner!==null||event.button>0)return;event.preventDefault();owner=event.pointerId;try{stick.setPointerCapture(owner);}catch{}stick.classList.add('active');update(event);onUnlock();});
  listen(stick,'pointermove',event=>{if(event.pointerId===owner){event.preventDefault();update(event);}});
  for(const type of ['pointerup','pointercancel','lostpointercapture'])listen(stick,type,release);
  const resets=[release];

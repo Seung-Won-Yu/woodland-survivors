@@ -328,7 +328,7 @@ test('unreadable historical reports cannot crash archive or report navigation',(
 
 import {choiceDetails,isQuickMod} from '../src/reboot/choice-details.js';
 import {fieldScene,sitePresentation,regionPreview,previewLayout,coastOpeningGuide,entryRouteSvg} from '../src/reboot/field-scene.js';
-import {paintBlock} from '../src/reboot/field-art.js';
+import {paintBlock,coverDepth,coverMasksPilot} from '../src/reboot/field-art.js';
 import {FIELD} from '../src/reboot/content.js';
 import {snapshot} from '../src/reboot/model.js';
 
@@ -363,11 +363,28 @@ test('briefings show matching seeded arrival routes and mirror the railway',()=>
  assert.deepEqual(fieldScene(1,19).rails[2][0],[900,1190]);
  assert.deepEqual(fieldScene(1,58).rails[2][0],[700,1190]);
  const rail17=lobbyView(emptyProfile(),{brief:1,seed:17}),rail19=lobbyView(emptyProfile(),{brief:1,seed:19});
- assert.match(rail17,/화차 정비대 · 방패 검문/);assert.match(rail17,/통신 중계기 · 박격포 경계/);
- assert.match(rail19,/화차 정비대 · 박격포 경계/);assert.match(rail19,/통신 중계기 · 방패 검문/);
+ for(const html of [rail17,rail19]){
+  assert.match(html,/화차 정비대 · 갈라진 보병/);
+  assert.match(html,/통신 중계기 · 집중 박격포/);
+ }
+});
+test('a rail report can start a new sortie or replay with the turret originally selected',()=>{
+ const p=emptyProfile();p.milestones.coastTurret=true;
+ const {run,next}=freshSortie(p,17,null,'fio',null,null,null,'turret',true);
+ Object.assign(run.operation,{region:1,cleared:2});
+ Object.assign(run.operation.coastSalvage,{turret:'broken',extracted:true});
+ finish(run,false,'rail-return');
+ const saved=settleProfile(next,run),r=saved.recent[0];
+ const lobby=lobbyView(saved,{seed:r.seed,loadout:'turret'});
+ assert.equal([...lobby.matchAll(/data-action="launch"/g)].length,1);
+ assert.match(lobby,/data-starter="turret" aria-pressed="true"/);
+ assert.match(reportView(r,saved),/철도 돌파[\s\S]*노획 포탑으로 출격/);
+ assert.match(replayBriefingView(r,saved),/data-action="same-seed"[^>]*data-coast-loadout="turret"/);
+ assert.doesNotMatch(replayBriefingView(r,saved),/박격포 진지 기습/);
 });
 test('briefings share distinct field terrain and recognizable site symbols',()=>{
- assert.equal(fieldScene(0).water,'#365766');assert.ok(fieldScene(1).rails.length);assert.equal(fieldScene(1).water,null);assert.equal(fieldScene(2).water,'#234b5e');
+ assert.ok(fieldScene(0).water&&fieldScene(2).water&&fieldScene(0).water!==fieldScene(2).water);
+ assert.ok(fieldScene(1).rails.length);assert.equal(fieldScene(1).water,null);
  const run=createOperation(17),html=regionPreview(0,17);for(const site of run.sites)assert.ok(html.includes(`translate(${site.x} ${site.y})`));
  assert.equal(sitePresentation(run.sites[0]).name,'포로 구출');assert.equal(sitePresentation(run.sites[1]).icon,'truck');
 });
@@ -407,6 +424,8 @@ test('the launch briefing offers rescue and the seeded nearby outpost before the
  assert.match(seed25,/박격포 진지 기습<\/strong><span>↖ 박격포 2문 제압<\/span><small>R L2 노획/);
  const lobby=lobbyView(emptyProfile(),{seed:22});
  assert.ok(lobby.indexOf(seed22)<lobby.indexOf('data-action="launch"'));
+ assert.match(lobby,/data-rescue-role="fio">호위가 떨어뜨린 부품 회수/);
+ assert.match(lobbyView(emptyProfile(),{seed:22,operator:'marco'}),/data-rescue-role="marco">방패병 옆으로 돌아 약점 타격/);
  assert.doesNotMatch(lobbyView(emptyProfile(),{seed:22,brief:1}),/class="coast-plan"/);
 });
 test('the harbor quay follows the field boundary and bay marks follow mirrored loading sites',()=>{
@@ -425,6 +444,19 @@ test('the same harbor container uses the same art and depth limit on both mirror
   const [scale,draw]=calls.splice(0);
   assert.equal(draw.sprite,100);
   assert.ok(Math.abs(draw.height*scale.scale-(b.h+40))<1e-9);
+ }
+});
+test('rail wagon art projects north of its footprint and fades on the walkable side',()=>{
+ for(const seed of [17,18]){
+  const b=previewLayout(seed,1).blocks.find(block=>block.id==='r1');
+  const sprite={},draws=[];
+  const context={save(){},restore(){},drawImage(...args){draws.push(args);}};
+  paintBlock(context,b,1,{railWagon:sprite});
+  const depth=coverDepth(b,1);
+  assert.deepEqual(draws,[[sprite,b.x,b.y-depth,b.w,b.h+depth]]);
+  assert.ok(coverMasksPilot(b,1,{x:b.x+b.w/2,y:b.y-20}));
+  assert.equal(coverMasksPilot(b,1,{x:b.x+b.w+20,y:b.y-20}),false);
+  assert.equal(coverMasksPilot(b,1,{x:b.x+b.w/2,y:b.y-depth-1}),false);
  }
 });
 

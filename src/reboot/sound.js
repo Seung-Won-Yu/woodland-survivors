@@ -2,6 +2,7 @@ import {RIFT_BOSS_CUES,selectAudioEvents} from '../game/audio.js';
 
 const fieldCues={
  shot:'swarm-shot','rocket-shot':'scatter-shot','focus-shot':'focus-shot',flame:'flame-loop',
+ 'captured-volley':'turret-volley','carrier-volley':'turret-volley','captured-impact':'turret-impact',
  heat:'heat-break','fire-spread':'fire-spread','payload-impact':'conduit-impact','payload-relay':'conduit-hop','ember-burst':'heat-break',
  kill:'wood-kill',impact:'rifle-hit',explosion:'power-kill','charge-impact':'slam','salvo-impact':'power-kill','armor-impact':'guard-block',
  complete:'forge-evolve',skill:'burst',choose:'choose','boss-arrival':'boss-arrival',
@@ -9,7 +10,7 @@ const fieldCues={
  heal:'heal',break:'crowd-break','xp-pickup':'xp'
 };
 const capstoneContacts=new Set(['heat-break','conduit-hop','conduit-impact','conduit-transfer']);
-const weaponCasts=new Set(['focus-shot','inferno-jet','flame-loop','scatter-shot','swarm-shot']);
+const weaponCasts=new Set(['focus-shot','inferno-jet','flame-loop','turret-volley','scatter-shot','swarm-shot']);
 
 export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  const warning=events.has('boss-charge')?'coast-charge':RIFT_BOSS_CUES.find(cue=>events.has(cue))||(events.has('warning')?'mortar-lock':null);

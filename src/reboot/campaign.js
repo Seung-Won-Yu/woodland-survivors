@@ -1,5 +1,6 @@
-import {FIELD,MODULES,INFERNO_CORE_DISTANCE,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
+import {FIELD,MODULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
 import {routeCursor} from './raid.js';
+import {COAST_SALVAGE,coastAtShore,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,canAdvanceFront,railSortieReturned} from './coast-salvage.js';
 
 export const REGIONS=[
  {id:'beach',name:'해안 침투',mission:'장갑 수송차를 격파하고 철도로 진입하라',boss:'장갑 수송차',hp:4200,partHp:450,theme:{ground:'#a49874',tile:'#c0ae88',road:'#59584a',edge:'#415d69'},hint:'해변에서 무기를 확보하고 분화를 정하세요.'},
@@ -40,7 +41,7 @@ export function holdoutParts(seed,front){
  const missing=(((seed^(seed>>>16))>>>0)+front*2+2)%RARE_PARTS.length;
  return RARE_PARTS.filter((_,index)=>index!==missing);
 }
-export const canAdvanceWithVanguard=s=>s.operation?.region<2&&s.stage==='holdout'&&s.holdTime<HOLDOUT.grace&&!s.challenge&&!s.operation.nextSupport;
+export const canAdvanceWithVanguard=s=>canAdvanceFront(s)&&!isCoastRailSortie(s)&&!(isSalvageCampaign(s)&&coastAtShore(s))&&s.stage==='holdout'&&s.holdTime<HOLDOUT.grace&&!s.challenge&&!s.operation.nextSupport;
 export function vanguardAid(player){
  const kit=FRONT_SUPPORTS.vanguard;
  return {
@@ -51,6 +52,15 @@ export function vanguardAid(player){
 export const PORT_TURRET={shutterDamage:.16};
 export const PORT_BARRAGE={warning:.95,radius:58,batteryOffset:114,turretOffset:116,turretSpread:54};
 export const PORT_CENTER={x:800,y:390};
+export const PORT_CROSSFIRE={distance:208,halfWidth:24,halfDepth:12,flightLead:.42};
+export const portCrossfireCuts=(s,cycle)=>s.operation?.tactic==='crossfire'&&s.boss.crossfireCycle===cycle;
+export function portCrossfireZone(s){
+ const b=s.boss;
+ if(s.operation?.region!==2||s.operation.tactic!=='crossfire'||!b.active||b.dead||b.parts.some(p=>p.hp<=0)||!s.weapons.some(isCapturedTurret))return null;
+ const {distance:gap,halfWidth,halfDepth,flightLead}=PORT_CROSSFIRE;
+ const x=b.x,y=b.y+gap,inside=Math.abs(s.player.x-x)<=halfWidth&&Math.abs(s.player.y-y)<=halfDepth;
+ return {x,y,halfWidth,halfDepth,inside,ready:inside&&b.mode==='recover'&&b.timer>=flightLead&&!portCrossfireCuts(s,b.cycle+1)};
+}
 export function portBarrageAxis(s,cycle){
  const gantry=s.operation.portEntry==='gantry';
  return (cycle%2===0)===gantry?'horizontal':'vertical';
@@ -59,14 +69,16 @@ export const portJamsSweep=(s,cycle)=>s.operation.jammed&&cycle===(s.operation.p
 export const portRelayCuts=(s,cycle,part)=>s.operation?.region===2&&s.operation.support==='overrun'
  &&s.boss.harborRelayPart===part&&s.boss.harborArcCycle+1===cycle
  &&(part!=='armor'||portBarrageAxis(s,cycle)!=='horizontal'||!portJamsSweep(s,cycle));
-export function portAuxiliaryRound(s,cycle){
+export function portAuxiliaryRound(s,cycle,applyCrossfire=true){
+ if(applyCrossfire&&portCrossfireCuts(s,cycle))return null;
  if(s.boss.parts[1].hp<=0||s.boss.armorSuppressedCycle===cycle||portRelayCuts(s,cycle,'armor'))return null;
  if(portBarrageAxis(s,cycle)==='vertical')return 'battery';
  return portJamsSweep(s,cycle)?null:'rake';
 }
 export const portBarrageMark=(axis,side)=>axis==='horizontal'?'↑↓':side>0?'←':side<0?'→':'←→';
-export function portBarrageRounds(s,cycle){
- const {boss:b,player:p}=s,plan=PORT_BARRAGE,auxiliary=portAuxiliaryRound(s,cycle),rounds=[];
+export function portBarrageRounds(s,cycle,applyCrossfire=true){
+ const {boss:b,player:p}=s,plan=PORT_BARRAGE,auxiliary=portAuxiliaryRound(s,cycle,applyCrossfire),rounds=[];
+ const crossfire=applyCrossfire&&portCrossfireCuts(s,cycle);
  const push=(dx,dy,portRound)=>rounds.push({
   x:clamp(p.x+dx,FIELD.left,FIELD.right),y:clamp(p.y+dy,FIELD.top,FIELD.bottom),r:plan.radius,portRound
  });
@@ -74,7 +86,7 @@ export function portBarrageRounds(s,cycle){
  for(const side of [-1,1]){
   if(auxiliary==='rake')push(side*plan.batteryOffset,0,auxiliary);
   else if(auxiliary==='battery')push(0,side*plan.batteryOffset,auxiliary);
-  if(b.parts[0].hp>0&&b.emberCycle!==cycle&&!portRelayCuts(s,cycle,'turret'))push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
+  if(!crossfire&&b.parts[0].hp>0&&b.emberCycle!==cycle&&!portRelayCuts(s,cycle,'turret'))push(portTurretSide(b)*plan.turretOffset,side*plan.turretSpread,'turret');
  }
  return rounds;
 }
@@ -330,13 +342,17 @@ export const FRONT_TACTICS={
   wake:{name:'냉각 배관 점화',role:'연료 살포 · 측면 우회',impact:'재장전 중 배관에 불길이 닿으면 장갑 또는 차체 피해 180',hint:'포격 뒤 표시된 냉각 배관 옆을 달려 지나가세요.',damage:180},
   signal:{name:'포탑 교신 탈취',role:'전도 · 원거리 제압',impact:'원거리 적중 · 포탑 전류 도약',hint:'붉은 원 밖에서 사격하면 증원을 최소 3초 늦춥니다.',range:220,hop:280,delay:3},
   lens:{name:'코어 재장전 지연',role:'압축 분사 · 사선 유지',impact:'코어 직격으로 재장전 +0.8초',hint:'포격 뒤 중거리에서 멈춰 압축 분사를 코어에 맞히세요.',delay:.8},
-  ember:{name:'포탑 급탄선 단선',role:'점화 탄두 · 포탑 유폭',impact:'포탑 옆 유폭 · 이번 또는 다음 포탑탄 차단',hint:'살아 있는 포탑과 보병 한 명을 화약에 넣으세요.'}
+  ember:{name:'포탑 급탄선 단선',role:'점화 탄두 · 포탑 유폭',impact:'포탑 옆 유폭 · 이번 또는 다음 포탑탄 차단',hint:'살아 있는 포탑과 보병 한 명을 화약에 넣으세요.'},
+  crossfire:{name:'양쪽 급탄 차단',role:'노획 포탑 · 정면 중거리',impact:'한 번에 두 부위 직격 · 다음 양측 포격 차단',hint:'재장전 중 차체 앞 20m 사격선에 서면 부채꼴 바깥 탄이 두 부위를 노립니다.'}
  }
 };
 export const frontTactic=s=>FRONT_TACTICS[s.operation?.region]?.[s.operation?.tactic];
 export function portTacticKeys(s){
  const fire=s.weapons.some(isFocusedInferno)?'lens':s.weapons.some(isTrailInferno)?'wake':'heat';
  const incendiary=s.weapons.some(w=>w.fusion?.branch==='incendiary');
+ if(isSalvageCampaign(s)&&s.weapons.some(isCapturedTurret))return [
+  'crossfire',...(s.weapons.some(w=>w.id==='f')?[fire]:[]),...(s.weapons.some(w=>w.fusion)?[incendiary?'ember':'signal']:[])
+ ];
  return [fire,incendiary?'ember':'signal'];
 }
 const PORT_COUNTERBATTERY={id:'battery',name:'포격 진지 제압',goal:'양쪽 박격포 2문 제압',risk:'교차 포격 · 엄폐를 돌아 한 문씩'};
@@ -400,7 +416,9 @@ export function gatePosition(s){
 }
 export function exitGate(s){
  if(s.stage!=='holdout')return null;
- return s.operation?{...(s.operation.gate||gatePosition(s)),name:s.operation.region<2?'전진 게이트':'귀환 게이트'}:{x:800,y:420,name:'귀환 출구'};
+ if(!s.operation)return {x:800,y:420,name:'귀환 출구'};
+ const name=isSalvageCampaign(s)&&s.operation.region===1?'철도 게이트':canAdvanceFront(s)?'전진 게이트':'귀환 게이트';
+ return {...(s.operation.gate||gatePosition(s)),name};
 }
 export function holdoutTier(time){
  return time<HOLDOUT.grace?0:Math.min(HOLDOUT.maxTier,1+Math.floor((time-HOLDOUT.grace)/HOLDOUT.tierSeconds));
@@ -415,14 +433,29 @@ const BEACH_ROUTES=[
 export const beachRoute=seed=>BEACH_ROUTES[(seed>>>0)%BEACH_ROUTES.length];
 export const COAST_PREEMPT_RANGE=155;
 export const COAST_PREEMPT_ESCORT=[['shield',0,35,42],['rifle',-47,-22],['rifle',47,-22]];
+export const COAST_RESPONSE={
+ f:{name:'보급차 역습',hint:'옆에서 호위를 모아 분사',reach:194,
+  guards:[['shield',-30,0],['rifle',-8,-33],['rifle',-8,33],['rifle',24,-25],['rifle',24,25]]},
+ r:{name:'포대 반격',hint:'거리를 두고 포대에 로켓',reach:244,
+  guards:[['mortar',14,0],['rifle',-23,-29],['rifle',-23,29],['rifle',21,-40],['rifle',21,40]]}
+};
+export function coastResponseCue(s){
+ const gun=s.stats.coastResponse;
+ if(s.operation?.region!==0||s.stage!=='field'||!Object.hasOwn(COAST_RESPONSE,gun))return null;
+ const guards=s.enemies.filter(e=>!e.dead&&e.hp>0&&e.coastResponse===gun&&distance(e,s.player)<430);
+ const target=guards.find(e=>e.type===(gun==='r'?'mortar':'shield'))||guards[0];
+ return target?{gun,target,count:guards.length,...COAST_RESPONSE[gun]}:null;
+}
 export function coastPreemptGun(seed){
  const [,truck,,battery]=beachRoute(seed).points;
  const gap=([x,y])=>Math.hypot(x-800,y-1040);
  return gap(truck)<gap(battery)?'f':'r';
 }
 export function coastPreemptSite(s){
- if(s.operation?.region!==0||s.stage!=='field'||s.operation.order||s.operation.requisition||s.operation.trialProof||s.trials?.length||s.firstNew||s.sites[0]?.state==='done')return null;
- return s.sites.find(site=>site.coastApproach===coastPreemptGun(s.seed)&&site.state!=='done')||null;
+ if(s.operation?.region!==0||s.stage!=='field'||coastAtShore(s)&&!isSalvageCampaign(s)||s.operation.order||s.operation.requisition||s.operation.trialProof||s.trials?.length||s.firstNew||s.sites[0]?.state==='done')return null;
+ const gun=coastPreemptGun(s.seed);
+ if(s.weapons.some(w=>w.id===gun&&!w.fusion))return null;
+ return s.sites.find(site=>site.coastApproach===gun&&site.state!=='done')||null;
 }
 export const COAST_APPROACHES={
  f:{name:'이동 보급차',label:'화염 · 근접 돌파',formation:'밀집 호위',hint:'붙어서 호위를 함께 태우기',module:'catalyst',range:215,
@@ -452,7 +485,7 @@ export function coastMortarWait(s,e){
  const overlap=COAST_MORTAR.warning-COAST_MORTAR.spacing;
  return s.hazards.reduce((wait,h)=>h.coastMortar===e.siteId&&!h.hit?Math.max(wait,h.timer-overlap):wait,0);
 }
-export const coastMortarAiming=(s,e)=>e.cohort==='coast-guard'&&e.type==='mortar'&&!e.dead
+export const coastMortarAiming=(s,e)=>(e.cohort==='coast-guard'||e.coastResponse==='r')&&e.type==='mortar'&&!e.dead
  &&e.timer<=COAST_MORTAR.tell&&coastMortarWait(s,e)<=COAST_MORTAR.tell
  &&Math.hypot(e.x-s.player.x,e.y-s.player.y)<COAST_MORTAR.range;
 export const coastMortarThreatens=(s,site)=>s.hazards.some(h=>h.coastMortar===site.id&&!h.hit
@@ -561,6 +594,13 @@ export function coastEncounterCue(s,site,volley,counter){
 }
 export const mapSeed=(seed,index)=>seed+index*7919;
 export const RAIL_GARRISONS={
+ spread:{name:'갈라진 보병',crew:'보병',unit:'명',type:'rifle',range:225,hint:'열린 쪽에서 양쪽 대열을 부채꼴 안에 두세요.',guards:[
+  ['rifle',-77,4,27],['rifle',-90,-24,27],['rifle',-69,-40,27],['rifle',-86,-57,27],
+  ['rifle',77,4,27],['rifle',90,-24,27],['rifle',69,-40,27],['rifle',86,-57,27]
+ ]},
+ battery:{name:'집중 박격포',crew:'박격포',unit:'문',type:'mortar',range:300,hint:'선로를 따라 긴 사선을 잡아 뒤쪽 포대를 먼저 치세요.',guards:[
+  ['rifle',-24,45],['rifle',24,45],['rifle',-22,15],['mortar',-20,-131],['mortar',24,-131]
+ ]},
  shield:{name:'방패 검문',crew:'방패병',unit:'명',range:215,hint:'방패병 옆으로 돌아 사선을 여세요.',guards:[
   ['shield',-36,55],['shield',36,55],['rifle',-41,22],['rifle',41,22],['rifle',-24,-23],['rifle',24,-23]
  ]},
@@ -569,8 +609,10 @@ export const RAIL_GARRISONS={
  ]}
 };
 export const railGarrison=site=>Object.hasOwn(RAIL_GARRISONS,site?.guardPlan)?RAIL_GARRISONS[site.guardPlan]:null;
-export const railCrewLeft=(s,site)=>railGarrison(site)
- ?s.enemies.filter(e=>!e.dead&&e.siteId===site.id&&e.type===site.guardPlan).length:0;
+export function railCrewLeft(s,site){
+ const garrison=railGarrison(site);
+ return garrison?s.enemies.filter(e=>!e.dead&&e.siteId===site.id&&e.type===(garrison.type||site.guardPlan)).length:0;
+}
 export const relayCrewLeft=(s,site)=>wireGarrison(s,site)
  ?s.enemies.filter(e=>!e.dead&&e.hp>0&&e.siteId===site.id&&e.type==='mortar').length:railCrewLeft(s,site);
 const ENTRY={
@@ -655,7 +697,7 @@ export function entryWaypoint(path,p){
  }
  return best<=145?next:path.at(-1);
 }
-export function regionLayout(seed,index=0,order=null){
+export function regionLayout(seed,index=0,order=null,salvageRail=false){
  const map=layout(seed);
  if(index===0){
   const route=beachRoute(seed);
@@ -671,8 +713,8 @@ export function regionLayout(seed,index=0,order=null){
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});
  const mortarAtWorkshop=(seed>>>1&1)!==0;
  if(index===1)return {...map,sites:[
-  {id:'rail-cache',kind:'supply',name:'화차 정비대',...landing(0),guardPlan:mortarAtWorkshop?'mortar':'shield',state:'waiting'},
-  {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),guardPlan:mortarAtWorkshop?'shield':'mortar',state:'waiting',progress:0},
+  {id:'rail-cache',kind:'supply',name:'화차 정비대',...landing(0),guardPlan:salvageRail?'spread':mortarAtWorkshop?'mortar':'shield',state:'waiting'},
+  {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),guardPlan:salvageRail?'battery':mortarAtWorkshop?'shield':'mortar',state:'waiting',progress:0},
   {id:'arsenal',kind:'armory',name:'선로 정비창',...p(350,430),state:'waiting'},
   {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1160,300),state:'waiting'}
  ],blocks:[block('r1',640,730,100,185),block('r2',640,385,100,180),block('r3',950,600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};
@@ -724,7 +766,7 @@ export function operationPayout(r,firstWin=false,proofs=completedResearchProofs(
  if(!r.operation)return {credits:0,lines:{}};
  const s=r.stats,lines={
   fronts:[90,120,180].slice(0,r.operation.cleared).reduce((a,b)=>a+b,0),
-  extraction:r.won?120:0,
+  extraction:r.won?120:railSortieReturned(r)?60:0,
   combat:Math.floor(Math.min(s.kills,900)/15)+Math.min(s.elites,9)*10,
   supply:Math.min(s.sitesCleared||0,6)*40,
   raids:Math.min(s.raidSuccess,3)*40,
@@ -734,6 +776,7 @@ export function operationPayout(r,firstWin=false,proofs=completedResearchProofs(
   order:orderBonus(r)
  };
  if(proofs.length)lines.trial=proofs.length*RESEARCH_PROOF_CREDITS;
+ if(coastTurretReturned(r))lines.turret=COAST_SALVAGE.credits;
  return {credits:Object.values(lines).reduce((total,value)=>total+value,0),lines};
 }
 export const operationCredits=(r,firstWin=false)=>operationPayout(r,firstWin).credits;

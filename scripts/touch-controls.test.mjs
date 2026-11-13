@@ -12,6 +12,16 @@ test('movement keeps its pointer while a second finger taps an action immediatel
 test('an extra joystick finger or unrelated cancel cannot steal or stop movement',()=>{const q=setup();q.stick.send('pointerdown',{pointerId:4,clientX:95});q.stick.send('pointerdown',{pointerId:5,clientX:0});q.stick.send('pointercancel',{pointerId:5});assert.ok(q.moves.at(-1).x>0);q.stick.send('lostpointercapture',{pointerId:4});assert.deepEqual(q.moves.at(-1),{x:0,y:0});assert.equal(q.stick.firstElementChild.style.transform,'');});
 test('phase reset releases movement and action presses; menus and disabled skills reject input',()=>{const q=setup();q.stick.send('pointerdown',{clientX:99});q.skill.send('pointerdown',{pointerId:2});q.controls.reset();assert.deepEqual(q.moves.at(-1),{x:0,y:0});assert.equal(q.stick.captured.size,0);assert.equal(q.skill.captured.size,0);assert.equal(q.skill.classes.has('pressed'),false);q.setPlaying(false);q.dash.send('pointerdown');assert.deepEqual(q.actions,['skill']);q.setPlaying(true);q.skill.disabled=true;q.skill.send('pointerdown',{pointerId:3});assert.deepEqual(q.actions,['skill']);});
 test('keyboard activation remains available and thumb dead zone avoids accidental drift',()=>{const q=setup();q.dash.send('click',{detail:0});assert.deepEqual(q.actions,['dash']);q.stick.send('pointerdown',{clientX:60,clientY:59});assert.deepEqual(q.moves.at(-1),{x:0,y:0});});
+test('movement can latch during a checkpoint while actions remain suspended',()=>{
+ const q=setup({canMove:()=>true});
+ q.setPlaying(false);
+ q.stick.send('pointerdown',{pointerId:10,clientX:99});
+ q.dash.send('pointerdown',{pointerId:20});
+ assert.deepEqual(q.actions,[]);
+ q.setPlaying(true);
+ q.stick.send('pointermove',{pointerId:10,clientY:20});
+ assert.ok(q.moves.at(-1).y<-.8);
+});
 test('a skill drag aims on release without taking the movement pointer',()=>{
  const aims=[],shots=[],q=setup({canAim:a=>a==='skill',onAim:a=>aims.push(a),onAction:(a,input)=>shots.push({a,input})});
  q.stick.send('pointerdown',{pointerId:10,clientX:94});

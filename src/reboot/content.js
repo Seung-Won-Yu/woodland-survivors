@@ -9,6 +9,15 @@ export const INFERNO_WAKE={spacing:96,radius:70,life:2.3,dps:56,limit:4,flashDam
 export const isConductiveFusion=w=>w?.id==='h'&&w.fusion?.secondary==='r'&&w.fusion.branch==='homing';
 export const CONDUIT_MORTAR={warning:1.35,radius:52,setback:84,relayReach:370};
 export const EMBER_CHARGE={impactScale:.65,arm:.45,life:3.2,damage:105};
+export const COAST_FAN={count:5,brokenCount:3,step:.19};
+export const CAPTURED_TURRET={
+ name:'노획 포탑',evolution:'광각 포탑',speed:510,
+ damage:[34,36,39,39,46,54],interval:[1.24,1.2,1.16,1.16,1.08,1],
+ range:[300,312,326,326,342,350],radius:[25,28,31,31,34,39],
+ evolved:{count:7,damage:58,interval:.92,range:385,radius:44}
+};
+export const coastFanAngle=(index,count)=> (index-(count-1)/2)*COAST_FAN.step;
+export const isCapturedTurret=w=>w?.id==='r'&&w.capturedTurret===true&&!w.fusion;
 export const GUNS={
  h:{name:'기관총 H',short:'H',color:'#ffcf75',branches:{ricochet:['산개 도탄','탄이 다른 적에게 한 번 더 튕깁니다.'],grenade:['유탄 급탄','8번 발사마다 폭발 유탄을 함께 발사합니다.']},evolution:'사중 기관포'},
  r:{name:'로켓 R',short:'R',color:'#ff9567',branches:{homing:['추적 다탄두','탄두가 살아 있는 적을 추적합니다.'],incendiary:['점화 탄두','폭발한 자리에 연소 구역을 남깁니다.']},evolution:'폭풍 발사대'},
@@ -16,6 +25,7 @@ export const GUNS={
 };
 export function capstoneName(w){
  if(w.fusion)return fusionName(w.fusion.branch);
+ if(isCapturedTurret(w))return CAPTURED_TURRET.evolution;
  return w.id==='f'&&w.branch==='focused'?'압축 인페르노':GUNS[w.id].evolution;
 }
 const fusionName=branch=>branch==='incendiary'?'점화 격발망':branch==='homing'?'전도 격발망':'격발망';
@@ -144,6 +154,11 @@ export function completionModules(s){
  return [...needs.keys()];
 }
 export function weaponStats(w){
+ if(isCapturedTurret(w)){
+  const spec=CAPTURED_TURRET,index=w.level-1;
+  return {count:COAST_FAN.count,damage:spec.damage[index],interval:spec.interval[index],range:spec.range[index],
+   radius:spec.radius[index],speed:spec.speed,cone:0,...(w.evolved?spec.evolved:null)};
+ }
  const d=RULES.weapons[w.id],i=(w.fusion?6:w.level)-1,e=w.evolved&&!w.fusion?d.evolution:null;
  let damage=e?.damage??d.damage[i],interval=e?.interval??d.interval[i],count=e?.count??d.count[i],range=Array.isArray(d.range)?d.range[i]:d.range,cone=d.coneDegrees||0;
  if(w.id==='f'){range+=e?.rangeAdded||0;cone+=e?.coneAdded||0;if(w.branch==='focused'){range+=d.branchB.rangeAdded;cone*=d.branchB.coneMultiplier;damage*=d.branchB.damageMultiplier;}}
