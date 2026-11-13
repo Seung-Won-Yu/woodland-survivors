@@ -139,7 +139,8 @@ export function entryRouteSvg(entry){
   const line=`<polyline data-approach="${route.site}"${route.kind?` data-coast-opening="${route.kind}"`:''} points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="${recommended?30:route.kind?23:13}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${route.kind==='preempt'||recommended?'33 14':route.kind==='rescue'?'5 31':'22 18'}" aria-label="${route.sign} ${recommended?'추천 경로':'경로'}"/>`;
   if(route.fan){
    const {x,y,dx,dy}=route.fan,angle=Math.atan2(-dy,-dx)*180/Math.PI;
-   return `${line}<g data-rescue-fan transform="translate(${x} ${y}) rotate(${angle})" aria-label="포탑 사격 위치"><rect x="-36" y="-31" width="72" height="62" fill="#2d3629" stroke="${route.color}" stroke-width="9"/><path d="M-15 0H22M-15 0 20-17M-15 0 20 17" stroke="${route.color}" stroke-width="8"/></g>`;
+   const marker=route.site==='rail-cache'?'data-workshop-fan':'data-rescue-fan';
+   return `${line}<g ${marker} transform="translate(${x} ${y}) rotate(${angle})" aria-label="포탑 사격 위치"><rect x="-36" y="-31" width="72" height="62" fill="#2d3629" stroke="${route.color}" stroke-width="9"/><path d="M-15 0H22M-15 0 20-17M-15 0 20 17" stroke="${route.color}" stroke-width="8"/></g>`;
   }
   return recommended?`${line}<circle cx="${x}" cy="${y}" r="65" fill="none" stroke="${route.color}" stroke-width="18" aria-hidden="true"/>`:line;
  }).join('');

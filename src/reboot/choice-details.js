@@ -195,7 +195,7 @@ export function choiceDetails(s,c){
   if(c.kind==='module'&&!c.id?.startsWith('requisition:')&&!compatible(s,c.module)){
    return {...out,blocked:true,impact:'호환 무장 필요',detail:'현재 무장으로 장착할 수 없습니다.',link:'',cost:''};
   }
-  if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
+  if(c.module==='shrapnel'){out.impact='폭발 외곽에 파쇄탄 3발';out.detail='포탑·로켓·유탄·합체 연쇄탄 · 파편당 피해 20 · 재사용 0.65초';}
   out.cost=c.kind==='tune'?'조율권 1개 사용':g.current?`${g.current} → ${g.next}강화 · 같은 칸 유지${g.charge?` · 초과 충전 +${g.charge}`:''}`:`새 모듈 ${g.next}강화 · ${s.modules.length<4?'모듈 한 칸 사용':'기존 모듈 교체'}`;
   const proof=s.operation?.trialProof&&s.trials.includes(c.module)&&RESEARCH_PROOFS[c.module];
   if(proof)out.link=`${proof.label} · 실증 +${RESEARCH_PROOF_CREDITS}C`;

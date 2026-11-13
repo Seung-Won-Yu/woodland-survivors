@@ -334,10 +334,10 @@
  :is(.rail-fork,.rail-contact,.harbor-fork) #map-panel{width:84px;justify-self:end}
  :is(.rail-fork,.rail-contact,.harbor-fork) #field-feedback,.rail-contact #banner[data-kind="region-entry"]{visibility:hidden}
  .rail-fork #banner[data-kind="region-entry"]{clip-path:inset(50%)}
- .rail-fork .arsenal{max-width:calc(100% - 24px)}
- .rail-fork .arsenal :is(.weapon.empty,#modules,#support-status){display:none}
- .rail-fork .arsenal .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
- .rail-fork .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
+ :is(.rail-fork,.rail-contact) .arsenal{max-width:calc(100% - 24px)}
+ :is(.rail-fork,.rail-contact) .arsenal :is(.weapon.empty,#modules,#support-status){display:none}
+ :is(.rail-fork,.rail-contact) .arsenal .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
+ :is(.rail-fork,.rail-contact) .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
  .harbor-fork #banner[data-kind="region-entry"]{clip-path:inset(50%)}
  .boss-active #combo{top:auto;bottom:130px;right:16px}
  .boss-active .arsenal .weapon.empty{display:none}
@@ -812,6 +812,9 @@
 .sortie-briefing .replay-launch-options small{display:block;margin-top:2px;color:inherit;font-size:10px}
 .sortie-briefing .replay-starters button{display:flex;align-items:center;gap:6px}
 .sortie-briefing .replay-starters .kit-sprite{flex:0 0 28px;width:28px;height:26px}
+.research-sortie-briefing:has(.shrapnel-route) .replay-starters button{display:flex;align-items:center;gap:6px}
+.research-sortie-briefing:has(.shrapnel-route) .replay-launch-options small{display:block;color:inherit;font-size:10px}
+.research-sortie-briefing .replay-starters .kit-sprite{flex:0 0 28px;width:28px;height:26px}
 .sortie-briefing .coast-plan{margin-top:9px}
 .replay-opening{--order-ink:#f3d28a;margin-top:8px;padding:7px 8px;background:#1b2e29;border:1px solid #657961}
 .replay-opening[data-opening-theme="f"]{--order-ink:#ffc795}
@@ -1096,6 +1099,15 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .front-transfer > div {flex:1;min-width:0}
 .front-transfer > button {flex:none;min-height:44px;padding:4px 10px;border:1px solid #e1ba79;background:#edc988;color:#26332d;font-size:12px;font-weight:bold}
 .front-transfer > button:is(:hover,:focus-visible) {background:#ffe6ae;color:#1c2e27}
+.front-transfer[data-mount-forward] {
+ display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:9px 12px;padding:8px 10px;
+ border:1px solid #a48050;border-left:4px solid #f4ca87;
+ background:linear-gradient(100deg,#3a3225,#232e26);color:#ffdf9c;
+}
+.front-transfer[data-mount-forward] > .kit-sprite {width:56px;height:48px;background-color:#1b2722}
+.front-transfer[data-mount-forward] small {color:#e3d4ad}
+.front-transfer[data-mount-forward] > button {padding-inline:12px;background:#f0cb88;border-color:#f8da9d;box-shadow:0 2px #171f1c}
+.front-transfer[data-mount-forward] > button:is(:hover,:focus-visible) {background:#ffe6ae}
 .shore-transfer #interact {
  --gate-color:var(--transfer-ink,#f4ca87);
  min-width:166px;min-height:52px;padding:6px 11px;text-align:left;
@@ -1203,7 +1215,7 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 #boss-tactic[data-fan-line] {color:#ffdf9c}
 #boss-state[data-rail="fan"],#boss-state[data-rail="cut"]{color:#ffdf9c}
 #boss-state[data-rail="decoy"]{color:#bee9db}
-.front-transfer:is([data-transfer="mounted"],[data-transfer="cargo"],[data-transfer="wreck"]) {background:#373d30;color:#ffdf9c}
+.front-transfer:not([data-mount-forward]):is([data-transfer="mounted"],[data-transfer="cargo"],[data-transfer="wreck"]) {background:#373d30;color:#ffdf9c}
 .front-transfer[data-transfer="broken"]{border-left-color:#accdd2;background:#243b3a;color:#cfebea}
 .salvage-report .salvage-cut {color:#f3d698}
 .salvage-report[data-outcome="rail-demolition"] {--salvage-ink:#b7e2df;border-left-color:var(--salvage-ink)}
@@ -1339,6 +1351,9 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .front-transfer b{font-size:13px;line-height:1.4}
  .front-transfer small{font-size:10px}
  .front-transfer > button{padding-inline:7px;font-size:11px}
+ .front-transfer[data-mount-forward] {grid-template-columns:48px minmax(0,1fr);gap:6px 9px}
+ .front-transfer[data-mount-forward] > .kit-sprite {width:48px;height:42px}
+ .front-transfer[data-mount-forward] > button {grid-column:1/-1;font-size:13px}
 }
 @media(max-width:700px) and (orientation:portrait) {
  .shore-transfer .field-stack{right:12px;grid-template-columns:minmax(0,1fr) 84px;align-items:start}

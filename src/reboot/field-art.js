@@ -424,18 +424,20 @@ export function paintEntryRoutes(c,entry){
    }
    c.restore();
   }
-  if(route.fanCount){
-   const [[x,y],[tx,ty]]=route.path;
-   const heading=Math.atan2(ty-y,tx-x);
-   c.save();c.translate(x+Math.cos(heading)*76,y+Math.sin(heading)*76);c.rotate(heading);
-   c.fillStyle='#202a25e6';c.fillRect(-22,-19,44,38);
-   c.strokeStyle=route.color;c.lineWidth=1.5;c.strokeRect(-21,-18,42,36);
-   c.lineWidth=2.5;
-   for(const offset of [-.45,0,.45]){
-    c.save();c.rotate(offset);c.beginPath();
-    c.moveTo(-9,0);c.lineTo(12,0);c.moveTo(6,-4);c.lineTo(12,0);c.lineTo(6,4);c.stroke();
-    c.restore();
+  if(route.fan&&route.site==='rail-cache'){
+   const {x,y}=route.fan;
+   c.save();c.translate(x,y);
+   c.fillStyle='#1a2522e8';c.fillRect(-25,-21,50,42);
+   c.strokeStyle=route.color;c.lineWidth=3;
+   for(const side of [-1,1]){
+    c.beginPath();c.moveTo(side*16,19);c.lineTo(side*24,19);c.lineTo(side*24,-19);c.lineTo(side*16,-19);c.stroke();
    }
+   c.beginPath();
+   for(const spread of [-15,0,15]){
+    c.moveTo(0,12);c.lineTo(spread,-11);
+   }
+   c.stroke();
+   c.fillStyle='#fff0b9';c.fillRect(-3,10,6,5);
    c.restore();
   }
  }

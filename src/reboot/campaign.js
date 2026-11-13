@@ -1,4 +1,4 @@
-import {FIELD,MODULES,RULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance,railSpareForFlame} from './content.js';
+import {FIELD,MODULES,RULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,moduleRank,rayBoxDistance,railSpareForFlame} from './content.js';
 import {routeCursor} from './raid.js';
 import {COAST_SALVAGE,coastAtShore,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,canAdvanceFront,railSortieReturned} from './coast-salvage.js';
 
@@ -583,9 +583,10 @@ export function coastLead(s){
  if(s.operation.openingGun&&rescue&&rescue.state!=='waiting'&&distance(rescue,s.player)<120)return rescue;
  if(preempt&&(s.operation.openingGun||distance(preempt,s.player)<COAST_PREEMPT_RANGE||preempt.preempt&&distance(preempt,s.player)<260))return preempt;
  if(rescue)return rescue;
- if(s.firstNew==='h'&&isSalvageCampaign(s)&&s.operation.coastSalvage.loadout==='turret'&&s.weapons.some(isCapturedTurret)){
+ if(isSalvageCampaign(s)&&s.operation.coastSalvage.loadout==='turret'&&s.weapons.some(isCapturedTurret)){
   const battery=s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
-  if(battery&&(coastService(s,battery)||moduleRank(s,'coil')<2&&!s.excluded.includes('coil')))return battery;
+  const trial=s.trials?.includes('shrapnel')&&!s.excluded.includes('shrapnel')&&!moduleRank(s,'shrapnel');
+  if(battery&&(trial||s.firstNew==='h'&&(coastService(s,battery)||moduleRank(s,'coil')<2&&!s.excluded.includes('coil'))))return battery;
  }
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
  const coilSite=coastalThermalPrep(s)&&s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
@@ -630,7 +631,7 @@ export function coastEncounterCue(s,site,volley,counter){
   const salvage=coastCrossGun(s,site);
   if(salvage)return `접근해 회수 · ${salvage.toUpperCase()} L${COAST_SALVAGE_LEVEL}${coastTacticalLootAvailable(s,site)?' / L1 전술':''}`;
   const service=coastService(s,site);
-  if(service&&site!==requisitionStation(s))return `접근해 회수 · ${service.weapon.id.toUpperCase()} L${service.level} 정비`;
+  if(service&&site!==requisitionStation(s))return `접근해 회수 · ${isCapturedTurret(service.weapon)?'포탑':service.weapon.id.toUpperCase()} L${service.level} 정비`;
   return `접근해 회수 · ${MODULES[approach.module].name} 후보`;
  }
  if(site.state!=='active')return null;
@@ -735,8 +736,11 @@ export function activeEntry(s){
   if(!site)return [];
   if(site.id==='rail-cache'){
    const sign=s.operation.requisition?'정비대 · 예약품':route.sign;
-   if(site.guardPlan==='spread'&&site.state==='waiting'&&s.weapons.some(isCapturedTurret)){
-    return [{...route,sign,path:railWorkshopEntry(route,entry.arrival)}];
+   const liveWings=site.state==='waiting'||site.state==='active'&&[0,1].every(wing=>
+    s.enemies.some(e=>e.siteId===site.id&&e.railWing===wing&&!e.dead&&e.hp>0));
+   if(site.guardPlan==='spread'&&liveWings&&!s.stats.railFanSweep&&s.weapons.some(isCapturedTurret)){
+    const fan={x,y:y+RAIL_GARRISONS.spread.range-15,dx:0,dy:1};
+    return [{...route,sign,path:railWorkshopEntry(route,entry.arrival),fan}];
    }
    if(s.operation.requisition)return [{...route,sign}];
   }
@@ -763,7 +767,7 @@ export function activeEntry(s){
  const linkedRoutes=origin?routes.map(route=>{
   if(route.site!==(origin==='rail-relay'?'rail-cache':'rail-relay'))return route;
   const from=stop(origin),to=route.path.at(-1);
-  const crossY=route.site==='rail-cache'&&s.weapons.some(isCapturedTurret)?to[1]+244:transferY;
+  const crossY=route.fan?to[1]+244:transferY;
   return {...route,path:[from,[from[0],crossY],[to[0],crossY],to]};
  }):routes;
  const ammo=s.sites.find(site=>site.id==='rail-ammo'&&site.state!=='done');
@@ -819,7 +823,7 @@ export function regionLayout(seed,index=0,order=null,salvageRail=false){
 export function regionBoss(index,seed=1){const d=REGIONS[index],turretSide=index===2&&seed%2===0?1:-1;return{id:'boss',type:'boss',x:800,y:180,hp:d.hp,maxHp:d.hp,r:index===1?76:65,active:false,dead:false,body:Math.PI/2,aim:Math.PI/2,mode:'aim',timer:1.3,cycle:0,spawnClock:4,kick:0,flash:0,parts:[{id:'part-a',type:'part',ox:60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25},{id:'part-b',type:'part',ox:-60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25}]};}
 export const RESEARCH={
  medic:{name:'응급 주사기',cost:300,condition:'첫 작전 완주',detail:'정예를 잡으면 체력12 회복 · 재사용12초. 보급 후보로 추가되며 모듈 한 칸을 씁니다.',fieldBrief:'포로 구출 보상에서 장착하고, 정예를 제압해 체력을 회복하세요.',fitting:'정예 제압으로 발동'},
- shrapnel:{name:'분열 수류탄',cost:350,condition:'전도 합체로 보스 격파',detail:'유탄·로켓·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.',fieldGun:'r',fieldBrief:'로켓을 확보하세요. 박격포 진지에서 분열 수류탄과 축전 코일이 함께 후보에 오릅니다.',fitting:'유탄·로켓·합체 연쇄탄에서 발동'},
+ shrapnel:{name:'분열 수류탄',cost:350,condition:'격발망 합체로 보스 격파',detail:'포탑·로켓·유탄·합체 연쇄탄에서 파쇄 폭발 3개 · 재사용 0.65초. 모듈 한 칸을 씁니다.',fieldGun:'r',fieldBrief:'로켓이나 노획 포탑으로 시험합니다. 박격포 진지에서 분열 수류탄과 축전 코일 중 하나를 고르세요.',fitting:'포탑·로켓·유탄·합체 연쇄탄에서 발동'},
  thermal:{name:'흡열 코일',cost:350,condition:'인페르노로 보스 격파',detail:'불붙은 적에 전기가 적중하면 전탄 충전+2 · 재사용0.25초. 화염과 코일이 필요합니다.',fieldGun:'f',fieldBrief:'F와 박격포 진지의 축전 코일을 챙기세요. 시험품 장착 후 스킬을 써서 충전할 자리를 만드세요.',fitting:'축전 코일과 연소 무장 필요'}
 };
 export const REQUISITION_FEE=120;

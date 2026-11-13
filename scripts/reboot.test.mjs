@@ -187,9 +187,28 @@ test('the same seed carries both coast outcomes through the short sortie and the
    const cargo=restore(snapshot(s));
    assert.ok(choose(cargo,'carry:turret'));
    assert.equal(action(cargo,'gate-mount'),false);
+   assert.equal(action(cargo,'gate-mount-advance'),false);
    Object.assign(cargo.player,exitGate(cargo));
    assert.ok(action(cargo,'interact'));
    assert.equal(gatePreparation(cargo).mounts[0].id,'mount:turret');
+   const fullRack=restore(snapshot(cargo));
+   fullRack.weapons=[fullRack.weapons[0],{...makeWeapon('f'),uid:'w-flame'},
+    {...makeWeapon('h'),uid:'w-fused',level:6,branch:'ricochet',evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}}];
+   assert.equal(gatePreparation(fullRack).mounts.length,2);
+   const beforeSelection=snapshot(fullRack);
+   assert.equal(action(fullRack,'gate-mount-advance'),false);
+   assert.deepEqual(snapshot(fullRack),beforeSelection);
+   assert.ok(action(fullRack,'gate-mount'));
+   const loaded=restore(snapshot(cargo));
+   const tooFar=restore(snapshot(cargo));
+   tooFar.player.y=900;
+   assert.equal(action(tooFar,'gate-mount-advance'),false);
+   assert.equal(tooFar.operation.coastSalvage.mounted,undefined);
+   assert.ok(action(loaded,'gate-mount-advance'));
+   assert.equal(loaded.operation.region,1);
+   assert.equal(loaded.phase,'playing');
+   assert.equal(loaded.weapons[1].cd,0);
+   assert.equal(action(loaded,'gate-mount-advance'),false);
    assert.ok(action(cargo,'gate-mount'));
    const deferred=restore(snapshot(cargo));
    const displaced=snapshot(deferred);
@@ -207,6 +226,7 @@ test('the same seed carries both coast outcomes through the short sortie and the
    assert.equal(deferred.operation.region,1);
    assert.equal(deferred.weapons[1].cd,0);
    assert.equal(deferred.stats.turretVolleys,undefined);
+   assert.deepEqual(restore(snapshot(loaded)),restore(snapshot(deferred)));
    assert.ok(choose(s,'mount:turret'));
    assert.deepEqual(s.weapons.map(w=>[w.id,w.level,!!w.capturedTurret]),[['h',1,false],['r',2,true]]);
    const abandoned=restore(snapshot(s));
@@ -489,10 +509,12 @@ test('a workshop sweep requires two rays from one captured volley and survives a
   s.sites.filter(other=>other!==site).forEach(other=>other.state='done');
   const workshopRoute=activeEntry(s).routes.find(route=>route.site===site.id);
   assert.deepEqual(workshopRoute.path.slice(-2),[[site.x,site.y+244],[site.x,site.y]]);
+  assert.deepEqual(workshopRoute.fan,{x:site.x,y:site.y+210,dx:0,dy:1});
   Object.assign(s.player,{x:site.x-60,y:site.y+210});
   s.weapons[0].cd=999;step(s,dt);
   assert.equal(site.state,'active');
   assert.deepEqual(s.enemies.map(e=>e.railWing).sort(),[0,0,0,0,1,1,1,1]);
+  assert.deepEqual(activeEntry(s).routes.find(route=>route.site===site.id).fan,workshopRoute.fan);
   s.weapons[0].cd=0;step(s,dt);s.weapons[0].cd=999;
   return s;
  };
@@ -503,6 +525,7 @@ test('a workshop sweep requires two rays from one captured volley and survives a
   const resumed=restore(snapshot(s));
   tick(s,.75);tick(resumed,.75);
   assert.deepEqual(resumed.stats,s.stats);assert.equal(resumed.stats.railFanSweep,true);
+  assert.equal(activeEntry(resumed).routes.find(route=>route.site==='rail-cache')?.fan,undefined);
   const [event]=resumed.effects.filter(e=>e.type==='rail-fan-sweep');
   assert.ok(event);assert.notEqual(event.x,event.x2);
   const events=takeEvents(resumed);
@@ -1958,6 +1981,27 @@ test('a pending route trial keeps the signature module and prioritizes the match
   assert.ok(choose(s,`module:${signature}`));
   assert.deepEqual(s.trials,['medic',experiment]);
  }
+});
+test('a returned turret can field-test shrapnel at rescue or keep H and take the mortar route',()=>{
+ const p=emptyProfile();p.milestones.coastTurret=true;p.research=['shrapnel'];p.trials=['shrapnel'];
+ for(const opening of ['module:shrapnel','gun:h']){
+  const {run}=freshSortie(p,28,null,'fio',null,null,null,'turret',true);
+  run.enemies=[];run.spawnClock=999;run.weapons[0].cd=999;
+  assert.ok(supply(run).find(c=>c.id==='module:shrapnel')?.trial);
+  assert.ok(choose(run,opening));
+  const battery=run.sites.find(site=>site.coastApproach==='r');
+  if(opening==='gun:h'){
+   assert.equal(coastLead(run),battery);
+   assert.ok(supply(run,battery.id).find(c=>c.id==='module:shrapnel')?.trial);
+   assert.ok(run.choices.some(c=>c.id==='module:coil'));
+   assert.ok(choose(run,'module:shrapnel'));
+  }else assert.notEqual(coastLead(run),battery);
+  assert.deepEqual(run.modules,[{id:'shrapnel',rank:1}]);
+  assert.equal(run.weapons.length,opening==='gun:h'?2:1);
+ }
+ const {run}=freshSortie(p,28,null,'fio',null,null,null,'turret',true);
+ run.enemies=[];run.spawnClock=999;run.weapons[0].cd=999;supply(run);assert.ok(choose(run,'gun:f'));
+ assert.equal(coastLead(run)?.coastApproach,'r');
 });
 test('thermal preparation keeps the coastal coil when the medic trial shares its crate',()=>{
  for(const [seed,at] of [[16,null],[17,'coast'],[18,'rail'],[27,null],[28,'coast'],[31,'rail']]){

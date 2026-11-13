@@ -257,12 +257,19 @@ test('the research experiment follows one module through trial briefing, payout 
  assert.match(briefing,/data-action="same-seed" data-seed="23"/);
  assert.doesNotMatch(briefing,/data-requisition=/);
  const experiment={...pending,milestones:{coastTurret:true}};
+ assert.match(lobbyView(experiment,{seed:27,loadout:'turret'}),/포로 구출 · F \/ H 보급[\s\S]*포탑으로 즉시 실증/);
  const freshBrief=replayBriefingView(r,experiment,'standard','shrapnel',{freshSeed:27,starter:'turret'});
  assert.match(freshBrief,/data-brief-route="fresh" aria-pressed="true"/);
  assert.match(freshBrief,/data-brief-starter="turret" aria-pressed="true"/);
+ assert.match(freshBrief,/포로 구출 · F \/ H 보급[\s\S]*포탑으로 즉시 실증[\s\S]*박격포 진지 · 분열 수류탄 장착/);
  assert.match(freshBrief,/data-action="launch" data-actor="fio" data-coast-loadout="turret">새 전장 출격/);
  assert.doesNotMatch(freshBrief,/data-requisition=|data-replay-from=/);
+ const multiple={...experiment,trials:['medic','shrapnel'],research:['medic','shrapnel']};
+ const delayed=replayBriefingView(r,multiple,'standard','shrapnel',{freshSeed:28,starter:'turret'});
+ assert.match(delayed,/H를 고르면 격발망 재료 확보[\s\S]*박격포 진지 · 분열 수류탄 장착/);
+ assert.doesNotMatch(delayed,/포탑으로 즉시 실증/);
  const sameBrief=replayBriefingView(r,experiment,'standard','shrapnel',{freshSeed:27,route:'same'});
+ assert.match(sameBrief,/포로 구출 · 로켓 R 확보/);
  assert.match(sameBrief,/data-action="same-seed" data-seed="23" data-actor="fio">같은 전장 출격/);
  const wonTrial=createOperation(23,base.research,base.trials),newActive=beginProfile(pending,wonTrial);
  wonTrial.stats.researchTrialsPicked=['shrapnel'];wonTrial.stats.shrapnelHits=8;
@@ -277,6 +284,8 @@ test('the research experiment follows one module through trial briefing, payout 
  assert.match(reservation,/재출격 · 120C/);
  const freshReservation=replayBriefingView(report,tested,'requisition:shrapnel:coast',null,{freshSeed:27});
  assert.match(freshReservation,/data-action="launch" data-actor="fio" data-requisition="shrapnel" data-requisition-at="coast">새 전장 출격 · 120C/);
+ const turretReservation=replayBriefingView(report,{...tested,milestones:{coastTurret:true}},'requisition:shrapnel:coast',null,{freshSeed:27,starter:'turret'});
+ assert.match(turretReservation,/박격포 진지 예약 · 분열 수류탄[\s\S]*data-coast-loadout="turret" data-requisition="shrapnel"/);
 });
 test('a comparable repeat shows independent time and score changes and the actual sector splits',()=>{
  const complete=(run,fronts,score)=>{
@@ -573,6 +582,8 @@ test('harbor wins show the final build and put its unlocked research before opti
  const saved=settleProfile(active,run),html=reportView(saved.recent[0],saved);
  assert.match(html,/data-build-summary[\s\S]*인페르노[\s\S]*잔불 제압 20명 · 코어 직격 3회/);
  assert.match(html,/data-research-next[\s\S]*data-research="thermal" data-debrief-research[\s\S]*data-replay-route="fresh"/);
+ const captured={...saved.recent[0],operation:{...saved.recent[0].operation,coastSalvage:{...saved.recent[0].operation.coastSalvage,turret:'secured'}},stats:{...saved.recent[0].stats,railFirstSite:'rail-cache',railFanCut:true,railTurretKills:20},creditBreakdown:{...saved.recent[0].creditBreakdown,turret:40}};
+ assert.match(reportView(captured,saved),/data-build-summary data-outcome="returned"[\s\S]*인페르노[\s\S]*포탑 반출 \+40C[\s\S]*화차 정비대 · 양쪽 포격 차단 · 포탑 제압 20명/);
  const study=buyResearch(saved,'thermal'),after=reportView(saved.recent[0],study);
  assert.match(after,/data-trial-focus="thermal"[\s\S]*data-replay-route="fresh"/);
  const brief=replayBriefingView(saved.recent[0],study,'standard','thermal',{freshSeed:28});

@@ -490,6 +490,7 @@ const trialModule=(s,pool,approach)=>{
  const trials=(s.trials||[s.trial]).filter(id=>pool.includes(id));
  return (approach&&trials.find(id=>RESEARCH[id].fieldGun===approach))||trials[0];
 };
+export const fieldResearchTrial=(s,site)=>trialModule(s,modulePool(s),site?.coastApproach);
 const trialCard=(id,rank=1)=>({...moduleCard(id,rank),label:'새 연구 · 첫 실전',trial:true});
 const newGun=(id,label='새 무기')=>({id:`gun:${id}`,kind:'gun',weapon:id,title:`${GUNS[id].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label});
 const coastRecovery=s=>s.operation?.region===1&&s.operation.coastStrikeUsed
@@ -2752,6 +2753,13 @@ function fireFocus(s,cfg,input){
 export function action(s,kind,input){
  if(kind.startsWith('raid:'))return startRaid(s,kind.split(':')[1]);
  if(kind==='withdraw'){if(!withdrawRaid(s))return false;emit(s,'raid-failed',s.player.x,s.player.y,{text:'습격 철수 · 상자 소실',life:1.2});return true;}
+ if(kind==='gate-mount-advance'){
+  const prep=gatePreparation(s);
+  if(prep?.mounts.length!==1||!coastAtShore(s)||!s.choices.some(card=>card.id==='advance'))return false;
+  const [mount]=prep.mounts;
+  openCoastMount(s,prep.mounts,true);
+  return choose(s,mount.id)&&choose(s,'advance');
+ }
  if(kind==='gate-upgrade'||kind==='gate-assemble'||kind==='gate-mount'){
   const prep=gatePreparation(s);
   if(kind==='gate-upgrade'&&prep?.upgrades){openLevel(s,{gatePrep:true});return true;}
