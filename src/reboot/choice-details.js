@@ -1,7 +1,7 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible,CAPTURED_TURRET,isCapturedTurret} from './content.js';
 import {canAdvanceFront,isSalvageCampaign,carriesCoastSalvage} from './coast-salvage.js';
 import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COUNTERBATTERY_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
-import {choose,snapshot} from './model.js';
+import {choose,snapshot,railInfernoPlan,railWorkshopPlan} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 const coastBearing=(s,site)=>`${bearing(s.player,site.x,site.y)} ${Math.round(distance(s.player,site)/10)}m`;
@@ -70,6 +70,8 @@ function projectedGrowth(s,c,args,before){
  }
  const advanced=paths.filter(p=>p.remaining<(before.get(p.id)?.remaining??0)&&p.status!=='blocked');
  if(!advanced.length)return null;
+ const inferno=railInfernoPlan(draft);
+ if(c.id==='rank:f'&&inferno?.action==='tune')return {kind:'progress',text:inferno.missing};
  const closest=advanced.sort((a,b)=>a.remaining-b.remaining)[0];
  return {kind:'progress',text:`${closest.title}까지 ${closest.missing||'분화 조건 확인'}`};
 }
@@ -122,12 +124,16 @@ function assemblyConsequence(s,c){
  const before=buildPaths(s),after=new Map(buildPaths(draft).map(path=>[path.id,path]));
  const lock=c.kind==='evolve'&&['h','r'].includes(c.weapon);
  const delayed=before.filter(path=>path.ready&&after.get(path.id)?.status==='permit');
+ const cache=c.kind==='repair'&&s.operation?.region===1&&s.stage==='field'&&s.sites.some(site=>site.id==='rail-cache'&&site.state!=='done');
+ const inferno=c.kind==='repair'&&railInfernoPlan(s,cache?railWorkshopPlan(s):null);
+ const losesTune=inferno?.permits===2&&s.tuning===2;
  const heatBefore=before.find(path=>path.id==='heat'),heatAfter=after.get('heat');
  const heatCost=heatBefore?.complete&&!heatAfter?.complete?'열압 연계 해제'
   :heatBefore?.ready&&heatAfter?.status==='progress'?'열압 연계 재료 부족':'';
  return [c.kind==='fusion'?`현재 ${GUNS[c.primary].short}·${GUNS[c.secondary].short} 단일 진화 포기`:lock?`현재 ${GUNS[c.weapon].short}로 H+R 합체 불가`:'',
   heatCost,
-  delayed.length?`조율권 소진 · ${delayed.map(path=>path.title).join(' · ')} 대기`:''].filter(Boolean);
+  delayed.length?`조율권 소진 · ${delayed.map(path=>path.title).join(' · ')} 대기`:'',
+  losesTune?`${inferno.title} 진화에 촉매 보급 또는 조율권 추가 필요`:''].filter(Boolean);
 }
 
 export function choiceDetails(s,c){
@@ -182,6 +188,7 @@ export function choiceDetails(s,c){
   if(c.id?.startsWith('requisition:')&&!compatible(s,c.module))out.link=`장착 후 대기 · ${RESEARCH[c.module].fitting}`;
  }else if(c.id==='utility:health'||c.kind==='repair'||c.id==='resupply:medical'){
   const extra=c.kind==='repair'?15:c.kind==='utility'?6:0,heal=c.kind==='repair'?35:c.kind==='utility'?6:c.heal;out.art='medic';out.impact=extra?`최대 체력 +${extra}`:`체력 +${Math.min(heal,s.player.maxHp-s.player.hp)}`;out.detail=`${Math.ceil(s.player.hp)}/${s.player.maxHp} → ${Math.ceil(Math.min(s.player.maxHp+extra,s.player.hp+heal))}/${s.player.maxHp+extra}`;out.link=c.kind==='repair'?'최대 체력과 체력을 함께 정비':'';out.cost=c.kind==='repair'?'조율권 1개 사용':'';
+  if(c.kind==='repair')out.consequence=assemblyConsequence(s,c);
  }else if(c.id==='utility:charge'||c.kind==='resupply'){
   const amount=c.charge??10,before=Math.floor(s.player.charge),after=Math.min(100,before+amount),hpBefore=s.player.hp,hpAfter=Math.min(s.player.maxHp,hpBefore+(c.heal||0)),healed=Math.ceil(hpAfter)-Math.ceil(hpBefore);
   out.art='ammo';out.impact=healed?`체력 +${healed}${after>before?` · 충전 +${after-before}`:''}`:after>before?`${chargeLabel(s)} 충전 +${after-before}`:`${chargeLabel(s)} 충전 최대`;out.detail=`${c.heal?`체력 ${Math.ceil(hpBefore)}/${s.player.maxHp} → ${Math.ceil(hpAfter)}/${s.player.maxHp} · `:''}충전 ${before} → ${after} / 100`;out.link='';out.cost='';

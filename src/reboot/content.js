@@ -51,6 +51,13 @@ export function canEvolve(state,weapon){
  return weapon.level===6&&!weapon.evolved&&!weapon.fusion&&!!weapon.branch&&
   evolutionParts(weapon).some(id=>moduleRank(state,id)>=2);
 }
+export function railSpareForFlame(s){
+ if(s.operation?.region!==1||s.operation.coastSalvage?.fronts!==3||s.stage!=='field'||s.firstNew!=='f')return null;
+ const flame=s.weapons.find(w=>w.id==='f'&&w.level>=5&&!w.evolved&&!w.fusion);
+ if(!flame)return null;
+ if(flame.level<6)return 'rank';
+ return moduleRank(s,'catalyst')<2&&!s.excluded.includes('catalyst')?'catalyst':null;
+}
 function sameFusion(state,primary,secondary){
  return state.weapons.some(w=>w.fusion&&w.id===primary.id&&w.branch===primary.branch&&
   w.fusion.secondary===secondary.id&&w.fusion.branch===secondary.branch);

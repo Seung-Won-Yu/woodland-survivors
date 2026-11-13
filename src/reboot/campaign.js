@@ -1,4 +1,4 @@
-import {FIELD,MODULES,RULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance} from './content.js';
+import {FIELD,MODULES,RULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,rayBoxDistance,railSpareForFlame} from './content.js';
 import {routeCursor} from './raid.js';
 import {COAST_SALVAGE,coastAtShore,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,canAdvanceFront,railSortieReturned} from './coast-salvage.js';
 
@@ -739,13 +739,25 @@ export function activeEntry(s){
  }
  const origin=s.sites.filter(site=>['rail-cache','rail-relay'].includes(site.id)&&site.state==='done')
   .sort((a,b)=>distance(s.player,a)-distance(s.player,b))[0]?.id;
+ const transferY=969;
+ const stop=id=>entry.routes.find(route=>route.site===id).path.at(-1);
+ const linkedRoutes=origin?routes.map(route=>{
+  if(route.site!==(origin==='rail-relay'?'rail-cache':'rail-relay'))return route;
+  const from=stop(origin),to=route.path.at(-1);
+  const crossY=route.site==='rail-cache'&&s.weapons.some(isCapturedTurret)?to[1]+244:transferY;
+  return {...route,path:[from,[from[0],crossY],[to[0],crossY],to]};
+ }):routes;
  const ammo=s.sites.find(site=>site.id==='rail-ammo'&&site.state!=='done');
- if(ammo&&origin&&!s.weapons.some(w=>w.evolved||w.fusion)){
-  const [x,y]=entry.routes.find(route=>route.site===origin).path.at(-1);
-  const path=origin==='rail-relay'?[[x,y],[ammo.x,y],[ammo.x,ammo.y]]:[[x,y],[x,588],[x,583],[ammo.x,583],[ammo.x,ammo.y]];
-  routes.push({site:ammo.id,sign:'포대 탄약고 · 추가 보급',color:'#ecd197',path});
+ if(ammo&&origin&&(railSpareForFlame(s)||!s.weapons.some(w=>w.evolved||w.fusion))){
+  const [x,y]=stop(origin),[relayX,relayY]=stop('rail-relay');
+  const relayOpen=s.sites.some(site=>site.id==='rail-relay'&&site.state!=='done');
+  const path=origin==='rail-relay'?[[x,y],[ammo.x,y],[ammo.x,ammo.y]]
+   :relayOpen?[[x,y],[x,transferY],[800,transferY],[800,500],[ammo.x,500],[ammo.x,ammo.y]]
+    :[[x,y],[x,transferY],[relayX,transferY],[relayX,relayY],[ammo.x,relayY],[ammo.x,ammo.y]];
+  linkedRoutes.push({site:ammo.id,sign:'포대 탄약고 · 추가 보급',color:'#ecd197',path,
+   ...(origin==='rail-cache'&&relayOpen?{warning:'중계기 경계 구역 인접'}:null)});
  }
- return {...entry,routes,direct:railCenterRoute(s.seed,origin)};
+ return {...entry,routes:linkedRoutes,direct:railCenterRoute(s.seed,origin)};
 }
 export function entryWaypoint(path,p){
  let best=Infinity,next=path.at(-1);

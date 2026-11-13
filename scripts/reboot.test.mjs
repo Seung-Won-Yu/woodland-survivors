@@ -13,6 +13,7 @@ import {selectRiftAudioEvents} from '../src/reboot/sound.js';
 import {coastRoleTarget,coastRoleRank} from '../src/reboot/coast-salvage.js';
 import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
 import {COAST_RAID_PATROL_DELAY,COAST_SHIELD_BRACE,bracingCoastEscort,shieldFaces} from '../src/reboot/campaign.js';
+import {railInfernoPlan,railAmmoInvestment} from '../src/reboot/model.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -4277,6 +4278,55 @@ test('rail workshop protects a weak build from a random new weapon and provides 
  assert.equal(reroll(s),false);
  assert.ok(choose(s,'module:catalyst'));assert.equal(s.tuning,ready);
  assert.ok(assemblyOptions(s).some(c=>c.id==='evolve:f'));
+});
+test('a thermal build can follow the second rail stop and finish Inferno with the permits shown',()=>{
+ for(const seed of [27,28]){
+  const s=createOperation(seed,['thermal'],null,null,'fio','standard');
+  Object.assign(s.operation,{region:1,cleared:1});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  const layout=regionLayout(mapSeed(seed,1),1,null,true);
+  Object.assign(s,layout,{enemies:[],spawnClock:999,boss:regionBoss(1,seed),firstNew:'f',tuning:2});
+  s.weapons.push({...makeWeapon('f'),uid:'flame',level:5,branch:'trail',cd:999});
+  s.modules=[{id:'coil',rank:1},{id:'thermal',rank:1},{id:'catalyst',rank:1}];
+  const [workshop,relay]=s.sites;
+  relay.state='done';
+  const path=activeEntry(s).routes.find(route=>route.site===workshop.id).path;
+  assert.deepEqual(path[0],[relay.x,relay.y]);
+  assert.deepEqual(path.at(-1),[workshop.x,workshop.y]);
+  for(let i=1;i<path.length;i++){
+   const [[x,y],[tx,ty]]=path.slice(i-1,i+1);
+   assert.ok(layout.blocks.every(b=>Math.max(x,tx)+24<=b.x||Math.min(x,tx)-24>=b.x+b.w
+    ||Math.max(y,ty)+24<=b.y||Math.min(y,ty)-24>=b.y+b.h));
+  }
+  const plan=railWorkshopPlan(s);
+  assert.equal(railInfernoPlan(s,plan).supply,'F L6');
+  assert.equal(railInfernoPlan(s,plan).permits,2);
+  assert.ok(action(s,'gear'));
+  assert.match(choiceDetails(s,s.choices.find(c=>c.id==='tune:repair')).consequence.join(' '),/인페르노.*촉매 보급/);
+  assert.ok(choose(s,'back'));
+  supply(s,workshop.id);
+  assert.match(growthForecast(s,s.choices.find(c=>c.id==='rank:f')).text,/조율권 2개/);
+  const resumed=restore(snapshot(s));
+  assert.ok(choose(resumed,'rank:f'));
+  assert.equal(railInfernoPlan(resumed).action,'tune');
+  assert.equal(railInfernoPlan({...resumed,tuning:1}),null);
+  assert.ok(action(resumed,'gear'));assert.ok(choose(resumed,'tune:catalyst'));
+  assert.ok(action(resumed,'gear'));assert.ok(choose(resumed,'evolve:f'));
+  assert.equal(resumed.tuning,0);assert.equal(resumed.weapons[1].evolved,true);
+  assert.equal(railAmmoInvestment(resumed),null);
+  const spare=restore(snapshot(s));spare.tuning=1;spare.balanceRevision='b62-rail-firing-pad';
+  assert.ok(choose(spare,'module:catalyst'));
+  const ammo=spare.sites.find(site=>site.id==='rail-ammo');
+  const withSidearm=restore(snapshot(spare));
+  Object.assign(withSidearm.weapons[0],{level:6,branch:'ricochet',evolved:true});
+  assert.ok(activeEntry(withSidearm).routes.some(route=>route.site===ammo.id));
+  assert.deepEqual(supply(spare,ammo.id).slice(0,1).map(({id,label})=>[id,label]),[['rank:f','분사기 예비 부품']]);
+  assert.ok(reroll(spare));
+  assert.equal(spare.choices[0].id,'rank:f');
+  const saved=restore(snapshot(spare));
+  assert.ok(choose(saved,'rank:f'));
+  assert.ok(assemblyOptions(saved).some(c=>c.id==='evolve:f'));
+ }
 });
 test('relay and harbor equipment reward committed fire builds while the other tactics remain selectable',()=>{
  const rail=quietRailWorkshop();

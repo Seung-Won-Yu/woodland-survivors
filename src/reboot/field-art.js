@@ -393,7 +393,7 @@ export function paintEntryRoutes(c,entry){
  c.save();
  c.lineWidth=3;c.lineCap='round';c.lineJoin='round';
  for(const route of entry.direct?[entry.direct,...entry.routes]:entry.routes){
-  const markedRail=route.recommended&&(route.site==='rail-cache'||route.site==='rail-relay');
+  const markedRail=route.recommended&&['rail-cache','rail-relay','rail-ammo'].includes(route.site);
   if(markedRail){
    const [x,y]=route.path.at(-1);
    c.lineWidth=9;c.strokeStyle='#202e2bba';c.setLineDash([15,11]);c.beginPath();
