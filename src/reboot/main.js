@@ -16,7 +16,7 @@ import {bindTouchControls} from '../game/touch-controls.js';
 import {createAudio} from '../game/audio.js';
 import {selectRiftAudioEvents} from './sound.js';
 import {RAIL_SALVAGE_ROUTES} from './campaign.js';
-import {railInfernoPlan,railAmmoInvestment,focusStudyAvailable} from './model.js';
+import {railInfernoPlan,railAmmoInvestment,focusStudyAvailable,wireTransferInvestment} from './model.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio({fieldMix:true}),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const touchLayout=matchMedia('(max-width:700px), (pointer:coarse)');
@@ -260,6 +260,7 @@ function showChoices(){
  const tacticalLoot=salvage&&run.choices.some(c=>c.salvageLevel===1);
  const relaySupply=run.choice.type==='supply'&&run.choice.relayRepair===true;
  const type=run.choice.type,quick=isQuickMod(run),atGate=type==='clear'&&!!run.operation,atPursuit=type==='pursuit-reward',workshop=type==='rail-workshop';
+ const wireSupply=run.choice.wireSupply===true;
  const wireReceipt=type==='supply'&&run.operation?.region===0&&run.operation.order==='wire'&&run.operation.orderDone&&run.choice.source===sortieOrder('wire').site;
  const shoreGate=atGate&&coastAtShore(run)&&carriesCoastSalvage(run),mount=type==='coast-mount',carrier=type==='coast-boss';
  const carrierPrep=carrier&&isSalvageCampaign(run)&&run.pendingLevels>0;
@@ -276,11 +277,12 @@ function showChoices(){
  const harborForecast=railGate&&portBuildApproach(run);
  const gateIntel=atGate&&!harborForecast?`<div class="gate-intel"><span><small>돌파 전선</small><b>${esc(region(run).name)}</b></span><span><small>다음 전선</small><b>${canAdvanceFront(run)?esc(REGIONS[run.operation.region+1].name):'작전실'}</b></span><span><small>미회수 XP</small><b>${groundXp(run)}</b></span></div>`:'';
  const handoff=shoreGate?railHandoff(run):null;
+ const wireTransfer=shoreGate&&wireTransferInvestment(run);
  const preparation=atGate?gatePreparation(run):null;
  const mounts=shoreGate?(preparation?.mounts||[]):[];
  const [mountOption]=mounts;
  const directMount=mounts.length===1;
- const transferBrief=handoff?railTransferBrief(run.seed,handoff,mountOption):'';
+ const transferBrief=handoff&&!wireTransfer?railTransferBrief(run.seed,handoff,mountOption):'';
  const transfer=handoff?`<div class="front-transfer" data-transfer="${handoff.state}"${directMount?' data-mount-forward':''}>${itemArt(handoff.art)}<div class="transfer-kit"><b>${directMount?esc(mountOption.title):mounts.length?'노획 포탑 확보':esc(handoff.title)}</b><small>${directMount?esc(`${mountOption.detail} · ${mountOption.fanCount}발 부채꼴`):mounts.length?'장착할 슬롯을 선택하세요.':esc(handoff.gateDetail||handoff.detail)}</small></div>${transferBrief}${directMount?'<button data-action="gate-mount-advance">장착하고 철도 진입 <span aria-hidden="true">›</span></button>':mounts.length?'<button data-action="gate-mount">장착 슬롯 선택 <span aria-hidden="true">›</span></button>':''}</div>`:'';
  const railPreview=carrier&&carriesCoastSalvage(run)?`<aside class="rail-salvage-brief" aria-label="다음 전선 철도 공략">${railSalvagePreview(run.seed)}
   <div>${['rail-relay','rail-cache'].map(id=>{
@@ -292,14 +294,15 @@ function showChoices(){
  const compactSkip=coastalService?'<button data-action="skip" aria-label="건너뛰기 · 소량 회복">건너뛰기</button>':'';
  const gatePrep=gatePreparationView(preparation);
  const actionablePrep=preparation&&(preparation.capstones.length||preparation.upgrades);
- const prepAfterDeck=railGate||directMount||!!transferBrief&&!actionablePrep;
- const tools=atGate?(shoreGate?transfer:gateIntel)+gatePace(run.operation,profile().active?.reference)+(prepAfterDeck?'':gatePrep):carrier||mount||assembly||run.choice.preempt||run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools">${currentKit}<div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>${compactSkip}`:''}</div></div>`;
+ const prepAfterDeck=railGate||directMount||!!(transferBrief||wireTransfer)&&!actionablePrep;
+ const wireTransferNote=wireTransfer?`<p class="wire-transfer-note"><b>암호 보급 · 열차 직행 가능</b><small>${mounts.length||run.operation.coastStrikeUsed?'철도 도착 무장에 맞춰 보급 선택':`철도 도착 시 ${esc(wireTransfer.material)} 중 하나`}</small></p>`:'';
+ const tools=atGate?(shoreGate?transfer+wireTransferNote:gateIntel)+gatePace(run.operation,profile().active?.reference)+(prepAfterDeck?'':gatePrep):carrier||mount||assembly||run.choice.preempt||wireSupply||run.choice.opening&&!banishOptions(run).length?'':`<div class="choice-tools">${currentKit}<div>${['level','supply','armory','raid-reward'].includes(type)?`<button data-action="reroll" ${run.rerolls<=0||run.choice.opening?'disabled':''}>${run.choice.opening?'고정 보급':`재추첨 ${run.rerolls}`}</button><button data-action="banish-menu" ${run.banishes<=0?'disabled':''}>후보 제외 ${run.banishes}</button>${compactSkip}`:''}</div></div>`;
  const lead=carrier||mount?'':run.choice.coastPrep?'선택 후 수송차 전술로 돌아갑니다.':gateLevel?'개조를 확정하면 게이트로 돌아갑니다.':type==='level'?(run.pendingLevels?`대기 개조 ${run.pendingLevels}회 · 전장에서 이어서 사용`:''):atGate?(shoreGate?`해안 → 철도 · 미회수 XP ${groundXp(run)}`:harborForecast?`미회수 XP ${groundXp(run)}`:railGate?'':canAdvanceFront(run)?'전진하거나 현장에 남아 보급을 회수하세요.':'귀환하거나 남아서 추가 점수를 노리세요.'):workshop?'회수한 공구로 이번 판의 무장을 정비하세요.':thermalPrep?'흡열 코일에 필요한 축전 코일을 장착할 수 있습니다.':coastalService?'보급 한 가지 선택':run.choice.preempt?'노획 무장 또는 현장 정비':coastOptions?'무장을 강화하거나 보스 공략을 고르세요.':tacticalLoot?'L2 무장 또는 L1 무장과 수송차 전술':salvage?`${run.choice.source} · 빈 무기 칸에 L${salvage.salvageLevel} 장착`:assembly?'':type==='control'&&run.operation?.region===1&&run.stage==='field'?'중계기 확보 · 포대 조준 중 유인 신호 1회':run.choice.opening?`${beachRoute(run.seed).name} · 현재 위치 기준`:run.choice.source.replace('전방 구조 보급','포로 구출 보상').replace('이동 보급대','이동 보급차');
  const gateNote=run.pendingLevels?!canAdvanceFront(run)?`귀환 시 미사용 개조 ${run.pendingLevels}회 소멸`:`대기 개조 ${run.pendingLevels}회 · 전진하면 이월`:run.challenge?.state==='active'?'':'잔류하면 증원군이 강해집니다. 게이트는 계속 열려 있습니다.';
  const deck=carrier||mount?ordnanceDeck():atGate?gateChoices(harborForecast):assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
- const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
- panel(`<section class="sheet field-menu${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':relaySupply?' relay-supply-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-  <header><div><span class="eyebrow">${wireReceipt?'전파 절단 · 해안 통신소':carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?rescueReceipt:run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${wireReceipt?'교신 암호 확보':title}</h2>${wireReceipt?'<p class="wire-receipt-note">철도에서 암호로 조준 유인 1회 · 지금 보급 한 가지 선택</p>':lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+ const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService||wireSupply?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
+ panel(`<section class="sheet field-menu${wireSupply?' wire-supply-menu':''}${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':relaySupply?' relay-supply-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+  <header><div><span class="eyebrow">${wireReceipt?'전파 절단 · 해안 통신소':wireSupply?'전파 절단 · 철도 진입':carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?rescueReceipt:run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${wireReceipt?'교신 암호 확보':wireSupply?'암호 보급 수령':title}</h2>${wireReceipt?'<p class="wire-receipt-note">철도 진입 시 무장 정비 · 열차 조준 유인 1회</p>':wireSupply?'<p class="wire-receipt-note">한 가지 선택 · 암호로 열차 조준 유인 1회</p>':lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
   ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${railPreview}${carrierPrep?`<button class="carrier-prep" data-action="coast-upgrade" aria-keyshortcuts="R"><span>${moduleIcon('gear')}<b>XP 개조</b> <small>${run.pendingLevels}회 대기</small></span><span>교전 전 사용 <i aria-hidden="true">›</i></span></button>`:''}${deck}${prepAfterDeck?gatePrep:''}${toolsAfterDeck?tools:''}
   ${coastalService||carrier||mount?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
   ${capstones.length?paths:''}
@@ -601,7 +604,11 @@ ui.addEventListener('click',async e=>{
  if(button.dataset.exclude){await mutate(d=>banish(d,button.dataset.exclude));return;}
  const a=button.dataset.action;
  if(subpanel?.type==='replay-briefing'&&Number.isSafeInteger(subpanel.options.freshSeed)){
-  const {briefRoute,briefStarter,briefOpening}=button.dataset;
+  const {briefRoute,briefStarter,briefOpening,briefOrder}=button.dataset;
+  if(briefOrder==='standard'||briefOrder==='wire'&&canLaunchOrder(profile(),'wire')){
+   subpanel.dispatch=briefOrder==='wire'?'order:wire':'standard';
+   refreshReplayBriefing(`[data-brief-order="${briefOrder}"]`);return;
+  }
   if(briefOpening==='auto'||isOpeningGun(briefOpening)){
    subpanel.options.openingGun=briefOpening==='auto'?null:briefOpening;refreshReplayBriefing(`[data-brief-opening="${briefOpening}"]`);return;
   }

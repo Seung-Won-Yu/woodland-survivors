@@ -883,6 +883,14 @@
 .wire-brief>p{margin:7px 0 2px;color:#d2f0dc}
 .wire-brief>small{color:#ddc798}
 .field-menu .wire-receipt-note{color:#bde3cf}
+.wire-transfer-note{margin:5px 0 8px;padding:6px 8px;border-left:2px solid #bde3cf;background:#1b322e;color:#d2ecde;font-size:11px;line-height:1.35}
+.wire-transfer-note small{display:block;margin-top:2px;color:#dce0c6;font-size:10px}
+.replay-orders button{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.replay-orders button small{white-space:nowrap}
+@media(max-width:700px){
+ .field-menu.wire-supply-menu{padding:12px}
+ .wire-supply-menu .upgrade-cost{padding-top:4px}
+}
 .debrief-sortie [data-rail-record] b{color:#c3e4df}
 @media(max-width:700px){
  body[data-scene=lobby] #ui:has(>:is(.report-sheet,.replay-briefing)){padding:12px}
@@ -923,15 +931,15 @@
  .opening-weapon-copy small{font-size:9px}
  .opening-supply .choice-footer{margin-top:8px}
  :is(.control-menu,.pursuit-menu:not(:has([data-choice="pursuit:permit"]))) .choice-tools{display:none}
- :is(.control-menu,.pursuit-menu,.relay-supply-menu) .upgrade-deck{grid-template-columns:minmax(0,1fr);gap:7px}
- .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu):not(.quick-mod) .upgrade-card{min-height:72px;padding:8px 28px 8px 60px;gap:3px}
- :is(.control-menu,.pursuit-menu,.relay-supply-menu) .upgrade-card kbd{right:8px;top:8px}
- :is(.control-menu,.pursuit-menu,.relay-supply-menu) .upgrade-copy{gap:3px}
- .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu):not(.quick-mod) .upgrade-illustration{width:55px;height:57px;left:2px;top:12px}
- .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu):not(.quick-mod) .upgrade-illustration .kit-sprite{width:63px;height:63px}
- :is(.control-menu,.pursuit-menu,.relay-supply-menu) :is(.upgrade-impact,.upgrade-detail,.upgrade-link){line-height:1.25;word-break:keep-all}
- :is(.control-menu,.pursuit-menu,.relay-supply-menu) .choice-footer{margin-top:8px}
- .relay-supply-menu :is(.upgrade-detail,.install-label){display:none}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu) .upgrade-deck{grid-template-columns:minmax(0,1fr);gap:7px}
+ .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu):not(.quick-mod) .upgrade-card{min-height:72px;padding:8px 28px 8px 60px;gap:3px}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu) .upgrade-card kbd{right:8px;top:8px}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu) .upgrade-copy{gap:3px}
+ .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu):not(.quick-mod) .upgrade-illustration{width:55px;height:57px;left:2px;top:12px}
+ .field-menu:is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu):not(.quick-mod) .upgrade-illustration .kit-sprite{width:63px;height:63px}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu) :is(.upgrade-impact,.upgrade-detail,.upgrade-link){line-height:1.25;word-break:keep-all}
+ :is(.control-menu,.pursuit-menu,.relay-supply-menu,.wire-supply-menu) .choice-footer{margin-top:8px}
+ :is(.relay-supply-menu,.wire-supply-menu) :is(.upgrade-detail,.install-label){display:none}
  .pursuit-menu [data-choice^="support:"] .upgrade-cost{display:none}
  :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-deck{gap:7px}
  :is(.coast-options,.rail-workshop,.coast-salvage) .upgrade-card{min-height:0;padding:8px 25px 8px 63px;gap:3px}

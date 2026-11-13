@@ -15,7 +15,7 @@ export const HOLDOUT_CONTRACTS=[
  {id:'intercept',name:'탈출 차량 저지',goal:'18초 안에 통신 차량 파괴',risk:'하역장 바깥 굽이에서 차량의 진로를 끊으세요.'}
 ];
 export const SORTIE_ORDERS={
- wire:{name:'전파 절단',site:'해안 통신소',action:'박격포 제압 · 5초 해킹 · 철도 조준 유인',fee:70,bonus:180,color:'#bde3cf',recordRevision:'rail-lure'},
+ wire:{name:'전파 절단',site:'해안 통신소',action:'박격포 제압 · 5초 해킹 · 철도 조준 유인',fee:70,bonus:180,color:'#bde3cf',recordRevision:'cipher-supply'},
  convoy:{name:'보급선 절단',site:'해안 무기고',action:'무기고에서 보급을 걸고 경량 보급차 저지',fee:70,bonus:180,color:'#f2ce91'}
 };
 export const sortieOrder=id=>Object.hasOwn(SORTIE_ORDERS,id)?SORTIE_ORDERS[id]:null;
@@ -28,7 +28,8 @@ export function orderTarget(s){
 const WIRE_GARRISON={crew:'박격포',unit:'문',range:245,hint:'바깥쪽 박격포를 끊고 통신소를 해킹하세요.',guards:[
  ['shield',22,44],['rifle',-50,25],['mortar',-86,-100]
 ]};
-const hasWireOrder=s=>s.operation?.order==='wire'&&s.operation.orderRevision===SORTIE_ORDERS.wire.recordRevision;
+export const wireSupplyUnlocked=s=>s.operation?.order==='wire'&&s.operation.orderRevision===SORTIE_ORDERS.wire.recordRevision&&s.operation.orderDone===true;
+const hasWireOrder=s=>s.operation?.order==='wire'&&[SORTIE_ORDERS.wire.recordRevision,'rail-lure'].includes(s.operation.orderRevision);
 export const wireGarrison=(s,site)=>s.operation?.region===0&&hasWireOrder(s)&&site?.id==='arsenal'?WIRE_GARRISON:null;
 export const FRONT_SUPPORTS={
  breach:{name:'철갑 급탄',role:'부위 조준',art:'ammo',impact:'보스 부위 우선 조준 · 피해 +55%',detail:'측면에서 부위가 사거리에 들어오면 차체보다 먼저 조준합니다.',tactics:['조준 중인 포대를 부수면 해당 포격이 멈춥니다.','포탑을 먼저 파괴하면 재장전 직전 부채꼴 사격이 멈춥니다.']},

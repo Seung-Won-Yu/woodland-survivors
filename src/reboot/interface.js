@@ -417,7 +417,7 @@ function wireFieldPlan(seed,turret){
    <li><b>${bearing(start,opening.x,opening.y)} 포로 구출</b><small>${coastRescueReward(turret)}</small></li>
    <li><b>${bearing(rescue,radio.x,radio.y)} 해안 통신소</b><small>박격포 제압 → 5초 해킹 → 암호 회수</small></li>
   </ol></div>
-  <p><b>철도</b> 중계기 경유 없이 열차 조준 유인 1회</p>
+  <p><b>철도</b> 진입 시 장착 무장 정비 · 중계기 경유 없이 열차 조준 유인 1회</p>
   <small>수송차 교전 전에 암호를 회수해야 지령을 완수할 수 있습니다.</small>
  </section>`;
 }
@@ -449,6 +449,7 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  const thermalRoute=thermalTrial||request&&id==='thermal';
  const railReservation=request&&!at;
  const wire=sortie&&order&&id==='wire';
+ const wireSwitch=sortie&&fresh&&!trial&&earnsWireOrder(r)&&orders.some(item=>item.id==='wire')&&(!dispatch||wire);
  const shrapnelRoute=!!(trialId==='shrapnel'&&trial||request&&id==='shrapnel'||sortie&&!dispatch&&!trial&&!thermalRoute&&starter==='turret'&&remainingTrials.includes('shrapnel'));
  const rescueTrial=!request&&shrapnelRoute&&starter==='turret'
   &&remainingTrials.find(id=>compatible({weapons:[makeWeapon('r')],modules:[]},id))==='shrapnel';
@@ -465,8 +466,9 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  const showKit=sortie||shrapnelRoute;
  const pathOptions=configurable?`<div class="replay-launch-options" role="group" aria-label="전장 선택"><button data-brief-route="fresh" aria-pressed="${fresh}">새 전장${showKit?`<small>${beachRoute(options.freshSeed).name}</small>`:''}</button><button data-brief-route="same" aria-pressed="${!fresh}">같은 전장${showKit?`<small>${beachRoute(r.seed).name}</small>`:''}</button></div>${p.milestones.coastTurret?`<div class="replay-launch-options replay-starters" role="group" aria-label="시작 무장 선택">${[['standard','h','기관총 H','관통 실탄'],['turret','turret','노획 포탑','5발 부채꼴']].map(([id,art,name,attack])=>`<button data-brief-starter="${id}" aria-pressed="${starter===id}">${showKit?itemArt(art):''}<span>${name}${showKit?`<small>${attack}</small>`:''}</span></button>`).join('')}</div>`:''}`:'';
  const launchLabel=configurable?`${fresh?'새 전장':'같은 전장'} 출격`:starter==='turret'?'포탑으로 재출격':'재출격';
+ const missionGoal=sortie&&railSortieReturned(r)&&!comparison?' · 항구 보스 격파 후 귀환':'';
  const footer=`<footer>
-  <small>${p.active?'진행 중인 작전을 정산하고 ':''}${configurable?`${starter==='turret'?'노획 포탑':'기관총 H'} · 해안 LV.1`:'현재 연구로 해안 LV.1부터 시작합니다.'}${wire?` · 잔액 ${n(p.credits)} → ${n(p.credits-fee)}C`:order?' · 완수 시 지령 기록에 반영':openingGun?' · 표준 기록 별도':sortie&&comparison?` · ${reference.goal==='rail-return'?'철도 귀환':'기준'} ${splitClockText(reference.seconds)} / ${n(reference.score)}점`:sortie&&reference&&!fresh&&!matchingStart?' · 무장 변경 출격':''}</small>
+  <small>${p.active?'진행 중인 작전을 정산하고 ':''}${configurable?`${starter==='turret'?'노획 포탑':'기관총 H'} · 해안 LV.1`:'현재 연구로 해안 LV.1부터 시작합니다.'}${missionGoal}${wire?`<br>잔액 ${n(p.credits)} → ${n(p.credits-fee)}C`:order?' · 완수 시 지령 기록에 반영':openingGun?' · 표준 기록 별도':sortie&&comparison?` · ${reference.goal==='rail-return'?'철도 귀환':'기준'} ${splitClockText(reference.seconds)} / ${n(reference.score)}점`:sortie&&reference&&!fresh&&!matchingStart?' · 무장 변경 출격':''}</small>
   <div><button data-action="replay-brief-back">보고서로</button><button class="primary" ${fresh?'data-action="launch"':`data-action="same-seed" data-seed="${r.seed}"`} data-actor="${operatorId(r)}"${starter==='turret'?' data-coast-loadout="turret"':''}${openingGun?` data-opening-gun="${openingGun}"`:''}${attrs}>${launchLabel}${fee?` · ${fee}C`:''} <span aria-hidden="true">▶</span></button></div>
  </footer>`;
  const opening=wire?wireFieldPlan(seed,starter==='turret'):shrapnelRoute?shrapnelFieldPlan(seed,starter==='turret',rescueTrial,request?(at||'rail'):null)
@@ -486,7 +488,7 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
   ${configurable?'':`<p class="replay-last-kit"><strong>${r.won?'지난 완주':'지난 출격'}</strong> ${e(buildNames(installedCapstones(r.weapons)))} · ${e(supportName(harborLoadout(r.operation)))}</p>`}
   ${trial?`<p class="replay-trial-order"><strong>${RESEARCH_PROOFS[trialId].label} · 실증 +${RESEARCH_PROOF_CREDITS}C</strong>${shrapnelRoute?'':`<small>${thermalRoute?'스킬 사용 후 불붙은 적에 전기를 맞히세요.':trial.fieldBrief}</small>`}</p>`:''}
   ${sortie?'':selector}${!sortie&&detail?`<p class="replay-dispatch-note">${e(detail)}</p>`:''}
-  ${pathOptions}${experiment&&!thermalRoute&&!shrapnelRoute?footer:''}
+  ${pathOptions}${wireSwitch?`<div class="replay-launch-options replay-orders" role="group" aria-label="출격 조건"><button data-brief-order="standard" aria-pressed="${!wire}">표준 작전 <small>무료</small></button><button data-brief-order="wire" aria-pressed="${!!wire}">전파 절단 <small>${SORTIE_ORDERS.wire.fee}C</small></button></div>`:''}${experiment&&!thermalRoute&&!shrapnelRoute?footer:''}
   ${opening}${nextRoute}${sortie||experiment&&(thermalRoute||shrapnelRoute)?footer:''}
   ${sortie&&selector?`<details class="replay-rail-note"${dispatch||options.showDispatch?' open':''}><summary>지령·연구 장비 예약</summary>${selector}${detail?`<p class="replay-dispatch-note">${e(detail)}</p>`:''}</details>`:''}
   ${trials&&!trial?`<p class="replay-dispatch-note">실전 시험 대기 · ${e(trials)}</p>`:''}

@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.152.0" src="https://img.shields.io/badge/RIFT-0.152.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.153.0" src="https://img.shields.io/badge/RIFT-0.153.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -95,7 +95,7 @@
 
 항구에서 철갑은 포격 예고 중 측면 사격을 맞히면 포탑탄과 그 주기의 후속 탄막을 끊습니다. 발밑 포격을 피한 뒤 측면 사격을 이어갈 수 있습니다. 돌격은 재장전 때 회피로 노출 코어를 직접 칩니다. 의무 장비는 포격 위치가 고정된 뒤 붉은 원 밖 화물을 회수하면 전탄 +45를 얻습니다. 초록 표식이 뜬 발밑탄을 끊으면 차체에, 가로·세로탄을 끊으면 측면 장갑에 반격합니다. 보스 격파 뒤에는 열린 게이트로 귀환하거나, 하역로 바깥으로 빠지는 통신 차량을 18초 안에 저지해 화물 또는 후송 보급을 고를 수 있습니다. D2에서는 교차 포격을 피하며 박격포 두 문을 제압합니다. 완료 시 1,000점, 이후 생존 귀환 시 진지 노획품 60C를 받습니다. [잔류 선택과 모바일 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#0123-철도-역습과-항구-진지-노획).
 
-**전파 절단**은 첫 완주 또는 포탑 파괴·열차 조준 유인·철도 생존 귀환으로 열립니다. 해안 통신소를 해킹해 암호를 회수합니다. 첫 완주로 열리는 **보급선 절단**은 무기고에서 상자를 걸고 경량 보급차를 추격하는 작전입니다. 출격 때 70C를 쓰고 목표를 달성한 뒤 최종 귀환하면 180C를 받습니다. 두 지령의 기록은 표준 작전과 분리됩니다.
+**전파 절단**은 첫 완주 또는 포탑 파괴·열차 조준 유인·철도 생존 귀환으로 열립니다. 해안 통신소의 암호를 가져오면 철도 진입 시 현재 무장에 맞는 정비 보급을 받고 열차 조준을 한 번 유인할 수 있습니다. 첫 완주로 열리는 **보급선 절단**은 무기고에서 상자를 걸고 경량 보급차를 추격하는 작전입니다. 출격 때 70C를 쓰고 목표를 달성한 뒤 최종 귀환하면 180C를 받습니다. 두 지령의 기록은 표준 작전과 분리됩니다.
 
 ### 조작과 실행
 

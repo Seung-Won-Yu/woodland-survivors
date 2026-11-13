@@ -493,10 +493,12 @@ test('rail debrief shows the tactical result and the next sortie reward from eac
    assert.match(view,/중계기 교신으로 돌파[\s\S]*열차 조준 유인 1회[\s\S]*열차 포대 파괴<\/dt><dd>2 \/ 2문/);
    assert.match(view,/data-replay-route="fresh" data-dispatch="order:wire"[\s\S]*전파 절단 준비/);
    const wire=replayBriefingView(r,saved,'order:wire',null,{sortie:true,freshSeed:28});
-   assert.match(wire,/data-order-pin="wire"[\s\S]*5초 해킹[\s\S]*중계기 경유 없이 열차 조준 유인/);
+   assert.match(wire,/data-order-pin="wire"[\s\S]*5초 해킹[\s\S]*진입 시 장착 무장 정비[\s\S]*중계기 경유 없이 열차 조준 유인/);
+   assert.match(wire,/data-brief-order="wire" aria-pressed="true"/);
    assert.match(wire,/data-action="launch"[^>]*data-sortie="wire"[^>]*>새 전장 출격 · 70C/);
    assert.doesNotMatch(wire,/data-replay-from=|data-brief-opening/);
    const standard=replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28});
+   assert.match(standard,/data-brief-order="standard" aria-pressed="true"[\s\S]*항구 보스 격파 후 귀환/);
    assert.doesNotMatch(standard,/data-sortie=|data-order-pin=/);
    assert.doesNotMatch(view,/새 전장에서 포탑 L1 선택/);
    assert.match(reportView({...r,stats:{...r.stats,wireDecoy:1}},saved),/교신 암호로 돌파/);

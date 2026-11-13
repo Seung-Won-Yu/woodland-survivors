@@ -5245,6 +5245,56 @@ test('recovered coast codes allow one rail decoy without the relay and preserve 
  assert.equal(tracked.duration,RAIL_BARRAGE.warning+1);
 });
 
+test('the coastal cipher provides one loadout-specific supply on rail arrival and leaves relay control optional',()=>{
+ for(const build of ['fusion','coil','flame']){
+  for(const order of ['current','with-recovery','no-cipher','previous']){
+   const s=createOperation(28,[],null,'wire','fio','standard');
+   if(order==='previous')s.operation.orderRevision='rail-lure';
+   if(order!=='no-cipher'){
+    orderTarget(s).state='done';
+    s.operation.orderDone=true;
+   }
+   const flame=build==='flame';
+   s.firstNew=flame?'f':'r';
+   const rifle=s.weapons[0];
+   Object.assign(rifle,build==='coil'?{level:4,branch:'ricochet'}:{level:3});
+   s.weapons.push({...makeWeapon(s.firstNew),uid:'opening-weapon',level:flame?5:4,branch:flame?'trail':'homing'});
+   s.modules=flame?[{id:'catalyst',rank:2}]:[{id:'coil',rank:build==='coil'?1:2}];
+   s.stage='holdout';
+   Object.assign(s.boss,{dead:true,hp:0});
+   Object.assign(s.operation,{cleared:1});
+   Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+   if(order==='with-recovery')Object.assign(s.operation,{coastStrike:s.firstNew,coastStrikeUsed:true});
+   Object.assign(s.player,exitGate(s));
+   assert.ok(action(s,'interact'));
+   assert.ok(choose(s,'advance:breach'));
+   let draft=restore(snapshot(s));
+   if(order==='with-recovery'){
+    assert.equal(draft.choice.coastRecovery,true);
+    assert.ok(skip(draft));
+    draft=restore(snapshot(draft));
+   }
+   if(order==='no-cipher'||order==='previous'){
+    assert.notEqual(draft.choice?.wireSupply,true);
+    continue;
+   }
+   assert.equal(draft.choice.wireSupply,true);
+   assert.equal(draft.operation.regionTime,0);
+   assert.equal(draft.sites.find(site=>site.id==='rail-relay').state,'waiting');
+   const upgrade=build==='coil'?'module:coil':flame?'rank:f':'rank:h';
+   assert.equal(draft.choices[0].id,upgrade);
+   assert.equal(reroll(draft),false);
+   assert.deepEqual(banishOptions(draft),[]);
+   const corrupted=snapshot(draft);
+   corrupted.choices[0].weapon='r';
+   assert.throws(()=>restore(corrupted));
+   assert.ok(choose(draft,upgrade,build==='fusion'?{branch:'ricochet'}:{}));
+   assert.notEqual(draft.choice?.wireSupply,true);
+   assert.ok(assemblyOptions(draft).some(c=>c.id===(flame?'evolve:f':'fusion:h:r')));
+  }
+ }
+});
+
 test('an older wire checkpoint preserves its active coastal hack and original record scope',()=>{
  const base=emptyProfile(),p={...base,records:{...base.records,wins:1},credits:900};
  const {run:s,next}=freshSortie(p,19,'wire');
