@@ -263,6 +263,7 @@ export const railDisarmed=boss=>boss.parts.every(part=>part.hp<=0);
 // Fixed outer lanes in old checkpoints also belong to a gun.
 export const railGunOf=hazard=>hazard.railGun??(hazard.x===500?0:hazard.x===1100?1:null);
 export const railGunLabel=index=>index===0?'좌포':index===1?'우포':'포대';
+export const RAIL_GUN_COLORS=['#f2cb8f','#a8dcd4'];
 export const railLaneLabel=(h,locked=false)=>`${railGunLabel(railGunOf(h))} · ${h.tracked?(locked?'유인':'추적'):'측면'}`;
 export const railHasRelay=s=>s.sites.some(site=>site.kind==='relay'&&site.state==='done');
 export const railHasWire=s=>s.operation?.region===1&&hasWireOrder(s)&&s.operation.orderDone===true;

@@ -58,7 +58,7 @@ export function operatorPortrait(canvas,art,hero,height=190){const c=canvas.getC
 export function environmentProp(c,art,row,col,x,y,width,alpha=1){const atlas=art.environment,b=atlas.rows[row].cells[col];c.save();c.globalAlpha*=alpha;c.drawImage(atlas.image,b.sx,b.sy,b.w,b.h,x-width/2,y-b.h/b.w*width,width,b.h/b.w*width);c.restore();}
 
 // Layers keep separate pivots: a tank can steer its hull while aiming its cannon.
-export function vehicle(c,art,{x,y,width=120,enemy=false,body=0,turret=0,kick=0,tread=0,moving=false,pitch=0,flash=0,damaged=false,wreck=false,reduced=false,hull=null,turretDisabled=false}){
+export function vehicle(c,art,{x,y,width=120,enemy=false,body=0,turret=0,kick=0,tread=0,moving=false,pitch=0,flash=0,damaged=false,wreck=false,reduced=false,hull=null,turretDisabled=false,turretRemoved=false}){
  const im=art.vehicleLayers,cell=im.width/2,row=enemy?1:0,scale=width/(cell*(enemy?.9:.76));
  const pivots=enemy?[[.495,.50],[.32,.49]]:[[.5,.52],[.43,.52]];
  c.save();c.translate(x,y);c.fillStyle='#101b2255';c.beginPath();c.ellipse(0,1,width*.52,width*.35,0,0,Math.PI*2);c.fill();
@@ -70,6 +70,7 @@ export function vehicle(c,art,{x,y,width=120,enemy=false,body=0,turret=0,kick=0,
  }else c.drawImage(im,0,row*cell,cell,cell,-pivots[0][0]*cell*scale,-pivots[0][1]*cell*scale,cell*scale,cell*scale);
  if(moving){c.fillStyle='#17212690';for(const side of [-1,1])for(let i=-3;i<=3;i++){const tx=((i*13+tread*.7)%84+84)%84-42;c.fillRect(tx,side*width*.29-2,5,4);}if(!reduced){c.fillStyle='#cec1a15a';for(const side of [-1,1])for(let i=0;i<3;i++)c.fillRect(-width*.5-i*7,side*width*.26+Math.sin(tread*.11+i)*5,10-i*2,6-i);}}
  c.restore();
+ if(turretRemoved){c.restore();return;}
  const turretScale=hull?scale*.78:scale;
  c.save();c.translate(wreck?width*.08:0,wreck?-5:-15);c.rotate(turret+(wreck?.18:0));c.translate(reduced?0:-kick*width*.06,0);
  if(turretDisabled)c.filter='brightness(.46) saturate(.42)';

@@ -305,7 +305,7 @@ export function choiceDetails(s,c){
   out.impact=breakTurret?'재장전 탄막 5발 → 3발':'5발 탄막 유지 · 차체 조준';
   out.detail=breakTurret?(rail?'철갑 급탄 또는 후송 정비를 받아 철도로 전진':'격파 뒤 바로 귀환 가능')
    :'격파 뒤 증원 속에서 5초간 포탑 분리';
-  out.link=breakTurret?'':rail?'철도에서 발사 · 생존 귀환 시 시작 무장 해금':'+40C · 귀환 시 시작 무장 개방';
+  out.link=breakTurret?'':rail?'현장 장착 시 철도에서 부채꼴 사격 · 생존 반출 +40C 및 시작 무장 해금':'+40C · 귀환 시 시작 무장 개방';
  }
  else if(c.kind==='coast-mount'){out.detail=c.detail;out.link='철도 정비대에서 양쪽 대열을 함께 공격';out.cost='이번 판 무장 변경';}
  else if(c.kind==='back'){out.impact='장비를 유지하고 전투 계속';out.detail='';out.cost='조율권 소비 없음';}

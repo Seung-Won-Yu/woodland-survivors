@@ -3,7 +3,7 @@ import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,researchProofPro
 import {GUNS,MODULES,RULES,CAPTURED_TURRET,bearing,distance,makeWeapon,weaponStats,capstoneName,isCapturedTurret} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord,sortieResearchTrials} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
-import {COAST_SALVAGE,coastSalvage,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount} from './coast-salvage.js';
+import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount} from './coast-salvage.js';
 import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
@@ -11,6 +11,21 @@ export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padSta
 const splitClockText=t=>{const tenths=tenthsOfSecond(t);return `${clockText(tenths/10)}.${tenths%10}`;};
 const svg=(body,box='0 0 160 100')=>`<svg viewBox="${box}" aria-hidden="true" focusable="false">${body}</svg>`;
 export function itemArt(id,extra=''){return `<span class="kit-sprite kit-${id} ${extra}" aria-hidden="true"></span>`;}
+export function railHandoff(s){
+ const turret=s.weapons.find(isCapturedTurret),coast=coastSalvage(s);
+ if(turret){
+  const name=turret.evolved?capstoneName(turret):CAPTURED_TURRET.name;
+  return {state:'mounted',art:'turret',title:`${name} L${turret.level} 이월`,detail:`${weaponStats(turret).count}발 부채꼴 · 화차 정비대에서 양쪽 대열 사격`};
+ }
+ if(coast.turret==='secured')return {state:'cargo',art:'turret',title:'포탑 운반 중',detail:'현재 무장으로 교전 · 철도 생존 귀환 시 포탑 반출'};
+ if(coastSalvageWreck(s))return {state:'wreck',art:'turret',title:'포탑이 잔해에 남아 있음',detail:'잔해에서 5초간 분리하면 이번 판에 장착 가능'};
+ if(coast.turret==='broken'){
+  const support=FRONT_SUPPORTS[s.operation.nextSupport];
+  const name=s.operation.nextSupport==='vanguard'?'후송 정비':support?.name;
+  return {state:'broken',art:support?.art||'ammo',title:'포탑 파괴',detail:name?`${name} 장비 이월`:'철갑 급탄 또는 후송 정비를 골라 철도로'};
+ }
+ return {state:'standard',art:'ammo',title:'현재 무장 이월',detail:'통신 중계기를 확보하면 열차 조준을 한 번 유인'};
+}
 export const coastRescueReward=(turret,preempted=false)=>preempted?'추가 정비':turret?'화염 F / 기관총 H 선택':'화염 F / 로켓 R 선택';
 export function moduleIcon(id){
  const body=({

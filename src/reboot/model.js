@@ -1663,7 +1663,8 @@ export function railFanCutCue(s){
  const x=b.x,y=b.y+244,angle=Math.atan2(b.y-p.y,b.x-p.x);
  const guns=b.parts.map(part=>partPosition(s,part));
  const edges=guns.map(gun=>({...gun,x:gun.x+Math.sign(gun.x-x)*32}));
- const inPosition=Math.abs(p.x-x)<=18&&Math.abs(p.y-y)<=8;
+ const halfWidth=18,halfDepth=8;
+ const inPosition=Math.abs(p.x-x)<=halfWidth&&Math.abs(p.y-y)<=halfDepth;
  const clear=inPosition&&edges.every(edge=>!lineBlocked(s,p,edge));
  const lanes=s.hazards.filter(h=>h.lane&&!h.hit&&h.timer>0);
  const flight=s.shots.some(q=>q.railFanCut?.cycle===b.cycle);
@@ -1671,7 +1672,7 @@ export function railFanCutCue(s){
  const travel=Math.max(...guns.map(gun=>distance(p,gun)))/CAPTURED_TURRET.speed+.035;
  const state=flight?'flying':b.mode==='recover'?'recover':!clear?'approach':b.mode==='aim'?'hold':
   lanes.length===2&&time>=travel+Math.max(0,weapon.cd)?'ready':'evade';
- return {x,y,angle,guns,edges,state};
+ return {x,y,angle,guns,edges,state,halfWidth,halfDepth,inPosition};
 }
 function fireCapturedFan(s,w,target,angle,stats,damage,crossfire,railCut){
  const volley=(s.stats.turretVolleys||0)+1;

@@ -166,6 +166,28 @@
 .front-intel strong,.front-intel b{font-size:13px;line-height:1.4}
 .front-intel strong{color:#f7cf80}
 #field-intel{color:#fae1a3;line-height:1.5;white-space:pre-line}
+#field-intel[data-rail-fork]{display:grid;gap:4px;white-space:normal}
+.rail-route-row{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;padding:3px 5px;border-left:2px solid #a0b1a26b;color:#c6d1bd;background:#14272276;line-height:1.4}
+.rail-route-row[data-recommended]{border-color:var(--route-ink);color:#efe8cb;background:color-mix(in srgb,var(--route-ink) 14%,#1b2c28)}
+.rail-route-row b{display:block;font-size:10px;color:var(--route-ink)}
+.rail-route-row .rail-route-arrow{color:var(--route-ink);font-size:15px;text-align:center}
+.rail-route-row em{align-self:start;color:var(--route-ink);font-size:9px;font-style:normal}
+#salvage-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;color:#ffdf9c;font-size:10px}
+#salvage-progress progress,.rail-gun progress{width:100%;height:4px;margin:0;border:0;appearance:none;background:#0e201d}
+#salvage-progress progress::-webkit-progress-bar,.rail-gun progress::-webkit-progress-bar{background:#0e201d}
+#salvage-progress progress::-webkit-progress-value{background:#ffcf82}
+#salvage-progress progress::-moz-progress-bar{background:#ffcf82}
+.turret-recovery-only #holdout-intel{display:none}
+.turret-recovery :is(#field-feedback,#combo,#banner:not([data-kind="gate-notice"])){visibility:hidden}
+#boss-parts[data-rail-parts]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.rail-gun{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:3px 4px;padding:3px 4px 4px;border-left:2px solid var(--gun-ink);background:#152a27c9;color:var(--gun-ink);line-height:1.25;font-size:10px}
+#boss-parts .rail-gun{color:var(--gun-ink);font-size:10px}
+#boss-parts .rail-gun span{justify-self:end;color:#dce1ce;font-size:9px}
+.rail-gun progress{grid-column:1/-1}
+.rail-gun progress::-webkit-progress-value{background:var(--gun-ink)}
+.rail-gun progress::-moz-progress-bar{background:var(--gun-ink)}
+#boss-parts .rail-gun[data-state="파괴"]{border-left-color:#9ba897;color:#bbc6b8;opacity:.78}
+#boss-parts .rail-gun[data-state="차단"] span{color:#ffdd96}
 .objective #field-direct{color:#c2d6bf;border-top:1px solid #a5b3a55c;padding-top:4px}
 .objective #field-direct[data-coast="f"]{color:#ffd0a0}
 .objective #field-direct[data-coast="r"]{color:#bcece4}
@@ -299,9 +321,11 @@
  :is(.rail-fork,.rail-contact,.harbor-fork) .objective #stage{display:none}
  :is(.rail-fork,.rail-contact,.harbor-fork) #map-panel{width:84px;justify-self:end}
  :is(.rail-fork,.rail-contact,.harbor-fork) #field-feedback,.rail-contact #banner[data-kind="region-entry"]{visibility:hidden}
- .rail-fork #banner[data-kind="region-entry"]{top:222px;width:min(200px,calc(100% - 124px));padding:6px 9px 8px}
- .rail-fork #banner[data-kind="region-entry"] span{display:none}
- .rail-fork #banner[data-kind="region-entry"] strong{margin:0 0 2px;font-size:15px}
+ .rail-fork #banner[data-kind="region-entry"]{clip-path:inset(50%)}
+ .rail-fork .arsenal{max-width:calc(100% - 24px)}
+ .rail-fork .arsenal :is(.weapon.empty,#modules,#support-status){display:none}
+ .rail-fork .arsenal .weapon{min-width:62px;min-height:36px;padding:3px 6px 3px 28px}
+ .rail-fork .arsenal .weapon .kit-sprite{width:29px;height:29px;top:2px;left:0}
  .harbor-fork #banner[data-kind="region-entry"]{clip-path:inset(50%)}
  .boss-active #combo{top:auto;bottom:130px;right:16px}
  .boss-active .arsenal .weapon.empty{display:none}
@@ -1016,6 +1040,9 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 }
 .ordnance-preview .kit-turret {width: 97px; height: 97px; margin-right: 72px}
 .ordnance-preview > svg {width: 44px; color: var(--ordnance-ink)}
+.ordnance-card[data-ordnance="break"] .kit-turret{filter:grayscale(.72) brightness(.65) drop-shadow(1px 2px #0d1919)}
+.ordnance-card[data-ordnance="carry"] .kit-turret{margin-right:0;opacity:.5}
+.ordnance-crate{position:absolute;left:50%;top:50%;width:43px;transform:translate(-25%,5%);color:#d7dfbb;filter:drop-shadow(0 1px 2px #101e1e)}
 .ordnance-rays {position: absolute; top: 50%; left: calc(50% + 5px); color: var(--ordnance-ink)}
 .ordnance-rays i {
  position: absolute;
@@ -1044,7 +1071,8 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 }
 .arsenal .weapon[data-captured] {border-color: #d3a968}
 #boss-tactic[data-fan-line] {color:#ffdf9c}
-.front-transfer[data-turret] {background:#373d30;color:#ffdf9c}
+.front-transfer:is([data-transfer="mounted"],[data-transfer="cargo"],[data-transfer="wreck"]) {background:#373d30;color:#ffdf9c}
+.front-transfer[data-transfer="broken"]{border-left-color:#accdd2;background:#243b3a;color:#cfebea}
 .salvage-report .salvage-cut {color:#f3d698}
 .rail-debrief {
  display: grid;
@@ -1154,12 +1182,17 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .ordnance-card {grid-template-columns: 86px minmax(0,1fr); grid-template-rows: auto; min-height: 116px}
  .ordnance-preview .kit-turret {width: 55px; height: 55px; margin-right: 25px}
  .ordnance-preview > svg {width: 33px}
+ .ordnance-crate{width:30px}
  .ordnance-rays {left: calc(50% + 8px)}
  .ordnance-rays i {width: 25px}
  .ordnance-copy {gap: 4px; padding: 10px 25px 10px 10px}
  .ordnance-copy > strong {font-size: 15px}
  .ordnance-copy > b {font-size: 11px}
  .ordnance-card kbd {top: 6px; right: 5px}
+ .front-transfer{gap:8px;padding:5px 8px;margin-block:8px}
+ .front-transfer .kit-sprite{width:38px;height:38px}
+ .front-transfer b{font-size:13px;line-height:1.4}
+ .front-transfer small{font-size:10px}
 }
 @media(max-width:360px) and (orientation:portrait) {
  .gate-near #holdout-intel :is(#holdout-steps,#pursuit-intel,#pursuit-pay:not([data-extraction-reward])) {display:none}

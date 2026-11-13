@@ -1,10 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView,replayBriefingView,gatePace} from '../src/reboot/interface.js';
+import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
 import {portEscapeLanes} from '../src/reboot/campaign.js';
+
+test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a destroyed mount',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ const coast=s.operation.coastSalvage;
+ s.stage='holdout';
+ coast.turret='intact';
+ assert.equal(railHandoff(s).state,'wreck');
+ coast.turret='secured';
+ assert.match(railHandoff(s).detail,/현재 무장으로 교전.*철도 생존 귀환/);
+ assert.equal(railHandoff(s).state,'cargo');
+ s.weapons.push({id:'r',level:6,branch:'homing',evolved:true,capturedTurret:true});
+ assert.equal(railHandoff(s).title,'광각 포탑 L6 이월');
+ assert.match(railHandoff(s).detail,/7발/);
+ s.weapons.pop();
+ coast.turret='broken';
+ assert.equal(railHandoff(s).state,'broken');
+ s.operation.nextSupport='vanguard';
+ assert.match(railHandoff(s).detail,/후송 정비.*이월/);
+});
 
 test('portrait HUD clearance uses confirmed contact and live warning shapes without covering holdout actions',()=>{
  const box=(id,left,top,right,bottom)=>({id,rect:{left,top,right,bottom}});

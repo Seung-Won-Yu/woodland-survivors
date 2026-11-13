@@ -391,8 +391,17 @@ export function paintEntryRoutes(c,entry){
  c.save();
  c.lineWidth=3;c.lineCap='round';c.lineJoin='round';
  for(const route of entry.direct?[entry.direct,...entry.routes]:entry.routes){
+  const markedRail=route.recommended&&(route.site==='rail-cache'||route.site==='rail-relay');
+  if(markedRail){
+   const [x,y]=route.path.at(-1);
+   c.lineWidth=9;c.strokeStyle='#202e2bba';c.setLineDash([15,11]);c.beginPath();
+   route.path.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();
+   c.setLineDash([]);c.lineWidth=2;c.strokeStyle=route.color+'bc';
+   c.beginPath();c.moveTo(x-28,y+18);c.lineTo(x-28,y+32);c.lineTo(x-14,y+32);
+   c.moveTo(x+28,y+18);c.lineTo(x+28,y+32);c.lineTo(x+14,y+32);c.stroke();
+  }
   c.lineWidth=route.recommended?4:3;
-  c.strokeStyle=route.color+(route.recommended?'b8':'86');c.setLineDash(route.recommended?[15,11]:[9,15]);c.beginPath();
+  c.strokeStyle=route.color+(markedRail?'e5':route.recommended?'b8':'86');c.setLineDash(route.recommended?[15,11]:[9,15]);c.beginPath();
   route.path.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();
   c.setLineDash([]);
   for(let i=1;i<route.path.length;i++){
