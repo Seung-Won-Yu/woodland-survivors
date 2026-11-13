@@ -1,4 +1,4 @@
-import {regionPreview,previewLayout,sitePresentation,siteSymbol,coastOpeningBrief} from './field-scene.js';
+import {regionPreview,previewLayout,sitePresentation,siteSymbol,coastOpeningBrief,railSalvagePreview} from './field-scene.js';
 import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,researchProofProgress,pickedResearchTrials,REQUISITION_FEE,requisitionDestination,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,COAST_STRIKES,COAST_RESPONSE,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,coastPreemptGun,isOpeningGun,COAST_SALVAGE_LEVEL,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderRecordScope,orderBonus,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,CAPTURED_TURRET,bearing,distance,makeWeapon,weaponStats,capstoneName,isCapturedTurret} from './content.js';
 import {canLaunchOrder,canReserveResearch,marcoRecord,sortieResearchTrials} from './profile.js';
@@ -6,6 +6,7 @@ import {OPERATORS,operatorOf,operatorId} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount} from './coast-salvage.js';
 import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
 import {HARBOR_PART_ACTION} from './choice-details.js';
+import {RAIL_SALVAGE_ROUTES,frontEntry,mapSeed,railWorkshopEntry} from './campaign.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
 export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
@@ -298,6 +299,7 @@ function debriefRoute(operation,stats,reference){
  if(!operation)return '';
  const history=Array.isArray(operation.history)?operation.history:[];
  const front=Number.isInteger(operation.region)?operation.region:-1;
+ const railReference=reference?.goal==='rail-return';
  return `<ol class="debrief-route" aria-label="전선별 진행 기록">${REGIONS.slice(0,sortieFrontCount({operation})).map((d,i)=>{
   const entry=history.find(step=>step?.region===i);
   const cleared=i<operation.cleared,elapsed=frontElapsed(operation,i);
@@ -309,22 +311,27 @@ function debriefRoute(operation,stats,reference){
   const batteries=i===2&&Number.isSafeInteger(stats.portBatteriesCleared)&&stats.portBatteriesCleared>0?`포대 ${n(stats.portBatteriesCleared)}문 제압`:'';
   const shortRun=isCoastRailSortie({operation});
   const wager=batteries||signal||(shortRun&&part?part.name:entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'');
-  const pace=reference&&(entry||i===2&&operation.extracted)?timeDifference(elapsed,reference.fronts[i]):null;
+  const terminal=railReference?i===1&&front===1&&operation.coastSalvage?.extracted:i===2&&operation.extracted;
+  const recorded=entry||terminal;
+  const pace=reference&&recorded?timeDifference(elapsed,reference.fronts[i]):null;
   return `<li class="${cleared?'done':''}"><span>${d.name}</span><small>${state}${time}</small>${pace?`<small class="front-pace" data-trend="${pace.trend}">${pace.text}</small>`:''}${wager?`<small class="debrief-wager">${e(wager)}</small>`:''}</li>`;
  }).join('')}</ol>`;
 }
 export function gatePace(operation,reference){
- const pace=timeDifference(operation.regionTime,reference?.fronts?.[operation.region]);
+ const rail=reference?.goal==='rail-return'&&operation.region===1;
+ const pace=rail?timeDifference(frontElapsed(operation,0)+operation.regionTime,reference.seconds)
+  :timeDifference(operation.regionTime,reference?.fronts?.[operation.region]);
  if(!pace)return '';
- const departure=operation.region+1===sortieFrontCount({operation})?'귀환':'전진';
+ const departure=rail?'철도 귀환':operation.region+1===sortieFrontCount({operation})?'귀환':'전진';
  return `<div class="gate-pace" aria-label="같은 전장 구간 기록"><span>#${e(reference.sequence)} 대비 · 지금 ${departure} 시</span><b data-trend="${pace.trend}">${pace.text}</b></div>`;
 }
 function debriefPace(r,reference){
  if(!reference)return '';
- const time=r.won?timeDifference(r.seconds,reference.seconds):null;
+ const rail=reference.goal==='rail-return';
+ const time=(rail?railSortieReturned(r):r.won)?timeDifference(r.seconds,reference.seconds):null;
  const score=r.score-reference.score;
  const points=score===0?'점수 동일':`${score>0?'+':'−'}${n(Math.abs(score))}점`;
- return `<section class="debrief-pace" aria-label="같은 전장 기록 비교"><span>같은 전장 #${reference.sequence} 대비</span>${time?`<b data-trend="${time.trend}">전체 ${time.text}</b><b data-trend="${score>0?'ahead':score<0?'behind':'even'}">${points}</b>`:'<b>미완주</b>'}</section>`;
+ return `<section class="debrief-pace" aria-label="같은 전장 기록 비교"><span>${rail?'철도 귀환':'같은 전장'} #${reference.sequence} 대비</span>${time?`<b data-trend="${time.trend}">전체 ${time.text}</b><b data-trend="${score>0?'ahead':score<0?'behind':'even'}">${points}</b>`:rail?`<b>${r.operation.region===2?'항구로 전진':'철도 기록 미완료'}</b>`:'<b>미완주</b>'}</section>`;
 }
 const buildNames=capstones=>capstones.join(' · ')||'완성 무장 없음';
 const supportName=id=>FRONT_SUPPORTS[id]?.name||'지원 장비 없음';
@@ -371,7 +378,8 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  if(!isReport(r))return '';
  const remainingTrials=sortieResearchTrials(p);
  const trial=remainingTrials.includes(trialId)?RESEARCH[trialId]:null;
- const reference=replayReference(r,p.recordScope);
+ const candidate=replayReference(r,p.recordScope);
+ const reference=candidate?.goal==='rail-return'&&remainingTrials.length?null:candidate;
  const configurable=Number.isSafeInteger(options.freshSeed),sortie=configurable&&options.sortie;
  const experiment=configurable&&!sortie;
  const fresh=configurable&&options.route!=='same',seed=fresh?options.freshSeed:r.seed;
@@ -406,14 +414,20 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  const pathOptions=configurable?`<div class="replay-launch-options" role="group" aria-label="전장 선택"><button data-brief-route="fresh" aria-pressed="${fresh}">새 전장${sortie?`<small>${beachRoute(options.freshSeed).name}</small>`:''}</button><button data-brief-route="same" aria-pressed="${!fresh}">같은 전장${sortie?`<small>${beachRoute(r.seed).name}</small>`:''}</button></div>${p.milestones.coastTurret?`<div class="replay-launch-options replay-starters" role="group" aria-label="시작 무장 선택">${[['standard','h','기관총 H','관통 실탄'],['turret','turret','노획 포탑','5발 부채꼴']].map(([id,art,name,attack])=>`<button data-brief-starter="${id}" aria-pressed="${starter===id}">${sortie?itemArt(art):''}<span>${name}${sortie?`<small>${attack}</small>`:''}</span></button>`).join('')}</div>`:''}`:'';
  const launchLabel=configurable?`${fresh?'새 전장':'같은 전장'} 출격`:starter==='turret'?'포탑으로 재출격':'재출격';
  const footer=`<footer>
-  <small>${p.active?'진행 중인 작전을 정산하고 ':''}${configurable?`${starter==='turret'?'노획 포탑':'기관총 H'} · 해안 LV.1`:'현재 연구로 해안 LV.1부터 시작합니다.'}${order?' · 완수 시 지령 기록에 반영':openingGun?' · 표준 기록 별도':sortie&&comparison?` · 기준 ${splitClockText(reference.seconds)} / ${n(reference.score)}점`:sortie&&reference&&!fresh&&!matchingStart?' · 무장 변경 출격':''}</small>
+  <small>${p.active?'진행 중인 작전을 정산하고 ':''}${configurable?`${starter==='turret'?'노획 포탑':'기관총 H'} · 해안 LV.1`:'현재 연구로 해안 LV.1부터 시작합니다.'}${order?' · 완수 시 지령 기록에 반영':openingGun?' · 표준 기록 별도':sortie&&comparison?` · ${reference.goal==='rail-return'?'철도 귀환':'기준'} ${splitClockText(reference.seconds)} / ${n(reference.score)}점`:sortie&&reference&&!fresh&&!matchingStart?' · 무장 변경 출격':''}</small>
   <div><button data-action="replay-brief-back">보고서로</button><button class="primary" ${fresh?'data-action="launch"':`data-action="same-seed" data-seed="${r.seed}"`} data-actor="${operatorId(r)}"${starter==='turret'?' data-coast-loadout="turret"':''}${openingGun?` data-opening-gun="${openingGun}"`:''}${attrs}>${launchLabel}${fee?` · ${fee}C`:''} <span aria-hidden="true">▶</span></button></div>
  </footer>`;
  const opening=thermalRoute?thermalFieldPlan(seed,railReservation):canPlan?openingOrders(seed,openingGun):coastPlan(seed,order?id:null,request?.fieldGun||trial?.fieldGun||suggested,researchNotes,!dispatch&&!trial&&!remainingTrials.length&&(starter!=='turret'||coastPreemptGun(seed)!=='r'),starter,operatorId(r),sortie);
- const rail=sortie?previewLayout(seed,1,null,true).sites:[];
- const railSite=rail.find(site=>site.id===(railReservation||starter==='turret'?'rail-cache':'rail-relay'));
- const railTip=railReservation?`경비를 제압한 뒤 예약한 ${request.name} 수령`:starter==='turret'?'정비대 남쪽에서 양쪽 보병을 부채꼴 한 번에':openingGun==='f'?'화염 F 강화 또는 열차 조준 유인 선택':'로켓 R을 얻으면 긴 사선에서 후방 박격포부터';
- const nextRoute=railSite&&(!thermalRoute||railReservation)?`<p class="replay-rail-target"><b>철도 ${bearing({x:800,y:1040},railSite.x,railSite.y)} ${sitePresentation(railSite).name}</b><span>${railTip}</span></p>`:'';
+ const railId=railReservation||starter==='turret'?'rail-cache':'rail-relay';
+ const railTip=railReservation?`경비 제압 후 ${request.name} 수령`:starter==='turret'?'정비대 남쪽 · 양쪽 대열 일제사격':openingGun==='f'?'화염 F 강화 또는 열차 조준 유인':'로켓 R · 후방 박격포부터 제압';
+ let nextRoute='';
+ if(sortie&&(!thermalRoute||railReservation)){
+  const {arrival,routes}=frontEntry(mapSeed(seed,1),1);
+  const route=routes.find(item=>item.site===railId),fan=starter==='turret';
+  const path=fan?railWorkshopEntry(route,arrival):route.path;
+  const {color,name}=RAIL_SALVAGE_ROUTES[railId];
+  nextRoute=`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed,railId,fan)}<div><b>철도 ${bearing(arrival,...path[1])} ${name}</b><span>${e(railTip)}</span></div></div>`;
+ }
  return `<section class="sheet replay-briefing${experiment?' research-sortie-briefing':sortie?' sortie-briefing':''}" role="dialog" aria-modal="true" aria-labelledby="replay-brief-title">
   <header><div><span class="section-index">${experiment?`병기 연구 · ${operatorOf(r).name}`:`${trial?'실전 시험 · 같은 전장 · ':''}작전 #${r.sequence??'–'} · ${operatorOf(r).name}`}</span><h2 id="replay-brief-title">${trial?trial.name:experiment?'연구 장비 배치':sortie?'다음 출격 준비':'같은 전장 재도전'}</h2></div>${configurable?'':`<b>${splitClockText(r.seconds)}<small>${n(r.score)}점</small></b>`}</header>
   ${configurable?'':`<p class="replay-last-kit"><strong>${r.won?'지난 완주':'지난 출격'}</strong> ${e(buildNames(installedCapstones(r.weapons)))} · ${e(supportName(harborLoadout(r.operation)))}</p>`}
@@ -485,14 +499,15 @@ function debriefActions(r,p,archived,compared){
    <button class="text-button" data-action="home" data-target="${archived?'archive':'mission'}">작전실로</button>
   </section>`;
  }
- const reference=replayReference(r,p.recordScope);
+ const candidate=replayReference(r,p.recordScope);
+ const reference=candidate?.goal==='rail-return'&&sortieResearchTrials(p).length?null:candidate;
  const target=reference?`${splitClockText(reference.seconds)} · ${n(reference.score)}점`:'';
  const briefing=Number.isSafeInteger(r.sequence)&&r.sequence>0;
  const turret=p.milestones.coastTurret&&isSalvageCampaign(r);
  const newTurret=turret&&coastTurretReturned(r);
  const replay=briefing&&isSalvageCampaign(r)?`<div class="debrief-replays debrief-sortie">
-   <button data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="fresh">${itemArt(newTurret||turret&&coast.loadout==='turret'?'turret':'h')}<span><b>새 전장 준비</b><small>${newTurret?'반출한 포탑으로 새 동선 시험':sortieResearchTrials(p).length?'해안 동선·시작 무장 확인':'해안의 첫 기습 목표 선택'}</small></span><i aria-hidden="true">›</i></button>
-   <button data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="same"><span><b>${reference?'기록 도전':'같은 전장'}</b><small>${target||'같은 지형에서 공략 변경'}</small></span></button>
+   <button data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="fresh">${itemArt(newTurret||turret&&coast.loadout==='turret'?'turret':'h')}<span><b>새 전장 준비</b><small>${newTurret?railSortieReturned(r)?'포탑 L1 · 항구 돌파 도전':'반출한 포탑으로 새 동선 시험':sortieResearchTrials(p).length?'해안 동선·시작 무장 확인':'해안의 첫 기습 목표 선택'}</small></span><i aria-hidden="true">›</i></button>
+   <button data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="same"${reference?.goal==='rail-return'?' data-rail-record':''}><span><b>${reference?.goal==='rail-return'?'철도 기록 도전':reference?'기록 도전':'같은 전장'}</b><small>${target||'같은 지형에서 공략 변경'}</small></span></button>
   </div>`:`<div class="debrief-replays"${turret?' data-has-turret':''}>
    ${turret?`<button data-action="launch" data-actor="${operatorId(r)}" data-coast-loadout="turret">${itemArt('turret')}<span>노획 포탑으로 출격<small>새 전장 · 5발 부채꼴 L1</small></span></button>`:''}
    <button data-action="launch" data-actor="${operatorId(r)}">${turret?'기관총 H로 출격<small>새 전장 · 관통 실탄 L1</small>':'새 전장 출격'}</button>
@@ -503,7 +518,7 @@ function debriefActions(r,p,archived,compared){
  const next=debriefNext(r,p);
  const experiment=next.purchase||next.dispatch||next.trial;
  if(railSortieReturned(r)&&next.target==='mission'&&!experiment)return `<section class="debrief-actions debrief-rail-next" aria-label="다음 작전">
-  <h2>다음 출격</h2>${replay}<p class="report-footnote">${e(next.text)}</p>
+  <h2>다음 출격</h2>${replay}${newTurret?'':`<p class="report-footnote">${e(next.text)}</p>`}
   <button class="text-button" data-action="home" data-target="mission">작전실에서 준비</button>
  </section>`;
  const trialBrief=briefing&&(next.dispatch||next.trial);
@@ -591,6 +606,7 @@ export function reportView(r,p,{archived=false}={}){
  const legacyFirst=r.creditBreakdown==null&&r.won&&sameScope&&hasPayout(r)&&r.credits-operationCredits(r)===200;
  const first=lines?.find(line=>line.id==='firstClear')?.value??(legacyFirst?200:0);
  const reference=referenceMatches(r.reference,r,r.sequence)?r.reference:null;
+ const railPace=reference?.goal==='rail-return';
  return `<section class="sheet report-sheet" role="dialog" aria-modal="true" aria-labelledby="result-title">
   <header class="debrief-header"><div><span class="section-index">작전 보고${r.sequence?` / #${r.sequence}`:''}</span>
    <h1 id="result-title">${title}</h1><p>${operatorOf(r).name} · ${reference?splitClockText(r.seconds):clockText(r.seconds)} · LV.${r.level}${r.newTime&&sameScope?' · 최단 기록 갱신':''}</p></div>
@@ -600,10 +616,11 @@ export function reportView(r,p,{archived=false}={}){
     <section class="debrief-scorecard" aria-label="작전 성과">
      ${hasPayout(r)?`<div class="earned-pay"><span>지급 크레딧</span><b>+${n(r.credits)}<small>C</small></b>${first?`<small class="first-clear">첫 완주 +${n(first)}C 포함</small>`:''}</div>`:''}
      <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>일반 적 ${n(r.stats.kills)}명 · 잔류 D${r.stats.challenge}</small></div>
+     ${railPace?debriefPace(r,reference):''}
     </section>
    ${salvageCampaignReport(r)}${harborPayoff(r)}${debriefActions(r,p,archived,!!reference)}
    <section class="debrief-summary" aria-label="전선과 장비 기록">
-    ${coast&&!carriesCoastSalvage(r)?'':debriefPace(r,reference)+debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${crossfireReport(r)}${signalReport(r)}
+    ${coast&&!carriesCoastSalvage(r)?'':(railPace?'':debriefPace(r,reference))+debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${crossfireReport(r)}${signalReport(r)}
    </section>
   </div>
   ${debriefDetails(r,p,lines)}

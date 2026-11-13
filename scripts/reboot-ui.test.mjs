@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff} from '../src/reboot/interface.js';
-import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch} from '../src/reboot/profile.js';
+import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
 import {portEscapeLanes} from '../src/reboot/campaign.js';
@@ -436,6 +436,44 @@ test('rail debrief shows the tactical result and the next sortie reward from eac
    assert.match(reportView({...r,stats:{...r.stats,wireDecoy:1}},saved),/교신 암호로 돌파/);
   }
  }
+});
+test('a standard railway return sets an actionable same-seed target for its two fronts',()=>{
+ const source=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+ const complete=(run,coastTime,railTime,score)=>{
+  Object.assign(run.operation,{region:1,cleared:2,history:[{region:0,time:coastTime}],regionTime:railTime});
+  Object.assign(run.operation.coastSalvage,{turret:'secured',extracted:true});
+  Object.assign(run.stats,{bossKilled:true,score});
+  run.t=coastTime+railTime;
+  finish(run,false,'rail-return');
+ };
+ complete(source.run,32,21.2,4500);
+ const saved=settleProfile(source.next,source.run),report=saved.recent[0],options={sortie:true,freshSeed:28,route:'same'};
+ assert.match(reportView(report,saved),/data-rail-record><span><b>철도 기록 도전<\/b><small>0:53\.2 · 4,500점/);
+ const same=replayBriefingView(report,saved,'standard',null,options);
+ assert.match(same,/철도 귀환 0:53\.2 \/ 4,500점/);
+ assert.match(same,/data-replay-rail="rail-relay"[\s\S]*철도 ↖ 통신 중계기/);
+ assert.match(same,/data-seed="27"[^>]+data-replay-from="1"/);
+ const turret=replayBriefingView(report,saved,'standard',null,{...options,starter:'turret'});
+ assert.match(turret,/data-replay-rail="rail-cache"[\s\S]*철도 → 화차 정비대/);
+ assert.doesNotMatch(turret,/data-replay-from/);
+ const fresh=replayBriefingView(report,saved,'standard',null,{...options,starter:'turret',route:'fresh'});
+ assert.match(fresh,/data-replay-rail="rail-cache"[\s\S]*철도 ← 화차 정비대/);
+ assert.doesNotMatch(fresh,/data-replay-from/);
+ const retry=freshSortie(saved,27,null,'fio',null,1,null,'standard',true);
+ const reference=retry.next.active.reference;
+ assert.equal(reference.goal,'rail-return');
+ assert.deepEqual(reference.fronts,[32,21.2]);
+ assert.deepEqual(parseProfile(JSON.stringify(retry.next)).active.reference,reference);
+ assert.equal(freshSortie(saved,27,null,'fio',null,1,null,'turret',true).next.active.reference,undefined);
+ assert.equal(freshSortie({...saved,research:['thermal'],trials:['thermal']},27,null,'fio',null,1,null,'standard',true).next.active.reference,undefined);
+ assert.match(gatePace({region:1,regionTime:25,history:[{region:0,time:27}]},reference),/철도 귀환 시.*1\.2초 단축/);
+ complete(retry.run,27,25,4700);
+ const final=settleProfile(retry.next,retry.run),html=reportView(final.recent[0],final);
+ assert.match(html,/철도 귀환 #1 대비.*전체 1\.2초 단축.*\+200점/);
+ assert.match(html,/철도 차단<\/span><small>돌파 · 0:25\.0<\/small><small class="front-pace" data-trend="behind">3\.8초 지연/);
+ const onward={...final.recent[0],won:true,reason:'prototype-complete',operation:{...final.recent[0].operation,region:2,cleared:3,extracted:true}};
+ assert.match(reportView(onward,final),/철도 귀환 #1 대비<\/span><b>항구로 전진/);
+ assert.doesNotMatch(reportView(onward,final),/전체 1\.2초 단축/);
 });
 test('a canonical report previews the chosen beach and starter and only compares matching records',()=>{
  const p=emptyProfile(),run=createOperation(27,[],null,null,'fio','standard'),active=beginProfile(p,run);

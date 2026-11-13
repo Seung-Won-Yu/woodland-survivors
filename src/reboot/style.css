@@ -702,6 +702,9 @@
 .debrief-route .done .debrief-wager{color:#414832}
 .debrief-pace{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-top:8px;padding:7px 8px;background:#182b28;border-left:2px solid #94aa86;color:#e5ead5;font-size:11px;line-height:1.35}
 .debrief-pace span{flex:1 0 auto}
+.debrief-scorecard:has(.debrief-pace){flex-wrap:wrap}
+.debrief-scorecard .debrief-pace{flex:0 0 100%;margin:0;padding:7px 9px;border:0;border-top:1px solid #a7a681}
+.debrief-scorecard .debrief-pace b{font-size:11px;letter-spacing:0}
 :is(.debrief-pace,.gate-pace) [data-trend="ahead"]{color:#bce9cc}
 :is(.debrief-pace,.gate-pace) [data-trend="behind"]{color:#ffca9f}
 .debrief-route .front-pace{font-weight:700;color:#244a33}
@@ -797,6 +800,7 @@
 .replay-briefing>footer small{color:#cbd8bb;font-size:11px;line-height:1.4}
 .replay-briefing>footer div{display:grid;grid-template-columns:1fr 2fr;gap:7px}
 .replay-briefing>footer button{min-height:44px}
+.sortie-briefing>footer button.primary{display:flex;align-items:center;justify-content:center;gap:5px;padding-inline:6px;white-space:nowrap}
 .replay-launch-options{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-block:6px}
 .replay-launch-options button{min-height:44px;padding:6px 8px;font-size:12px;text-align:left}
 .replay-launch-options button[aria-pressed="true"]{border-color:#e3b777;background:#433b2b;color:#ffe3a3;box-shadow:inset 3px 0 #efc480}
@@ -841,8 +845,12 @@
 .opening-weapon-copy .opening-goal{color:#ffde9f}
 .replay-landing{margin:0 0 6px;color:#d7dec6;font-size:10px;line-height:1.4}
 .replay-landing b{color:#f1d690}
-.replay-rail-target{display:grid;gap:2px;margin:7px 0 0;padding:6px 8px;border-left:2px solid #a8b897;background:#1a2d28;color:#e9e1c5;font-size:11px;line-height:1.35;word-break:keep-all}
+.replay-rail-target{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;align-items:center;margin:7px 0 0;padding:3px 7px 3px 4px;border-left:2px solid var(--route-ink);background:#1a2d28;font-size:11px;line-height:1.35;word-break:keep-all}
+.replay-rail-target .rail-salvage-map{height:40px;border:1px solid #56695b}
+.replay-rail-target>div{display:grid;gap:2px}
+.replay-rail-target b{color:var(--route-ink)}
 .replay-rail-target span{color:#ccd7be}
+.debrief-sortie [data-rail-record] b{color:#c3e4df}
 @media(max-width:700px){
  body[data-scene=lobby] #ui:has(>:is(.report-sheet,.replay-briefing)){padding:12px}
  .sheet.report-sheet{padding:15px 14px 13px}

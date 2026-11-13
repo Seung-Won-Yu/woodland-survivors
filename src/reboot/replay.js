@@ -1,7 +1,7 @@
 import {REGIONS,FRONT_SUPPORTS} from './campaign.js';
 import {GUNS,CAPTURED_TURRET,capstoneName} from './content.js';
 import {operatorId} from './operator.js';
-import {coastSalvage,isSalvageCampaign} from './coast-salvage.js';
+import {coastSalvage,isSalvageCampaign,railSortieReturned} from './coast-salvage.js';
 
 const nonnegative=value=>Number.isFinite(value)&&value>=0;
 const standard=operation=>!!operation&&!operation.order&&!operation.requisition&&!operation.openingGun&&(!operation.coastSalvage||isSalvageCampaign({operation}));
@@ -19,9 +19,11 @@ export function frontElapsed(operation,index){
 }
 
 function validReference(ref){
+ const rail=ref?.goal==='rail-return';
  return !!ref&&Number.isSafeInteger(ref.sequence)&&ref.sequence>0&&Number.isSafeInteger(ref.seed)&&ref.seed>=0&&ref.seed<=0xffffffff
   &&['fio','marco'].includes(ref.operator)&&typeof ref.scope==='string'&&nonnegative(ref.score)&&nonnegative(ref.seconds)&&ref.seconds>0
-  &&Array.isArray(ref.fronts)&&ref.fronts.length===REGIONS.length&&Array.from(ref.fronts).every(nonnegative)
+  &&(rail?['standard','turret'].includes(ref.loadout):ref.goal===undefined)
+  &&Array.isArray(ref.fronts)&&ref.fronts.length===(rail?2:REGIONS.length)&&Array.from(ref.fronts).every(nonnegative)
   &&(ref.capstones===undefined||Array.isArray(ref.capstones)&&ref.capstones.length<=3&&Array.from(ref.capstones).every(name=>capstones.has(name)))
   &&(ref.harborSupport==null||isHarborSupport(ref.harborSupport))&&(ref.loadout===undefined||['standard','turret'].includes(ref.loadout))
   &&Math.abs(ref.fronts.reduce((sum,time)=>sum+time,0)-ref.seconds)<.1;
@@ -29,18 +31,20 @@ function validReference(ref){
 
 export function replayReference(report,scope){
  const operation=report?.operation;
- if(report?.won!==true||report.balanceRevision!==scope||!standard(operation)||operation.extracted!==true
-   ||operation.cleared!==REGIONS.length||operation.region!==REGIONS.length-1)return null;
+ if(!report||report.balanceRevision!==scope||!standard(operation))return null;
+ const rail=report.won===false&&isSalvageCampaign(report)&&railSortieReturned(report)&&!operation.trialProof;
+ if(!rail&&(report.won!==true||operation.extracted!==true||operation.cleared!==REGIONS.length||operation.region!==REGIONS.length-1))return null;
  const reference={sequence:report.sequence,seed:report.seed,operator:operatorId(report),scope,score:report.score,seconds:report.seconds,
-  fronts:REGIONS.map((_,index)=>frontElapsed(operation,index)),
-  capstones:installedCapstones(report.weapons),harborSupport:harborLoadout(operation),
+  fronts:REGIONS.slice(0,rail?2:REGIONS.length).map((_,index)=>frontElapsed(operation,index)),
+  capstones:installedCapstones(report.weapons),...(rail?{goal:'rail-return'}:{harborSupport:harborLoadout(operation)}),
   ...(isSalvageCampaign(report)?{loadout:coastSalvage(report).loadout}:{})};
  return validReference(reference)?reference:null;
 }
 
 export function referenceMatches(reference,run,sequence){
  return validReference(reference)&&standard(run.operation)&&Number.isSafeInteger(sequence)&&reference.sequence<sequence&&reference.scope===run.balanceRevision
-  &&reference.seed===run.seed&&reference.operator===operatorId(run)&&reference.loadout===coastSalvage(run)?.loadout;
+  &&reference.seed===run.seed&&reference.operator===operatorId(run)&&reference.loadout===coastSalvage(run)?.loadout
+  &&(reference.goal!=='rail-return'||isSalvageCampaign(run)&&!run.operation.trialProof);
 }
 
 export function timeDifference(current,reference){

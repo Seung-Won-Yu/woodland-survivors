@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.144.0" src="https://img.shields.io/badge/RIFT-0.144.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.145.0" src="https://img.shields.io/badge/RIFT-0.145.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -71,7 +71,7 @@
 
 ### 귀환한 다음에는
 
-귀환 보고서에서 **새 전장 준비**를 열면 해안 지형과 첫 목표, 시작 무장에 맞는 철도 공략을 확인한 뒤 출격합니다. 포탑을 반출한 판에서는 포탑을 먼저 제안합니다. 같은 전장에서 이전 시작 무장을 선택하면 비교 가능한 완주의 시간과 점수를 기준으로 도전할 수 있습니다.
+귀환 보고서에서 **새 전장 준비**를 열면 해안 지형과 첫 목표, 시작 무장에 맞는 철도 공략을 확인한 뒤 출격합니다. 포탑을 반출한 판에서는 포탑을 먼저 제안합니다. **철도 기록 도전**은 같은 전장·대원·시작 무장으로 해안과 철도 두 구간의 시간과 점수를 비교합니다. 철도 게이트에서 지금 귀환할 때의 시간 차이를 확인할 수 있습니다.
 
 확보 성과는 전사·중도귀환에도 크레딧으로 남습니다. 연구로 **응급 주사기 / 분열 수류탄 / 흡열 코일**을 보급 후보에 추가할 수 있습니다. 연구 모듈은 판 안에서 직접 골라 한 칸에 장착합니다. 분열 수류탄은 로켓·유탄·합체 연쇄탄의 폭발에 파쇄를 더합니다.
 
