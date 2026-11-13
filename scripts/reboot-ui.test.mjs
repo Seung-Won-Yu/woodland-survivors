@@ -4,7 +4,8 @@ import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff} from '../s
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
-import {portEscapeLanes} from '../src/reboot/campaign.js';
+import {portEscapeLanes,portBuildApproach,frontTactic,portTacticKeys} from '../src/reboot/campaign.js';
+import {makeWeapon} from '../src/reboot/content.js';
 
 test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a destroyed mount',()=>{
  const s=createOperation(27,[],null,null,'fio','standard');
@@ -28,6 +29,32 @@ test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a
  assert.equal(railHandoff(s).route,'rail-relay');
  s.operation.nextSupport='vanguard';
  assert.match(railHandoff(s).detail,/후송 정비.*이월/);
+});
+
+test('the harbor forecast matches the mounted build and the actual control tactic',()=>{
+ const s=createOperation(27,[],null,null,'fio','turret');
+ s.operation.region=1;
+ assert.equal(portBuildApproach(s),null);
+ Object.assign(s.weapons[0],{level:6,branch:'homing',evolved:true});
+ const wide=portBuildApproach(s);
+ assert.equal(wide.key,'crossfire');
+ assert.match(wide.position,/정면 20m/);
+ s.operation.region=2;
+ assert.ok(portTacticKeys(s).includes(wide.key));
+ assert.equal(frontTactic(s,wide.key).name,wide.name);
+
+ s.weapons=[{...makeWeapon('h'),level:6,branch:'ricochet',evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}}];
+ const fusion=portBuildApproach(s);
+ assert.equal(fusion.key,'signal');
+ assert.match(fusion.position,/측면 22m 이상/);
+ assert.notEqual(fusion.color,wide.color);
+ assert.ok(portTacticKeys(s).includes(fusion.key));
+ s.operation.tactic='signal';
+ assert.equal(frontTactic(s).name,fusion.name);
+ assert.match(frontTactic(s).hint,/좌우로 이동/);
+ s.weapons[0].fusion.branch='incendiary';
+ assert.equal(portBuildApproach(s),null);
+ assert.equal(frontTactic(s).name,'포탑 교신 탈취');
 });
 
 test('portrait HUD clearance uses confirmed contact and live warning shapes without covering holdout actions',()=>{

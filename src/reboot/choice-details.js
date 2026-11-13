@@ -16,7 +16,7 @@ function harborPartAction(s,id){
  }
  if(s.weapons.some(isFocusedInferno))return `${portCompressionRange}에서 좌우 회피 → 멈춰 코어 분사`;
  if(s.weapons.some(isTrailInferno))return '회피로 코어 개방 → 냉각 배관에 잔불';
- if(s.weapons.some(isConductiveFusion))return '회피로 코어 개방 → 원하는 포대로 역송';
+ if(s.weapons.some(isConductiveFusion))return '회피로 코어 개방 · 코어 명중 후 포대로 역송';
  return HARBOR_PART_ACTION.overrun;
 }
 const coastBearing=(s,site)=>`${bearing(s.player,site.x,site.y)} ${Math.round(distance(s.player,site)/10)}m`;
@@ -293,7 +293,7 @@ export function choiceDetails(s,c){
    out.link=`장갑 또는 차체 피해 ${effect.wakeDamage} · 재장전마다 한 번`;
   }else if(index===2&&c.key==='overrun'&&s.weapons.some(isConductiveFusion)){
    const side=portTurretSide(regionBoss(2,s.seed));
-   out.detail=`회피로 코어를 열고 원하는 포대 쪽에서 맞히세요. ${portSideName(side)}은 포탑, ${portSideName(-side)}은 보조포입니다.`;
+   out.detail=`회피로 코어를 열고 원하는 포대 쪽에서 코어를 맞히세요. ${portSideName(side)}은 포탑, ${portSideName(-side)}은 보조포입니다.`;
    out.link='포탑 탄막 소거 · 선택한 포대의 다음 사격 차단';
   }
   if(index===2&&c.key==='overrun')out.impact=`측면 돌입선 · 회피 직격 ${effect.damage}`;

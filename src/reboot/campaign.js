@@ -376,7 +376,19 @@ export const FRONT_TACTICS={
 };
 export const PORT_CONDUCTIVE_SIGNAL={side:72,damage:210,name:'측면 교신 역송',role:'전도 격발망 · 좌우 포대 선택',impact:'선택한 쪽의 다음 포격 차단',hint:'재장전 중 차체에서 22m 이상 거리를 두고 좌우로 이동해 자동 사격을 맞히세요.'};
 export const portConductiveSignal=s=>isSalvageCampaign(s)&&s.operation.region===2&&s.weapons.some(isConductiveFusion);
-export const frontTactic=s=>FRONT_TACTICS[s.operation?.region]?.[s.operation?.tactic];
+export function frontTactic(s,key=s.operation?.tactic){
+ return key==='signal'&&portConductiveSignal(s)?PORT_CONDUCTIVE_SIGNAL:FRONT_TACTICS[s.operation?.region]?.[key];
+}
+export function portBuildApproach(s){
+ if(!isSalvageCampaign(s)||s.operation.region<1)return null;
+ const fan=s.weapons.find(w=>w.evolved&&isCapturedTurret(w)),conductive=s.weapons.find(isConductiveFusion);
+ const selected=s.operation.region===2?s.operation.tactic:null;
+ if(fan&&(!selected||selected==='crossfire'))return {key:'crossfire',color:'#f4ca87',art:'turret',weapon:fan,
+  name:FRONT_TACTICS[2].crossfire.name,position:'정면 20m · 재장전 중 양쪽 직격'};
+ if(conductive&&(!selected||selected==='signal'))return {key:'signal',color:'#9cdde1',art:'h',weapon:conductive,
+  name:PORT_CONDUCTIVE_SIGNAL.name,position:'측면 22m 이상 · 재장전 중 포대 선택'};
+ return null;
+}
 export function portTacticKeys(s){
  const fire=s.weapons.some(isFocusedInferno)?'lens':s.weapons.some(isTrailInferno)?'wake':'heat';
  const incendiary=s.weapons.some(w=>w.fusion?.branch==='incendiary');

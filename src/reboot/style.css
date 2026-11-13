@@ -93,6 +93,9 @@
 .gate-order-copy{display:grid;gap:4px;line-height:1.4}
 .gate-order-copy strong{font-size:15px;color:var(--route-color)}
 .gate-order-copy small{font-size:10px;color:#d2dac0}
+.gate-build-approach{display:grid;gap:2px;border-left:2px solid var(--approach-ink);padding:4px 7px;background:#142925a8}
+.gate-build-approach b{color:var(--approach-ink);font-size:11px}
+.gate-build-approach small{line-height:1.4}
 .gate-order-copy .gate-contract-prize,.gate-part-choices b{color:#f1d395}
 .gate-part-choices{display:grid;gap:2px}
 .gate-part-choices>span{display:flex;align-items:center;gap:4px}
@@ -166,6 +169,7 @@
 .front-intel strong,.front-intel b{font-size:13px;line-height:1.4}
 .front-intel strong{color:#f7cf80}
 #field-intel{color:#fae1a3;line-height:1.5;white-space:pre-line}
+#field-intel[data-harbor-plan]{border-left:2px solid var(--approach-ink);padding:3px 6px;background:#142925a8;color:var(--approach-ink)}
 #threat[data-formation="flame"]{color:#f5c695}
 #threat[data-formation="fusion"]{color:#bcece3}
 #threat[data-formation="rocket"]{color:#f7dba3}

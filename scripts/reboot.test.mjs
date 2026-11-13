@@ -3153,7 +3153,7 @@ test('conductive hits relay from a dash-opened harbor core once per reload',()=>
  const card=choiceDetails({...s,operation:{region:1}},{
   id:'support:overrun',key:'overrun',kind:'front-support',title:'돌격 신관'
  });
- assert.match(card.detail,/원하는 포대 쪽에서 맞히세요.*왼쪽은 포탑, 오른쪽은 보조포/);
+ assert.match(card.detail,/원하는 포대 쪽에서 코어를 맞히세요.*왼쪽은 포탑, 오른쪽은 보조포/);
 });
 test('harbor conductive relay cuts the chosen side on the next volley only, including after restore',()=>{
  for(const turretSide of [-1,1])for(const selected of ['turret','armor']){

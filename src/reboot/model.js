@@ -2305,7 +2305,7 @@ function updateBoss(s,dt){
 function frontControlCards(s){
  const index=s.operation.region,tactics=FRONT_TACTICS[index];
  const keys=index===2?portTacticKeys(s):Object.keys(tactics);
- const orders=keys.map(key=>{const t=key==='signal'&&portConductiveSignal(s)?PORT_CONDUCTIVE_SIGNAL:tactics[key];return {id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role,hint:t.hint};});
+ const orders=keys.map(key=>{const t=frontTactic(s,key);return {id:`control:${key}`,kind:'control',key,title:t.name,desc:t.impact,label:t.role,hint:t.hint};});
  const rank=infernoControlRank(s);
  const relay=railRelayInvestment(s);
  const equipment=index===1?{key:'supply',title:'중계기 보급 회수',desc:'보유 병기를 개조하거나 새 무장과 모듈을 확보합니다.',label:'일반 보급'}
