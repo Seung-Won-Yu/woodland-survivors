@@ -261,6 +261,7 @@ function showChoices(){
  const tacticalLoot=salvage&&run.choices.some(c=>c.salvageLevel===1);
  const relaySupply=run.choice.type==='supply'&&run.choice.relayRepair===true;
  const type=run.choice.type,quick=isQuickMod(run),atGate=type==='clear'&&!!run.operation,atPursuit=type==='pursuit-reward',workshop=type==='rail-workshop';
+ const wireReceipt=type==='supply'&&run.operation?.region===0&&run.operation.order==='wire'&&run.operation.orderDone&&run.choice.source===sortieOrder('wire').site;
  const shoreGate=atGate&&coastAtShore(run)&&carriesCoastSalvage(run),mount=type==='coast-mount',carrier=type==='coast-boss';
  const carrierPrep=carrier&&isSalvageCampaign(run)&&run.pendingLevels>0;
  const earnedLevel=run.level-run.pendingLevels;
@@ -296,7 +297,7 @@ function showChoices(){
  const deck=carrier||mount?ordnanceDeck():atGate?gateChoices(harborForecast):assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
  const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
  panel(`<section class="sheet field-menu${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':relaySupply?' relay-supply-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-  <header><div><span class="eyebrow">${carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?rescueReceipt:run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+  <header><div><span class="eyebrow">${wireReceipt?'전파 절단 · 해안 통신소':carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?rescueReceipt:run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${wireReceipt?'교신 암호 확보':title}</h2>${wireReceipt?'<p class="wire-receipt-note">철도에서 암호로 조준 유인 1회 · 지금 보급 한 가지 선택</p>':lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
   ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${railPreview}${carrierPrep?`<button class="carrier-prep" data-action="coast-upgrade" aria-keyshortcuts="R"><span>${moduleIcon('gear')}<b>XP 개조</b> <small>${run.pendingLevels}회 대기</small></span><span>교전 전 사용 <i aria-hidden="true">›</i></span></button>`:''}${deck}${prepAfterDeck?gatePrep:''}${toolsAfterDeck?tools:''}
   ${coastalService||carrier||mount?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
   ${capstones.length?paths:''}
@@ -322,7 +323,7 @@ function openReplayBriefing(source){
  if(route==='fresh'&&coastTurretReturned(report)&&p.milestones.coastTurret)options.starter='turret';
  const html=replayBriefingView(report,p,source.dataset.dispatch,trial,options);
  if(!html){notice('지난 전장의 작전 보고서를 읽지 못했습니다.');return;}
- const selector=experiment?'[data-experiment]':route?`[data-replay-route="${route}"]`:'[data-action="replay-brief"]:not([data-experiment])';
+ const selector=experiment?'[data-experiment]':source.dataset.dispatch==='order:wire'?'.debrief-wire':route?`[data-replay-route="${route}"]`:'[data-action="replay-brief"]:not([data-experiment])';
  subpanel={type:'replay-briefing',report,trial,dispatch:source.dataset.dispatch,options,origin:{scroll:ui.scrollTop,selector}};
  panel(html);
 }
@@ -773,6 +774,8 @@ function fieldEntry(s){
   return {...entry,routes,direct};
  }
  if(s.operation?.region!==1||!entry)return entry;
+ const wire=railHasWire(s)&&!railHasRelay(s);
+ const direct=wire?{...entry.direct,sign:'열차 직행 · 교신 암호',color:sortieOrder('wire').color,recommended:true}:entry.direct;
  const relayRank=infernoControlRank(s);
  const relay=entry.routes.some(route=>route.site==='rail-relay')?railRelayInvestment(s):null;
  const salvageRoutes=carriesCoastSalvage(s)&&requisitionSite(s)?.id!=='rail-cache',fan=salvageRoutes&&s.weapons.find(isCapturedTurret);
@@ -787,11 +790,11 @@ function fieldEntry(s){
   }
   if(route.site!=='rail-relay')return route;
   const rank=relay?.material?`중계기 · ${relay.material}`:relayRank&&`중계기 · 유인 + F L${relayRank} 후보`;
-  return {...route,...(rank?{supplyHint:rank}:null),...(salvageRoutes?{color:RAIL_SALVAGE_ROUTES['rail-relay'].color,recommended:!!(relay?.turret||!fan&&(rocket||fusion||rank)),tactical:relay?.turret?'격발망 재료 · 포탑 분해 준비':rocket?'후방 박격포 → 조준 유인':fusion?'박격포 제압 → 열차 전술':'확보하면 열차 조준 유인'}:null),
+  return {...route,...(rank?{supplyHint:rank}:null),...(salvageRoutes?{color:RAIL_SALVAGE_ROUTES['rail-relay'].color,recommended:!!(relay?.turret||!fan&&(rank||!wire&&(rocket||fusion))),tactical:relay?.turret?'격발망 재료 · 포탑 분해 준비':wire?'박격포 제압 → 추가 정비':rocket?'후방 박격포 → 조준 유인':fusion?'박격포 제압 → 열차 전술':'확보하면 열차 조준 유인'}:null),
    sign:rank||(rocket?'중계기 · 로켓 사선':salvageRoutes?'중계기 · 후방 박격포':'중계기 · 조준 유인'),
    summary:rank||(rocket?'중계기 · 로켓 원거리 공략':salvageRoutes?'중계기 · 원거리 박격포':'중계기 · 조준 유인 1회')};
  });
- if(!workshopOpen)return {...entry,routes};
+ if(!workshopOpen)return {...entry,routes,direct};
  // Upgrade choices replace the live run, and the field tick doesn't change the loadout.
  let plan=workshopForecasts.get(s);
  if(!plan){plan=railWorkshopPlan(s);workshopForecasts.set(s,plan);}
@@ -847,7 +850,7 @@ function fieldEntry(s){
   summary=fireRoute.supply;
   note=`${fireRoute.supply} · ${fireRoute.missing}`;
  }
- return {...entry,routes:routes.map(route=>route.site==='rail-cache'?{...route,sign,summary,note,
+ return {...entry,direct,routes:routes.map(route=>route.site==='rail-cache'?{...route,sign,summary,note,
   ...(salvageRoutes?{color:RAIL_SALVAGE_ROUTES['rail-cache'].color,recommended:!!(fan||(finish||fireRoute)&&!rocket&&!fusion),tactical:fan?RAIL_SALVAGE_ROUTES['rail-cache'].fight:fireRoute?.supply}:null),
   ...(fan?{fanCount:weaponStats(fan).count,...(material?{supplyHint:finish?`${material} → ${target}`:`정비대 · ${material}`}:null)}:null),
   ...(fireRoute?{supplyHint:fireRoute.missing,build:fireRoute}:null)}:route)};
@@ -886,7 +889,6 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  const localSite=run.stage!=='boss'?run.sites.filter(n=>['active','ready'].includes(n.state)
   &&distance(n,p)<Math.max(260,front===1&&n.state==='active'?railGarrison(n)?.range||0:0)).sort((a,b)=>distance(a,p)-distance(b,p))[0]:null;
  const railPickup=carriesCoastSalvage(run)&&localSite?.state==='ready';
- document.body.classList.toggle('rail-contact',front===1&&(localSite?.state==='active'||railPickup));
  const gate=exitGate(run),holdout=!!(gate&&run.operation),interact=interaction(run);
  const nearGate=holdout&&interact?.id==='extract'&&run.challenge?.state!=='active';
  const shoreTransfer=nearGate&&handoff?.gateNote?handoff:null;
@@ -898,7 +900,8 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  const bossPoint=run.boss.active?run.boss:staging||partStaging||BOSS_ENTRY;
  const bossTarget={name:entry?.direct?.name||bossName,x:bossPoint.x,y:bossPoint.y,path:entry?.direct?.path};
  const tactic=frontTactic(run);
- const orderSite=run.stage==='field'&&front>0&&!tactic
+ const wireReady=railHasWire(run)&&!railHasRelay(run);
+ const orderSite=run.stage==='field'&&front>0&&!tactic&&!wireReady
   ?run.sites.find(n=>['rail-relay','port-control'].includes(n.id)&&n.state!=='done'):null;
  const keepCenter=harborBuild&&run.operation.tactic===harborBuild.key&&!Object.hasOwn(PORT_SUPPORT,run.operation.support);
  const entryGantry=keepCenter||harborBuild&&orderSite?null:gantry;
@@ -917,10 +920,11 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
   site.coastApproach&&site.coastApproach!==run.firstNew&&site.state==='done'&&coastStrikeArmed(run,site.coastApproach));
  const partGap=partStaging?distance(p,partStaging):Infinity;
  const nearPart=partGap<145&&(!localSite||partGap<distance(p,localSite));
- const next=convoy||gate||(front>0||run.stats.coastPreempt?entrance:null)||(nearPart?bossTarget:null)||(coastSite?.opening?coastSite:dispatch||coastSite)||(prepared&&coastArmed?bossTarget:null)||localSite||reserved||entryGantry||(focusBoss||prepared&&fork?bossTarget:workshopSite||ammoSite||orderSite||run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0]||bossTarget);
- const choosingEntry=entry?.routes.length&&!raid&&!localSite&&!focusBoss&&!entryGantry;
+ const next=convoy||gate||(front>0||run.stats.coastPreempt?entrance:null)||(nearPart?bossTarget:null)||(coastSite?.opening?coastSite:dispatch||coastSite)||(prepared&&coastArmed?bossTarget:null)||localSite||reserved||entryGantry||(focusBoss||prepared&&fork?bossTarget:workshopSite||ammoSite||orderSite||(wireReady?bossTarget:run.sites.filter(n=>n.state!=='done').sort((a,b)=>distance(a,p)-distance(b,p))[0])||bossTarget);
+ const choosingEntry=entry?.routes.length&&!raid&&!localSite&&!focusBoss&&!entryGantry&&!(wireReady&&next===bossTarget);
  const railFork=front===1&&choosingEntry;
  document.body.classList.toggle('rail-fork',front===1&&!!choosingEntry);
+ document.body.classList.toggle('rail-contact',front===1&&(localSite?.state==='active'||railPickup||wireReady&&run.stage==='field'&&next===bossTarget));
  document.body.classList.toggle('harbor-fork',front===2&&(!!choosingEntry||!!partStaging&&next===bossTarget));
  const trackedRoute=next.path?next:(entry||opening)?.routes.find(route=>route.site===next.id);
  const waypoint=trackedRoute&&entryWaypoint(trackedRoute.path,p);
@@ -980,7 +984,6 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  const coastDelivery=front===0&&reserved&&next!==reserved&&!primaryCoast?.opening?reserved:null;
  const alternateCoast=fork?.other||coastDelivery||openingAlternate;
  const alternate=alternateCoast||armory||(gantry&&next===bossTarget?gantry:bossTarget);
- const wireReady=railHasWire(run)&&!railHasRelay(run);
  const part=front===2?run.operation.support:null;
  const coastReward=site=>{
   if(site===reserved)return `${RESEARCH[run.operation.requisition].name} 예약`;
@@ -1020,7 +1023,7 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
   const cue=next.state==='ready'?'접근해 회수':next.state==='active'&&!crew?'범위 안에서 해킹'
    :crew&&garrison.type==='mortar'?'후방 박격포 먼저 제압':garrison?.hint||'범위 안에서 해킹';
   const relay=entry?.routes.find(route=>route.site==='rail-relay');
-  intel=`${relay?.supplyHint?`${relay.supplyHint} 중 하나`:'확보 시 조준 유인 1회'}\n${cue}`;
+  intel=`${relay?.supplyHint?`${relay.supplyHint} 중 하나`:wireReady?'교신 암호 확보 · 유인은 1회 공유':'확보 시 조준 유인 1회'}\n${cue}`;
  }
  else if(next.id==='rail-ammo')intel=next.state==='ready'?`${ammoRoute?.build.supply||'추가 보급'} · 접근해 회수`:ammoRoute?`경비 제압 → ${ammoRoute.build.supply}`:'경비 제압 후 무장 강화·모듈 보급';
  else if(next===bossTarget&&tuneInferno?.action==='tune')intel=`${tuneInferno.title} · ${tuneInferno.missing}`;

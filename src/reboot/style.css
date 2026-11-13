@@ -748,7 +748,18 @@
 .debrief-actions[data-research-next] .debrief-sortie button:first-child{background:#32423a;color:#f1e7cb;border-color:#708273}
 .debrief-actions[data-research-next] .debrief-sortie button:first-child:hover{background:#43574a}
 .debrief-actions[data-research-next] .debrief-sortie button:first-child small{color:#cbdcb3}
-.debrief-actions[data-research-next] .debrief-next .text-button{min-height:40px}
+.debrief-actions[data-research-next]>.text-button{min-height:44px;margin-top:5px}
+.debrief-sortie .debrief-wire{background:#253d37;border-color:#82a89b}
+.debrief-sortie .debrief-wire:is(:hover,:focus-visible){background:#355149;border-color:#bde3cf}
+.debrief-wire svg{flex:0 0 29px;width:29px;color:#bde3cf}
+@media(max-width:700px){
+ .debrief-sortie:has(.debrief-wire){grid-template-columns:repeat(2,minmax(0,1fr))}
+ .debrief-sortie:has(.debrief-wire) button[data-replay-route="fresh"]{display:grid;align-content:start;gap:3px;padding:6px 8px}
+ .debrief-sortie:has(.debrief-wire) button[data-replay-route="fresh"] :is(.kit-sprite,svg){width:22px;height:19px}
+ .debrief-sortie:has(.debrief-wire) button[data-replay-route="fresh"] i{display:none}
+ .debrief-sortie:has(.debrief-wire) button[data-replay-route="fresh"] b{font-size:12px}
+ .debrief-sortie:has(.debrief-wire) button[data-replay-route="same"]{grid-column:1/-1}
+}
 .thermal-route{display:grid;gap:5px;list-style:none;margin:8px 0;padding:0}
 .thermal-route li{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:8px;padding:5px 8px;background:#263c35;border-left:2px solid #9abcaa}
 .thermal-route li:first-child{border-color:#efbe83}
@@ -857,6 +868,20 @@
 .replay-rail-target>div{display:grid;gap:2px}
 .replay-rail-target b{color:var(--route-ink)}
 .replay-rail-target span{color:#ccd7be}
+.wire-brief{margin-top:9px;padding:9px;border:1px solid #698c7b;border-left:3px solid #bde3cf;background:#20342f;color:#e7ead5;font-size:11px;line-height:1.45;word-break:keep-all}
+.wire-brief>header,.wire-brief>header>div{display:flex;align-items:center;gap:6px}
+.wire-brief>header{justify-content:space-between;flex-wrap:wrap;margin-bottom:7px}
+.wire-brief>header b{font-size:15px}
+.wire-brief>header svg{width:20px;height:20px;color:#bde3cf}
+.wire-brief>header strong{color:#f3d69f}
+.wire-brief-route{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:8px}
+.wire-brief-route .sector-preview{display:block;width:100%;border:1px solid #7e987f}
+.wire-brief-route ol{display:grid;gap:4px;padding:0;margin:0;list-style:none}
+.wire-brief-route li{padding-left:5px;border-left:2px solid #789c8b}
+.wire-brief-route small{display:block;color:#c1d3c3}
+.wire-brief>p{margin:7px 0 2px;color:#d2f0dc}
+.wire-brief>small{color:#ddc798}
+.field-menu .wire-receipt-note{color:#bde3cf}
 .debrief-sortie [data-rail-record] b{color:#c3e4df}
 @media(max-width:700px){
  body[data-scene=lobby] #ui:has(>:is(.report-sheet,.replay-briefing)){padding:12px}

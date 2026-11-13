@@ -473,6 +473,13 @@ test('rail debrief shows the tactical result and the next sortie reward from eac
   }else{
    assert.equal(r.creditBreakdown.turret,undefined);
    assert.match(view,/중계기 교신으로 돌파[\s\S]*열차 조준 유인 1회[\s\S]*열차 포대 파괴<\/dt><dd>2 \/ 2문/);
+   assert.match(view,/data-replay-route="fresh" data-dispatch="order:wire"[\s\S]*전파 절단 준비/);
+   const wire=replayBriefingView(r,saved,'order:wire',null,{sortie:true,freshSeed:28});
+   assert.match(wire,/data-order-pin="wire"[\s\S]*5초 해킹[\s\S]*중계기 경유 없이 열차 조준 유인/);
+   assert.match(wire,/data-action="launch"[^>]*data-sortie="wire"[^>]*>새 전장 출격 · 70C/);
+   assert.doesNotMatch(wire,/data-replay-from=|data-brief-opening/);
+   const standard=replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28});
+   assert.doesNotMatch(standard,/data-sortie=|data-order-pin=/);
    assert.doesNotMatch(view,/새 전장에서 포탑 L1 선택/);
    assert.match(reportView({...r,stats:{...r.stats,wireDecoy:1}},saved),/교신 암호로 돌파/);
   }
@@ -492,7 +499,7 @@ test('a standard railway return sets an actionable same-seed target for its two 
  assert.match(reportView(report,saved),/data-rail-record><span><b>철도 기록 도전<\/b><small>0:53\.2 · 4,500점/);
  const same=replayBriefingView(report,saved,'standard',null,options);
  assert.match(same,/철도 귀환 0:53\.2 \/ 4,500점/);
- assert.match(same,/data-replay-rail="rail-relay"[\s\S]*철도 ↖ 통신 중계기/);
+ assert.match(same,/data-replay-rail="field"[\s\S]*R이면 ↖ 통신 중계기 · 포탑이면 화차 정비대/);
  assert.match(same,/data-seed="27"[^>]+data-replay-from="1"/);
  const turret=replayBriefingView(report,saved,'standard',null,{...options,starter:'turret'});
  assert.match(turret,/data-replay-rail="rail-cache"[\s\S]*철도 → 화차 정비대/);
@@ -532,7 +539,7 @@ test('a canonical report previews the chosen beach and starter and only compares
  assert.match(fresh,/data-action="launch"[^>]+data-coast-loadout="turret"/);
  const options={sortie:true,freshSeed:28,route:'same'};
  const same=replayBriefingView(r,saved,'standard',null,options);
- assert.match(same,/철도[^<]*통신 중계기/);
+ assert.match(same,/철도 · 해안에서 고른 무장으로 공략/);
  assert.match(same,/data-seed="27"[^>]+data-replay-from="1"/);
  assert.match(same,/data-brief-opening="auto" aria-pressed="true"/);
  for(const [gun,text] of [['f','이동 보급차 · 30m · 방패 측면 공략'],['r','박격포 진지 · 64m · 박격포 2문']]){
@@ -541,6 +548,7 @@ test('a canonical report previews the chosen beach and starter and only compares
   assert.match(planned,new RegExp(`data-brief-opening="${gun}" aria-pressed="true"`));
   assert.match(planned,new RegExp(`data-seed="27"[^>]+data-opening-gun="${gun}"`));
   assert.doesNotMatch(planned,/data-replay-from/);
+  assert.match(planned,gun==='r'?/로켓 R을 유지하면 후방 박격포/:/화염 F를 유지하면 분사기 강화/);
   const {run:nextRun,next}=freshSortie(saved,27,null,'fio',null,1,null,'standard',true,gun);
   assert.equal(nextRun.operation.openingGun,gun);
   assert.equal(next.active.reference,undefined);
@@ -740,6 +748,11 @@ test('fresh launch avoids the previous beach route, including after reload and s
 
 test('the post-clear order dock previews the correct field site and never silently opts in',()=>{
  const p=emptyProfile();assert.doesNotMatch(lobbyView(p),/추가 작전 지령/);
+ const early={...p,credits:69,milestones:{wireOrder:true}};
+ const earlyBoard=lobbyView(early,{order:'wire'});
+ assert.match(earlyBoard,/data-order="wire"[^>]*disabled[\s\S]*1C 부족/);
+ assert.doesNotMatch(earlyBoard,/data-order="convoy"|data-sortie=/);
+ assert.match(lobbyView({...early,credits:70},{order:'wire'}),/data-sortie="wire"/);
  p.records.wins=1;p.credits=600;
  const normal=lobbyView(p);assert.match(normal,/추가 작전 지령/);assert.doesNotMatch(normal,/data-sortie=/);
  const wire=lobbyView(p,{seed:19,order:'wire'});assert.match(wire,/data-sortie="wire"/);

@@ -5104,6 +5104,34 @@ test('coast orders are optional, debit once on committed launch, and keep a fres
  const saved=checkpointProfile(store.get(),run);await store.commit(saved);assert.equal(store.get().credits,900-fee);
 });
 
+test('a demolition rail return with a decoy earns wire before the first harbor win',()=>{
+ for(const [turret,decoys,reason,earned] of [
+  ['broken',1,'rail-return',true],['broken',0,'rail-return',false],
+  ['secured',1,'rail-return',false],['broken',1,'retreat',false]
+ ]){
+  const {run,next}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+  Object.assign(run.operation,{region:1,cleared:2});
+  Object.assign(run.operation.coastSalvage,{turret,extracted:reason==='rail-return'});
+  run.stats.railDecoys=decoys;
+  finish(run,false,reason);
+  const settled=settleProfile(next,run);
+  assert.equal(settled.records.wins,0);
+  assert.equal(settled.milestones.wireOrder===true,earned);
+  const legacy=structuredClone(settled);
+  delete legacy.milestones.wireOrder;
+  const restored=parseProfile(JSON.stringify(legacy));
+  assert.equal(restored.milestones.wireOrder===true,earned);
+  assert.equal(canLaunchOrder({...restored,credits:70},'convoy'),false);
+  if(!earned){assert.equal(canLaunchOrder({...restored,credits:70},'wire'),false);continue;}
+  assert.equal(canLaunchOrder({...restored,credits:69},'wire'),false);
+  const {run:sortie,next:paid}=freshSortie({...restored,credits:70},28,'wire','fio',null,null,null,'standard',true);
+  assert.equal(paid.credits,0);
+  assert.equal(sortie.level,1);
+  assert.equal(orderTarget(sortie).name,'해안 통신소');
+  assert.equal(parseProfile(JSON.stringify({...restored,recent:[]})).milestones.wireOrder,true);
+ }
+});
+
 test('wire order requires recovering the completed relay and pays only after the final gate',()=>{
  const base=emptyProfile(),p={...base,records:{...base.records,wins:1,score:999},credits:900,milestones:{medic:true}};
  const {run:s,next}=freshSortie(p,19,'wire'),relay=orderTarget(s);

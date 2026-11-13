@@ -1,13 +1,14 @@
 import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope,isOpeningGun} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,createCoastSortie,restore,snapshot,finish,canResumeRun} from './model.js';
-import {coastTurretReturned,isSalvageCampaign} from './coast-salvage.js';
+import {coastSalvage,coastTurretReturned,isSalvageCampaign,railSortieReturned} from './coast-salvage.js';
 import {operatorId} from './operator.js';
 import {replayReference,referenceMatches} from './replay.js';
 export const STORAGE_KEY='operation-rift-profile-v2';
 const copy=x=>JSON.parse(JSON.stringify(x));
 const validOrderRecords=records=>records&&typeof records==='object'&&!Array.isArray(records)&&Object.entries(records).every(([id,r])=>sortieOrder(id)&&r&&typeof r.scope==='string'&&Number.isSafeInteger(r.wins)&&r.wins>=1&&[r.score,r.time].every(v=>Number.isFinite(v)&&v>=0));
 export const marcoRecord=p=>p.marcoRecords?.scope===p.recordScope?p.marcoRecords:null;
+export const earnsWireOrder=r=>railSortieReturned(r)&&coastSalvage(r).turret==='broken'&&r.stats?.railDecoys===1;
 export function emptyProfile(){return{version:1,revision:0,sequence:0,active:null,records:{score:0,time:null,challenge:0,wins:0},recent:[],recordScope:RULES.balanceRevision,recordArchive:[],credits:0,research:[],trials:[],milestones:{},settled:0,settings:{sound:true,reduced:false}};}
 export function parseProfile(raw){
  if(!raw)return emptyProfile();let p=JSON.parse(raw);
@@ -23,6 +24,7 @@ export function parseProfile(raw){
  }
  if(p.recordScope!==RULES.balanceRevision){p.recordArchive??=[];p.recordArchive.push({scope:p.recordScope||'b05-campaign',records:copy(p.records)});p.records={score:0,time:null,challenge:0,wins:p.records.wins};p.recordScope=RULES.balanceRevision;}
  if(p.active&&Object.hasOwn(p.active,'reference')&&(p.active.reference?.scope!==p.recordScope||!referenceMatches(p.active.reference,p.active.run,p.active.sequence)))delete p.active.reference;
+ if(p.recent.some(r=>r&&earnsWireOrder(r)))p.milestones.wireOrder=true;
 
  return p;
 }
@@ -35,7 +37,8 @@ export function beginProfile(p,run,reference=null){
  if(referenceMatches(reference,run,n.sequence))n.active.reference=copy(reference);
  return n;
 }
-export const canLaunchOrder=(p,id)=>{const order=sortieOrder(id);return !!order&&!p.active&&p.records.wins>0&&p.credits>=order.fee;};
+export const orderUnlocked=(p,id)=>!!sortieOrder(id)&&(p.records.wins>0||id==='wire'&&p.milestones.wireOrder===true);
+export const canLaunchOrder=(p,id)=>!p.active&&orderUnlocked(p,id)&&p.credits>=sortieOrder(id).fee;
 export const canReserveResearch=(p,id,at=null)=>Object.hasOwn(RESEARCH,id)&&!p.active&&p.research.includes(id)
  &&!p.trials.includes(id)&&p.credits>=REQUISITION_FEE&&(at===null||at==='coast'&&!!RESEARCH[id].fieldGun);
 const clearedResearchTrials=(run,proofs)=>run.operation?.trialProof?proofs??completedResearchProofs(run):pickedResearchTrials(run.stats);
@@ -111,6 +114,7 @@ export function settleProfile(p,run){
  if(r.stats.fusionBosses>0)n.milestones.shrapnel=true;
  if(r.stats.flameBosses>0)n.milestones.thermal=true;
  if(coastTurretReturned(r))n.milestones.coastTurret=true;
+ if(earnsWireOrder(r))n.milestones.wireOrder=true;
  r.researchUnlocked=Object.keys(RESEARCH).filter(id=>n.milestones[id]&&!p.milestones[id]);
  const clearedTrials=clearedResearchTrials(r,proofs);
  n.credits+=r.credits;n.trials=n.trials.filter(id=>!clearedTrials.includes(id));n.recent.unshift({...r,sequence:n.sequence});n.recent=n.recent.slice(0,10);n.settled=n.sequence;n.active=null;return n;
