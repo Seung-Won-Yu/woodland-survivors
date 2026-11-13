@@ -6,7 +6,7 @@ import {wireSupplyUnlocked,shieldCovers,RAIL_WORKSHOP_FAN,railWorkshopFan} from 
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
 import {OPERATORS,operatorOf,skillRules,canUseSkill,focusLane,aimFromInput,chargeLabel} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastTurretOwner,COAST_TURRET_STARTER,COAST_TURRET_RECOVERED,coastRole,coastRoleRank,coastRoleBonus,coastGrowthEnemy,coastTurretLane,coastHullFront,coastSalvageWreck,COAST_FAN_ENTRY,coastFanPosition,coastFanRescue} from './coast-salvage.js';
-import {RESCUE_COIL} from './coast-salvage.js';
+import {RESCUE_COIL,coastRoleSite} from './coast-salvage.js';
 const TAU=Math.PI*2,clone=x=>JSON.parse(JSON.stringify(x));
 const rng=(s,key)=>{let a=s.rng[key]=(s.rng[key]+0x6d2b79f5)>>>0;a=Math.imul(a^(a>>>15),a|1);a^=a+Math.imul(a^(a>>>7),a|61);return((a^(a>>>14))>>>0)/4294967296;};
 const pick=(s,key,items)=>items[Math.floor(rng(s,key)*items.length)];
@@ -193,7 +193,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -298,6 +298,7 @@ export function restore(raw,{allowPrevious=false}={}){
    ||bracingCoastEscort(e)&&e.aim!==COAST_SHIELD_BEARING
    ||!s.sites.some(site=>site.id===e.siteId&&site.coastApproach==='f'&&site.preempt&&(site.state==='active'||e.dead&&['ready','done'].includes(site.state))))))fail();
   if(s.enemies.some(e=>e.coastRescueShield!==undefined&&(e.coastRescueShield!==true||!isSalvageCampaign(s)||s.operation.region!==0||s.operator!=='marco'||e.type!=='shield'||e.siteId!==null||e.coastArmor!==true)))fail();
+  if(s.enemies.some(e=>e.coastBatteryShield!==undefined&&(e.coastBatteryShield!==true||!isSalvageCampaign(s)||s.operation.region!==0||s.operator!=='marco'||e.type!=='shield'||e.siteId!==null||e.coastArmor!==true)))fail();
   // The first b30 release opened the hatch before the site stored its variant.
   if(s.operation.region===2&&s.balanceRevision==='b30-port-gantry'){
    const dock=s.sites.find(site=>site.id==='port-landing');
@@ -437,7 +438,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
   if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
   const part=s.raid.part,designated=isSalvageCampaign(s)&&contract==='armored';
-  if(designated&&[RULES.balanceRevision,'b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
+  if(designated&&[RULES.balanceRevision,'b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
   if(part!==undefined&&(!designated||part!==null&&(
    !['coil','catalyst','ricochet'].includes(part?.module)||part.rank!==2&&!(part.module==='catalyst'&&part.rank===3))))fail();
   if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
@@ -456,7 +457,7 @@ export function restore(raw,{allowPrevious=false}={}){
  const defense=s.challenge?.type==='defend'?s.challenge:null;
  if(s.challenge?.safeTransmission!==undefined&&(!defense||defense.safeTransmission!==true||s.operation?.region!==1||s.stage!=='holdout'))fail();
  if(defense&&(![defense.progress,defense.duration,defense.strike].every(Number.isFinite)
-  ||[RULES.balanceRevision,'b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
+  ||[RULES.balanceRevision,'b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
  const relayRounds=s.hazards.filter(h=>h?.relayDefense!==undefined);
  const liveDefense=defense?.state==='active'&&!defense.secured||defense?.state==='withdrawn'&&s.phase==='result';
  if(relayRounds.length>1||relayRounds.some(h=>h.relayDefense!==true||!defense?.safeTransmission||h.lane
@@ -1515,8 +1516,8 @@ function advanceCoastRole(s,point,xp,charge=12){
  if(s.operator==='marco')s.player.charge=Math.min(100,s.player.charge+charge);
  const milestone=COAST_SALVAGE.steps.includes(coast.progress);
  const marco=s.operator==='marco',bonus=Math.round(coastRoleBonus(s.operator,rank)*100);
- emit(s,milestone?'complete':'weakpoint',point.x,point.y,{life:1.25,...(!marco?{fioPart:true}:null),
-  text:milestone?`${coastRole(s).name} ${rank}단계 · ${marco?`관통 피해 +${bonus}%`:`발사 간격 −${bonus}%`}`:`${marco?'약점 확인':'부품 회수'} · XP +${xp}`});
+ emit(s,milestone?'complete':'weakpoint',point.x,point.y,{life:1.25,...(!marco?{fioPart:true}:null),roleGain:true,
+  text:milestone?`${marco?`관통 피해 +${bonus}%`:`발사 간격 −${bonus}%`}`:`${marco?'약점 확인':'부품 회수'} · XP +${xp}`});
 }
 function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,breachLane,coastSignal,ignitedPayload,armorCycle,shieldCovered){
  if(e.hp<=0||e.dead)return;
@@ -2184,7 +2185,7 @@ function updateEnemies(s,dt){
   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1,desired=Math.atan2(dy,dx);
   if(bracingCoastEscort(e)||e.rescueWing!==undefined&&e.spawnAge<COAST_FAN_ENTRY.hold)continue;
   // The rescue shield covers the beach entrance before it starts tracking the pilot.
-  const covering=e.coastRescueShield&&!e.coastScanned&&e.spawnAge<2.2;
+  const covering=(e.coastRescueShield||e.coastBatteryShield)&&!e.coastScanned&&e.spawnAge<2.2;
   if(e.type==='shield'&&!covering){const delta=Math.atan2(Math.sin(desired-e.aim),Math.cos(desired-e.aim)),turn=RULES.enemies.shield.turnRadiansPerSecond*dt;e.aim+=clamp(delta,-turn,turn);}else if(!covering)e.aim=desired;
   if(covering)continue;
   const escort=e.cohort==='signal-guard',battery=e.cohort==='port-battery';
@@ -2453,8 +2454,10 @@ function updateSites(s,dt){
    &&distance(railWorkshopFan(site),s.player)<RAIL_WORKSHOP_FAN.approach;
   if(site.state==='waiting'&&(distance(site,s.player)<(approach?.range??215)||pad&&distance(pad,s.player)<47||workshop)){
    const rescue=isSalvageCampaign(s)&&site.opening;
+   const fieldRole=coastRoleSite(s,site),batteryShield=fieldRole&&s.operator==='marco';
    const guards=site.preempt&&site.coastApproach==='f'?COAST_PREEMPT_ESCORT:approach?.guards;
-   const count=guards?.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6),reserve=alive(s).length+count-160;
+   const count=guards?.length??(site.kind==='relay'?3:site.kind==='armory'?5:s.operation?.region===0?4:6);
+   const reserve=alive(s).length+count+Number(batteryShield)-160;
    if(reserve>0){const remove=new Set(alive(s).filter(e=>!e.siteId&&(!s.operation||e.cohort==='ambient')&&!s.challenge?.targets?.includes(e.id)&&distance(e,s.player)>280).sort((a,b)=>distance(b,s.player)-distance(a,s.player)).slice(0,reserve).map(e=>e.id));s.enemies=s.enemies.filter(e=>!remove.has(e.id));}
    if(alive(s).length+count>160)continue;
    site.state='active';
@@ -2470,7 +2473,7 @@ function updateSites(s,dt){
     const extra={...(cohort?{cohort}:{}),...(hp?{hp,maxHp:hp}:{})};
     if(pad)extra.rescueWing=Number(cross>0);
     if(s.operation?.region===1&&carriesCoastSalvage(s)&&site.id==='rail-cache'&&site.guardPlan==='spread')extra.railWing=Number((mirrored?-x:x)>0);
-    if(rescue&&s.operator!=='marco'&&(i===0||i===3))extra.coastCarrier=true;
+    if(s.operator!=='marco'&&(rescue&&(i===0||i===3)||fieldRole&&(i===1||i===4)))extra.coastCarrier=true;
     if(isSalvageCampaign(s)&&site.preempt&&type==='shield'&&s.operator==='marco')extra.coastArmor=true;
     if(type==='shield'&&site.preempt&&site.coastApproach==='f'){
      extra.coastRaidShield=true;extra.aim=COAST_SHIELD_BEARING;
@@ -2487,6 +2490,12 @@ function updateSites(s,dt){
     const guard=spawnEnemy(s,'shield',site.x+Math.sign(site.x-800)*85,site.y,null,
      {coastArmor:true,coastRescueShield:true,aim:Math.PI/2,hp:20,maxHp:20});
     if(guard)clearCoastOverlap(s,guard,guard.r,{x:site.x,y:site.y});
+   }
+   if(batteryShield){
+    const outward=Math.sign(site.x-800)||1;
+    const guard=spawnEnemy(s,'shield',site.x+outward*155,site.y-22,null,
+     {coastArmor:true,coastBatteryShield:true,aim:Math.PI/2});
+    if(guard)clearCoastOverlap(s,guard,guard.r,{x:site.x+outward*110,y:site.y+44});
    }
    emit(s,'engage',site.x,site.y);
   }

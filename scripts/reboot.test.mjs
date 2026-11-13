@@ -126,6 +126,45 @@ test('Marco shield hits follow the incoming bullet when he moves during flight',
  }
 });
 
+test('coastal weapon routes carry each operator’s growth into the second engagement',()=>{
+ for(const seed of [24,27])for(const [actor,weapon] of [['fio','f'],['marco','r']]){
+  const s=createOperation(seed,[],null,null,actor,'standard');
+  s.enemies=[];s.spawnClock=999;s.director.officerClock=999;s.weapons[0].cd=999;
+  supply(s);assert.ok(choose(s,`gun:${weapon}`));
+  const site=coastLead(s);
+  assert.equal(site.coastApproach,weapon);
+  Object.assign(s.player,{x:site.x,y:site.y+184});
+  s.weapons[1].cd=999;
+  step(s,dt);
+  assert.equal(site.state,'active');
+  const loaded=restore(snapshot(s));
+  if(actor==='fio'){
+   const guards=loaded.enemies.filter(e=>e.siteId===site.id&&e.coastCarrier);
+   assert.equal(guards.length,2);
+   assert.equal(new Set(guards.map(e=>Math.sign(e.x-site.x))).size,2);
+   loaded.shots=guards.map(e=>bullet(loaded,e));step(loaded,dt);
+   assert.equal(loaded.operation.coastSalvage.progress,0);
+   for(const part of [...loaded.operation.coastSalvage.parts]){
+    Object.assign(loaded.player,{x:part.x,y:part.y});step(loaded,dt);
+   }
+   assert.equal(loaded.operation.coastSalvage.progress,2);
+  }else{
+   const guard=loaded.enemies.find(e=>e.coastBatteryShield),guns=loaded.enemies.filter(e=>e.siteId===site.id);
+   assert.equal(guard.siteId,null);
+   assert.deepEqual(guns.map(e=>e.type),['mortar','mortar']);
+   assert.equal(coastRoleTarget(loaded).id,guard.id);
+   assert.ok(Math.abs(guard.x-site.x)>110);
+   if(site.coastPlan!=='split')assert.equal(coastRocketVolley(loaded,site)?.state,'ready');
+   loaded.blocks=[];
+   const direction=Math.sign(site.x-guard.x);
+   Object.assign(loaded.player,{x:guard.x+direction*80,y:guard.y,charge:100});
+   assert.equal(focusPlan(loaded,{x:-direction,y:0}).manualGain,1);
+   assert.ok(action(loaded,'skill',{x:-direction,y:0}));
+   assert.equal(loaded.operation.coastSalvage.progress,1);
+  }
+ }
+});
+
 test('Fio nearby part advice matches the next bonus and yields to cover and bombardment',()=>{
  const s=createOperation(27,[],null,null,'fio','standard');
  const coast=s.operation.coastSalvage;
@@ -1648,7 +1687,7 @@ test('the Quad Cannon meets two traversable columns and confirms a second target
  }
 });
 test('prior turret build revisions can still resume on either later front',()=>{
- for(const revision of ['b67-turret-builds','b68-quad-lanes','b69-rescue-coil'])for(const front of [1,2]){
+ for(const revision of ['b67-turret-builds','b68-quad-lanes','b69-rescue-coil','b70-relay-branch'])for(const front of [1,2]){
   const s=railwayCapstone(27,'rocket');
   Object.assign(s.operation,{region:front,cleared:front});
   Object.assign(s,regionLayout(mapSeed(s.seed,front),front,null,true),{boss:regionBoss(front,s.seed)});

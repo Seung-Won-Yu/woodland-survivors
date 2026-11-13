@@ -639,8 +639,12 @@
 .operator-selector button[aria-pressed="true"]{background:#435247;border-color:#e8c78c;box-shadow:inset 3px 0 #e8c78c}
 .operator-selector button:focus-visible{outline:2px solid #fff0bd;outline-offset:2px}
 .operator-selector span{font-size:9px;letter-spacing:.05em;color:#d9c488}
-.launch-dock .operator-selector b{font-size:13px}
-.launch-dock .operator-selector small{grid-column:1/-1;color:#cbd9bf;font-size:10px;margin:0}
+.operator-selector b{font-size:13px}
+.operator-selector small{grid-column:1/-1;color:#cbd9bf;font-size:10px;margin:0}
+.replay-pilot-toggle{display:grid;gap:2px;min-width:62px;min-height:44px;padding:5px 8px;text-align:right}
+.replay-pilot-toggle small{font-size:9px;color:#d2dac3}
+#replay-pilots{padding:7px;margin-bottom:6px;border:1px solid #647b6c;background:#1c302b}
+#replay-pilots p{margin:7px 0 0;color:#d4dfc7;font-size:11px;line-height:1.5}
 .operator-station[data-operator="marco"] .operator-heading h2{color:#efc58b}
 .operator-record{display:flex;flex-wrap:wrap;gap:8px 16px;margin:-7px 0 16px;padding:10px 12px;background:#36493d;color:#f0e6c4;font-size:11px}
 .operator-record b{color:#f2cd97}

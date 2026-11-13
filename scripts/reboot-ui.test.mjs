@@ -571,6 +571,14 @@ test('a canonical report previews the chosen beach and starter and only compares
  const saved=settleProfile(active,run),r=saved.recent[0];
  assert.match(reportView(r,saved),/반출한 포탑으로 새 동선 시험/);
  const fresh=replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28,starter:'turret'});
+ const swap={sortie:true,freshSeed:28,starter:'turret',operator:'marco',showPilots:true};
+ const nextMarco=replayBriefingView(r,saved,'standard',null,swap);
+ assert.match(nextMarco,/data-brief-pilot="marco" aria-pressed="true"/);
+ assert.match(nextMarco,/data-action="launch" data-actor="marco" data-coast-loadout="turret"/);
+ assert.match(nextMarco,/data-rescue-role="marco"/);
+ const sameFio=replayBriefingView(r,saved,'standard',null,{...swap,route:'same'});
+ assert.match(sameFio,/data-action="same-seed" data-seed="27" data-actor="fio"/);
+ assert.doesNotMatch(sameFio,/data-brief-pilot/);
  assert.match(fresh,/새 전장<small>서쪽 난파선/);
  assert.match(fresh,/같은 전장<small>벙커 횡단/);
  assert.match(fresh,/class="replay-landing"><b>↙ 금색 사격 위치<\/b> · 양쪽 명중 시 축전 코일/);

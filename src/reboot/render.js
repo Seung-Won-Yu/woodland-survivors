@@ -1523,6 +1523,13 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     const r=reduced?13:9+16*Math.min(1,t*3);
     c.beginPath();c.moveTo(f.x-r,f.y);c.lineTo(f.x,f.y-r*.7);c.lineTo(f.x+r,f.y);c.lineTo(f.x,f.y+r*.7);c.closePath();c.stroke();
    }
+   else if(f.roleGain&&visible(f.x,f.y,40)){
+    const offset=reduced?0:5*t;
+    c.translate(f.x,f.y-35-offset);
+    c.strokeStyle='#352e24';c.lineWidth=4;
+    c.beginPath();c.moveTo(-13,-5);c.lineTo(-8,0);c.lineTo(-13,5);c.moveTo(13,-5);c.lineTo(8,0);c.lineTo(13,5);c.stroke();
+    c.strokeStyle='#ffcf8a';c.lineWidth=2;c.stroke();
+   }
    else if(f.type==='impact'||f.type==='kill'){c.strokeStyle=f.type==='kill'?'#f9dcb4':'#fff1be';c.lineWidth=2;for(let i=0;i<4;i++){const a=i*TAU/4+f.age*4,r=5+t*16;c.beginPath();c.moveTo(f.x+Math.cos(a)*r,f.y-18+Math.sin(a)*r);c.lineTo(f.x+Math.cos(a)*(r+7),f.y-18+Math.sin(a)*(r+7));c.stroke();}}
    c.restore();
   }

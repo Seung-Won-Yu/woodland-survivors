@@ -8,8 +8,8 @@ export const COAST_SALVAGE = {
   credits: 40,
   turretName: CAPTURED_TURRET.name,
   roles: {
-    marco: {name: '약점 교범', target: '장갑 경비 측후면', brief: '방패 옆을 돌아 약점에 적중 · 관통 사격 피해 증가', rescue: '방패병 옆으로 돌아 약점 타격', weapon: 'r', pairing: '멀리서 폭발로 전열을 걷고 약점에 접근'},
-    fio: {name: '야전 조립', target: '수송 호위 부품', brief: '표식이 있는 호위 제압 후 부품 회수 · 모든 무장 연사 가속', rescue: '호위가 떨어뜨린 부품 회수', weapon: 'f', pairing: '가까운 호위를 태우고 그 자리에서 부품 회수'}
+    marco: {name: '약점 교범', target: '장갑 경비 측후면', brief: '방패 옆을 돌아 약점에 적중 · 관통 사격 피해 증가', rescue: '방패병 옆으로 돌아 약점 타격', weapon: 'r', pairing: '박격포를 멀리서 제압하고 측면 방패병의 약점을 타격'},
+    fio: {name: '야전 조립', target: '수송 호위 부품', brief: '표식이 있는 호위 제압 후 부품 회수 · 모든 무장 연사 가속', rescue: '호위가 떨어뜨린 부품 회수', weapon: 'f', pairing: '보급차 호위 두 명의 부품을 회수해 연사 가속'}
   }
 };
 
@@ -31,6 +31,11 @@ export function coastTurretOwner(s,uid) {
 export const coastRole = s => COAST_SALVAGE.roles[s.operator === 'marco' ? 'marco' : 'fio'];
 export const coastRoleRank = coast => COAST_SALVAGE.steps.filter(step => step <= coast.progress).length;
 export const coastRoleBonus = (operator,rank) => (operator==='marco'?.2:.08)*rank;
+export function coastRoleSite(s,site){
+ const coast=coastAtShore(s);
+ return !!(isSalvageCampaign(s)&&coast&&s.stage==='field'&&coast.progress<COAST_SALVAGE.steps.at(-1)
+   &&site?.coastApproach===coastRole(s).weapon&&!site.preempt&&s.sites[0]?.state==='done');
+}
 export const COAST_FAN_ENTRY={depth:194,hold:1.45,ready:.55,guards:[[-66,18],[-79,20],[66,18],[79,20]]};
 export function coastFanPosition(site){
  const angle=Math.atan2(1040-site.y,800-site.x)+Math.sign(800-site.x)*.62;
@@ -51,9 +56,10 @@ export function coastRoleTarget(s) {
   const marco = s.operator === 'marco';
   const enemies = s.enemies.filter(e => !e.dead && e.hp > 0 && coastGrowthEnemy(s,e));
   const marked = enemies.filter(e => marco ? e.coastArmor : e.coastCarrier);
-  const rescueGuards = isSalvageCampaign(s) ? marked.filter(e=>e.coastRescueShield||e.siteId==='supply-a') : [];
+  const rescueGuards = isSalvageCampaign(s)&&s.sites[0]?.state!=='done' ? marked.filter(e=>e.coastRescueShield||e.siteId==='supply-a') : [];
+  const fieldGuards = marked.filter(e=>marco?e.coastBatteryShield:e.siteId==='supply-b');
   const parts = !marco && coast.parts.length>0;
-  const points = parts ? coast.parts : rescueGuards.length ? rescueGuards : marked.length ? marked : enemies;
+  const points = parts ? coast.parts : rescueGuards.length ? rescueGuards : fieldGuards.length ? fieldGuards : marked.length ? marked : enemies;
   const nearest = points.reduce((best, point) =>
     !best || distance(s.player, point) < distance(s.player, best) ? point : best, null);
   return nearest ? {...nearest, name: parts?'회수할 부품':coastRole(s).target} : null;

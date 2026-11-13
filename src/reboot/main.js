@@ -17,7 +17,7 @@ import {createAudio} from '../game/audio.js';
 import {selectRiftAudioEvents} from './sound.js';
 import {RAIL_SALVAGE_ROUTES,RAIL_WORKSHOP_FAN} from './campaign.js';
 import {railInfernoPlan,railAmmoInvestment,focusStudyAvailable,wireTransferInvestment,coastPartOpportunity,rescueCoilEligible} from './model.js';
-import {RESCUE_COIL} from './coast-salvage.js';
+import {RESCUE_COIL,coastRoleSite} from './coast-salvage.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio({fieldMix:true}),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const partBenefit=cue=>cue.until===1?`회수 시 발사 간격 −${cue.bonus}%`:`조립까지 ${cue.until}개`;
@@ -617,7 +617,17 @@ ui.addEventListener('click',async e=>{
  if(button.dataset.exclude){await mutate(d=>banish(d,button.dataset.exclude));return;}
  const a=button.dataset.action;
  if(subpanel?.type==='replay-briefing'&&Number.isSafeInteger(subpanel.options.freshSeed)){
-  const {briefRoute,briefStarter,briefOpening,briefOrder}=button.dataset;
+  const {briefRoute,briefStarter,briefOpening,briefOrder,briefPilot}=button.dataset;
+  if(subpanel.options.sortie&&subpanel.options.route==='fresh'){
+   if(a==='brief-pilots'){
+    subpanel.options.showPilots=!subpanel.options.showPilots;
+    refreshReplayBriefing('[data-action="brief-pilots"]');return;
+   }
+   if(Object.hasOwn(OPERATORS,briefPilot)){
+    Object.assign(subpanel.options,{operator:briefPilot,showPilots:false});
+    refreshReplayBriefing('[data-action="brief-pilots"]');return;
+   }
+  }
   if(briefOrder==='standard'||briefOrder==='wire'&&canLaunchOrder(profile(),'wire')){
    subpanel.dispatch=briefOrder==='wire'?'order:wire':'standard';
    refreshReplayBriefing(`[data-brief-order="${briefOrder}"]`);return;
@@ -1117,6 +1127,7 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
     :[`감옥으로 이동 · ${move} · 사격 자동`,reward||cue].filter(Boolean).join('\n');
   }else{
    intel=coastEncounterCue(run,coastSite,coastRocketVolley(run,coastSite),coastRocketCounter(run,coastSite))||(fork?`${coastReward(coastSite)} · ${coastApproach(coastSite).formation}`:coastApproach(coastSite).hint);
+   if(coastRoleSite(run,coastSite)&&coastSite.state==='waiting')intel+=run.operator==='marco'?'\n측면 방패병 · 약점 교범':'\n호위 두 명 · 조립 부품';
    const service=coastService(run,coastSite);
    if(service&&isCapturedTurret(service.weapon)&&coastSite.state==='waiting')intel+=`\n포탑 L${service.level} 정비 · 조율권 1개`;
    if(coastSite.coastApproach==='r'&&coastSite.state!=='active'&&fieldResearchTrial(run,coastSite)==='shrapnel')intel+='\n분열 수류탄 시험 · 보급 한 가지';
@@ -1660,6 +1671,7 @@ function processEvents(){
  if(!priority&&bannerPriority.includes(banner.dataset.kind))return;
  const counter=!priority&&events.has('aid-counter')&&run.effects.findLast(f=>f.type==='aid-counter');
  const fx=counter||run.effects.findLast(f=>priority?f.type===priority:!f.interrupted&&f.railCounter===undefined&&(!capstone||!['complete','skill'].includes(f.type))
+  &&(!touchLayout.matches||!f.roleGain)
   &&events.has(f.type)&&(f.text||['boss-arrival','boss-down','raid-start'].includes(f.type)));
  if(!fx||fx.coastTactic||fx.portWake||fx.portRelay||fx.type==='aid-counter')return;
  bannerRunId=run.runId;banner.dataset.kind=fx.type;
