@@ -469,28 +469,42 @@
  #banner:is([data-kind="region-entry"],[data-kind="port-hatch"]) strong {font-size:17px;margin:3px 0}
 }
 .raid-brief>header{margin-bottom:8px}
-.raid-brief>p{margin:8px 0 14px}
+.raid-brief>.raid-stake{margin:8px 0;color:#eed3b3;font-size:11px;line-height:1.5}
+.raid-keep{display:grid;width:100%;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left;padding:8px 10px;border-left:3px solid #b6dec3;background:#29463d;line-height:1.35}
+.raid-keep>svg{width:26px;color:#c9e7c8}
+.raid-keep strong,.raid-keep small{display:block}
+.raid-keep strong{color:#e1f0cb;font-size:14px}
+.raid-keep small{margin-top:3px;color:#cfdfc5;font-size:10px;line-height:1.4}
+.raid-keep i{color:#cfdfb5;font-size:18px;font-style:normal}
 .raid-brief-map{padding:8px;background:#142b2b;border:1px solid #76897d;display:grid;justify-items:center;gap:6px}
 .raid-preview{display:block;width:auto;max-width:100%;height:clamp(112px,25vh,220px)}
 .raid-legend{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;color:#d3dbc1;font-size:10px}
 .raid-contracts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
-.raid-contracts>.raid-contract{display:grid;align-content:start;gap:5px;text-align:left;min-height:116px;padding:10px;border-top:3px solid var(--route-ink);background:#30443b;color:#eff0d8}
+.raid-contracts>.raid-contract{display:grid;align-content:start;gap:4px;text-align:left;min-height:116px;padding:10px;border-top:3px solid var(--route-ink);background:#30443b;color:#eff0d8}
 .raid-contract strong{color:var(--route-ink);font-size:15px}
 .raid-contract strong::before{content:'';display:inline-block;width:22px;margin-right:5px;vertical-align:middle;border-top:2px dashed currentColor}
 .raid-contract[data-action="raid:armored"] strong::before{border-top-style:dotted}
+.raid-contract[data-action="raid:armored"]{background:#3e3531}
+.raid-contracts>.raid-contract:is(:hover,:focus-visible){border-color:var(--route-ink);background:#435047}
 .raid-contract span{font-size:11px}
 .raid-contract small{font-size:10px;color:#dae5c9}
-.raid-brief footer{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.raid-brief footer small{font-size:10px;color:#c5d4bb}
-.raid-brief footer button{flex:none;min-height:44px}
+.raid-contract .raid-risk{color:#c9d6bf}
+.raid-prize{margin-top:2px;padding-top:4px;border-top:1px solid #c6c8ae50;color:var(--route-ink);font-size:12px;line-height:1.35}
+.raid-contract .raid-goal{color:#f1dcb2;line-height:1.35}
+.raid-contract .raid-stock-match{color:#c1e1c3}
 #raid-hud>div{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 #raid-time{white-space:nowrap}
 #raid-angle{color:#e7cf9c;font-size:10px}
+#raid-angle[data-raid-nose]{color:#ffbe9b}
 @media(max-width:700px){
- .raid-brief>p{margin:6px 0 10px}
- .raid-contracts>.raid-contract{padding:8px}
+ .raid-brief>.raid-stake{margin:6px 0}
+ .raid-contracts{margin:8px 0}
+ .raid-contracts>.raid-contract{padding:7px}
  .raid-contract strong{font-size:13px}
- .raid-brief footer button{padding:8px}
+ .raid-contract strong::before{width:10px;margin-right:4px}
+ .raid-contract span{font-size:10px}
+ .raid-contract small{font-size:9px;line-height:1.4}
+ .raid-preview{height:clamp(96px,20vh,168px)}
  .raid-active .field-stack{left:auto;right:12px;top:112px}
  .raid-active .field-stack #map-panel{display:block}
  .raid-active #raid-hud{left:12px;transform:none;width:calc(100% - 124px)}

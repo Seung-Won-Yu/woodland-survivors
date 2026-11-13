@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,portTacticKeys} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName} from '../src/reboot/content.js';
-import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue} from '../src/reboot/model.js';
+import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue,armoredRaidPart} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} from '../src/reboot/choice-details.js';
@@ -989,6 +989,97 @@ test('successful contracts keep distinct workshop and completion roles through r
  const light=raidLoot('light',configure);assert.ok(light.choices.some(c=>c.kind==='refit'));takeEvents(light);const saved=restore(snapshot(light));assert.ok(reroll(light));assert.ok(reroll(saved));assert.deepEqual(snapshot(light),snapshot(saved));assert.ok(light.choices.some(c=>c.kind==='refit'));assert.equal(light.choice.contract,'light');
  const armor=raidLoot('armored',configure),quality=armor.choice.quality;assert.ok(armor.choices.some(c=>c.support&&['coil','catalyst'].includes(c.module)));assert.ok(!armor.choices.some(c=>c.kind==='refit'));reroll(armor);assert.equal(armor.choice.quality,quality);assert.ok(armor.choices.some(c=>c.support));
  const early=raidLoot('light');assert.ok(early.choices.some(c=>c.kind==='rank'));assert.ok(!early.choices.some(c=>c.kind==='refit'));
+});
+function salvageArmory(guns,modules,{tuning=1,excluded=[]}={}){
+ const s=createOperation(27,[],null,null,'fio','standard');
+ s.sites.forEach(site=>site.state='done');
+ s.weapons=guns.map(([id,level,branch])=>({...makeWeapon(id),uid:`test-${id}`,level,branch,cd:999}));
+ Object.assign(s,{modules,tuning,excluded});
+ supply(s,'arsenal');
+ assert.equal(s.choice.type,'armory');
+ return s;
+}
+function collectArmoredReward(s){
+ s.shots=[bullet(s,s.raid.target,10000)];step(s,dt);
+ assert.equal(s.raid.state,'success');
+ assert.equal(s.choice.type,'raid-reward');
+ return s.choices.find(card=>card.support);
+}
+test('armored contract secures the named completion rank independently of crate quality',()=>{
+ for(const [guns,id,recipe] of [
+  [[['h',4,'ricochet'],['r',4,'homing'],['f',1,null]],'coil','fusion:h:r'],
+  [[['h',1,null],['f',6,'trail']],'catalyst','evolve:f']
+ ])for(const rank of [0,1]){
+  const s=salvageArmory(guns,rank?[{id,rank}]:[]);
+  const before=snapshot(s),plan=armoredRaidPart(s);
+  assert.equal(plan.path,recipe);
+  assert.equal(plan.closes,true);
+  assert.equal(plan.permit,false);
+  assert.deepEqual(snapshot(s),before);
+  assert.ok(action(s,'raid:armored'));
+  assert.deepEqual(s.raid.part,{module:id,rank:2});
+  s.raid.quality='common';
+  takeEvents(s);
+  const loaded=restore(snapshot(s));
+  const card=collectArmoredReward(s);
+  assert.deepEqual(collectArmoredReward(loaded),card);
+  assert.equal(s.choice.quality,'common');
+  assert.equal(card.rank,2-rank);
+  assert.ok(reroll(s));assert.ok(reroll(loaded));
+  assert.deepEqual(snapshot(s),snapshot(loaded));
+  assert.equal(s.choices.find(item=>item.support).rank,2-rank);
+  assert.ok(choose(s,card.id));
+  assert.ok(assemblyOptions(s).some(option=>option.id===recipe));
+  assert.ok(action(s,'gear'));assert.ok(choose(s,recipe));
+ }
+});
+test('armored salvage preview distinguishes missing permits, legal slots and rank three heat',()=>{
+ const s=salvageArmory([['h',4,'ricochet'],['r',4,'homing']],[],{tuning:0});
+ assert.equal(armoredRaidPart(s).permit,true);
+ const heat=salvageArmory([['f',4,'trail'],['r',4,'homing']],[{id:'catalyst',rank:2}],{tuning:0});
+ assert.deepEqual(armoredRaidPart(heat),{module:'catalyst',rank:3,closes:true,remaining:0,goal:'열압 연계',path:'heat',permit:false,replace:false});
+ assert.ok(action(heat,'raid:armored'));
+ assert.ok(choose(heat,collectArmoredReward(heat).id));
+ assert.equal(heat.stats.completedBuild.kind,'synergy');assert.equal(heat.tuning,0);
+ const full=salvageArmory([['f',6,'trail'],['r',4,'homing']],[{id:'coil',rank:2},{id:'thermal',rank:1},{id:'medic',rank:1},{id:'magnet',rank:3}]);
+ assert.equal(armoredRaidPart(full).replace,true);
+ assert.ok(action(full,'raid:armored'));
+ const card=collectArmoredReward(full);
+ assert.equal(choose(full,card.id,{slot:0}),false);
+ assert.ok(choose(full,card.id,{slot:2}));
+ assert.ok(assemblyOptions(full).some(option=>option.id==='evolve:f'));
+});
+test('armored cargo honors mid-pursuit changes, voluntary banish and legacy saves',()=>{
+ const setup=()=>salvageArmory([['h',4,'ricochet'],['r',4,'homing']],[]);
+ for(const change of [s=>s.modules.push({id:'coil',rank:2}),s=>s.excluded.push('coil')]){
+  const s=setup();assert.ok(action(s,'raid:armored'));change(s);
+  assert.equal(collectArmoredReward(s),undefined);
+  assert.ok(s.choices.some(c=>c.id==='resupply:mixed'&&c.label==='노획 부품 교환 보급'));
+  assert.ok(reroll(s));assert.ok(s.choices.some(c=>c.label==='노획 부품 교환 보급'));
+ }
+ const s=setup();assert.ok(action(s,'raid:armored'));
+ const old=snapshot(s);delete old.raid.part;
+ assert.throws(()=>restore(old),/체크포인트/);
+ old.balanceRevision='b59-carrier-prep';
+ assert.ok(collectArmoredReward(restore(old)));
+ assert.throws(()=>restore({...snapshot(s),raid:{...s.raid,part:{module:'coil',rank:3}}}),/체크포인트/);
+ const card=collectArmoredReward(s);assert.ok(banish(s,card.id));
+ assert.equal(s.raid.part,null);assert.ok(reroll(s));
+ assert.ok(s.choices.every(item=>!item.support&&item.module!=='coil'));
+});
+test('the completed raid opens its promised part before a nearby pickup can change the loadout',()=>{
+ const s=salvageArmory([['h',4,'ricochet'],['r',4,'homing']],[]);
+ assert.ok(action(s,'raid:armored'));
+ const supplySite=s.sites.find(site=>site.id==='supply-a');
+ supplySite.state='ready';Object.assign(s.player,{x:supplySite.x,y:supplySite.y});
+ const card=collectArmoredReward(s);
+ assert.equal(card.module,'coil');assert.equal(card.rank,2);
+ assert.equal(supplySite.state,'ready');
+ const resumed=restore(snapshot(s));
+ assert.ok(choose(resumed,card.id));
+ step(resumed,dt);
+ assert.equal(resumed.choice.type,'supply');
+ assert.equal(resumed.sites.find(site=>site.id===supplySite.id).state,'done');
 });
 test('field workshop changes one unfinished specialization without consuming investment or tuning',()=>{
  const s=raidLoot('light',s=>{Object.assign(s.weapons[0],{level:5,branch:'ricochet',cd:.32,shots:14});s.modules=[{id:'coil',rank:2}];});

@@ -1,5 +1,5 @@
 import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RESPONSE,coastPreemptSite,coastPreemptGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
-import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance,CAPTURED_TURRET,COAST_FAN,coastFanAngle,isCapturedTurret} from './content.js';
+import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,buildPaths,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance,CAPTURED_TURRET,COAST_FAN,coastFanAngle,isCapturedTurret} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
 import {OPERATORS,operatorOf,skillRules,canUseSkill,focusLane,aimFromInput,chargeLabel} from './operator.js';
@@ -170,7 +170,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -381,6 +381,10 @@ export function restore(raw,{allowPrevious=false}={}){
   if(!['active','success','failed','withdrawn'].includes(state)||!Object.hasOwn(RULES.raidContracts,contract)||!Number.isFinite(progress)||progress<0||!(maxProgress>0&&Number.isFinite(maxProgress)))fail();
   if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
   if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
+  const part=s.raid.part,designated=isSalvageCampaign(s)&&contract==='armored';
+  if(designated&&s.balanceRevision===RULES.balanceRevision&&part===undefined)fail();
+  if(part!==undefined&&(!designated||part!==null&&(
+   !['coil','catalyst','ricochet'].includes(part?.module)||part.rank!==2&&!(part.module==='catalyst'&&part.rank===3))))fail();
   if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
   s.raid.segment??=raidCursor(s.raid).segment;
  }
@@ -654,10 +658,53 @@ function armoryCards(s,quality){
  return fillCrate(cards,quality);
 }
 function fillCrate(cards,quality){const i=['common','rare','prototype'].indexOf(quality),cfg=RULES.crateRewards,packets=[{id:'resupply:medical',kind:'resupply',title:'야전 의료 보급',heal:cfg.medicalHeal[i],charge:0},{id:'resupply:ammo',kind:'resupply',title:'강화 탄창 보급',heal:0,charge:cfg.ammoCharge[i]},{id:'resupply:mixed',kind:'resupply',title:'혼합 재보급',heal:cfg.mixedHeal[i],charge:cfg.mixedCharge[i]}];return [...cards,...packets.map(c=>({...c,desc:`${c.heal?`체력 +${c.heal}`:''}${c.heal&&c.charge?' · ':''}${c.charge?`전탄 충전 +${c.charge}`:''}`,label:'같은 품질 재보급'}))].slice(0,3);}
+const raidPartSlot=(s,id)=>{
+ const installed=s.modules.findIndex(m=>m.id===id);
+ if(installed>=0)return installed;
+ if(s.modules.length<4)return s.modules.length;
+ return s.modules.findIndex((_,slot)=>canReplaceModule(s,id,slot));
+};
+export function armoredRaidPart(s){
+ if(!isSalvageCampaign(s))return null;
+ const paired=['h','r'].every(id=>s.weapons.some(w=>w.id===id&&!w.evolved&&!w.fusion));
+ const paths=buildPaths(s).filter(path=>!path.complete&&path.status!=='blocked'&&path.remaining>0&&(path.id!=='fusion:h:r'||paired));
+ const pool=modulePool(s),plans=[];
+ for(const module of completionModules(s)){
+  const slot=raidPartSlot(s,module);
+  if(!pool.includes(module)||slot<0)continue;
+  const current=moduleRank(s,module);
+  const replace=!current&&s.modules.length===4;
+  for(const rank of module==='catalyst'?[2,3]:[2]){
+   if(rank<=current)continue;
+   const modules=[...s.modules];modules[slot]={id:module,rank};
+   for(const after of buildPaths({...s,modules})){
+    const before=paths.find(path=>path.id===after.id);
+    if(!before||after.remaining>=before.remaining)continue;
+    const closes=after.remaining===0&&(after.ready||after.complete||after.status==='permit');
+    if(rank===3&&!(after.id==='heat'&&after.complete))continue;
+    plans.push({module,rank,closes,remaining:after.remaining,goal:before.title,path:before.id,permit:after.status==='permit',replace});
+   }
+  }
+ }
+ const favored=s.weapons.some(isCapturedTurret)?'evolve:r':s.firstNew==='r'?'fusion:h:r':`evolve:${s.firstNew||'h'}`;
+ return plans.sort((a,b)=>Number(b.closes)-Number(a.closes)||a.remaining-b.remaining||Number(b.path===favored)-Number(a.path===favored)||a.rank-b.rank)[0]||null;
+}
+function recoveredRaidPart(s,quality){
+ const part=s.raid.part;
+ if(!part)return null;
+ const current=moduleRank(s,part.module);
+ if(current>=part.rank||!modulePool(s).includes(part.module)||raidPartSlot(s,part.module)<0){
+  return {...fillCrate([],quality)[2],label:'노획 부품 교환 보급'};
+ }
+ return {...moduleCard(part.module,part.rank-current),support:true,label:'지정 노획 부품'};
+}
 function crateCards(s,quality,contract=null){
  const base=armoryCards(s,quality),reserved=base.filter(c=>c.module==='overcharger');let special;
  if(contract==='light'){if(refitWeapons(s).length)special={id:'refit:field',kind:'refit',title:'야전 분화 개장',desc:'보유 L4 이상 총 하나의 분화를 전환합니다. 레벨·모듈·조율권 유지.',label:'보급차 작업대'};else{const guns=upgradeable(s);if(guns.length)special={...gunCard(pick(s,'loot',guns)),label:'보급차 무기 강화'};}}
- if(contract==='armored'){const pool=completionModules(s);if(pool.length)special={...moduleCard(pick(s,'loot',pool),quality==='common'?1:quality==='rare'?2:3),support:true,label:'장갑 수송대 · 완성 부품'};}
+ if(contract==='armored'){
+  if(s.raid?.part!==undefined)special=recoveredRaidPart(s,quality);
+  else {const pool=completionModules(s);if(pool.length)special={...moduleCard(pick(s,'loot',pool),quality==='common'?1:quality==='rare'?2:3),support:true,label:'장갑 수송대 · 완성 부품'};}
+ }
  return fillCrate([...reserved,...(special?[special]:[]),...base.filter(c=>c.module!=='overcharger'&&c.id!==special?.id)],quality);
 }
 function openChoice(s,type,cards,source='',extra={}){
@@ -874,12 +921,14 @@ export function reroll(s){
 }
 export function banishOptions(s){if(s.phase!=='choice'||s.choice.preempt||!['level','supply','armory','raid-reward'].includes(s.choice.type)||s.banishes<=0)return[];return s.choices.filter(c=>{const id=c.kind==='gun'?c.weapon:c.kind==='module'?c.module:null;return id&&!isCoastTacticalLoot(c)&&!s.weapons.some(w=>w.id===id&&!w.fusion)&&(!moduleRank(s,id)||c.support)&&id!=='overcharger'&&!(c.kind==='gun'&&s.supplyCount<2&&['r','f'].filter(id=>!s.excluded.includes(id)).length<=2);});}
 export function banish(s,id){const c=banishOptions(s).find(c=>c.id===id);if(!c)return false;const target=c.kind==='gun'?c.weapon:c.module;if(!moduleRank(s,target))s.excluded.push(target);s.banishes--;
+ const declined=s.choice.type==='raid-reward'&&s.raid?.part?.module===target;
+ if(declined)s.raid.part=null;
  if(c.kind==='gun')s.choices=s.choices.filter(card=>!(isCoastTacticalLoot(card)&&card.weapon===target));
  const index=s.choices.indexOf(c);
  const used=new Set([...s.choices.filter(card=>card!==c).map(card=>card.id),c.id]);let replacement;
  if(c.kind==='gun'){const pool=['h','r','f'].filter(g=>!s.excluded.includes(g)&&!s.weapons.some(w=>w.id===g&&!w.fusion)&&!used.has(`gun:${g}`));if(pool.length){const g=pick(s,'supply',pool);replacement={id:`gun:${g}`,kind:'gun',weapon:g,title:`${GUNS[g].name} 확보`,desc:'새 공격을 얻습니다. 빈칸 장착 또는 기존 총 개장.',label:'새 무기'};}}
  const rank=['armory','raid-reward'].includes(s.choice.type)?({common:1,rare:2,prototype:3})[s.choice.quality]:c.kind==='module'?c.rank:1;
- if(!replacement){let pool=modulePool(s).filter(m=>!used.has(`module:${m}`)),support=false;if(c.support){const needed=completionModules(s).filter(m=>pool.includes(m));if(needed.length){pool=needed;support=true;}}if(pool.length)replacement={...moduleCard(pick(s,'supply',pool),rank),...(support?{support:true,label:'장갑 수송대 · 완성 부품'}:{})};}
+ if(!replacement){let pool=modulePool(s).filter(m=>!used.has(`module:${m}`)),support=false;if(c.support&&!declined){const needed=completionModules(s).filter(m=>pool.includes(m));if(needed.length){pool=needed;support=true;}}if(pool.length)replacement={...moduleCard(pick(s,'supply',pool),rank),...(support?{support:true,label:'장갑 수송대 · 완성 부품'}:{})};}
  if(!replacement)replacement=(['armory','raid-reward'].includes(s.choice.type)?fillCrate([],s.choice.quality):['health','charge','power'].map(utility)).find(card=>!used.has(card.id));s.choices[index]=replacement;return true;
 }
 export function skip(s){if(s.phase!=='choice'||['assembly','clear','pursuit-reward','coast-boss','coast-mount'].includes(s.choice.type))return false;if(s.player.hp<s.player.maxHp)s.player.hp=Math.min(s.player.maxHp,s.player.hp+s.player.maxHp*.05);else s.player.charge=Math.min(100,s.player.charge+5);if(s.choice.type==='supply')s.supplyCount++;closeChoice(s,true);return true;}
@@ -2246,7 +2295,9 @@ function startRaid(s,contract){
  if(s.phase!=='choice'||s.choice.type!=='armory'||s.raidUsed||!RULES.raidContracts[contract]||s.challenge?.state==='active')return false;
  const cfg=RULES.raidContracts[contract],route=raidRoute(s,contract),[start,next]=route;
  const aim=Math.atan2(next.y-start.y,next.x-start.x);
+ const plan=contract==='armored'&&isSalvageCampaign(s)?armoredRaidPart(s):null;
  s.raidUsed=true;s.raid={state:'active',contract,progress:0,maxProgress:cfg.routeLength,route,segment:0,quality:rollQuality(s,cfg.qualityKey),wager:snapshot(s.choice),wagerCards:clone(s.choices),target:{id:'courier',type:'courier',...start,r:35,hp:cfg.hp,maxHp:cfg.hp,aim,dead:false}};
+ if(contract==='armored'&&isSalvageCampaign(s))s.raid.part=plan?{module:plan.module,rank:plan.rank}:null;
  const escorts=[];
  for(const [type,count]of Object.entries(cfg.escort))for(let i=0;i<count;i++){
   for(let attempt=0;attempt<24;attempt++){
@@ -2892,7 +2943,15 @@ export function step(s,dt,input={x:0,y:0},view=null){
   s.queue.unshift({type:'clear',source:'MISSION CLEAR',cards:exitCards(s)});
  }
  updateChallenge(s,dt);if(p.hp<=0){finish(s,false,'hp');return;}if(s.phase!=='playing')return;
- if(s.raid?.state==='success'&&!s.raid.rewardQueued){s.raid.rewardQueued=true;s.queue.push({type:'raid-reward',source:'습격 성공 · 새 보급',cards:crateCards(s,s.raid.quality,s.raid.contract),extra:{quality:s.raid.quality,contract:s.raid.contract,wagerQuality:s.raid.wager.quality}});}
+ if(s.raid?.state==='success'&&!s.raid.rewardQueued){
+  const {quality,contract,wager}=s.raid;
+  s.raid.rewardQueued=true;
+  if(s.raid.part){
+   openChoice(s,'raid-reward',crateCards(s,quality,contract),'습격 성공 · 새 보급',{quality,contract,wagerQuality:wager.quality});
+   return;
+  }
+  s.queue.push({type:'raid-reward',source:'습격 성공 · 새 보급',cards:crateCards(s,quality,contract),extra:{quality,contract,wagerQuality:wager.quality}});
+ }
  updateSites(s,dt);nextChoice(s);
 }
 export function takeEvents(s){const e=s.events;s.events=[];return e;}

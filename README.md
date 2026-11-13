@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.130.0" src="https://img.shields.io/badge/RIFT-0.130.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.131.0" src="https://img.shields.io/badge/RIFT-0.131.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -63,7 +63,7 @@
 
 전도 격발망을 완성하면 증원 편대 뒤에 박격포가 나타날 수 있습니다. 탄착원 밖으로 회피해 포대와 사선을 열면 보병에 맞은 연쇄탄이 박격포에 도약합니다. 탄이 포대에 닿으면 떨어지던 포격이 끊기고 정산에 차단 횟수가 남습니다.
 
-무기고에서는 현재 보급을 확정하거나, 상자를 걸고 수송대를 습격합니다. **보급차는 분화 개장**, **장갑 수송대는 미완성 경로 부품**을 노리는 계약입니다. 실패하면 걸었던 상자만 잃습니다. 품질 확률·위험·결과를 공개하고 재추첨2·후보 제외1로 무작위에 대응합니다.
+무기고에서는 현재 상자의 후보와 수송대 보상을 먼저 비교합니다. **보급차**를 저지하면 분화 개장이나 무기 강화를, **장갑 수송대**를 저지하면 출발 전에 표시된 진화·합체 부품을 고를 수 있습니다. 같은 부품이 현재 상자에 있으면 함께 표시합니다. 습격에 성공해도 나머지 보급의 품질은 다시 추첨하며, 차량이 탈출하거나 철수하면 걸었던 상자를 잃습니다. [보급 비교와 모바일 추격 검증](docs/RIFT-GAMEPLAY-V1.md#0131-무기고-보급과-장갑-수송대-노획)
 
 ![실제 완주 보고서 — 세 전선 돌파와 확보 크레딧](docs/images/rift-win-public.png)
 
