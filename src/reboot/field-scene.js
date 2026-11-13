@@ -135,9 +135,14 @@ export function railSalvagePreview(seed){
   const color=RAIL_SALVAGE_ROUTES[route.site].color;
   const [x,y]=route.path.at(-1);
   const path=route.site==='rail-cache'?railWorkshopEntry(route,arrival):route.path;
-  return `<polyline points="${path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="18" stroke-linejoin="round"/><rect x="${x-26}" y="${y-26}" width="52" height="52" fill="#21312e" stroke="${color}" stroke-width="11"/>`;
+  const points=path.map(point=>point.join(',')).join(' ');
+  const waypoint={id:route.site,kind:route.site==='rail-relay'?'relay':'supply'};
+  return `<polyline points="${points}" fill="none" stroke="#1b2925" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+   <polyline points="${points}" fill="none" stroke="${color}" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+   <rect x="${x-46}" y="${y-46}" width="92" height="92" fill="#21312e" stroke="${color}" stroke-width="11"/>
+   ${siteSymbol(waypoint,x,y,35)}`;
  }).join('');
- return `<svg class="rail-salvage-map" viewBox="450 492 700 620" aria-hidden="true">${terrainSvg(1,seed)}${track}<circle cx="${arrival.x}" cy="${arrival.y}" r="24" fill="#fbefc8" stroke="#21312e" stroke-width="11"/></svg>`;
+ return `<svg class="rail-salvage-map" viewBox="420 478 760 640" aria-hidden="true">${terrainSvg(1,seed)}${track}<circle cx="${arrival.x}" cy="${arrival.y}" r="29" fill="#fbefc8" stroke="#21312e" stroke-width="11"/></svg>`;
 }
 export function escapeRouteSvg(route,marker,color,name,dash='12 16'){
  const start=route[0],end=route.at(-1),previous=route.at(-2);

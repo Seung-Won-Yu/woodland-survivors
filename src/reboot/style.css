@@ -1102,7 +1102,10 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
  display: grid;
  place-items: center;
  overflow: hidden;
- background: linear-gradient(160deg,#2d3933,#111e20 74%);
+ background:
+  repeating-linear-gradient(0deg,transparent 0 13px,#b0a47b16 13px 14px),
+  repeating-linear-gradient(90deg,transparent 0 13px,#b0a47b16 13px 14px),
+  radial-gradient(ellipse at 42% 50%,#62604a,#26302a 67%,#192826);
  border-bottom:1px solid #9cb19b35;
 }
 .ordnance-preview .kit-turret {width: 128px; height: 128px; margin-right: 68px}
@@ -1119,6 +1122,20 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
  box-shadow: 0 0 6px color-mix(in srgb,currentColor 50%,transparent);
  transform: rotate(var(--angle));
  transform-origin: left;
+}
+.ordnance-rays i[data-cut] {
+ height:1px;
+ background:repeating-linear-gradient(90deg,#ad8d76 0 3px,transparent 3px 6px);
+ box-shadow:none;
+}
+.ordnance-rays i[data-cut]::after {
+ content:'';
+ position:absolute;
+ right:0;
+ top:-2px;
+ width:5px;
+ height:5px;
+ background:linear-gradient(45deg,transparent 39%,#dca580 40% 59%,transparent 60%),linear-gradient(-45deg,transparent 39%,#dca580 40% 59%,transparent 60%);
 }
 .ordnance-copy {display: grid; align-content: start; gap: 5px; padding: 12px 14px 14px}
 .ordnance-copy > small,.ordnance-copy > b {color: var(--ordnance-ink)}
@@ -1281,6 +1298,8 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .rail-salvage-brief > div {gap:4px}
  .rail-salvage-brief b,.rail-salvage-brief small {font-size:9px}
  .ordnance-card kbd {top: 6px; right: 5px}
+ .rail-boss .field-stack #boss-hud{min-height:88px;align-content:start}
+ .rail-boss .arsenal{bottom:max(116px,calc(env(safe-area-inset-bottom) + 96px))}
  .front-transfer{gap:8px;padding:5px 8px;margin-block:8px}
  .front-transfer .kit-sprite{width:38px;height:38px}
  .front-transfer b{font-size:13px;line-height:1.4}

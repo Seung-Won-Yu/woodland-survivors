@@ -394,6 +394,15 @@ test('rail guidance shows either the firing pad or a safe escape slot during a l
   {x:500,y:600,w:180,h:900,r:0,lane:true,railGun:0,timer:1.25}];
  const guide=()=>railBossGuide(s,railFanCutCue(s));
  assert.equal(guide().pad.state,'ready');assert.equal(guide().slot,null);
+ assert.equal(guide().bait,null);
+ s.boss.railDecoy={x:800,lead:1,cycle:1};
+ assert.equal(guide().bait,s.hazards[0]);
+ s.boss.mode='aim';s.boss.cycle=0;
+ const locked=guide();
+ assert.ok(locked.forecast.includes(locked.bait));
+ assert.equal(locked.bait.railGun,1);
+ s.boss.mode='salvo';s.boss.cycle=1;
+ delete s.boss.railDecoy;
  s.weapons[0].cd=.68;
  assert.equal(railFanCutCue(s).state,'ready');
  assert.equal(guide().pad,null);assert.ok(guide().slot);

@@ -719,7 +719,11 @@ function paintRailFanLine(c,cue){
   c.strokeStyle='#172322d9';c.lineWidth=state==='ready'?7:5;c.stroke();
   c.strokeStyle=ink+(active?'ef':'a6');c.lineWidth=state==='ready'?3:2;c.stroke();
   c.setLineDash([]);
-  if(active)circle(c,gun.x,gun.y,30,null,ink,state==='ready'?3:2);
+  if(active){
+   c.strokeStyle=ink;c.lineWidth=3;c.beginPath();
+   c.moveTo(gun.x-15,gun.y+4);c.lineTo(gun.x-15,gun.y+13);c.lineTo(gun.x-5,gun.y+13);
+   c.moveTo(gun.x+15,gun.y+4);c.lineTo(gun.x+15,gun.y+13);c.lineTo(gun.x+5,gun.y+13);c.stroke();
+  }
  }
  c.fillStyle=inPosition?'#9f723c48':'#182b28d9';c.fillRect(x-halfWidth,top,halfWidth*2,halfDepth*2);
  c.lineWidth=6;c.strokeStyle='#142422';c.strokeRect(x-halfWidth,top,halfWidth*2,halfDepth*2);
@@ -803,7 +807,7 @@ function paintBossImpact(c,f,t,reduced){
  c.beginPath();c.ellipse(0,3,r,r*.42,0,0,TAU);c.stroke();
  c.restore();
 }
-function paintRailBoss(c,b,s,art){
+function paintRailBoss(c,b,s,art,rail,reduced){
  const {x,y,dead}=b;
  if(art?.railBoss){
   c.save();
@@ -833,27 +837,43 @@ function paintRailBoss(c,b,s,art){
   c.fillStyle='#d28d55';c.fillRect(x-17,y-29,5,3);c.fillRect(x+16,y-33,4,2);
  }
  b.parts.forEach((part,i)=>{
-  const p=partPosition(s,part),round=s.hazards.find(h=>h.lane&&railGunOf(h)===i),live=part.hp>0&&!dead;
+  const p=partPosition(s,part),live=part.hp>0&&!dead,ink=RAIL_GUN_COLORS[i];
+  const round=s.hazards.find(h=>h.lane&&railGunOf(h)===i)||rail?.forecast.find(h=>railGunOf(h)===i);
   const aim=round?Math.atan2(round.y-p.y,round.x-p.x):b.aim;
-  const kick=live&&round?.hit?clamp(1+round.timer/.17,0,1):0;
-  c.save();c.translate(p.x,p.y-20);c.rotate(live?aim:Math.PI/2+Math.sign(part.ox)*.45);
-  c.fillStyle='#263631';c.fillRect(-19,-15,44,30);c.fillRect(-15,-18,28,36);
-  c.fillStyle=live?'#a79a73':'#4c5650';c.fillRect(-15,-12,37,24);
-  c.fillStyle=live?'#d9c294':'#676d5a';c.fillRect(-13,-12,31,3);c.fillRect(-13,9,31,2);
-  c.fillStyle=live?'#746f54':'#424c47';c.fillRect(10-kick*13,-6,live?55:34,12);
+  const kick=live&&round?.hit?clamp(1+round.timer/.2,0,1):0;
+  c.save();c.translate(p.x,p.y-21);
+  c.fillStyle='#192824';c.fillRect(-23,-16,46,32);
+  c.fillStyle='#656c5d';c.fillRect(-19,-18,38,34);
+  c.fillStyle=live?ink:'#6d7061';c.fillRect(-19,-18,38,3);c.fillRect(-19,12,38,4);
+  c.fillStyle='#293631';c.fillRect(-16,-12,32,24);
+  c.rotate(live?aim:Math.PI/2-Math.sign(part.ox)*.68);
+  c.translate(reduced?0:-kick*12,0);
+  c.fillStyle='#151f1e';c.fillRect(-15,-12,35,24);
+  c.fillStyle=live?'#828671':'#44473e';c.fillRect(-12,-9,29,18);
+  c.fillStyle=live?'#b7b39a':'#6c6858';c.fillRect(-11,-9,25,3);
   if(live){
-   c.fillStyle='#baaa80';c.fillRect(22-kick*13,-5,37,2);
-   c.fillStyle=round&&!round.hit?'#f8b877':'#c2c3a0';c.fillRect(58-kick*13,-6,7,12);
-   if(kick>.55){c.fillStyle='#ffde9c';c.beginPath();c.moveTo(53,-8);c.lineTo(80,0);c.lineTo(53,8);c.closePath();c.fill();}
+   c.fillStyle='#172321';c.fillRect(16,-8,49,16);
+   c.fillStyle='#878771';c.fillRect(16,-5,44,10);
+   c.fillStyle='#c4b99b';c.fillRect(20,-5,36,2);
+   c.fillStyle=ink;c.fillRect(53,-7,5,14);
+   c.fillStyle=round&&!round.hit?'#fbe3aa':'#b4b9a3';c.fillRect(60,-7,7,14);
+   c.fillStyle='#2d3029';c.fillRect(64,-4,3,8);
+   if(kick>.5){
+    c.fillStyle='#ffde9c';c.beginPath();c.moveTo(66,-9);c.lineTo(88,0);c.lineTo(66,9);c.closePath();c.fill();
+   }
+  }else{
+   c.fillStyle='#272d27';c.fillRect(14,-7,16,14);
+   c.fillStyle='#c38059';c.fillRect(28,-6,4,4);c.fillRect(26,1,4,5);
   }
   c.restore();
  });
 }
 function paintRailWarning(c,h,y,forecast=false,locked=false){
  const {left,top,bottom,width,height}=railLaneBounds(h);
+ const bait=locked&&h.tracked;
  if(forecast){
-  c.fillStyle=locked?'#e7c39326':'#92c3a914';c.fillRect(left,top,width,height);
-  c.strokeStyle=locked?'#ffe0a9':'#b9ddc4';c.lineWidth=locked?3:2;c.setLineDash([8,12]);c.strokeRect(left,top,width,height);c.setLineDash([]);
+  c.fillStyle=bait?'#e7c39326':'#92c3a914';c.fillRect(left,top,width,height);
+  c.strokeStyle=bait?'#ffe0a9':'#b9ddc4';c.lineWidth=bait?3:2;c.setLineDash([8,12]);c.strokeRect(left,top,width,height);c.setLineDash([]);
   if(!locked)return;
  }else{
   c.fillStyle=h.tracked?'#dc64402e':'#c55a3624';c.fillRect(left,top,width,height);
@@ -868,11 +888,17 @@ function paintRailWarning(c,h,y,forecast=false,locked=false){
    c.setLineDash([9,15]);c.beginPath();c.moveTo(h.x,top);c.lineTo(h.x,bottom);c.stroke();c.setLineDash([]);
   }
  }
- const labelY=clamp(y-59,top+18,bottom-8),label=railLaneLabel(h,forecast&&locked);
+ const labelY=clamp(y-59,top+18,bottom-8),label=railLaneLabel(h,locked);
  c.font='bold 12px Galmuri';c.textAlign='center';
- const labelWidth=c.measureText(label).width+16;
- c.fillStyle='#332b24e8';c.fillRect(h.x-labelWidth/2,labelY-16,labelWidth,22);
- c.fillStyle='#ffdfac';c.fillText(label,h.x,labelY);
+ const lead=bait?16:0;
+ const labelWidth=c.measureText(label).width+16+lead;
+ const labelX=h.x-labelWidth/2;
+ c.fillStyle='#332b24e8';c.fillRect(labelX,labelY-16,labelWidth,22);
+ c.fillStyle='#ffdfac';c.fillText(label,h.x+lead/2,labelY);
+ if(bait){
+  const x=labelX+12,cy=labelY-5;
+  c.beginPath();c.moveTo(x,cy-6);c.lineTo(x+6,cy);c.lineTo(x,cy+6);c.lineTo(x-6,cy);c.closePath();c.fill();
+ }
 }
 function paintRailStop(c,p,slot){
  const {x,y,left,right}=slot,side=Math.sign(x-p.x);
@@ -1019,12 +1045,23 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   const gateFocus=portraitGate?clamp((240-distance(s.player,gate))/145,0,1):0;
   const gateLine=Math.min(size.h*.53,410);
   const gateTop=portraitGate?gateFocus*clamp(gateLine/scale-gate.y,0,345):0;
-  const cy=clamp(focusY-gateTop,view.h/2-Math.max(bossMargin,pilotMargin,gateTop),Math.max(view.h/2,1200-view.h/2));
+  const fieldBottom=Math.max(view.h/2,1200-view.h/2);
+  let cy=clamp(focusY-gateTop,view.h/2-Math.max(bossMargin,pilotMargin,gateTop),fieldBottom);
+  if(portraitBoss&&rail){
+   const top=(combatHud.railFrame?.top??size.h*.29)+8;
+   const bottom=(combatHud.railFrame?.bottom??size.h*.68)-12;
+   const roof=s.boss.y-51;
+   const trainLimit=roof+(size.h/2-top)/scale;
+   const pilotLimit=s.player.y+(size.h/2-bottom)/scale;
+   // The pilot and the active escape lane take priority when the two cannot fit.
+   cy=Math.min(fieldBottom,Math.max(pilotLimit,Math.min(cy,trainLimit)));
+  }
   c.setTransform(size.dpr,0,0,size.dpr,0,0);c.clearRect(0,0,size.w,size.h);c.fillStyle='#263a44';c.fillRect(0,0,size.w,size.h);c.translate(size.w/2,size.h/2);c.scale(scale,scale);c.translate(-cx,-cy);c.imageSmoothingEnabled=false;
   const shake=!reduced&&s.player.hurt>0?Math.sin(s.t*75)*3:0;c.translate(shake,0);
   const index=s.operation?.region||0,key=`${index}:${s.seed}`;
   if(edgeMargin)paintTerrainMargins(c,index,edgeMargin);
-  if(gateTop)paintNorthBoundary(c,index,Math.ceil(gateTop)+1);
+  const northMargin=view.h/2-cy;
+  if(gateTop||rail&&northMargin>0)paintNorthBoundary(c,index,Math.ceil(Math.max(gateTop,northMargin))+1);
   if(canvas.ownerDocument&&key!==terrainKey){terrainKey=key;siteStates.clear();terrainCache=canvas.ownerDocument.createElement('canvas');terrainCache.width=1600;terrainCache.height=1200;const tc=terrainCache.getContext('2d');tc.imageSmoothingEnabled=false;paintTerrain(tc,index,s.seed,art);}
   if(terrainCache)c.drawImage(terrainCache,0,0);else paintTerrain(c,index,s.seed,art);
   if(opening)paintCoastOpening(c,{routes:opening.routes.filter(route=>route.site===lead?.id)});
@@ -1206,7 +1243,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     }
     bar(c,e.x,e.y-66,100,e.hp/e.maxHp,color);
    }else{
-    if(s.operation?.region===1)paintRailBoss(c,e,s,art);
+    if(s.operation?.region===1)paintRailBoss(c,e,s,art,rail,reduced);
     else if(art){
      const moving=!e.dead&&e.mode==='charge';
      const tread=moving&&chargeLane?Math.hypot(e.x-chargeLane.x,e.y-chargeLane.y)*2:s.t*80;
@@ -1218,14 +1255,10 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     }
     else{c.save();c.translate(e.x,e.y);c.rotate(e.body);c.fillStyle=e.dead?'#384747':'#667263';c.fillRect(-70,-45,140,90);c.restore();}
     if(e.dead&&gate)paintWreckSmoke(c,e.x,e.y,s.holdTime,reduced);
-    if(e.active&&!e.dead)e.parts.forEach((part,i)=>{
+    if(e.active&&!e.dead&&index!==1)e.parts.forEach(part=>{
      if(part.hp<=0)return;
-     const p=partPosition(s,part),color=index===1?RAIL_GUN_COLORS[i]:salvage&&!coastTurretLane(s)?'#a1d9c2':'#ffdc8c';
+     const p=partPosition(s,part),color=salvage&&!coastTurretLane(s)?'#a1d9c2':'#ffdc8c';
      circle(c,p.x,p.y,17,color+'24',color,2);bar(c,p.x,p.y-25,35,part.hp/part.maxHp,color);
-     if(index===1){
-      c.fillStyle='#1d2f2ce8';c.fillRect(p.x-15,p.y+19,30,14);
-      c.fillStyle=color;c.font='bold 10px Galmuri';c.textAlign='center';c.fillText(railGunLabel(i),p.x,p.y+30);
-     }
     });
    }if(item.kind!=='enemy'&&item.kind!=='player'&&e.burn>0&&!e.dead){for(let i=-1;i<=1;i++)flame(c,e.x+i*28,e.y-18,24,s.t*11+i);}
    c.restore();
@@ -1428,12 +1461,12 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(volley&&visible(volley.x,volley.y,20))paintCoastVolley(c,volley);
   if(chargeLane)paintChargeLane(c,s.boss,chargeLane,true);
   for(const q of s.enemyShots)if(visible(q.x,q.y))circle(c,q.x,q.y-18,6,'#b0422c','#ffe1a1',2);
-  for(const h of rail?.forecast||[])if(visible(h.x,s.player.y,h.w))paintRailWarning(c,h,s.player.y,true,rail.locked);
+  for(const h of rail?.forecast||[])if(visible(h.x,s.player.y,h.w))paintRailWarning(c,h,s.player.y,true,h===rail.bait);
   if(portRounds.length)paintPortPerimeter(c,portRounds.filter(h=>visible(h.x,h.y,blastContactRadius(h))));
   for(const h of s.hazards){
    const wide=h.portRound||h.coastMortar||h.signalCut||h.portBattery||h.relayDefense||h.conduitGun||(portBoss||rail)&&!h.lane;
    if(h.hit||!visible(h.x,h.lane?s.player.y:h.y,h.lane?h.w:wide?blastContactRadius(h):h.r))continue;
-   if(h.lane){paintRailWarning(c,h,s.player.y);continue;}
+   if(h.lane){paintRailWarning(c,h,s.player.y,false,h===rail?.bait);continue;}
    if(h.coastMortar||h.signalCut||h.portBattery||h.conduitGun){
     if(!reduced&&Number.isFinite(h.fromX)&&Number.isFinite(h.fromY))paintCoastMortarFlight(c,h);
    }

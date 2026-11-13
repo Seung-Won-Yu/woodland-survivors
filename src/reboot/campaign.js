@@ -349,6 +349,8 @@ export function railBossGuide(s,fan){
   return Math.hypot(h.x-x,h.y-y)<blastContactRadius(h);
  });
  const locked=railDecoyLocked(s),forecast=railBarragePreview(s),lanes=locked?forecast:rounds;
+ const cycle=locked?s.boss.cycle+1:s.boss.cycle;
+ const bait=s.boss.railDecoy?.cycle===cycle?lanes.find(h=>h.tracked)??null:null;
  const dodge=lanes.length?railEscapeSlot(s,lanes):null;
  const time=rounds.length?Math.min(...rounds.map(h=>h.timer)):null;
  // Leave room to walk out after launch, even if a shell is stopped by cover.
@@ -356,7 +358,7 @@ export function railBossGuide(s,fan){
   fan.cooldown+Math.abs(dodge.slot.x-s.player.x)/RULES.player.speed+.12<time);
  const escape=!!dodge?.danger&&!wait;
  const pad=fan&&!mortar&&!padBlocked&&!escape&&(['approach','hold','recover'].includes(fan.state)||wait)?fan:null;
- return {fan,rounds,mortar,locked,forecast,lanes,time,wait,escape,slot:escape?dodge.slot:null,pad};
+ return {fan,rounds,mortar,locked,forecast,lanes,bait,time,wait,escape,slot:escape?dodge.slot:null,pad};
 }
 export const FRONT_TACTICS={
  1:{
