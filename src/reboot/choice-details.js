@@ -1,6 +1,6 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible,CAPTURED_TURRET,isCapturedTurret} from './content.js';
 import {canAdvanceFront,isSalvageCampaign,carriesCoastSalvage} from './coast-salvage.js';
-import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
+import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COUNTERBATTERY_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
 import {choose,snapshot} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
@@ -31,10 +31,25 @@ export function gateContractDetails(s){
  const goal=contract.id==='defend'?`포격 원 밖에서 중계기 송신 ${defenseSeconds(tier)}초`:contract.id==='intercept'?`${signalLaneLabel[signalLane(s.seed)]} · ${SIGNAL_SECONDS}초 안에 차량 저지`:contract.goal;
  const quota=rare?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
  const reward=rare?holdoutParts(s.seed,front).map(id=>FRONT_SUPPORTS[id].name).join(' / ')
-  :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:`완료 점수 +${tier*500}`;
+  :tier===1?`화물 ${CARGO_CREDITS}C 또는 후송 구급낭`:tier===2&&front===2&&isSalvageCampaign(s)?`생존 귀환 +${COUNTERBATTERY_CREDITS}C · +1,000점`:`완료 점수 +${(tier*500).toLocaleString()}`;
+ const portEffect={breach:'포대 급탄 차단',overrun:'회피로 코어 개방',recovery:'구급 화물·지원 포격'};
+ const parts=rare&&front===1?holdoutParts(s.seed,front).map(id=>({id,title:FRONT_SUPPORTS[id].name,detail:portEffect[id]})):[];
  const escort=s.challenge?.recoverCargo?signalGuardCount(s):SIGNAL_ESCORT_COUNT;
- const cost=contract.id==='battery'?'양쪽 진지 위치 표시 · 귀환로 개방':front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
- return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost};
+ const cost=contract.id==='battery'?'동·서 교차 포격 · 귀환로는 계속 열림':front===2&&tier===1?`${escort?`호위 ${escort}명 · `:''}정지 후 잔해에서 회수`:canAdvanceWithVanguard(s)?'호출 시 선발 지원 포기':'';
+ return {title:`D${tier} · ${contract.name} 호출`,goal:goal+quota,reward,cost,parts};
+}
+
+export function gateActiveContract(s){
+ const c=s.challenge;
+ if(!s.operation||c?.state!=='active')return null;
+ const {name}=holdoutContract(s,c.tier),title=`D${c.tier} · ${name} 계속`;
+ const quota=s.operation.region<2&&c.tier===1?` · 증원 ${Math.min(s.operation.holdoutKills||0,HOLDOUT.rareKills)}/${HOLDOUT.rareKills}`:'';
+ const progress=c.type==='defend'?`${c.secured?'송신 완료':`송신 ${c.progress.toFixed(1)}/${c.duration}초`}${quota}`
+  :c.type==='battery'?`포대 ${c.destroyed.length}/${c.targets.length}문 제압`
+  :c.type==='intercept'?signalCargo(s)?'차량 정지 · 화물 미회수':`차량 이탈까지 ${Math.ceil(c.timeLeft)}초`
+  :`지휘관 ${c.targets.filter(id=>!s.enemies.some(e=>e.id===id&&!e.dead)).length}/${c.targets.length}명 제압${quota}`;
+ const leaving=signalCargo(s)?'귀환하면 미회수 화물 포기':`귀환하면 D${c.tier} 종료 · 확보 보상 유지`;
+ return {title,progress,leaving};
 }
 
 function projectedGrowth(s,c,args,before){
@@ -272,11 +287,12 @@ export function choiceDetails(s,c){
  }
  else if(c.kind==='stay'){
   if(c.id==='carry:turret'){out.impact='현재 무장 유지';out.detail='철도 보스 격파 후 포탑 반출';return out;}
+  const active=gateActiveContract(s);
+  if(active){out.title=active.title;out.impact=active.progress;out.detail=active.progress;out.link='';return out;}
   if(s.operation?.coastSalvage&&(!isSalvageCampaign(s)||c.title!=='전장 복귀 · XP 회수')){out.impact=c.desc;out.detail=c.desc;out.link=canAdvanceFront(s)?'전진 게이트는 열려 있습니다.':'귀환 게이트는 열려 있습니다.';return out;}
-  const active=s.challenge?.state==='active';
-  out.title=active?'진행 중인 도전 계속':'전장 복귀 · XP 회수';
-  out.impact=active?holdoutContract(s).name:'바닥 XP 회수';
-  out.detail=active?`D${s.challenge.tier} · ${out.impact}`:`남은 바닥 XP ${groundXp(s)}`;
+  out.title='전장 복귀 · XP 회수';
+  out.impact='바닥 XP 회수';
+  out.detail=`남은 바닥 XP ${groundXp(s)}`;
   out.link='게이트는 계속 열려 있습니다.';out.cost='';
  }
  else if(c.kind==='coast-boss'){

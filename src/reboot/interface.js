@@ -255,6 +255,7 @@ function payoutLines(r){
  const lines=r.creditBreakdown,entries=Object.entries(payoutLabels);
  if(lines?.trial!==undefined)entries.push(['trial','연구 실증']);
  if(lines?.turret!==undefined)entries.push(['turret','포탑 반출']);
+ if(lines?.counterbattery!==undefined)entries.push(['counterbattery','항구 포격 진지 노획품 반출']);
  if(!hasPayout(r)||!lines||entries.some(([id])=>!Number.isSafeInteger(lines[id])||lines[id]<0))return null;
  if(entries.reduce((sum,[id])=>sum+lines[id],0)!==r.credits)return null;
  return entries.filter(([id])=>lines[id]>0).map(([id,label])=>({id,label,value:lines[id]}));

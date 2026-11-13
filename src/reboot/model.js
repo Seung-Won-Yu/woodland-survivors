@@ -165,7 +165,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -377,7 +377,9 @@ export function restore(raw,{allowPrevious=false}={}){
  if(relayRounds.length>1||relayRounds.some(h=>h.relayDefense!==true||!defense?.safeTransmission||h.lane
   ||![h.x,h.y,h.timer].every(Number.isFinite)||distance(h,DEFENSE_ZONE)>DEFENSE_ZONE.r||h.r!==RELAY_SHELL.radius||h.duration!==RELAY_SHELL.warning
   ||(h.hit?h.hit!==true||h.timer>0||h.timer<=-.3:!liveDefense||h.timer<=0||h.timer>RELAY_SHELL.warning)))fail();
- if(s.challenge?.reserveAt!==undefined&&(s.operation?.region!==0||s.challenge.type!=='hunt'||s.challenge.tier!==1||s.challenge.state!=='active'
+ const earlyCoast=s.operation?.region===0&&s.challenge?.type==='hunt';
+ const earlyRail=s.operation?.region===1&&defense?.safeTransmission&&isSalvageCampaign(s);
+ if(s.challenge?.reserveAt!==undefined&&(!(earlyCoast||earlyRail)||s.challenge.tier!==1||s.challenge.state!=='active'
   ||!Number.isFinite(s.challenge.reserveAt)||s.challenge.reserveAt<0||s.challenge.reserveAt>=HOLDOUT.grace))fail();
  if(s.challenge?.type==='battery'){
   const {tier,targets,state,destroyed}=s.challenge;
@@ -395,6 +397,8 @@ export function restore(raw,{allowPrevious=false}={}){
    if(cleared&&live||!cleared&&!live)fail();
   }
  }
+ if(s.stats.portCounterbatteryCargo!==undefined&&(s.stats.portCounterbatteryCargo!==true||!isSalvageCampaign(s)||s.stage!=='holdout'||s.operation.region!==2||
+  s.operation.challengeTier<2||!Number.isSafeInteger(s.stats.portBatteriesCleared)||s.stats.portBatteriesCleared<2))fail();
  if(s.challenge?.type==='intercept'){
   const {lane,timeLeft,target,tier,recoverCargo,secured}=s.challenge;
   if(![timeLeft,target?.x,target?.y,target?.hp,target?.maxHp].every(Number.isFinite)||timeLeft<0||timeLeft>SIGNAL_SECONDS||lane!==undefined&&lane!==signalLane(s.seed))fail();
@@ -2270,7 +2274,10 @@ function completeChallenge(s,challenge,tier){
  challenge.state='complete';
  delete challenge.reserveAt;
  s.stats.challenge=Math.max(s.stats.challenge,tier);s.stats.challengeWins=(s.stats.challengeWins||0)+1;
- if(challenge.type==='battery')s.stats.portBatteriesCleared=(s.stats.portBatteriesCleared||0)+challenge.targets.length;
+ if(challenge.type==='battery'){
+  s.stats.portBatteriesCleared=(s.stats.portBatteriesCleared||0)+challenge.targets.length;
+  if(tier===2&&isSalvageCampaign(s))s.stats.portCounterbatteryCargo=true;
+ }
  if(s.operation){
   s.operation.challengeTier=tier;
   if(tier===1&&s.player.hp>0){
@@ -2279,7 +2286,8 @@ function completeChallenge(s,challenge,tier){
   }
  }
  s.stats.score+=500*tier;
- emit(s,'challenge-clear',s.player.x,s.player.y,{text:`잔류 도전 ${tier} 완료 · +${500*tier}`,life:1.5});
+ const text=challenge.type==='battery'&&tier===2&&s.stats.portCounterbatteryCargo?'포격 진지 제압 · 귀환해 노획품 반출':`잔류 도전 ${tier} 완료 · +${500*tier}`;
+ emit(s,'challenge-clear',s.player.x,s.player.y,{text,life:1.5});
 }
 
 export function canStartChallenge(s){
@@ -2307,6 +2315,8 @@ function startChallenge(s){
  const contract=holdoutContract(s);
  if(contract.id==='defend'){
   s.challenge={type:'defend',state:'active',tier,progress:0,strike:.8,duration:defenseSeconds(tier),safeTransmission:true};
+  const reserveAt=s.holdTime+HOLDOUT.railReserveDelay;
+  if(isSalvageCampaign(s)&&tier===1&&reserveAt<HOLDOUT.grace)s.challenge.reserveAt=reserveAt;
  }else if(contract.id==='battery'){
   const hp=Math.round(920*1.16**Math.min(16,(tier-2)/2));
   const targets=portBatteryPositions(s.seed).map(({x,y},index)=>{
@@ -2500,6 +2510,7 @@ export function finish(s,won=false,reason='retreat'){
  if(s.challenge?.state==='active'){
   if(s.challenge.recoverCargo)s.stats.signalOutcome=s.challenge.secured?'left-cargo':'aborted';
   s.challenge.state='withdrawn';
+  delete s.challenge.reserveAt;
  }
  s.phase='result';s.result={runId:s.runId||null,...(s.operator?{operator:s.operator}:{}),balanceRevision:s.balanceRevision||'b05-campaign',won,reason:won?'prototype-complete':s.player.hp<=0?'prototype-failed':reason,seed:s.seed,seconds:s.t,score:s.stats.score,level:s.level,weapons:clone(s.weapons),modules:clone(s.modules),stats:clone(s.stats),...(s.operation?{operation:clone(s.operation)}:{})};s.choice=null;s.choices=[];return true;
 }
@@ -2562,7 +2573,10 @@ function updateHoldout(s,dt){
   if(!enemy)continue;
   enemy.hp=enemy.maxHp=Math.round(enemy.maxHp*(1+tier*(type==='rifle'?.035:.13)));
  }
- if(early)emit(s,'hunt-reserve',s.player.x,s.player.y,{text:'지휘부 역습 · 증원 합류',life:1.1});
+ if(early){
+  const rail=challenge.type==='defend';
+  emit(s,rail?'relay-reserve':'hunt-reserve',s.player.x,s.player.y,{text:rail?'중계기 역습 · 보병 접근':'지휘부 역습 · 증원 합류',life:1.1});
+ }
 }
 function openGate(s){
  const gate=s.operation.gate=gatePosition(s);

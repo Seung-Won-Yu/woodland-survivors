@@ -8,7 +8,7 @@ export const REGIONS=[
  {id:'port',name:'항구 결전',mission:'지휘 병기를 파괴하고 살아서 귀환하라',boss:'지휘 병기',hp:9000,partHp:850,theme:{ground:'#4b606b',tile:'#8fa1a8',road:'#2e414c',edge:'#1b3a50'},hint:'관제소를 확보하면 최종전 증원을 줄일 수 있습니다.'}
 ];
 export const region=s=>REGIONS[s.operation?.region||0];
-export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6,rareKills:8,coastReserveDelay:2.25};
+export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6,rareKills:8,coastReserveDelay:2.25,railReserveDelay:3.1};
 export const HOLDOUT_CONTRACTS=[
  {id:'hunt',name:'지휘부 소탕',goal:'지휘관 2명 제압',risk:'양쪽에서 오는 장교의 부채꼴 사격'},
  {id:'defend',name:'중계기 방어',goal:'안전한 방어 범위에서 8초 송신',risk:'포격 원 안에서는 송신 중단'},
@@ -771,6 +771,7 @@ export function requisitionSite(s){
  return station?.state!=='done'?station:null;
 }
 export const CARGO_CREDITS=70;
+export const COUNTERBATTERY_CREDITS=60;
 export function operationPayout(r,firstWin=false,proofs=completedResearchProofs(r)){
  if(!r.operation)return {credits:0,lines:{}};
  const s=r.stats,lines={
@@ -786,6 +787,7 @@ export function operationPayout(r,firstWin=false,proofs=completedResearchProofs(
  };
  if(proofs.length)lines.trial=proofs.length*RESEARCH_PROOF_CREDITS;
  if(coastTurretReturned(r))lines.turret=COAST_SALVAGE.credits;
+ if(isSalvageCampaign(r)&&r.won&&r.operation.region===2&&r.operation.cleared===3&&r.operation.extracted===true&&s.portCounterbatteryCargo===true)lines.counterbattery=COUNTERBATTERY_CREDITS;
  return {credits:Object.values(lines).reduce((total,value)=>total+value,0),lines};
 }
 export const operationCredits=(r,firstWin=false)=>operationPayout(r,firstWin).credits;

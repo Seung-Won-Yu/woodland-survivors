@@ -93,6 +93,11 @@
 .gate-order-copy{display:grid;gap:4px;line-height:1.4}
 .gate-order-copy strong{font-size:15px;color:var(--route-color)}
 .gate-order-copy small{font-size:10px;color:#d2dac0}
+.gate-order-copy .gate-contract-prize,.gate-part-choices b{color:#f1d395}
+.gate-part-choices{display:grid;gap:2px}
+.gate-part-choices>span{display:flex;align-items:center;gap:4px}
+.gate-part-choices .kit-sprite{flex:0 0 18px;width:18px;height:16px}
+.gate-deck+.gate-prep{margin-top:8px}
 .gate-order kbd{font:inherit;font-size:10px;color:var(--route-color);border:1px solid #7b8a74;padding:1px 4px}
 @media(max-width:700px){
  #banner:is([data-kind="gate-open"],[data-kind="region-entry"],[data-kind="port-hatch"]){top:clamp(210px,34vh,310px);width:min(290px,calc(100% - 36px))}
@@ -1121,7 +1126,7 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .ordnance-card kbd {top: 6px; right: 5px}
 }
 @media(max-width:360px) and (orientation:portrait) {
- .gate-near #holdout-intel :is(#holdout-steps,#pursuit-intel,#pursuit-pay) {display:none}
+ .gate-near #holdout-intel :is(#holdout-steps,#pursuit-intel,#pursuit-pay:not([data-extraction-reward])) {display:none}
  .gate-near #pursuit-goal {font-size:9px}
  .gate-near #pursuit {min-height:44px}
 }

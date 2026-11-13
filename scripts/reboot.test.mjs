@@ -3064,6 +3064,59 @@ test('harbor D2 uses two fixed firing positions, leaves extraction open and rota
   assert.equal(holdoutContract(old).id,'intercept');
  }
 });
+test('canonical rail reserves reach the relay earlier and harbor D2 cargo is paid once on live extraction',async()=>{
+ const {operationPayout,COUNTERBATTERY_CREDITS}=await import('../src/reboot/campaign.js');
+ const {gateActiveContract}=await import('../src/reboot/choice-details.js');
+ const fresh=createOperation(27,[],null,null,'fio','standard'),p=beginProfile(emptyProfile(),fresh);
+ const leave=s=>{Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));};
+ const prepare=front=>{
+  const s=restore(snapshot(fresh));
+  Object.assign(s.operation,{region:front,cleared:front});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  s.blocks=regionLayout(mapSeed(s.seed,front),front).blocks;
+  s.sites=regionLayout(mapSeed(s.seed,front),front).sites.map(site=>({...site,state:'done'}));
+  downBoss(s);
+  Object.assign(s.player,exitGate(s));
+  return s;
+ };
+ const rail=prepare(1);
+ assert.ok(action(rail,'interact'));
+ assert.deepEqual(gateContractDetails(rail).parts.map(part=>part.detail),['포대 급탄 차단','구급 화물·지원 포격']);
+ assert.ok(action(rail,'gate-challenge'));
+ const early=restore(snapshot(rail)),passive=restore(snapshot(rail));
+ const withdrawn=restore(snapshot(rail));leave(withdrawn);
+ assert.equal(restore(snapshot(withdrawn)).challenge.state,'withdrawn');
+ delete passive.challenge;
+ tick(early,HOLDOUT.railReserveDelay+.05);tick(passive,HOLDOUT.railReserveDelay+.05);
+ assert.ok(early.enemies.some(e=>e.cohort==='holdout'));
+ assert.ok(takeEvents(early).includes('relay-reserve'));
+ assert.ok(!passive.enemies.some(e=>e.cohort==='holdout'));
+ assert.match(gateActiveContract(early).leaving,/D1 종료/);
+
+ const port=prepare(2);
+ port.operation.challengeTier=1;port.stats.challengeWins=3;port.stats.holdoutCargo=true;
+ assert.match(gateContractDetails(port).reward,/생존 귀환 \+60C/);
+ assert.ok(action(port,'interact'));assert.ok(action(port,'gate-challenge'));
+ const earlyExit=restore(snapshot(port));leave(earlyExit);
+ assert.equal(operationPayout(earlyExit.result).lines.counterbattery,undefined);
+ const old=restore(snapshot(port));old.balanceRevision='b53-harbor-signal';
+ for(const s of [port,old]){
+  s.shots=portBatteries(s).map(gun=>bullet(s,gun,10000));step(s,dt);
+  assert.equal(s.challenge.state,'complete');
+  assert.equal(s.stats.challengeWins,4);
+ }
+ const saved=restore(snapshot(port)),dead=restore(snapshot(port));
+ dead.player.hp=0;finish(dead,false,'hp');
+ assert.equal(operationPayout(dead.result).lines.counterbattery,undefined);
+ leave(saved);
+ const next=settleProfile(p,saved),r=next.recent[0];
+ assert.equal(r.creditBreakdown.holdout,60);
+ assert.equal(r.creditBreakdown.counterbattery,COUNTERBATTERY_CREDITS);
+ assert.equal(settleProfile(next,saved).credits,next.credits);
+ assert.equal(operationPayout({...r,stats:{...r.stats,portBatteriesCleared:4}}).lines.counterbattery,COUNTERBATTERY_CREDITS);
+ delete old.stats.portCounterbatteryCargo;leave(old);
+ assert.equal(operationPayout(old.result).lines.counterbattery,undefined);
+});
 test('new harbor vehicles take mirrored cover-free paths while older interceptions resume in place',()=>{
  const routes=[];
  for(const seed of [19,22]){
