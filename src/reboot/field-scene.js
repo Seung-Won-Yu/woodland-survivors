@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite,isOpeningGun} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -146,13 +146,14 @@ export function orderPinSvg(site,id){
  const order=sortieOrder(id);
  return order&&site?`<path data-order-pin="${id}" d="M${site.x} ${site.y-57}l57 57 -57 57 -57 -57Z" fill="none" stroke="${order.color}" stroke-width="11" aria-label="${order.name} · ${order.site}"/>`:'';
 }
-export function regionPreview(index,seed=17,current=null,order=null,showPreempt=!order){
+export function regionPreview(index,seed=17,current=null,order=null,showPreempt=!order,openingGun=null){
  const front=frontEntry(mapSeed(seed,index),index);
  const entry=front?{...front,direct:index===2?portCenterRoute(seed):railCenterRoute(seed)}:null;
  const map=current||previewLayout(seed,index,order),player=current?.player||entry?.arrival||{x:800,y:1040},gate=current&&exitGate(current);
  const stops=index===0&&!current?map.sites.filter(n=>n.opening||n.coastApproach):[];
  const coast=stops.length?fieldScene(0,seed):null;
- const coastRoutes=coast&&(showPreempt?coast.opening:{routes:stops.map((site,i)=>({
+ const planned=coast&&showPreempt&&isOpeningGun(openingGun)&&stops.find(site=>site.coastApproach===openingGun);
+ const coastRoutes=coast&&(planned?{routes:coastOpeningRoutes(seed,stops[0],planned,true)}:showPreempt?coast.opening:{routes:stops.map((site,i)=>({
   site:site.id,sign:sitePresentation(site).name,color:coastLeadColor(site),path:coast.tracks[i]
  }))});
  const insertion=entryRouteSvg(entry||coastRoutes)||'<path d="M800 1040V350" stroke="#f5d48a" stroke-width="10" stroke-dasharray="16 18"/>';

@@ -797,6 +797,27 @@
 .opening-order-intel{display:grid;gap:2px;margin-top:7px;color:#cfdec9;font-size:10px;line-height:1.4;word-break:keep-all}
 .opening-order-intel b{color:var(--order-ink);font-size:11px}
 .opening-order-intel small{color:#b9c9b2;font-size:9px}
+.mission-board[data-opening-plans] .launch-dock{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;padding-block:10px 14px}
+.mission-board[data-opening-plans] .launch-controls{width:100%}
+.mission-board .replay-opening{margin-top:0;padding:9px 10px}
+.mission-board .replay-opening h3{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.mission-board .replay-opening h3 small{color:#d3d8bf;font-size:9px;font-weight:400}
+.mission-board .opening-orders button{font-size:11px;color:#f3e8c8}
+.mission-board .opening-orders button[aria-pressed="true"]{color:#1e3028}
+.mission-board .opening-order-intel{min-height:32px}
+@media(max-width:700px){
+ .mission-board[data-opening-plans] .launch-dock{padding:7px 12px 10px}
+ .mission-board[data-opening-plans] .launch-button{min-height:46px}
+ .mission-board .replay-opening{padding:6px 7px}
+ .rescue-approach .arsenal{visibility:hidden}
+}
+@media(max-width:700px) and (max-height:660px){
+ .mission-layout:has([data-opening-plans]) .operator-station{min-height:88px;padding-bottom:0}
+ .mission-layout:has([data-opening-plans]) .portrait{width:80px;height:100px;top:-6px}
+ .mission-layout:has([data-opening-plans]) .operator-platform{top:72px;width:84px}
+ .mission-layout:has([data-opening-plans]) .starting-kit p{display:none}
+ .mission-board[data-opening-plans] .board-heading{padding-block:10px 9px}
+}
 .opening-weapon[data-opening-goal]{border-color:#ecc584}
 .opening-weapon-copy .opening-goal{color:#ffde9f}
 .replay-landing{margin:0 0 6px;color:#d7dec6;font-size:10px;line-height:1.4}

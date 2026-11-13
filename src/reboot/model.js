@@ -262,7 +262,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(s.stats.coastPreempt!==undefined&&s.stats.coastPreempt!==coastOpeningGun(s))fail();
   if(s.stats.coastResponse!==undefined&&(!Object.hasOwn(COAST_RESPONSE,s.stats.coastResponse)||s.stats.coastResponse!==s.stats.coastPreempt))fail();
   if(s.enemies.some(e=>e.coastResponse!==undefined&&(s.operation.region!==0||e.coastResponse!==s.stats.coastResponse||e.cohort!=='ambient')))fail();
-  if(s.enemies.some(e=>e.coastRaidShield!==undefined&&(e.coastRaidShield!==true||openingGun!=='f'||s.operation.region!==0
+  if(s.enemies.some(e=>e.coastRaidShield!==undefined&&(e.coastRaidShield!==true||coastOpeningGun(s)!=='f'||s.operation.region!==0
    ||e.type!=='shield'||e.cohort!=='coast-guard'||!Number.isFinite(e.spawnAge)||e.spawnAge<0||!Number.isFinite(e.aim)
    ||bracingCoastEscort(e)&&e.aim!==COAST_SHIELD_BEARING
    ||!s.sites.some(site=>site.id===e.siteId&&site.coastApproach==='f'&&site.preempt&&(site.state==='active'||e.dead&&['ready','done'].includes(site.state))))))fail();
@@ -1127,7 +1127,7 @@ function targetFor(s,w,d,candidates,lance){
  if(w.id==='r'&&strike&&s.operation.coastStrike==='r'&&!s.operation.coastStrikeUsed&&s.boss.mode==='windup'
    &&candidates.includes(s.boss)&&distance(s.player,s.boss)>=strike.range)return s.boss;
  // Keep the close threat first, then give the chosen raid's guards a clear firing priority.
- const outpost=w.id==='h'&&!w.fusion&&s.operation?.openingGun&&coastPreemptSite(s);
+ const outpost=w.id==='h'&&!w.fusion&&coastPreemptSite(s);
  if(outpost?.preempt&&outpost.state==='active'&&candidates[0]){
   if(distance(s.player,candidates[0])<=70)return candidates[0];
   const guard=candidates.find(e=>e.siteId===outpost.id);
@@ -2272,7 +2272,7 @@ function updateSites(s,dt){
     if(s.operation?.region===1&&carriesCoastSalvage(s)&&site.id==='rail-cache'&&site.guardPlan==='spread')extra.railWing=Number((mirrored?-x:x)>0);
     if(rescue&&s.operator!=='marco'&&(i===0||i===3))extra.coastCarrier=true;
     if(isSalvageCampaign(s)&&site.preempt&&type==='shield'&&s.operator==='marco')extra.coastArmor=true;
-    if(type==='shield'&&site.preempt&&s.operation?.openingGun==='f'){
+    if(type==='shield'&&site.preempt&&site.coastApproach==='f'){
      extra.coastRaidShield=true;extra.aim=COAST_SHIELD_BEARING;
     }
     if(wire&&type==='mortar')extra.timer=.8;
@@ -2697,7 +2697,7 @@ export function action(s,kind,input){
   const item=interaction(s);if(!item||item.blocked)return false;
   if(item.id==='coast-preempt'){
    item.site.preempt=true;
-   if(s.operation.openingGun)s.spawnClock=Math.max(s.spawnClock,COAST_RAID_PATROL_DELAY);
+   s.spawnClock=Math.max(s.spawnClock,COAST_RAID_PATROL_DELAY);
    return true;
   }
   if(item.id==='secure-turret'){

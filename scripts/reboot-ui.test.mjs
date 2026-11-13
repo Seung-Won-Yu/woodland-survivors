@@ -521,24 +521,28 @@ test('coastal tracks connect the actual sites through clear ground and water sta
   assert.equal(coastOpeningGuide(run),null);
  }
 });
-test('the launch briefing offers rescue and the seeded nearby outpost before the start button',()=>{
- const briefing=seed=>lobbyView(emptyProfile(),{seed}).match(/<section class="coast-plan"[\s\S]*?<\/section>/)[0];
- const seed22=briefing(22),seed25=briefing(25);
- assert.match(seed22,/포로 구출<\/strong><span>↖ 경비 제압 후 접근<\/span><small>화염 F \/ 로켓 R 선택/);
- assert.match(seed22,/이동 보급차 기습<\/strong><span>↗ 방패 호위 제압<\/span><small>F L2 노획/);
- assert.match(seed25,/포로 구출<\/strong><span>↗ 경비 제압 후 접근<\/span><small>화염 F \/ 로켓 R 선택/);
- assert.match(seed25,/박격포 진지 기습<\/strong><span>↖ 박격포 2문 제압<\/span><small>R L2 노획/);
- const lobby=lobbyView(emptyProfile(),{seed:22});
- assert.ok(lobby.indexOf(seed22)<lobby.indexOf('data-action="launch"'));
- assert.match(lobby,/class="launch-payoff"[^<]*<b>포로 구출<\/b>.*화염 F \/ 로켓 R 선택/);
- assert.match(lobby,/data-rescue-role="fio">호위가 떨어뜨린 부품 회수/);
- assert.match(lobbyView(emptyProfile(),{seed:22,operator:'marco'}),/data-rescue-role="marco">방패병 옆으로 돌아 약점 타격/);
- assert.doesNotMatch(lobbyView(emptyProfile(),{seed:22,brief:1}),/class="coast-plan"/);
+test('the launch briefing offers rescue or either raid and matches the selected battlefield route',()=>{
+ const p=emptyProfile(),lobby=lobbyView(p,{seed:27});
+ assert.match(lobby,/data-lobby-opening="auto" aria-pressed="true"/);
+ assert.match(lobby,/감옥에서 화염 F \/ 로켓 R 선택/);
+ assert.ok(lobby.indexOf('data-lobby-opening="r"')<lobby.indexOf('data-action="launch"'));
+ assert.doesNotMatch(lobby,/data-action="launch"[^>]+data-opening-gun/);
+ for(const openingGun of ['f','r']){
+  const selected=lobbyView(p,{seed:27,openingGun});
+  assert.match(selected,new RegExp(`data-lobby-opening="${openingGun}" aria-pressed="true"`));
+  assert.match(selected,new RegExp(`data-action="launch"[^>]+data-opening-gun="${openingGun}"`));
+  const {run}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,openingGun);
+  assert.ok(selected.includes(entryRouteSvg(coastOpeningGuide(run))));
+  assert.match(lobbyView(p,{seed:27,brief:1,openingGun}),new RegExp(`data-action="launch"[^>]+data-opening-gun="${openingGun}"`));
+ }
  const unlocked=emptyProfile();unlocked.milestones.coastTurret=true;
  for(const brief of [1,2]){
-  assert.match(lobbyView(unlocked,{seed:22,brief,loadout:'turret'}),/첫 목표 · 포로 구출<\/b><small>화염 F \/ 기관총 H 선택/);
-  assert.match(lobbyView(unlocked,{seed:22,brief,loadout:'standard'}),/첫 목표 · 포로 구출<\/b><small>화염 F \/ 로켓 R 선택/);
+  const turret=lobbyView(unlocked,{seed:22,brief,loadout:'turret',openingGun:'f'});
+  assert.match(turret,/첫 목표 · 포로 구출<\/b><small>화염 F \/ 기관총 H 선택/);
+  assert.doesNotMatch(turret,/data-lobby-opening|data-opening-gun/);
  }
+ const trial=emptyProfile();trial.research=['thermal'];trial.trials=['thermal'];
+ assert.doesNotMatch(lobbyView(trial,{seed:27,openingGun:'r'}),/data-lobby-opening|data-opening-gun/);
 });
 test('the harbor quay follows the field boundary and bay marks follow mirrored loading sites',()=>{
  const port=fieldScene(2,19),mirror=fieldScene(2,18);

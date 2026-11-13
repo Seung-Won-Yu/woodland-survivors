@@ -612,8 +612,8 @@ test('a first-weapon raid pays completion and unlocks without replacing the stan
  assert.equal(report.newTime,false);
  assert.equal(report.operation.openingGun,'r');
 });
-test('a planned raid focuses the armed outpost guard after immediate threats',()=>{
- for(const [plan,gap,expected] of [['f',110,'guard'],['f',55,'ambient'],[null,110,'ambient']]){
+test('a committed raid focuses the armed outpost guard after immediate threats',()=>{
+ for(const [plan,gap,expected] of [['f',110,'guard'],['f',55,'ambient'],[null,110,'guard'],[null,55,'ambient']]){
   const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,plan);
   const site=coastPreemptSite(s);
   Object.assign(site,{preempt:true,state:'active'});
@@ -627,7 +627,7 @@ test('a planned raid focuses the armed outpost guard after immediate threats',()
   assert.equal(s.shots[0]?.target,expected);
  }
 });
-test('planned fire escorts brace through restore and taking the weapon triggers a separate counterattack',()=>{
+test('fire escorts brace through restore and taking the weapon triggers a separate counterattack',()=>{
  for(const gun of ['f','r']){
   const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,gun);
   const site=coastPreemptSite(run);
@@ -683,9 +683,11 @@ test('planned fire escorts brace through restore and taking the weapon triggers 
  Object.assign(regular,{blocks:[],enemies:[],spawnClock:.1});
  Object.assign(regular.player,{x:site.x,y:site.y+100});
  assert.ok(action(regular,'interact'));
- assert.equal(regular.spawnClock,.1);
+ assert.equal(regular.spawnClock,COAST_RAID_PATROL_DELAY);
  step(regular,dt);
- assert.equal(regular.enemies.find(e=>e.siteId===site.id&&e.type==='shield').coastRaidShield,undefined);
+ const restored=restore(snapshot(regular));
+ assert.ok(bracingCoastEscort(restored.enemies.find(e=>e.siteId===site.id&&e.type==='shield')));
+ assert.equal(restored.operation.openingGun,undefined);
 });
 test('opening enemies respect distance and cover even near the southern boundary',()=>{
  for(const seed of [17,71,109,214,3470268883]){const s=createRun(seed);assert.equal(s.enemies.length,10);for(const e of s.enemies){assert.ok(Math.hypot(e.x-s.player.x,e.y-s.player.y)>300);assert.ok(s.enemies.every(other=>e===other||Math.hypot(e.x-other.x,e.y-other.y)>=RULES.spawn.openingGap));assert.ok(!s.blocks.some(b=>e.x+e.r>b.x&&e.x-e.r<b.x+b.w&&e.y+e.r>b.y&&e.y-e.r<b.y+b.h));}}

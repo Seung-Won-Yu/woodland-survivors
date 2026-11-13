@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.136.0" src="https://img.shields.io/badge/RIFT-0.136.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.137.0" src="https://img.shields.io/badge/RIFT-0.137.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -29,7 +29,7 @@
 
 해안에서는 포로를 구출해 화염 F와 로켓 R 중 고르거나, 가까운 거점을 기관총 H로 기습해 해당 무기를 L2로 노획합니다. 작전도와 전장 바닥에 구조와 기습으로 갈라지는 길이 표시됩니다. 기습 거점은 시드에 따라 보급차와 박격포 진지로 달라집니다. 포로 구출로 시작하면 이후 맞춤 거점에서 특화 모듈과 수송차 공략을 노릴 수 있습니다.
 
-귀환 보고서의 **첫 무장 작전**에서 화염 보급차와 로켓 포대 중 하나를 기습 목표로 고를 수 있습니다. 화염 기습은 방패병의 정면 방어가 풀리기 전에 옆으로 돌고, 로켓 기습은 박격포의 탄착원을 피해 사선을 잡습니다. 기관총 H L1으로 호위를 제압하면 해당 무장을 L2로 얻고 별도의 반격을 맞습니다. 포로를 먼저 구출하면 원하는 무기를 L1로 확보할 수 있습니다.
+로비와 귀환 보고서의 **첫 무장 작전**에서 포로 구출, 화염 보급차 기습, 로켓 포대 기습을 고를 수 있습니다. 기습을 지정한 판의 점수와 시간은 표준 기록과 별도로 보고서에 남습니다. 화염 기습은 방패병의 정면 방어가 풀리기 전에 옆으로 돌고, 로켓 기습은 박격포의 탄착원을 피해 사선을 잡습니다. 기관총 H L1으로 호위를 제압하면 해당 무장을 L2로 얻고 별도의 반격을 맞습니다. 포로를 먼저 구출하면 원하는 무기를 L1로 확보할 수 있습니다.
 
 철도의 진입로는 시드에 따라 좌우가 바뀌며, 전장 표지와 작전도는 지금 장착한 무장에 맞는 경유지를 강조합니다. 항구에서는 정면과 측면 해치의 첫 포격 방향이 다릅니다. 노획 포탑은 관제소에서 **양쪽 급탄 차단**을 고를 수 있습니다. 재장전 때 차체 앞 20m 사격선에 들어가 한 일제사격의 두 탄으로 양쪽을 맞히면 다음 측면 포격을 끊습니다. 발밑 포격은 회피해야 합니다.
 
