@@ -81,11 +81,24 @@ function operationMap(selected,seed,order,showPreempt,openingGun,turret){const m
  return `<div class="operation-chart"><nav class="sector-selector" aria-label="전선 브리핑">${REGIONS.map((d,i)=>`<button class="sector-pin ${selected===i?'selected':''}" data-brief="${i}" aria-pressed="${selected===i}" aria-label="${d.name} 브리핑 보기"><span>${`0${i+1}`}</span><b>${d.name}</b><small>${i===0?'해안 교두보':i===1?'물자 수송로':'지휘 병기'}</small></button>`).join('')}</nav><div class="field-chart">${regionPreview(selected,seed,null,order,showPreempt,openingGun,turret)}<span class="chart-direction">N ↑</span><div class="chart-legend"><strong>${REGIONS[selected].name}</strong><span class="chart-key"><i></i>투입 지점</span><span class="chart-key boss"><i></i>보스 진입</span>${map.sites.map(n=>`<span class="chart-site ${n.state==='done'?'done':''}"><svg viewBox="-30 -30 60 60" aria-hidden="true">${siteSymbol(n,0,0,21)}</svg><span>${sitePresentation(n).name}${n.state==='done'?'<small>확보 완료</small>':''}</span></span>`).join('')}</div></div></div>`;
 }
 
+function turretOpeningPlan(seed,sites,rescue,fan,showPreempt,operator){
+ const battery=sites.find(site=>site.coastApproach==='r');
+ const fanRail=railApproachBrief(seed,'rail-cache',true),relay=railApproachBrief(seed,'rail-relay',false);
+ const preempt=showPreempt&&sites.find(site=>site.coastApproach==='f');
+ return `<section class="coast-plan turret-opening-plan" aria-label="해안 첫 보급">
+  <header><b>포로 구출 · 갈라진 경비</b><span>${beachRoute(seed).name}</span></header>
+  <p class="replay-landing"><b>${bearing({x:800,y:1040},fan.x,fan.y)} 금색 사격 위치</b> · 양쪽 명중 시 축전 코일</p>
+  <ul><li data-coast="r">${moduleIcon('coil')}<div><strong>코일 I · 포탑 유지</strong><span>다음 명중부터 전기 연쇄</span><small>${fanRail.direction} 철도 정비대 · 광각 진화</small></div></li>
+  <li>${itemArt('h')}<div><strong>기관총 H · 두 무장 투자</strong><span>${bearing(rescue,battery.x,battery.y)} 박격포 진지에서 포탑 정비</span><small>${relay.direction} 철도 중계기 · 전도 격발망</small></div></li></ul>
+  <p class="turret-opening-flame">구출 보급에 화염 F 포함${preempt?`<br>${bearing({x:800,y:1040},preempt.x,preempt.y)} F 기습 시 구출 보상이 현장 정비로 전환`:''} <small data-rescue-role="${operator}">${COAST_SALVAGE.roles[operator].rescue}</small></p>
+ </section>`;
+}
 function coastPlan(seed,order,suggested=null,researchNotes={},showPreempt=false,loadout='standard',operator='fio',showLanding=false){
  const {sites}=previewLayout(seed,0,order),rescue=sites.find(site=>site.opening);
  const start={x:800,y:1040};
  const turret=loadout==='turret';
  const fan=turret&&coastFanPosition(rescue);
+ if(fan&&!order&&!Object.keys(researchNotes).length)return turretOpeningPlan(seed,sites,rescue,fan,showPreempt,operator);
  const fanBrief=fan&&`${bearing(start,fan.x,fan.y)} 사격 위치 · 양쪽 경비 일제사격`;
  const rescueKit=coastRescueReward(turret);
  if(showPreempt){
@@ -475,11 +488,13 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  const railId=railReservation||starter==='turret'?'rail-cache':'rail-relay';
  const railTip=railReservation?`경비 제압 후 ${request.name} 수령`:starter==='turret'?'포탑을 유지하면 남쪽에서 양쪽 대열 일제사격':'로켓 R을 유지하면 후방 박격포부터 제압';
  let nextRoute='';
+ const turretPlan=starter==='turret'&&!dispatch&&!trial&&!remainingTrials.length;
  if(sortie&&!wire&&(!thermalRoute||railReservation)){
   const fan=starter==='turret',{color,name,direction}=railApproachBrief(seed,railId,fan);
   const conditional=!railReservation&&starter!=='turret';
   nextRoute=conditional&&openingGun!=='r'
    ?`<div class="replay-rail-target" data-replay-rail="field" style="--route-ink:#c9c8a6">${railSalvagePreview(seed,null,false)}<div><b>철도 · 해안에서 고른 무장으로 공략</b><span>${openingGun==='f'?'화염 F를 유지하면 분사기 강화·촉매 후보':`R이면 ${direction} 통신 중계기 · 포탑이면 화차 정비대`}</span></div></div>`
+   :turretPlan?`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed)}<div><b>철도 ${direction} ${name}</b><span>포탑 유지 · 금색 사격 위치</span></div></div>`
    :`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed,railId,fan)}<div><b>철도 ${direction} ${name}</b><span>${e(railTip)}</span></div></div>`;
  }
  return `<section class="sheet replay-briefing${experiment?' research-sortie-briefing':sortie?' sortie-briefing':''}" role="dialog" aria-modal="true" aria-labelledby="replay-brief-title">
@@ -563,7 +578,7 @@ function debriefActions(r,p,archived,compared){
  const wire=briefing&&earnsWireOrder(r)&&canLaunchOrder(p,'wire');
  const wireReplay=wire?`<button class="debrief-wire" data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="fresh" data-dispatch="order:wire">${moduleIcon('coil')}<span><b>전파 절단 준비</b><small>해안 암호 회수 · 출격비 ${SORTIE_ORDERS.wire.fee}C</small></span><i aria-hidden="true">›</i></button>`:'';
  const replay=briefing&&isSalvageCampaign(r)?`<div class="debrief-replays debrief-sortie">
-   <button data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="fresh">${itemArt(turretStarter?'turret':'h')}<span><b>새 전장 준비</b><small>${newTurret?railSortieReturned(r)?'포탑 L1 · 항구 돌파 도전':'반출한 포탑으로 새 동선 시험':turretStarter?'노획 포탑 L1 · 시작 무장 변경 가능':sortieResearchTrials(p).length?'해안 동선·시작 무장 확인':'해안의 첫 기습 목표 선택'}</small></span><i aria-hidden="true">›</i></button>
+   <button data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="fresh">${itemArt(turretStarter?'turret':'h')}<span><b>새 전장 준비</b><small>${newTurret?railSortieReturned(r)?'포탑 L1 · 구출에서 연쇄 사격 준비':'반출한 포탑으로 새 동선 시험':turretStarter?'노획 포탑 L1 · 시작 무장 변경 가능':sortieResearchTrials(p).length?'해안 동선·시작 무장 확인':'해안의 첫 기습 목표 선택'}</small></span><i aria-hidden="true">›</i></button>
    ${wireReplay}
    <button data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="same"${reference?.goal==='rail-return'?' data-rail-record':''}><span><b>${reference?.goal==='rail-return'?'철도 기록 도전':reference?'기록 도전':'같은 전장'}</b><small>${target||'같은 지형에서 공략 변경'}</small></span></button>
   </div>`:`<div class="debrief-replays"${turret?' data-has-turret':''}>

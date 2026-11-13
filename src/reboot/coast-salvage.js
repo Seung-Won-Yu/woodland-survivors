@@ -22,6 +22,7 @@ export const sortieFrontCount = s => coastSalvage(s)?.fronts ?? (coastSalvage(s)
 export const canAdvanceFront = s => !!s.operation && s.operation.region + 1 < sortieFrontCount(s);
 export const COAST_TURRET_STARTER = 'w-r0';
 export const COAST_TURRET_RECOVERED = 'w-captured0';
+export const RESCUE_COIL = 'rescue:coil';
 export function coastTurretOwner(s,uid) {
   const coast = coastSalvage(s);
   return uid === COAST_TURRET_STARTER && coast?.loadout === 'turret' ||

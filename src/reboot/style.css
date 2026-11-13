@@ -866,6 +866,12 @@
 .opening-weapon-copy .opening-goal{color:#ffde9f}
 .replay-landing{margin:0 0 6px;color:#d7dec6;font-size:10px;line-height:1.4}
 .replay-landing b{color:#f1d690}
+.turret-opening-plan li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:5px}
+.turret-opening-plan li>svg,.turret-opening-plan li>.kit-sprite{width:22px;height:22px;color:var(--route-color)}
+.turret-opening-flame{margin:6px 0 0;color:#d7dec6;font-size:10px;line-height:1.4}
+.turret-opening-flame small{display:block;color:#b5cbac;font-size:inherit}
+.opening-alternative.rescue-coil{border-color:#91cabe;background:#253e36;color:#d7f4e6}
+.opening-alternative.rescue-coil :is(svg,small){color:#ace6d7}
 .replay-rail-target{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;align-items:center;margin:7px 0 0;padding:3px 7px 3px 4px;border-left:2px solid var(--route-ink);background:#1a2d28;font-size:11px;line-height:1.35;word-break:keep-all}
 .replay-rail-target .rail-salvage-map{height:40px;border:1px solid #56695b}
 .replay-rail-target>div{display:grid;gap:2px}

@@ -431,6 +431,38 @@ test('a returned turret can open the rescue with two independent rays on either 
   step(s,dt);
   assert.equal(s.choice.opening,true);
   assert.deepEqual(s.choices.filter(c=>c.kind==='gun').map(c=>c.weapon),['f','h']);
+  const coil=s.choices.find(c=>c.id==='rescue:coil');
+  assert.equal(coil?.rank,1);
+  const earlier=snapshot(s);
+  earlier.balanceRevision='b68-quad-lanes';
+  earlier.choices[2]={kind:'rank',id:'rank:r',weapon:'r'};
+  assert.deepEqual(restore(earlier).choices,s.choices);
+  const forged=snapshot(s);delete forged.stats.rescueFanSweep;
+  assert.throws(()=>restore(forged));
+  assert.equal(choose(forged,coil.id),false);
+  const retainedTrial=createOperation(seed,['shrapnel'],['shrapnel'],null,'fio','turret');
+  retainedTrial.stats.rescueFanSweep=true;retainedTrial.stats.turretVolleys=1;
+  retainedTrial.sites[0].state='ready';Object.assign(retainedTrial.player,retainedTrial.sites[0]);
+  step(retainedTrial,dt);
+  assert.deepEqual(retainedTrial.choices.map(c=>c.id),['gun:f','gun:h','rescue:coil','module:shrapnel']);
+  const invested=restore(snapshot(s));
+  assert.ok(choose(invested,coil.id));
+  assert.deepEqual(invested.modules,[{id:'coil',rank:1}]);
+  assert.equal(invested.weapons.length,1);
+  const battery=coastLead(invested);
+  assert.equal(battery?.coastApproach,'r');
+  assert.equal(coastService(invested,battery)?.level,3);
+  invested.blocks=[];invested.shots=[];invested.enemies=[enemy('first',800,730),enemy('nearby',845,730)];
+  Object.assign(invested.player,{x:800,y:880});
+  invested.weapons[0].cd=999;
+  invested.shots.push(bullet(invested,invested.enemies[0],25));
+  step(invested,dt);
+  assert.equal(invested.stats.coilBursts,1);
+  assert.ok(invested.enemies[1].hp<100);
+  const missed=createOperation(seed,[],null,null,'fio','turret');
+  missed.sites[0].state='ready';Object.assign(missed.player,missed.sites[0]);
+  step(missed,dt);
+  assert.deepEqual(missed.choices.map(c=>c.id),['gun:f','gun:h','rank:r']);
   const standard=createOperation(seed,[],null,null,'fio','standard');
   Object.assign(standard.player,{x:pad.x,y:pad.y});
   tick(standard,.55);
@@ -1615,12 +1647,12 @@ test('the Quad Cannon meets two traversable columns and confirms a second target
   assert.ok(loaded.effects.some(f=>f.type==='quad-contact'));
  }
 });
-test('the prior turret build revision can still resume on either later front',()=>{
- for(const front of [1,2]){
+test('prior turret build revisions can still resume on either later front',()=>{
+ for(const [front,revision] of [[1,'b67-turret-builds'],[2,'b67-turret-builds'],[1,'b68-quad-lanes'],[2,'b68-quad-lanes']]){
   const s=railwayCapstone(27,'rocket');
   Object.assign(s.operation,{region:front,cleared:front});
   Object.assign(s,regionLayout(mapSeed(s.seed,front),front,null,true),{boss:regionBoss(front,s.seed)});
-  s.balanceRevision='b67-turret-builds';
+  s.balanceRevision=revision;
   const p=parseProfile(JSON.stringify(beginProfile({...emptyProfile(),recordScope:s.balanceRevision,credits:120},s)));
   assert.equal(p.active?.run.runId,s.runId);
   assert.equal(p.active?.run.operation.region,front);

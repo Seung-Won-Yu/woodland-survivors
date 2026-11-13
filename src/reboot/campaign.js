@@ -1,6 +1,6 @@
 import {FIELD,MODULES,RULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveFusion,isFocusedInferno,isTrailInferno,blastContactRadius,clamp,distance,layout,moduleRank,rayBoxDistance,railSpareForFlame} from './content.js';
 import {routeCursor} from './raid.js';
-import {COAST_SALVAGE,coastAtShore,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,canAdvanceFront,railSortieReturned} from './coast-salvage.js';
+import {COAST_SALVAGE,RESCUE_COIL,coastAtShore,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,canAdvanceFront,railSortieReturned} from './coast-salvage.js';
 
 export const REGIONS=[
  {id:'beach',name:'해안 침투',mission:'장갑 수송차를 격파하고 철도로 진입하라',boss:'장갑 수송차',hp:4200,partHp:450,theme:{ground:'#a49874',tile:'#c0ae88',road:'#59584a',edge:'#415d69'},hint:'해변에서 무기를 확보하고 분화를 정하세요.'},
@@ -526,9 +526,10 @@ const SPLIT_COAST={
 };
 export const coastApproach=site=>(site?.coastPlan==='split'?SPLIT_COAST:COAST_APPROACHES)[site?.coastApproach];
 export const COAST_SERVICE_COST=1;
+const turretInvestment=s=>s.firstNew==='h'||s.stats.choices.some(c=>c.id===RESCUE_COIL);
 export function coastService(s,site){
  const id=site?.coastApproach;
- const turretService=id==='r'&&s.firstNew==='h'&&isSalvageCampaign(s)&&s.operation.coastSalvage.loadout==='turret'&&s.weapons.some(isCapturedTurret);
+ const turretService=id==='r'&&isSalvageCampaign(s)&&s.operation.coastSalvage.loadout==='turret'&&s.weapons.some(isCapturedTurret)&&turretInvestment(s);
  if(s.operation?.region!==0||s.stage!=='field'||s.tuning<COAST_SERVICE_COST||(!turretService&&id!==s.firstNew)||!Object.hasOwn(COAST_APPROACHES,id))return null;
  const weapon=s.weapons.find(w=>w.id===id&&!w.evolved&&!w.fusion&&w.level<4);
  return weapon?{weapon,level:Math.min(4,weapon.level+2)}:null;
@@ -588,7 +589,7 @@ export function coastLead(s){
  if(isSalvageCampaign(s)&&s.operation.coastSalvage.loadout==='turret'&&s.weapons.some(isCapturedTurret)){
   const battery=s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
   const trial=s.trials?.includes('shrapnel')&&!s.excluded.includes('shrapnel')&&!moduleRank(s,'shrapnel');
-  if(battery&&(trial||s.firstNew==='h'&&(coastService(s,battery)||moduleRank(s,'coil')<2&&!s.excluded.includes('coil'))))return battery;
+  if(battery&&(trial||turretInvestment(s)&&(coastService(s,battery)||moduleRank(s,'coil')<2&&!s.excluded.includes('coil'))))return battery;
  }
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
  const coilSite=coastalThermalPrep(s)&&s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');

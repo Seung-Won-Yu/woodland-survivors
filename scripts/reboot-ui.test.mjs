@@ -556,7 +556,8 @@ test('a canonical report previews the chosen beach and starter and only compares
  const fresh=replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28,starter:'turret'});
  assert.match(fresh,/새 전장<small>서쪽 난파선/);
  assert.match(fresh,/같은 전장<small>벙커 횡단/);
- assert.match(fresh,/class="replay-landing"><b>↖ 포로 구출/);
+ assert.match(fresh,/class="replay-landing"><b>↙ 금색 사격 위치<\/b> · 양쪽 명중 시 축전 코일/);
+ assert.match(fresh,/코일 I · 포탑 유지[\s\S]*← 철도 정비대 · 광각 진화[\s\S]*기관총 H · 두 무장 투자[\s\S]*박격포 진지에서 포탑 정비[\s\S]*↗ 철도 중계기 · 전도 격발망/);
  assert.match(fresh,/철도[^<]*화차 정비대/);
  assert.doesNotMatch(fresh,/박격포 진지 기습|data-replay-from/);
  assert.match(fresh,/data-action="launch"[^>]+data-coast-loadout="turret"/);

@@ -16,7 +16,8 @@ import {bindTouchControls} from '../game/touch-controls.js';
 import {createAudio} from '../game/audio.js';
 import {selectRiftAudioEvents} from './sound.js';
 import {RAIL_SALVAGE_ROUTES,RAIL_WORKSHOP_FAN} from './campaign.js';
-import {railInfernoPlan,railAmmoInvestment,focusStudyAvailable,wireTransferInvestment,coastPartOpportunity} from './model.js';
+import {railInfernoPlan,railAmmoInvestment,focusStudyAvailable,wireTransferInvestment,coastPartOpportunity,rescueCoilEligible} from './model.js';
+import {RESCUE_COIL} from './coast-salvage.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio({fieldMix:true}),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const partBenefit=cue=>cue.until===1?`회수 시 발사 간격 −${cue.bonus}%`:`조립까지 ${cue.until}개`;
@@ -139,10 +140,11 @@ function openingChoiceDeck(cards){
  const guns=cards.filter(c=>c.kind==='gun');
  if(!guns.length)return choiceDeck(cards);
  const role=isSalvageCampaign(run)?coastRole(run):null;
+ const hasTurret=run.weapons.some(isCapturedTurret);
  const rack=guns.map(c=>{
   const d=choiceDetails(run,c);
   const planned=c.weapon===run.operation?.openingGun;
-  const pairing=run.weapons.some(isCapturedTurret)&&c.weapon==='h'?'철도 중계기 · 격발망 조립 재료':c.weapon===role?.weapon?role.pairing:'';
+  const pairing=hasTurret&&c.weapon==='h'?'박격포 진지 정비 → 중계기 격발망 재료':c.weapon===role?.weapon?role.pairing:'';
   return `<button class="opening-weapon" data-weapon="${c.weapon}"${planned?' data-opening-goal':''} data-choice="${esc(c.id)}"${d.blocked?' disabled':''}>
    <span class="opening-weapon-tray">${itemArt(c.weapon)}${choiceKey(c)}</span>
    <span class="opening-weapon-copy"><strong>${esc(d.title)}</strong>${planned?'<small class="opening-goal">작전 목표 무장</small>':''}<small>${c.weapon==='f'?'근접 분사':c.weapon==='r'?'원거리 폭발':'직선 관통'}</small>
@@ -154,6 +156,7 @@ function openingChoiceDeck(cards){
   const title=c.kind==='rank'?`${d.title} L${d.after} 강화`:d.title;
   const turretRank=c.kind==='rank'&&c.weapon==='r'&&run.weapons.some(isCapturedTurret);
   const turretTrial=c.trial&&c.module==='shrapnel'&&run.weapons.some(isCapturedTurret);
+  if(c.id===RESCUE_COIL)return `<button class="opening-alternative rescue-coil" data-choice="${RESCUE_COIL}"${d.blocked?' disabled':''}>${moduleIcon('coil')}<span><strong>${esc(d.title)}</strong><small>${esc(d.impact)}</small></span>${choiceKey(c)}</button>`;
   return `<button class="opening-alternative" data-choice="${esc(c.id)}"${d.blocked?' disabled':''}>
    ${d.art?itemArt(d.art):moduleIcon(c.module||'gear')}<span><strong>${esc(title)}</strong><small>${esc(d.impact)}${turretRank?' · 광각 포탑 준비':''}</small>${turretTrial?'<small>포탑으로 즉시 실증 · 무장 대신 장착</small>':c.trial&&d.detail?`<small>${esc(d.detail)}</small>`:''}</span>${choiceKey(c)}
   </button>`;
@@ -268,7 +271,8 @@ function showChoices(){
  const carrierPrep=carrier&&isSalvageCampaign(run)&&run.pendingLevels>0;
  const earnedLevel=run.level-run.pendingLevels;
  const railGate=atGate&&carriesCoastSalvage(run)&&run.operation.region===1;
- const title=({level:'야전 개조',supply:run.choice.opening?'첫 무장을 골라라':run.choice.preempt?'전방 보급 선점':thermalPrep?'박격포 진지 보급':railAmmo||coastalService?esc(run.choice.source):relaySupply?'중계기 정비 보급':salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:shoreGate?'철도 전진로 개방':railGate?'철도 돌파':canAdvanceFront(run)?'다음 전선이 열렸다':'귀환로 개방','coast-boss':'파괴할까, 노획할까','coast-mount':'노획 포탑 확보',control:run.choices.some(c=>c.infernoRank||c.relayInvestment)?'열차 전술 또는 무장 정비':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
+ const openingTitle=run.choices.some(c=>c.id===RESCUE_COIL)?'구출 보급':'첫 무장을 골라라';
+ const title=({level:'야전 개조',supply:run.choice.opening?openingTitle:run.choice.preempt?'전방 보급 선점':thermalPrep?'박격포 진지 보급':railAmmo||coastalService?esc(run.choice.source):relaySupply?'중계기 정비 보급':salvage?'노획 무장 인수':'노획 병기를 골라라',armory:'확보할까, 걸어볼까','raid-reward':'습격 성공 · 전리품','pursuit-reward':'잔류 보급 선택',assembly:'야전 병기 작업대',clear:shoreGate?'철도 전진로 개방':railGate?'철도 돌파':canAdvanceFront(run)?'다음 전선이 열렸다':'귀환로 개방','coast-boss':'파괴할까, 노획할까','coast-mount':'노획 포탑 확보',control:run.choices.some(c=>c.infernoRank||c.relayInvestment)?'열차 전술 또는 무장 정비':'보스 공략을 골라라','rail-workshop':'화차 정비대'})[type];
  const rescueReceipt=run.stats.rescueFanSweep?'포로 구출 · 양쪽 대열 명중':'포로 구출 완료';
  const assembly=type==='assembly',gateAssembly=assembly&&run.choice.gatePrep,gateLevel=type==='level'&&run.choice.gatePrep;
  const back=assembly?run.choices.find(c=>c.kind==='back'):null;
@@ -1094,8 +1098,9 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
     :role&&run.operator==='marco'&&coastSite.state==='active'?'방패 옆에서 자동 사격 · 약점 타격':role?.rescue||'';
    const reward=isSalvageCampaign(run)?coastRescueReward(run.weapons.some(isCapturedTurret),!!run.stats.coastPreempt):'';
    const shrapnel=run.weapons.some(isCapturedTurret)&&fieldResearchTrial(run,coastSite)==='shrapnel'?'분열 수류탄 시험 가능':'';
-   intel=fan?(fanGap<34?'두 대열에 자동 일제사격':'추천 사선 · 양쪽 경비를 겨냥'):
-    coastSite.state==='ready'?[reward?`감옥에 접근 · ${reward}`:'감옥에 접근해 구출',shrapnel||parts&&cue].filter(Boolean).join('\n')
+   const coil=rescueCoilEligible(run);
+   intel=fan?(fanGap<34?'두 대열에 자동 일제사격':coil?'양쪽 경비에 명중하면 코일 보급':'추천 사선 · 양쪽 경비를 겨냥'):
+    coastSite.state==='ready'?[reward?`감옥에 접근 · ${reward}`:'감옥에 접근해 구출',[coil&&run.stats.rescueFanSweep&&'축전 코일 보급 확보',shrapnel||parts&&cue].filter(Boolean).join(' · ')].filter(Boolean).join('\n')
     :coastSite.state==='active'?[`경비 ${guards}명 · 제압 후 감옥 접근`,cue].filter(Boolean).join('\n')
     :[`감옥으로 이동 · ${move} · 사격 자동`,reward||cue].filter(Boolean).join('\n');
   }else{
