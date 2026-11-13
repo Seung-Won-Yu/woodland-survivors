@@ -78,6 +78,8 @@ function advanceRegion(s,card){
  if(coast){
   coast.parts=[];
   if(coast.turret==='securing')coast.turret='intact';
+  const mounted=s.operation.region===1&&coast.mounted&&s.weapons.find(w=>w.uid===COAST_TURRET_RECOVERED&&isCapturedTurret(w));
+  if(mounted)mounted.cd=0;
   if(isCoastRailSortie(s)){
    Object.assign(s.boss,{hp:3600,maxHp:3600});
    for(const part of s.boss.parts)Object.assign(part,{hp:430,maxHp:430});

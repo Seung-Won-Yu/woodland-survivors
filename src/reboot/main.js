@@ -1,7 +1,7 @@
 import {OPERATORS,operatorOf,operatorId,skillRules,canUseSkill,chargeLabel} from './operator.js';
 import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractDetails,gateActiveContract} from './choice-details.js';
-import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview,coastOpeningGuide} from './field-scene.js';
+import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview,coastOpeningGuide,railSalvagePreview} from './field-scene.js';
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck,coastTurretReturned} from './coast-salvage.js';
@@ -15,6 +15,7 @@ import {loadFioPortrait,loadOperatorPortrait,loadMissionArt,loadFieldArt,mission
 import {bindTouchControls} from '../game/touch-controls.js';
 import {createAudio} from '../game/audio.js';
 import {selectRiftAudioEvents} from './sound.js';
+import {RAIL_SALVAGE_ROUTES} from './campaign.js';
 const $=id=>document.getElementById(id),ui=$('ui'),keys=new Set(),audio=createAudio({fieldMix:true}),esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,'0')}`;
 const touchLayout=matchMedia('(max-width:700px), (pointer:coarse)');
@@ -109,15 +110,18 @@ function choiceDeck(cards){
  return `<div class="upgrade-deck${cards.length===2?' two-options':''}">${choiceCards(cards)}</div>`;
 }
 function ordnanceDeck(){
+ const railway=carriesCoastSalvage(run);
  const cards=run.choices.map(c=>{
   const d=choiceDetails(run,c),broken=c.id==='coast:break',carry=c.id==='carry:turret';
   const count=broken?3:c.fanCount===7?7:5;
+  const route=railway&&!carry&&RAIL_SALVAGE_ROUTES[broken?'rail-relay':'rail-cache'];
   const art=`${itemArt('turret')} ${carry?`<span class="ordnance-crate">${moduleIcon('crate')}</span>`:`<span class="ordnance-rays">${Array.from({length:count},(_,i)=>
    `<i style="--angle:${(i-(count-1)/2)*11}deg"></i>`).join('')}</span>`}`;
   return `<button class="ordnance-card" data-choice="${esc(c.id)}" data-ordnance="${broken?'break':carry?'carry':c.kind==='coast-mount'?'mount':'capture'}"${!broken&&!carry?' data-salvage':''}>
    <span class="ordnance-preview" aria-hidden="true">${art}</span>
    <span class="ordnance-copy"><small>${esc(c.label||'귀환 보상')}</small><strong>${esc(d.title)}</strong>
-    <b>${esc(d.impact)}</b>${d.detail?`<span>${esc(d.detail)}</span>`:''}${d.link?`<span>${esc(d.link)}</span>`:''}</span>${choiceKey(c)}
+    <b>${esc(d.impact)}</b>${d.detail?`<span>${esc(d.detail)}</span>`:''}${d.link&&(c.kind!=='coast-mount'||!route)?`<span>${esc(d.link)}</span>`:''}
+    ${route?`<span class="ordnance-route" style="--route-ink:${route.color}"><strong>${route.name}</strong><span>${route.fight}</span></span>`:''}</span>${choiceKey(c)}
   </button>`;
  }).join('');
  return `<div class="ordnance-deck">${cards}</div>`;
@@ -252,6 +256,11 @@ function showChoices(){
  const gateIntel=atGate?`<div class="gate-intel"><span><small>돌파 전선</small><b>${esc(region(run).name)}</b></span><span><small>다음 전선</small><b>${canAdvanceFront(run)?esc(REGIONS[run.operation.region+1].name):'작전실'}</b></span><span><small>미회수 XP</small><b>${groundXp(run)}</b></span></div>`:'';
  const handoff=shoreGate?railHandoff(run):null;
  const transfer=handoff?`<div class="front-transfer" data-transfer="${handoff.state}">${itemArt(handoff.art)}<div><b>${esc(handoff.title)}</b><small>${esc(handoff.detail)}</small></div></div>`:'';
+ const railPreview=carrier&&carriesCoastSalvage(run)?`<aside class="rail-salvage-brief" aria-label="다음 전선 철도 공략">${railSalvagePreview(run.seed)}
+  <div>${['rail-relay','rail-cache'].map(id=>{
+   const route=RAIL_SALVAGE_ROUTES[id];
+   return `<span style="--route-ink:${route.color}"><b>${route.name}</b><small>${route.boss}</small></span>`;
+  }).join('')}</div></aside>`:'';
  const currentKit=type==='level'?`<span class="draft-loadout" aria-label="보유 무장">${run.weapons.map(w=>`<b>${GUNS[w.id].short}${w.fusion?`+${GUNS[w.fusion.secondary].short}`:` L${w.level}`}</b>`).join('')}<small>모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</small></span>`
   :`<span>공격 ${run.weapons.length}/3 · 모듈 ${run.modules.length}/4 · 조율권 ${run.tuning}</span>`;
  const compactSkip=coastalService?'<button data-action="skip" aria-label="건너뛰기 · 소량 회복">건너뛰기</button>':'';
@@ -263,7 +272,7 @@ function showChoices(){
  const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
  panel(`<section class="sheet field-menu${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':relaySupply?' relay-supply-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
   <header><div><span class="eyebrow">${carrier?'해안 · 장갑 수송차':mount?'해안 · 노획 병기':run.choice.opening?'포로 구출 완료':run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${title}</h2>${lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
-  ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${carrierPrep?`<button class="carrier-prep" data-action="coast-upgrade" aria-keyshortcuts="R"><span>${moduleIcon('gear')}<b>XP 개조</b> <small>${run.pendingLevels}회 대기</small></span><span>교전 전 사용 <i aria-hidden="true">›</i></span></button>`:''}${deck}${railGate?gatePrep:''}${toolsAfterDeck?tools:''}
+  ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${railPreview}${carrierPrep?`<button class="carrier-prep" data-action="coast-upgrade" aria-keyshortcuts="R"><span>${moduleIcon('gear')}<b>XP 개조</b> <small>${run.pendingLevels}회 대기</small></span><span>교전 전 사용 <i aria-hidden="true">›</i></span></button>`:''}${deck}${railGate?gatePrep:''}${toolsAfterDeck?tools:''}
   ${coastalService||carrier||mount?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
   ${capstones.length?paths:''}
  </section>`);
@@ -733,7 +742,7 @@ function fieldEntry(s){
  const routes=entry.routes.map(route=>{
   if(route.site!=='rail-relay')return route;
   const rank=relay?`중계기 · ${relay}`:relayRank&&`중계기 · 유인 + F L${relayRank} 후보`;
-  return {...route,...(rank?{supplyHint:rank}:null),...(salvageRoutes?{color:'#9cd4da',recommended:!fan&&!!(rocket||fusion||rank),tactical:rocket?'후방 박격포 → 조준 유인':fusion?'박격포 제압 → 열차 전술':'확보하면 열차 조준 유인'}:null),
+  return {...route,...(rank?{supplyHint:rank}:null),...(salvageRoutes?{color:RAIL_SALVAGE_ROUTES['rail-relay'].color,recommended:!fan&&!!(rocket||fusion||rank),tactical:rocket?'후방 박격포 → 조준 유인':fusion?'박격포 제압 → 열차 전술':'확보하면 열차 조준 유인'}:null),
    sign:rank||(rocket?'중계기 · 로켓 사선':salvageRoutes?'중계기 · 후방 박격포':'중계기 · 조준 유인'),
    summary:rank||(rocket?'중계기 · 로켓 원거리 공략':salvageRoutes?'중계기 · 원거리 박격포':'중계기 · 조준 유인 1회')};
  });
@@ -787,7 +796,7 @@ function fieldEntry(s){
   summary=fan?'정비대 · 부채꼴 포탑 사선':'정비대 · 양쪽 보병';
  }
  return {...entry,routes:routes.map(route=>route.site==='rail-cache'?{...route,sign,summary,note,
-  ...(salvageRoutes?{color:'#f4ca87',recommended:!!(fan||finish&&!rocket&&!fusion),tactical:fan?'부채꼴로 양쪽 보병 동시 사격':null}:null)}:route)};
+  ...(salvageRoutes?{color:RAIL_SALVAGE_ROUTES['rail-cache'].color,recommended:!!(fan||finish&&!rocket&&!fusion),tactical:fan?RAIL_SALVAGE_ROUTES['rail-cache'].fight:null}:null)}:route)};
 }
 function railForkRows(routes,pilot){
  return routes.map(route=>{

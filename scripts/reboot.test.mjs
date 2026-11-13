@@ -201,12 +201,14 @@ test('the same seed carries both coast outcomes through the short sortie and the
   const shoreChoices=plan==='break'?['advance:breach','advance:vanguard','stay']:['advance','stay'];
   assert.deepEqual(s.choices.map(c=>c.id),fullCampaign?[...shoreChoices,'extract']:shoreChoices);
   const advance=s.choices[0].id;
+  s.weapons[1].cd=.8;
   s.player.x=800;s.player.y=900;
   assert.equal(choose(s,advance),false);
   Object.assign(s.player,exitGate(s));
   assert.ok(choose(s,advance));
   assert.equal(s.operation.region,1);
   assert.equal(s.operation.support,plan==='break'?'breach':null);
+  assert.equal(s.weapons[1].cd,plan==='capture'?0:.8);
   assert.deepEqual(s.sites.slice(0,2).map(site=>[site.id,site.guardPlan]),[['rail-cache','spread'],['rail-relay','battery']]);
   assert.equal(restore(snapshot(s)).weapons.some(w=>w.capturedTurret),plan==='capture');
   quietFront();

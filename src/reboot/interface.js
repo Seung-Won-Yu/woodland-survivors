@@ -22,7 +22,8 @@ export function railHandoff(s){
  if(coast.turret==='broken'){
   const support=FRONT_SUPPORTS[s.operation.nextSupport];
   const name=s.operation.nextSupport==='vanguard'?'후송 정비':support?.name;
-  return {state:'broken',art:support?.art||'ammo',title:'포탑 파괴',detail:name?`${name} 장비 이월`:'철갑 급탄 또는 후송 정비를 골라 철도로'};
+  const rocket=s.weapons.find(w=>w.id==='r'&&!w.fusion);
+  return {state:'broken',art:rocket?'r':support?.art||'ammo',title:rocket?`로켓 R L${rocket.level} 이월`:'현재 무장 이월',detail:name?`${name} 장비 이월 · 중계기 조준 유인`:'철갑 급탄 또는 후송 정비 · 통신 중계기 경유'};
  }
  return {state:'standard',art:'ammo',title:'현재 무장 이월',detail:'통신 중계기를 확보하면 열차 조준을 한 번 유인'};
 }

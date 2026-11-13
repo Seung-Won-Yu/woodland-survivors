@@ -1,4 +1,4 @@
-import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite,isOpeningGun} from './campaign.js';
+import {REGIONS,regionLayout,mapSeed,frontEntry,railCenterRoute,portCenterRoute,exitGate,sortieOrder,beachRoute,coastLeadColor,coastPreemptGun,coastPreemptSite,isOpeningGun,RAIL_SALVAGE_ROUTES,railWorkshopEntry} from './campaign.js';
 import {RAID_MARKS,raidRoute} from './raid.js';
 import {FIELD} from './content.js';
 
@@ -128,6 +128,16 @@ export function entryRouteSvg(entry){
   const line=`<polyline data-approach="${route.site}"${route.kind?` data-coast-opening="${route.kind}"`:''} points="${route.path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${route.color}" stroke-width="${recommended?30:route.kind?23:13}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${route.kind==='preempt'||recommended?'33 14':route.kind==='rescue'?'5 31':'22 18'}" aria-label="${route.sign} ${recommended?'추천 경로':'경로'}"/>`;
   return recommended?`${line}<circle cx="${x}" cy="${y}" r="65" fill="none" stroke="${route.color}" stroke-width="18" aria-hidden="true"/>`:line;
  }).join('');
+}
+export function railSalvagePreview(seed){
+ const {arrival,routes}=frontEntry(mapSeed(seed,1),1);
+ const track=routes.map(route=>{
+  const color=RAIL_SALVAGE_ROUTES[route.site].color;
+  const [x,y]=route.path.at(-1);
+  const path=route.site==='rail-cache'?railWorkshopEntry(route,arrival):route.path;
+  return `<polyline points="${path.map(point=>point.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="18" stroke-linejoin="round"/><rect x="${x-26}" y="${y-26}" width="52" height="52" fill="#21312e" stroke="${color}" stroke-width="11"/>`;
+ }).join('');
+ return `<svg class="rail-salvage-map" viewBox="450 492 700 620" aria-hidden="true">${terrainSvg(1,seed)}${track}<circle cx="${arrival.x}" cy="${arrival.y}" r="24" fill="#fbefc8" stroke="#21312e" stroke-width="11"/></svg>`;
 }
 export function escapeRouteSvg(route,marker,color,name,dash='12 16'){
  const start=route[0],end=route.at(-1),previous=route.at(-2);

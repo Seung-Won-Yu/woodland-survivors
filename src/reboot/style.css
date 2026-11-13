@@ -1089,10 +1089,10 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
  display: grid;
  place-items: center;
  overflow: hidden;
- background: repeating-linear-gradient(0deg,#91ae9512 0 1px,transparent 1px 16px),
-  repeating-linear-gradient(90deg,#91ae9512 0 1px,transparent 1px 16px),#132321;
+ background: linear-gradient(160deg,#2d3933,#111e20 74%);
+ border-bottom:1px solid #9cb19b35;
 }
-.ordnance-preview .kit-turret {width: 97px; height: 97px; margin-right: 72px}
+.ordnance-preview .kit-turret {width: 128px; height: 128px; margin-right: 68px}
 .ordnance-preview > svg {width: 44px; color: var(--ordnance-ink)}
 .ordnance-card[data-ordnance="break"] .kit-turret{filter:grayscale(.72) brightness(.65) drop-shadow(1px 2px #0d1919)}
 .ordnance-card[data-ordnance="carry"] .kit-turret{margin-right:0;opacity:.5}
@@ -1113,6 +1113,20 @@ body.coast-salvage-run .arsenal #support-status:not([hidden]) {display: block}
 .ordnance-copy > strong {font-size: 17px; line-height: 1.35}
 .ordnance-copy > b {font-size: 12px; line-height: 1.5}
 .ordnance-copy > span {color: #d9dec7; font-size: 10px; line-height: 1.5}
+.ordnance-copy > .ordnance-route {
+ display:grid;gap:2px;padding-top:5px;margin-top:1px;border-top:1px solid #c5c8a740;
+ color:var(--route-ink);line-height:1.35;
+}
+.ordnance-route strong {font-size:11px}
+.rail-salvage-brief {
+ display:grid;grid-template-columns:minmax(0,1fr) 1fr;gap:12px;align-items:center;
+ margin-bottom:12px;padding:7px;background:#152623;border:1px solid #6c7e68;
+}
+.rail-salvage-map {display:block;width:100%;height:100px;background:#26342f}
+.rail-salvage-brief > div {display:grid;gap:7px}
+.rail-salvage-brief span {display:grid;gap:2px;border-left:2px solid var(--route-ink);padding-left:6px}
+.rail-salvage-brief b {color:var(--route-ink);font-size:11px}
+.rail-salvage-brief small {color:#cbd4c2;font-size:10px;line-height:1.4}
 .ordnance-card kbd {
  position: absolute;
  top: 8px;
@@ -1241,14 +1255,18 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .holdout-active:has(#banner[data-kind="gate-notice"]) #operation-track {visibility:hidden}
  .ordnance-deck {grid-template-columns: 1fr; gap: 8px}
  .ordnance-card {grid-template-columns: 86px minmax(0,1fr); grid-template-rows: auto; min-height: 116px}
- .ordnance-preview .kit-turret {width: 55px; height: 55px; margin-right: 25px}
+ .ordnance-preview .kit-turret {width: 75px; height: 75px; margin-right: 25px}
  .ordnance-preview > svg {width: 33px}
  .ordnance-crate{width:30px}
  .ordnance-rays {left: calc(50% + 8px)}
  .ordnance-rays i {width: 25px}
- .ordnance-copy {gap: 4px; padding: 10px 25px 10px 10px}
+ .ordnance-copy {gap: 3px; padding: 8px 22px 8px 9px}
  .ordnance-copy > strong {font-size: 15px}
  .ordnance-copy > b {font-size: 11px}
+ .rail-salvage-brief {grid-template-columns:82px minmax(0,1fr);gap:8px;margin-bottom:8px;padding:4px}
+ .rail-salvage-map {height:57px}
+ .rail-salvage-brief > div {gap:4px}
+ .rail-salvage-brief b,.rail-salvage-brief small {font-size:9px}
  .ordnance-card kbd {top: 6px; right: 5px}
  .front-transfer{gap:8px;padding:5px 8px;margin-block:8px}
  .front-transfer .kit-sprite{width:38px;height:38px}

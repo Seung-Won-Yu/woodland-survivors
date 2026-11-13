@@ -638,6 +638,10 @@ export function coastEncounterCue(s,site,volley,counter){
  return `${aim} · ${guards.length}문`;
 }
 export const mapSeed=(seed,index)=>seed+index*7919;
+export const RAIL_SALVAGE_ROUTES={
+ 'rail-cache':{name:'화차 정비대',color:'#f4ca87',fight:'양쪽 대열에 일제사격',boss:'열차 정면에서 양쪽 포격 차단'},
+ 'rail-relay':{name:'통신 중계기',color:'#9cd4da',fight:'후방 박격포 먼저 제압',boss:'교신으로 열차 조준 유인'}
+};
 export const RAIL_GARRISONS={
  spread:{name:'갈라진 보병',crew:'보병',unit:'명',type:'rifle',range:225,hint:'열린 쪽에서 양쪽 대열을 부채꼴 안에 두세요.',guards:[
   ['rifle',-77,4,27],['rifle',-90,-24,27],['rifle',-69,-40,27],['rifle',-86,-57,27],
@@ -675,6 +679,10 @@ const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry]
  routes:entry.routes.map(route=>({...route,path:route.path.map(([x,y])=>[1600-x,y])}))
 }]));
 export const frontEntry=(sectorSeed,index)=>(sectorSeed%2===0?MIRRORED_ENTRY:ENTRY)[index];
+export function railWorkshopEntry(route,arrival){
+ const [x,y]=route.path.at(-1),flankY=y+244;
+ return [[arrival.x,arrival.y],[(arrival.x+x)/2,flankY],[x,flankY],[x,y]];
+}
 export function railCenterRoute(seed,origin='arrival'){
  const entry=frontEntry(mapSeed(seed,1),1);
  const cache=entry.routes[0].path.at(-1),relay=entry.routes[1].path.at(-1);
@@ -708,8 +716,7 @@ export function activeEntry(s){
   if(site.id==='rail-cache'){
    const sign=s.operation.requisition?'정비대 · 예약품':route.sign;
    if(site.guardPlan==='spread'&&site.state==='waiting'&&s.weapons.some(isCapturedTurret)){
-    const {x:startX,y:startY}=entry.arrival,flankY=y+244;
-    return [{...route,sign,path:[[startX,startY],[(startX+x)/2,flankY],[x,flankY],[x,y]]}];
+    return [{...route,sign,path:railWorkshopEntry(route,entry.arrival)}];
    }
    if(s.operation.requisition)return [{...route,sign}];
   }
