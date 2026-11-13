@@ -1,4 +1,4 @@
-import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RAID_PATROL_DELAY,COAST_SHIELD_BEARING,bracingCoastEscort,shieldFaces,COAST_RESPONSE,coastPreemptSite,coastOpeningGun,isOpeningGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
+import {REGIONS,RESEARCH,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RAID_PATROL_DELAY,COAST_SHIELD_BEARING,bracingCoastEscort,shieldFaces,COAST_RESPONSE,coastPreemptSite,coastOpeningGun,isOpeningGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,coastalThermalPrep,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,buildPaths,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance,CAPTURED_TURRET,COAST_FAN,coastFanAngle,isCapturedTurret} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
 import {COAST_CHARGE,coastTravel,planCoastCharge,coastChargeLane} from './coast-charge.js';
@@ -498,11 +498,15 @@ function supplyCards(s,site,preempt=false){
   const gun={...newGun(cross,'교차 노획 · 현장 정비'),title:`${GUNS[cross].name} L${COAST_SALVAGE_LEVEL} 노획`,salvageLevel:COAST_SALVAGE_LEVEL};
   const tactical=coastTacticalLootAvailable(s,site)?{...newGun(cross,'교차 노획 · 수송차 공략'),
    id:`coast-loot:${cross}`,title:`${GUNS[cross].short} L1 · ${COAST_STRIKES[cross].name}`,salvageLevel:1}:null;
-  const cards=fillCards(s,[gun,reservation||rank,trial?trialCard(trial):signature]);
-  if(tactical)cards.splice(1,0,tactical);
+  const thermalPrep=signature?.module==='coil'&&coastalThermalPrep(s);
+  const experiment=trial&&trialCard(trial);
+  const cards=thermalPrep?fillCards(s,[{...signature,label:'흡열 준비 · 필수 모듈'},gun,reservation||experiment||rank])
+   :fillCards(s,[gun,reservation||rank,experiment||signature]);
+  if(tactical)cards.splice(thermalPrep?2:1,0,tactical);
   return cards;
  }
  if(reservation)return addStrike(fillCards(s,[reservation,signature,trial?trialCard(trial):matchingRank]));
+ if(site?.coastApproach==='f'&&trial==='thermal'&&signature)return addStrike(fillCards(s,[trialCard(trial),matchingRank,signature]));
  if(site?.coastApproach&&signature&&trial)return addStrike(fillCards(s,[matchingRank,signature,trialCard(trial)]));
  const cards=[matchingRank];
  const unseen=['h','r','f'].filter(id=>!s.weapons.some(w=>w.id===id&&!w.fusion)&&!s.excluded.includes(id)&&!(s.supplyCount<2&&s.seenGuns.includes(id)));
@@ -1434,6 +1438,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
  if(kind==='electric'&&e.burn>0&&moduleRank(s,'thermal')&&moduleRank(s,'coil')&&!(s.thermalCd>0)){
   const gain=Math.min(2,100-s.player.charge);
   s.thermalCd=.25;s.player.charge+=gain;s.stats.thermalRecovered=(s.stats.thermalRecovered||0)+gain;
+  if(gain>0)emit(s,'thermal-charge',s.player.x,s.player.y,{life:.35,gain});
  }
  if(source==='native'){
   if(weight>0)feed(s,owner,weight,e,breachLane);

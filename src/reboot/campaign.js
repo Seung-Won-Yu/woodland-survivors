@@ -556,6 +556,11 @@ export function claimedCoastLead(s){
  const gun=s.operation?.coastStrike||s.firstNew;
  return s.operation?.region===0&&Object.hasOwn(COAST_STRIKES,gun)&&s.sites.find(site=>site.coastApproach===gun&&site.state==='done');
 }
+export function coastalThermalPrep(s){
+ return s.operation?.region===0&&s.stage==='field'&&s.firstNew==='f'&&s.weapons.some(w=>w.id==='f')
+  &&!s.modules.some(m=>m.id==='coil')&&!s.excluded.includes('coil')
+  &&(s.trials?.includes('thermal')||s.operation.requisition==='thermal');
+}
 export function coastLead(s){
  if(s.operation?.region!==0||s.stage!=='field')return null;
  const rescue=s.sites.find(site=>site.opening&&site.state!=='done');
@@ -564,12 +569,8 @@ export function coastLead(s){
  if(preempt&&(s.operation.openingGun||distance(preempt,s.player)<COAST_PREEMPT_RANGE||preempt.preempt&&distance(preempt,s.player)<260))return preempt;
  if(rescue)return rescue;
  if(!s.firstNew||!s.weapons.some(w=>w.id===s.firstNew))return null;
- const needsCoil=s.firstNew==='f'&&!s.modules.some(m=>m.id==='coil');
- const thermal=s.operation.requisition==='thermal';
- const coilSite=needsCoil&&(thermal||s.trials?.includes('thermal'))&&s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
- if(coilSite&&(s.operation.requisitionAt==='coast'||s.trials?.includes('thermal')))return coilSite;
- const standard=s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done');
- return standard||coilSite||null;
+ const coilSite=coastalThermalPrep(s)&&s.sites.find(site=>site.coastApproach==='r'&&site.state!=='done');
+ return coilSite||s.sites.find(site=>site.coastApproach===s.firstNew&&site.state!=='done')||null;
 }
 export const COAST_SALVAGE_LEVEL=2;
 export function coastCrossGun(s,site){

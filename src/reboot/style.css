@@ -732,6 +732,19 @@
 .debrief-sortie button b{font-size:14px}
 .debrief-sortie button i{margin-left:auto;font-size:19px;font-style:normal}
 .debrief-sortie .kit-sprite{flex:0 0 32px;width:32px;height:28px}
+.debrief-actions[data-research-next] .debrief-replays{margin-top:8px}
+.debrief-actions[data-research-next] .debrief-sortie button:first-child{background:#32423a;color:#f1e7cb;border-color:#708273}
+.debrief-actions[data-research-next] .debrief-sortie button:first-child:hover{background:#43574a}
+.debrief-actions[data-research-next] .debrief-sortie button:first-child small{color:#cbdcb3}
+.debrief-actions[data-research-next] .debrief-next .text-button{min-height:40px}
+.thermal-route{display:grid;gap:5px;list-style:none;margin:8px 0;padding:0}
+.thermal-route li{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:8px;padding:5px 8px;background:#263c35;border-left:2px solid #9abcaa}
+.thermal-route li:first-child{border-color:#efbe83}
+.thermal-route li:last-child{border-color:#e8cf91}
+.thermal-route li>svg{width:23px;height:23px;color:#c9e5c6}
+.thermal-route li>.kit-sprite{width:30px;height:30px}
+.thermal-route :is(b,small){display:block;font-size:11px;line-height:1.35;word-break:keep-all}
+.thermal-route small{color:#c9d7c1;font-size:10px}
 .debrief-details{margin-top:15px;border-block:1px solid #657560}
 .debrief-details summary{min-height:46px;display:flex;align-items:center;gap:8px;cursor:pointer;color:#ece4c8;font-size:13px}
 .debrief-details summary::before{content:'+';display:grid;place-items:center;width:22px;height:22px;background:#3c4e43;color:var(--gold);font-size:16px}

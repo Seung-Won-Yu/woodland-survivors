@@ -1867,6 +1867,32 @@ test('a pending route trial keeps the signature module and prioritizes the match
   assert.deepEqual(s.trials,['medic',experiment]);
  }
 });
+test('thermal preparation keeps the coastal coil when the medic trial shares its crate',()=>{
+ for(const [seed,at] of [[16,null],[17,'coast'],[18,'rail'],[27,null],[28,'coast'],[31,'rail']]){
+  const paid=at!==null;
+  const p=emptyProfile();
+  Object.assign(p,{credits:500,research:['medic','thermal'],trials:paid?['medic']:['medic','thermal']});
+  const {run}=freshSortie(p,seed,null,'fio',paid?'thermal':null,null,at==='coast'?at:null,'standard',true);
+  Object.assign(run,{enemies:[],blocks:[],spawnClock:999});
+  supply(run);assert.ok(choose(run,'gun:f'));
+  assert.equal(coastLead(run).id,'supply-c');
+  assert.equal(supply(run,'supply-c')[0].id,'module:coil');
+  assert.ok(run.choices.some(c=>c.id==='module:medic'));
+  assert.ok(reroll(run));
+  const resumed=restore(snapshot(run));
+  assert.ok(choose(resumed,'module:coil'));
+  assert.equal(coastLead(resumed).id,'supply-b');
+  if(at==='rail'){
+   assert.ok(supply(resumed,'supply-b').every(c=>c.id!=='requisition:thermal'));
+   continue;
+  }
+  const thermal=paid?'requisition:thermal':'module:thermal';
+  assert.equal(supply(resumed,'supply-b')[0].id,thermal);
+  assert.ok(choose(resumed,thermal));
+  assert.deepEqual(resumed.modules,[{id:'coil',rank:1},{id:'thermal',rank:1}]);
+  assert.deepEqual(resumed.trials,['medic']);
+ }
+});
 test('the equipped thermal module retains its prerequisite coil until it is removed',()=>{
  const s=quietOperation();s.research=['thermal','medic'];s.trials=[...s.research];
  s.weapons.push({...makeWeapon('f'),uid:'fire'});

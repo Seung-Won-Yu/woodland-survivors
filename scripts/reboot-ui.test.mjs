@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff} from '../src/reboot/interface.js';
-import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie} from '../src/reboot/profile.js';
+import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
 import {portEscapeLanes} from '../src/reboot/campaign.js';
@@ -172,8 +172,7 @@ test('research briefs identify both the coast delivery and the prerequisite rout
  assert.match(research,/data-reserve="shrapnel" data-requisition-at="coast"/);
  assert.doesNotMatch(research,/data-reserve="(?:medic|thermal)" data-requisition-at="coast"/);
  const trial=lobbyView(p);
- assert.match(trial,/data-coast="f" data-suggested[\s\S]*흡열 코일 시험/);
- assert.match(trial,/data-coast="r" data-suggested[\s\S]*흡열 준비 · 축전 코일 후보/);
+ assert.match(trial,/class="thermal-route"[\s\S]*화염 F 확보[\s\S]*축전 코일 장착[\s\S]*흡열 코일 장착/);
  const coastal=lobbyView(p,{requisition:'shrapnel',requisitionAt:'coast'});
  assert.match(coastal,/박격포 진지 예약 · 분열 수류탄/);
  assert.match(coastal,/data-requisition="shrapnel" data-requisition-at="coast"/);
@@ -477,16 +476,30 @@ test('a canonical report previews the chosen beach and starter and only compares
  assert.notDeepEqual(holdoutParts(plan.forReport(27),0),holdoutParts(27,0));
  assert.equal(plan.seed,27);
 });
-test('harbor wins show the final build and put fresh sortie before optional research',()=>{
+test('harbor wins show the final build and put its unlocked research before optional replays',()=>{
  const p=emptyProfile(),run=createOperation(27,[],null,null,'fio','standard'),active=beginProfile(p,run);
  Object.assign(run.operation,{region:2,cleared:3,extracted:true,history:[{region:0,time:20},{region:1,time:40}],regionTime:30});
  run.operation.coastSalvage.turret='broken';
  run.weapons.push({id:'f',level:6,branch:'trail',evolved:true});
- Object.assign(run.stats,{bossKilled:true,wakeKills:20,infernoCoreHits:3});
+ Object.assign(run.stats,{bossKilled:true,wakeKills:20,infernoCoreHits:3,flameBosses:1});
  run.t=90;finish(run,true);
  const saved=settleProfile(active,run),html=reportView(saved.recent[0],saved);
  assert.match(html,/data-build-summary[\s\S]*인페르노[\s\S]*잔불 제압 20명 · 코어 직격 3회/);
- assert.match(html,/data-replay-route="fresh"[\s\S]*data-debrief-research/);
+ assert.match(html,/data-research-next[\s\S]*data-research="thermal" data-debrief-research[\s\S]*data-replay-route="fresh"/);
+ const study=buyResearch(saved,'thermal'),after=reportView(saved.recent[0],study);
+ assert.match(after,/data-trial-focus="thermal"[\s\S]*data-replay-route="fresh"/);
+ const brief=replayBriefingView(saved.recent[0],study,'standard','thermal',{freshSeed:28});
+ assert.match(brief,/포로 구출 · 화염 F 확보[\s\S]*박격포 진지 · 축전 코일 장착[\s\S]*이동 보급차 · 흡열 코일 장착[\s\S]*data-action="launch"/);
+ assert.doesNotMatch(brief,/data-requisition=/);
+ const tested={...study,trials:[]};
+ const paid=replayBriefingView(saved.recent[0],tested,'requisition:thermal:coast',null,{freshSeed:28});
+ assert.match(paid,/박격포 진지 · 축전 코일 장착[\s\S]*이동 보급차 · 흡열 코일 장착[\s\S]*data-requisition="thermal" data-requisition-at="coast"/);
+ const rail=replayBriefingView(saved.recent[0],tested,'requisition:thermal:rail',null,{freshSeed:28,sortie:true});
+ assert.match(rail,/박격포 진지 · 축전 코일 장착[\s\S]*화차 정비대 · 흡열 코일 장착/);
+ const replay=replayBriefingView(saved.recent[0],study,'standard',null,{freshSeed:28,sortie:true});
+ assert.match(replay,/이동 보급차 · 흡열 코일 장착/);
+ assert.doesNotMatch(replay,/class="replay-rail-target"|class="replay-route-hint"/);
+ assert.match(lobbyView(study,{seed:28}),/class="thermal-route"/);
 });
 test('briefings share distinct field terrain and recognizable site symbols',()=>{
  assert.ok(fieldScene(0).water&&fieldScene(2).water&&fieldScene(0).water!==fieldScene(2).water);

@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.138.0" src="https://img.shields.io/badge/RIFT-0.138.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.139.0" src="https://img.shields.io/badge/RIFT-0.139.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -76,6 +76,8 @@
 확보 성과는 전사·중도귀환에도 크레딧으로 남습니다. 연구로 **응급 주사기 / 분열 수류탄 / 흡열 코일**을 보급 후보에 추가할 수 있습니다. 연구 모듈은 판 안에서 직접 골라 한 칸에 장착합니다. 분열 수류탄은 로켓·유탄·합체 연쇄탄의 폭발에 파쇄를 더합니다.
 
 새 연구 모듈은 전투에서 실제 효과를 내면 처음 한 번 120C를 정산하고 장비 예약을 엽니다. 시험과 예약은 새 전장 또는 같은 전장으로 출격할 수 있고, 반출에 성공했다면 노획 포탑을 시작 무장으로 고를 수 있습니다. 예약 출격에는 120C가 들고, 지정한 거점에서 예약품과 현장 보급 중 하나를 고릅니다. 분열 수류탄과 흡열 코일은 해안이나 철도에 배치할 수 있습니다.
+
+인페르노로 보스를 격파하면 귀환 보고서에서 **흡열 코일**을 연구할 수 있습니다. 다음 판에서 **포로 구출로 화염 F 확보 → 박격포 진지에서 축전 코일 → 이동 보급차에서 흡열 코일**을 고릅니다. 불붙은 적에 전기가 닿아 충전을 되찾으면 대원 옆에서 회수량을 확인합니다. 충전 8을 회수하면 실증 수당과 장비 예약이 열립니다. [연구부터 재출격까지](docs/RIFT-GAMEPLAY-V1.md#0139-인페르노-귀환과-흡열-실증)
 
 후반 공세는 일반병의 물량을 늘리고 장교·포격병의 수와 빈도를 제한합니다. 강화한 무기로 대군을 쓸고, 특수 적의 예고를 읽는 리듬을 분리했습니다.
 

@@ -1386,6 +1386,13 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     }
    }
    else if(f.type==='pierce'){c.translate(f.x,f.y-18);c.rotate(f.angle);c.fillStyle='#fff2ae';c.fillRect(-12,-2,34+t*24,4);}
+   else if(f.type==='thermal-charge'&&visible(f.x,f.y)){
+    c.globalAlpha=Math.min(1,(1-t)*2);
+    const y=f.y-63-(reduced?0:t*18);
+    c.fillStyle='#192e2a';c.fillRect(f.x-25,y-9,50,18);
+    c.fillStyle='#c5f2c4';c.font='bold 11px Galmuri';c.textAlign='center';
+    c.fillText(`충전 +${Math.round(f.gain*10)/10}`,f.x,y+4);
+   }
    else if(f.type==='lightning'||f.type==='ricochet'){c.strokeStyle=f.type==='lightning'?'#a1f5ef':'#f8dc8f';c.lineWidth=f.type==='lightning'?3:1.5;c.beginPath();c.moveTo(f.x,f.y);c.lineTo((f.x+f.x2)/2+Math.sin(s.t*40)*10,(f.y+f.y2)/2);c.lineTo(f.x2,f.y2);c.stroke();}
    else if(f.type==='flame'&&f.evolved){
     if(f===latestInferno&&visible(f.x,f.y,f.r+25))paintInferno(c,f,t,reduced);
