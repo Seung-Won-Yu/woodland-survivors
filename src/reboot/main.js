@@ -265,7 +265,13 @@ function holdoutClock(tier,wait){
  return tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${wait}초`;
 }
 function showChoices(){
- if(earlyFieldDraft(run)){panel(fieldDraftView(run,banishOptions(run).length>0));return;}
+ if(earlyFieldDraft(run)){
+  const level=run.level-run.pendingLevels;
+  const prior=ui.querySelector(`.field-draft[data-level="${level}"]`);
+  const previous=prior?new Set([...prior.querySelectorAll('[data-offer]')].map(card=>card.dataset.offer)):null;
+  panel(fieldDraftView(run,banishOptions(run).length>0,{previous,reduced:store.settings().reduced}));
+  return;
+ }
  const coastOptions=run.choices.some(c=>c.kind==='coast-strike');
  const coastalService=run.choices.some(c=>c.coastLevel);
  const railAmmo=run.choice.siteId==='rail-ammo';
@@ -697,8 +703,17 @@ ui.addEventListener('click',async e=>{
  }
  if(a==='choice-back'){nextPanelFocus=choiceOrigin;subpanel=null;present(true);return;}if(a==='raid-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="raid-menu"]'};showRaid();return;}
  if(a==='banish-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="banish-menu"]'};subpanel={type:'banish'};const options=banishOptions(run);panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="banish-title"><span class="eyebrow">BANISH / 이번 판에서 제외</span><h2 id="banish-title">보급 후보 하나를 바꾼다</h2><div class="branch-list">${options.map(c=>`<button data-exclude="${esc(c.id)}">${esc(c.title)}${c.module&&moduleRank(run,c.module)?' · 이 상자만 교체':' · 이번 판 후보 제외'}</button>`).join('')}</div><small>${options.length?'미보유 후보는 이번 판에서 제외합니다. 보유 모듈은 이 상자의 후보만 교체하고 기존 투자를 유지합니다.':'현재 제외할 후보가 없습니다. 첫 두 보급의 새 총 기회는 보호됩니다.'}</small><button data-action="choice-back">돌아가기</button></section>`);return;}
+ if(a==='reroll'){
+  await mutate(d=>{
+   if(!reroll(d))return false;
+   if(earlyFieldDraft(d))nextPanelFocus={scroll:ui.scrollTop,selector:d.rerolls
+    ?'[data-action="reroll"]:not(:disabled)':'.field-draft-card[data-refreshed]:not(:disabled)'};
+   return true;
+  });
+  return;
+ }
  if(['continue','withdraw','challenge','skip'].includes(a))unlockSound();
- await mutate(d=>{if(a==='continue'){resume(d);return true;}if(a==='reroll')return reroll(d);if(a==='skip')return skip(d);if(['gate-assemble','gate-upgrade','gate-mount','gate-mount-advance','coast-upgrade'].includes(a))return action(d,a);if(a==='withdraw'){const ok=action(d,'withdraw');if(ok)resume(d);return ok;}if(a==='challenge'){resume(d);return action(d,'challenge');}if(a?.startsWith('raid:'))return action(d,a);return false;});
+ await mutate(d=>{if(a==='continue'){resume(d);return true;}if(a==='skip')return skip(d);if(['gate-assemble','gate-upgrade','gate-mount','gate-mount-advance','coast-upgrade'].includes(a))return action(d,a);if(a==='withdraw'){const ok=action(d,'withdraw');if(ok)resume(d);return ok;}if(a==='challenge'){resume(d);return action(d,a);return ok;}if(a?.startsWith('raid:'))return action(d,a);return false;});
 });
 async function pauseButton(){if(!run||mode!=='battle'||pending)return;if(busy){if(committingPlay||run.phase==='playing')pauseQueued=true;return;}if(run.phase==='paused')unlockSound();await mutate(d=>{if(d.phase==='paused')resume(d);else pause(d);return true;});}
 async function callGateChallenge(){unlockSound();await mutate(d=>action(d,'gate-challenge'));}

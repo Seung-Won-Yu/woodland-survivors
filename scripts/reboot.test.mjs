@@ -5518,6 +5518,26 @@ test('campaign swarm packets are mostly infantry with separately capped ambient 
 test('pressure adds infantry density while specialist cadence and restoration stay deterministic',()=>{
  const a=directorFixture(1),b=directorFixture(1);b.pressure=2;b.operation.regionTime=120;tick(a,8);tick(b,8);assert.ok(b.stats.directorSpawns.rifle>a.stats.directorSpawns.rifle);assert.equal(b.stats.directorSpawns.mortar,a.stats.directorSpawns.mortar);assert.equal(b.stats.directorSpawns.shield,a.stats.directorSpawns.shield);takeEvents(a);const r=restore(snapshot(a));tick(a,5);tick(r,5);assert.deepEqual(snapshot(a),snapshot(r));
 });
+test('a new beach push arrives in two directions, pauses, and resumes from its saved cadence',()=>{
+ const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true,true);
+ s.blocks=[];s.enemies=[];s.player.invuln=100;s.player.y=730;s.weapons[0].cd=999;
+ s.t=s.operation.regionTime=13;s.director.pack=5;s.spawnClock=0;
+ const old={...snapshot(s),balanceRevision:'b85-field-opening-draft'};
+ const prior=restore(old);
+ step(s,dt);step(prior,dt);
+ assert.ok(s.enemies.length>prior.enemies.length);
+ const firstIds=new Set(s.enemies.map(e=>e.id));
+ const loaded=restore(snapshot(s));
+ tick(s,1.1);tick(loaded,1.1);
+ assert.deepEqual(snapshot(loaded),snapshot(s));
+ const arrivals=s.enemies.filter(e=>!firstIds.has(e.id));
+ const angle=e=>Math.atan2(e.y-s.player.y,e.x-s.player.x);
+ assert.ok(arrivals.length>=11);
+ assert.ok(arrivals.some(e=>Math.cos(angle(e)-angle(arrivals[0]))<.55));
+ const before=s.enemies.length;
+ tick(s,3.5);assert.equal(s.enemies.length,before);
+ tick(s,.65);assert.ok(s.enemies.length>before);
+});
 test('ambient population caps do not remove protected encounter targets',()=>{
  const s=directorFixture(2);s.enemies=Array.from({length:158},(_,i)=>enemy(`protected-${i}`,1400,100,'rifle',999));s.enemies.forEach(e=>{e.siteId='guarded';e.cohort='guard';});step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.ok(s.enemies.length<=160);s.sites=[{id:'new-site',kind:'supply',name:'supply',state:'waiting',x:800,y:800}];step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.equal(s.sites[0].state,'waiting');
 });
