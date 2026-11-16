@@ -826,6 +826,14 @@ function paintXp(c,g,player,reach,reduced){
  const pull=distance(g,player)<reach;
  c.save();c.translate(g.x,g.y);
  if(g.salvage){c.fillStyle='#26393177';c.beginPath();c.ellipse(0,0,8,3,0,0,TAU);c.fill();}
+ if(g.pickup){
+  const bomb=g.pickup==='bomb';
+  c.fillStyle=bomb?'#f5b16c':'#8de1d6';c.strokeStyle='#152d29';c.lineWidth=3;
+  c.beginPath();c.arc(0,-5,13,0,TAU);c.fill();c.stroke();
+  c.fillStyle='#1c322b';c.font='bold 16px sans-serif';c.textAlign='center';c.textBaseline='middle';
+  c.fillText(bomb?'✹':'∪',0,-5);
+  c.restore();return;
+ }
  if(pull&&!reduced){
   const angle=Math.atan2(g.y-player.y,g.x-player.x);
   c.strokeStyle=g.salvage?'#ffe4a594':'#d2eeda7b';c.lineWidth=g.salvage?2:1;
@@ -1011,7 +1019,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
  function resize(){size={w:innerWidth,h:innerHeight,dpr:Math.min(devicePixelRatio||1,2)};canvas.width=Math.round(size.w*size.dpr);canvas.height=Math.round(size.h*size.dpr);}
  function draw(s,reduced=false,approach=activeEntry(s),focus=null,lead=coastFork(s)?.lead||coastLead(s),opening=null,rail=railBossGuide(s,railFanCutCue(s)),gateInk){
-  if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=mobile?520:960;
+  if(size.w!==innerWidth||size.h!==innerHeight)resize();const mobile=size.w<=700;let worldWidth=s.operation?.roaming?(mobile?620:1080):mobile?520:960;
   const gate=exitGate(s),aid=portAidCue(s),conduit=conduitMortarCue(s);
   const harborWarnings=s.operation?.region===2&&s.boss.active?s.hazards.filter(h=>!h.lane&&!h.hit):[];
   const portRounds=harborWarnings.filter(h=>h.portRound);

@@ -2,6 +2,11 @@ import {FIELD,MODULES,RULES,INFERNO_CORE_DISTANCE,isCapturedTurret,isConductiveF
 import {routeCursor} from './raid.js';
 import {COAST_SALVAGE,RESCUE_COIL,coastAtShore,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,canAdvanceFront,railSortieReturned} from './coast-salvage.js';
 
+export const FRONT_WINDOWS=[75,85,95];
+export function frontTimeLeft(s){
+ const operation=s.operation;
+ return operation?.roaming?Math.max(0,FRONT_WINDOWS[operation.region]-operation.regionTime):null;
+}
 export const REGIONS=[
  {id:'beach',name:'해안 침투',mission:'장갑 수송차를 격파하고 철도로 진입하라',boss:'장갑 수송차',hp:4200,partHp:450,theme:{ground:'#a49874',tile:'#c0ae88',road:'#59584a',edge:'#415d69'},hint:'해변에서 무기를 확보하고 분화를 정하세요.'},
  {id:'rail',name:'철도 차단',mission:'포격 열차의 양쪽 포대를 부수고 항구로 진입하라',boss:'포격 열차',hp:6200,partHp:650,theme:{ground:'#64716a',tile:'#a0aaa0',road:'#343f41',edge:'#344d4c'},hint:'화차 사이를 우회하세요. 포격 예고 밖이 안전합니다.'},

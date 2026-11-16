@@ -1460,3 +1460,40 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .gate-near #pursuit-goal {font-size:9px}
  .gate-near #pursuit {min-height:44px}
 }
+
+/* The launch screen keeps the choice of operator and deployment together. */
+.quick-hangar .command-content{display:grid;align-items:center;padding-block:clamp(12px,4vh,42px)}
+.quick-sortie{display:grid;grid-template-columns:minmax(280px,1fr) minmax(300px,400px);align-items:center;gap:clamp(18px,5vw,80px);max-width:1040px;width:100%;margin-inline:auto}
+.quick-portrait{position:relative;aspect-ratio:1.3;min-width:0}
+.quick-portrait .portrait{width:min(100%,390px);height:100%;inset:0;margin:auto;object-fit:contain}
+.quick-command{background:#182a27eb;border:1px solid #82917a;border-top:4px solid #e6be72;padding:clamp(14px,3vw,30px);min-width:0}
+.quick-command h1{font-size:clamp(29px,5vw,54px);color:#f6d38a;line-height:1.1;margin:0 0 5px}
+.quick-command>p{color:#d0dfbf;font-size:13px;margin:0 0 12px}
+.quick-command .launch-dock{display:block;padding:0;margin:9px 0 2px;border:0;background:none}
+.quick-command .launch-button{width:100%;justify-content:space-between;padding-inline:14px;font-size:20px;min-height:48px}
+.quick-details{min-height:44px;padding:5px 10px;color:#c6d3b6;border:0;background:none;box-shadow:none;font-size:12px}
+@media(max-width:700px){
+ .quick-hangar .command-content{align-items:start;padding:8px 12px 12px}
+ .quick-sortie{grid-template-columns:1fr;gap:4px;max-width:390px}
+ .quick-portrait{height:clamp(62px,20dvh,145px);aspect-ratio:auto}
+ .quick-portrait .portrait{width:auto;max-width:100%;image-rendering:pixelated}
+ .quick-command{padding:12px}
+ .quick-command>p{margin-bottom:7px}
+}
+@media(max-height:520px) and (max-width:700px){
+ .quick-portrait{height:62px}
+ .quick-command{padding:8px 10px}
+}
+.quick-command .operator-selector small,.quick-command .operator-selector button>span,.quick-start .sortie-role{display:none}
+.quick-command .operator-selector button{display:flex;min-height:44px}
+.quick-start .sortie-kit{margin:7px 0;padding:0}
+.roaming-field :is(#operation-track,#stage,#field-direct,#coast-part-cue,#rail-arrival-kit,#modules,#support-status,#maneuver-status){display:none}
+.roaming-field #field-intel:not([data-coast-recovery]){display:none}
+.roaming-field #score{display:none}
+.roaming-field #time[data-front-clock]{font-size:clamp(12px,2vw,20px);color:#f7d595;font-weight:700}
+.roaming-field #time[data-front-clock="urgent"]{color:#ffad84}
+.roaming-field #field-objective{padding-block:7px}
+.roaming-field:not([data-roam-contract]) #holdout-intel{display:none}
+.roaming-field #weapons .weapon.empty{display:none}
+.roaming-field .arsenal #support-status{display:none}
+@media(max-width:700px){.quick-hangar:has([data-starter]) .quick-portrait{height:clamp(45px,12dvh,82px)}}
