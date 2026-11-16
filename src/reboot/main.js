@@ -358,32 +358,41 @@ function closeReplayBriefing(){
  showResult(report,mode==='report');
 }
 
+function raidPartRankLabel(id,current,next){
+ const name=MODULES[id].name;
+ if(current===next)return `${name} ${next}단계 유지`;
+ return `${name} ${current?`${current}→`:''}${next}단계`;
+}
 function raidReceipt(quality){
  const {part}=run.raid||{};
  const cargo=part&&run.choices.find(c=>c.support&&c.module===part.module);
  const exchange=part&&run.choices.find(c=>c.label==='노획 부품 교환 보급');
- const note=cargo?`${MODULES[part.module].name} ${part.rank}강화 확보 가능`:exchange?'지정 부품을 교환 보급으로 전환':run.choice.contract==='light'?'야전 개장 또는 무기 강화 보급':'장갑 수송대 보급';
+ const note=cargo?`${raidPartRankLabel(part.module,moduleRank(run,part.module),part.rank)} 확보 가능`:exchange?'지정 부품을 교환 보급으로 전환':run.choice.contract==='light'?'야전 개장 또는 무기 강화 보급':'장갑 수송대 보급';
  return `<div class="loot-receipt"><span>${QUALITY[run.choice.wagerQuality]||'기존'} 상자</span><b>→ ${QUALITY[quality]} 보급</b><small>${esc(note)}</small></div>`;
 }
 function showRaid(){
  subpanel={type:'raid'};
  const part=armoredRaidPart(run),quality=QUALITY[run.choice.quality];
  const stock=run.choices.map(card=>{
-  if(card.kind!=='module')return choiceDetails(run,card).title;
+  if(card.kind!=='module')return choiceDetails(run,card).impact||card.title;
   const gain=moduleGain(run,card.module,card.rank);
-  return `${MODULES[card.module].name}${gain.next>gain.current?` ${gain.next}강화`:''}`;
+  const change=raidPartRankLabel(card.module,gain.current,gain.next);
+  return gain.charge?`${change} · 충전 +${gain.charge}`:change;
  });
+ const forecasts=run.choices.map(card=>({card,forecast:growthForecast(run,card)}));
+ const assembly=forecasts.find(({forecast})=>forecast?.kind==='ready')||forecasts.find(({forecast})=>forecast?.kind==='progress');
+ const stockBuild=assembly&&`${choiceDetails(run,assembly.card).title} · ${assembly.forecast.text}`;
  const alreadyOffered=part&&run.choices.some(c=>c.kind==='module'&&c.module===part.module&&moduleGain(run,c.module,c.rank).next>=part.rank);
  const contracts=Object.entries(RAID_MARKS).map(([id,mark])=>{
   const cfg=RULES.raidContracts[id],odds=RULES.quality[cfg.qualityKey];
   const counts=id==='light'&&run.operation?.region===0&&run.operation.order==='convoy';
   const armored=id==='armored';
-  const reward=armored?(part?`${MODULES[part.module].name} ${part.rank}강화 확보`:isSalvageCampaign(run)?'무작위 보급 후보':mark.reward)
+  const reward=armored?(part?`${raidPartRankLabel(part.module,moduleRank(run,part.module),part.rank)} 확보`:isSalvageCampaign(run)?'무작위 보급 후보':mark.reward)
    :refitWeapons(run).length?'분화 개장 후보 확보':run.weapons.some(w=>!w.evolved&&!w.fusion&&w.level<6)?'보유 무기 강화 후보 확보':'무작위 보급 후보';
   const goal=armored&&part?[part.goal,part.closes?(part.permit?'재료 충족 · 조율권 필요':part.path==='heat'?'장착 시 발동':'조립에 조율권 1개'):'재료 확보',part.replace?'모듈 교체 필요':''].filter(Boolean).join(' · '):'';
   return `<button class="raid-contract" data-action="raid:${id}" style="--route-ink:${mark.color}"><strong>${mark.name} 습격</strong><span class="raid-risk">${Math.ceil(raidSeconds(id))}초 · 내구 ${cfg.hp.toLocaleString()}</span><span>${armored?'측후면 사격 · 정면 실탄 피해 절반':mark.move}</span><b class="raid-prize">${esc(reward)}</b>${goal?`<small class="raid-goal">${esc(goal)}</small>`:''}${armored&&alreadyOffered?'<small class="raid-stock-match">현재 상자에서도 선택 가능</small>':''}${counts?'<small class="raid-order-tag">보급선 절단 지령 대상</small>':''}<small>일반 ${Math.round(odds.common*100)}% · 희귀 ${Math.round(odds.rare*100)}% · 원형 ${Math.round(odds.prototype*100)}%</small></button>`;
  }).join('');
- panel(`<section class="sheet compact raid-brief" role="dialog" aria-modal="true" aria-labelledby="raid-title"><header><div><span class="eyebrow">무기고 · 보급 선택</span><h2 id="raid-title">수송대 습격</h2></div><span class="paused">Ⅱ 전투 정지</span></header><button class="raid-keep" data-action="choice-back">${moduleIcon('crate')}<span><strong>현재 ${quality} 보급 유지</strong><small>${stock.map(esc).join(' · ')}</small></span><i aria-hidden="true">›</i></button><p class="raid-stake">차량이 탈출하거나 철수하면 현재 상자를 잃습니다. 성공 보급의 품질은 다시 추첨합니다.</p><div class="raid-contracts">${contracts}</div><div class="raid-brief-map">${raidPreview(run)}<div class="raid-legend"><span>● 현재 위치</span><span>○ 차량 출발</span><span>▥ 탈출 검문선</span></div></div></section>`);
+ panel(`<section class="sheet compact raid-brief" role="dialog" aria-modal="true" aria-labelledby="raid-title"><header><div><span class="eyebrow">무기고 · 보급 선택</span><h2 id="raid-title">수송대 습격</h2></div><span class="paused">Ⅱ 전투 정지</span></header><button class="raid-keep" data-action="choice-back">${moduleIcon('crate')}<span><strong>현재 ${quality} 상자 열기</strong><small class="raid-keep-stock">${stock.map(esc).join(' / ')} 중 1개</small>${stockBuild?`<small class="raid-keep-build">${esc(stockBuild)}</small>`:''}</span><i aria-hidden="true">›</i></button><p class="raid-stake">습격 실패 · 철수 시 상자 소실. 성공 시 새 보급 추첨.</p><div class="raid-contracts">${contracts}</div><div class="raid-brief-map">${raidPreview(run)}<div class="raid-legend"><span>● 현재 위치</span><span>○ 차량 출발</span><span>▥ 탈출 검문선</span></div></div></section>`);
 }
 function branchOutcome(c,branch,args){
  const result=branchBuildPreview(run,c,branch,args);

@@ -364,7 +364,8 @@ function debriefRoute(operation,stats,reference){
    'left-cargo':'차량 저지 · 화물 미회수',aborted:'차량 추격 중단',escaped:'차량 이탈'})[stats.signalOutcome];
   const batteries=i===2&&Number.isSafeInteger(stats.portBatteriesCleared)&&stats.portBatteriesCleared>0?`포대 ${n(stats.portBatteriesCleared)}문 제압`:'';
   const shortRun=isCoastRailSortie({operation});
-  const wager=batteries||signal||(shortRun&&part?part.name:entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'');
+  const harborObjectives=[signal,batteries].filter(Boolean).join(' / ');
+  const wager=harborObjectives||(shortRun&&part?part.name:entry?.nextSupport==='vanguard'?'선발 지원 전진':part?`잔류 · ${part.name}`:entry?.holdoutKills>0?`잔류 · 증원 ${n(entry.holdoutKills)}명 제압`:'');
   const terminal=railReference?i===1&&front===1&&operation.coastSalvage?.extracted:i===2&&operation.extracted;
   const recorded=entry||terminal;
   const pace=reference&&recorded?timeDifference(elapsed,reference.fronts[i]):null;

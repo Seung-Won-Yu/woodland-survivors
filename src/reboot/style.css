@@ -495,6 +495,7 @@
 .raid-keep strong,.raid-keep small{display:block}
 .raid-keep strong{color:#e1f0cb;font-size:14px}
 .raid-keep small{margin-top:3px;color:#cfdfc5;font-size:10px;line-height:1.4}
+.raid-keep .raid-keep-build{color:#f4d79c;font-weight:700}
 .raid-keep i{color:#cfdfb5;font-size:18px;font-style:normal}
 .raid-brief-map{padding:8px;background:#142b2b;border:1px solid #76897d;display:grid;justify-items:center;gap:6px}
 .raid-preview{display:block;width:auto;max-width:100%;height:clamp(112px,25vh,220px)}
