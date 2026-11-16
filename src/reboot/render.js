@@ -840,13 +840,14 @@ function paintCapstoneKill(c,f,t,reduced){
  }
 }
 const SWEEP_INK={fire:'#ffce91',arc:'#bbf5ee'};
+const SWEEP_TAIL=.58,SWEEP_GAP=.24,SWEEP_BADGE=.8;
 export function visibleSweep(effects,visible){
  const groups=[];
  for(let i=effects.length-1;i>=0;i--){
   const f=effects[i];
-  if(f.type!=='kill'||!Object.hasOwn(SWEEP_INK,f.sweep)||f.age>=.42||!visible(f.x,f.y,0))continue;
+  if(f.type!=='kill'||!Object.hasOwn(SWEEP_INK,f.sweep)||f.age>=SWEEP_TAIL||!visible(f.x,f.y,0))continue;
   const radius=f.sweep==='fire'?138:208;
-  const group=groups.find(g=>g.kind===f.sweep&&Math.abs(g.anchor.age-f.age)<=.18&&distance(g.anchor,f)<=radius);
+  const group=groups.find(g=>g.kind===f.sweep&&Math.abs(g.anchor.age-f.age)<=SWEEP_GAP&&distance(g.anchor,f)<=radius);
   if(group){group.points.push(f);continue;}
   if(groups.length<8)groups.push({kind:f.sweep,anchor:f,points:[f]});
  }
@@ -859,17 +860,19 @@ function paintSweepGround(c,sweep,reduced){
  const fire=sweep.kind==='fire';
  c.save();
  for(const f of sweep.points.slice(0,12)){
-  const fade=1-f.age/.42;
-  c.globalAlpha=fade*.64;
+  const fade=1-f.age/SWEEP_TAIL;
+  c.globalAlpha=fade*.8;
   if(fire){
-   c.fillStyle='#351e1a';c.beginPath();c.ellipse(f.x,f.y+4,18,7,0,0,TAU);c.fill();
+   c.fillStyle='#351e1a';c.beginPath();c.ellipse(f.x,f.y+4,24,9,0,0,TAU);c.fill();
    c.fillStyle='#ffb76a';
    const lift=reduced?0:f.age*36;
    c.fillRect(f.x-7,f.y+1-lift,4,2);c.fillRect(f.x+8,f.y+5-lift*.6,3,2);
   }else{
-   c.strokeStyle='#8bddd0';c.lineWidth=2;c.beginPath();
-   c.moveTo(f.x-15,f.y+7);c.lineTo(f.x-5,f.y+3);c.lineTo(f.x-1,f.y+6);
-   c.moveTo(f.x+3,f.y+4);c.lineTo(f.x+11,f.y-1);c.lineTo(f.x+15,f.y+1);c.stroke();
+   c.beginPath();
+   c.moveTo(f.x-19,f.y+8);c.lineTo(f.x-6,f.y+2);c.lineTo(f.x-1,f.y+6);
+   c.moveTo(f.x+3,f.y+4);c.lineTo(f.x+13,f.y-3);c.lineTo(f.x+20,f.y);
+   c.strokeStyle='#1b4146';c.lineWidth=5;c.stroke();
+   c.strokeStyle='#a3f1e5';c.lineWidth=2;c.stroke();
   }
  }
  c.restore();
@@ -1181,10 +1184,10 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   const visible=(x,y,padding=48)=>Math.abs(x-cx)<=view.w/2+padding&&Math.abs(y-cy)<=view.h/2+padding;
   const sweeping=s.operation?.roaming&&s.stage!=='boss'&&s.phase==='playing';
   const sweep=sweeping?visibleSweep(s.effects,visible):null;
-  if(!sweeping||sweepCue&&(s.t-sweepCue.at>=.58||sweepCue.stage!==s.stage))sweepCue=null;
+  if(!sweeping||sweepCue&&(s.t-sweepCue.at>=SWEEP_BADGE||sweepCue.stage!==s.stage))sweepCue=null;
   if(sweep){
    const at=s.t-sweep.age;
-   if(!sweepCue||at-sweepCue.at>.18||sweep.count>sweepCue.count)
+   if(!sweepCue||at-sweepCue.at>SWEEP_GAP||sweep.count>sweepCue.count)
     sweepCue={at,stage:s.stage,kind:sweep.kind,count:sweep.count,x:sweep.x,y:sweep.y};
   }
   for(const b of s.blocks)if(b.hp!==0&&visible(b.x,b.y,220))paintCoverShadow(c,b,index);
@@ -1719,7 +1722,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     :distance(project(h.x,h.y),badge)<blastContactRadius(h)*scale+width/2));
    if(badge&&!warning&&distance(point,badge)<=39&&distance(badge,pilot)>38){
     c.save();c.font='bold 22px Galmuri';c.textAlign='center';c.textBaseline='middle';
-    c.globalAlpha=clamp((.58-s.t+sweepCue.at)*8,0,1);
+    c.globalAlpha=clamp((SWEEP_BADGE-s.t+sweepCue.at)*8,0,1);
     c.lineJoin='round';c.lineWidth=5;c.strokeStyle='#1a282e';
     const label=`×${sweepCue.count}`;
     c.strokeText(label,badge.x,badge.y);c.fillStyle=SWEEP_INK[sweepCue.kind];c.fillText(label,badge.x,badge.y);
