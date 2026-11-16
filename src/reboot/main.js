@@ -1038,7 +1038,7 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  const garrison=railGarrison(next)||wireGarrison(run,next),crew=next.state==='active'&&next.kind==='relay'?relayCrewLeft(run,next):0;
  const hacking=crew?`${garrison.crew} ${crew}${garrison.unit} 제압 후 해킹`:`범위 안에서 해킹 ${Math.round(next.progress/5*100)}%`;
  const coastFight=next===coastSite&&!!coastSite?.coastApproach;
- const siteHint=coastFight?'':next.state==='active'?next.kind==='relay'?` · ${hacking}`:` · 경비 ${guards}명, 이동하며 제압`:next.state==='ready'?next.kind==='relay'?' · 해킹 완료, 접근해 회수':' · 제압 완료, 접근해 회수':'';
+ const siteHint=coastFight?next.state==='ready'?' · 경비 제압 완료':'':next.state==='active'?next.kind==='relay'?` · ${hacking}`:` · 경비 ${guards}명, 이동하며 제압`:next.state==='ready'?next.kind==='relay'?' · 해킹 완료, 접근해 회수':' · 제압 완료, 접근해 회수':'';
  const cut=run.effects.some(f=>f.conduitCut&&f.type==='barrage-cancel');
  const mortarTime=conduit&&(Math.ceil(conduit.round.timer*10)/10).toFixed(1);
  const threat=$('threat');
@@ -1160,6 +1160,7 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  else if(!intel&&incoming&&next.state==='ready')intel='접근해 회수';
  fieldIntel.hidden=!intel||holdout;
  fieldIntel.toggleAttribute('data-rail-fork',!!railFork);
+ fieldIntel.toggleAttribute('data-coast-recovery',coastFight&&next.state==='ready'&&!!intel);
  const harborGuide=harborBuild&&(intel.startsWith(harborBuild.name)||choosingEntry&&entry.routes.some(route=>route.site==='port-control'));
  const approachKey=harborGuide?harborBuild.key:'';
  if((fieldIntel.dataset.harborPlan||'')!==approachKey){

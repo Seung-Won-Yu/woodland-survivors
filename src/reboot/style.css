@@ -169,6 +169,7 @@
 .front-intel strong,.front-intel b{font-size:13px;line-height:1.4}
 .front-intel strong{color:#f7cf80}
 #field-intel{color:#fae1a3;line-height:1.5;white-space:pre-line}
+#field-intel[data-coast-recovery]{padding:3px 6px;border-left:2px solid #f1ca79;background:#2f3528;color:#fff0bd;word-break:keep-all}
 #field-intel[data-harbor-plan]{border-left:2px solid var(--approach-ink);padding:3px 6px;background:#142925a8;color:var(--approach-ink)}
 #threat[data-formation="flame"]{color:#f5c695}
 #threat[data-formation="fusion"]{color:#bcece3}
