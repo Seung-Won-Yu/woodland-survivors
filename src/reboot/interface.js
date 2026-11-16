@@ -1,7 +1,7 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol,coastOpeningBrief,railSalvagePreview} from './field-scene.js';
 import {FIELD_KITS} from './coast-discovery.js';
 import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,researchProofProgress,pickedResearchTrials,REQUISITION_FEE,requisitionDestination,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,COAST_STRIKES,COAST_RESPONSE,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,coastPreemptGun,isOpeningGun,COAST_SALVAGE_LEVEL,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderRecordScope,orderBonus,operationCredits} from './campaign.js';
-import {GUNS,MODULES,RULES,CAPTURED_TURRET,bearing,distance,makeWeapon,compatible,weaponStats,capstoneName,isCapturedTurret} from './content.js';
+import {GUNS,MODULES,RULES,CAPTURED_TURRET,bearing,distance,makeWeapon,compatible,moduleRank,weaponStats,capstoneName,isCapturedTurret} from './content.js';
 import {canLaunchOrder,canReserveResearch,earnsWireOrder,marcoRecord,orderUnlocked,sortieResearchTrials} from './profile.js';
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount,coastFanPosition} from './coast-salvage.js';
@@ -21,7 +21,10 @@ export function fieldDraftView(run,canBanish,{previous=null,reduced=false}={}){
   const info=choiceDetails(run,card);
   const rank=card.kind==='rank'?` L${info.after}`:card.kind==='gun'?' L1':'';
   const benefits={r:'적 무리 광역 폭발',f:'가까운 적을 함께 태움'};
-  const impact=card.kind==='gun'?benefits[card.weapon]||info.impact:card.id==='utility:pickup'?'XP 회수 반경 +10':info.impact;
+  const effect=card.kind==='gun'?benefits[card.weapon]||info.impact:card.id==='utility:pickup'?'XP 회수 반경 +10':info.impact;
+  const link=card.label==='H+R 합체 재료'||card.module==='coil'&&run.firstNew==='r'&&moduleRank(run,'coil')<2?'H+R 합체 재료'
+   :card.module==='catalyst'&&run.firstNew==='f'&&moduleRank(run,'catalyst')<2?'인페르노 재료':'';
+  const impact=link?`${effect} · ${link}`:effect;
   const icon=info.art?itemArt(info.art):moduleIcon(card.module||'gear');
   const offer=JSON.stringify([card.id,info.title,rank,impact]);
   const changed=previous&&!previous.has(offer);
@@ -34,6 +37,25 @@ export function fieldDraftView(run,canBanish,{previous=null,reduced=false}={}){
   <header><div><h2 id="choice-title">LV.${level} 개조</h2>${kit?`<small class="field-draft-kit" style="--kit-ink:${kit.color}">${kit.name} 장착 중</small>`:''}</div><span class="paused">Ⅱ 전투 정지</span></header>
   <div class="field-draft-cards">${cards}</div>
   <footer class="field-draft-actions"><button data-action="reroll"${!run.rerolls||cannotSwitch?' disabled':''}>재추첨 ${run.rerolls}</button>${canBanish?`<button data-action="banish-menu">후보 제외 ${run.banishes}</button>`:''}<button data-action="skip">건너뛰기</button></footer>
+ </section>`;
+}
+export function readyAssemblyView(run,capstones){
+ const hasFusion=capstones.some(c=>c.kind==='fusion');
+ const title=hasFusion?(capstones.every(c=>c.kind==='fusion')?'무기 합체':'진화·합체'):'무기 진화';
+ const cards=capstones.map(card=>{
+  const detail=choiceDetails(run,card),key=run.choices.indexOf(card)+1;
+  const consequence=detail.consequence?.[0]||'';
+  return `<button class="field-draft-card assembly-ready-card" data-choice="${e(card.id)}" aria-keyshortcuts="${key}">
+   <span class="field-draft-art" aria-hidden="true">${itemArt(detail.art)}</span>
+   <span><strong>${e(detail.title)}</strong><small>${e(detail.impact)}</small>${consequence?`<small>${e(consequence)}</small>`:''}</span>
+   <kbd aria-hidden="true">${key}</kbd>
+  </button>`;
+ }).join('');
+ const maintenance=run.choices.some(c=>c.kind!=='back'&&!capstones.includes(c));
+ return `<section class="sheet field-menu field-draft assembly-ready" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+  <header><div><h2 id="choice-title">${title}</h2><small>조율권 1개 사용</small></div><span class="paused">Ⅱ 전투 정지</span></header>
+  <div class="field-draft-cards">${cards}</div>
+  <footer class="field-draft-actions">${maintenance?'<button data-action="assembly-full">다른 정비</button>':''}<button data-choice="back">전투로 돌아가기</button></footer>
  </section>`;
 }
 function railApproachBrief(seed,site,fan,railLayout){

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutTiming,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,railBossGuide,portTacticKeys} from '../src/reboot/campaign.js';
-import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName,distance} from '../src/reboot/content.js';
+import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName,distance,moduleRank} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue,armoredRaidPart} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
 import {pilot} from './reboot-pilot.mjs';
@@ -5541,6 +5541,31 @@ test('a new beach push arrives in two directions, pauses, and resumes from its s
 test('ambient population caps do not remove protected encounter targets',()=>{
  const s=directorFixture(2);s.enemies=Array.from({length:158},(_,i)=>enemy(`protected-${i}`,1400,100,'rifle',999));s.enemies.forEach(e=>{e.siteId='guarded';e.cohort='guard';});step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.ok(s.enemies.length<=160);s.sites=[{id:'new-site',kind:'supply',name:'supply',state:'waiting',x:800,y:800}];step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.equal(s.sites[0].state,'waiting');
 });
+test('a standard rocket pilot can draft both coil ranks and assemble without a site reward',()=>{
+ const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true,true);
+ Object.assign(s.weapons[0],{level:4,branch:'ricochet'});
+ s.weapons.push({...makeWeapon('r'),uid:'test-rocket',level:4,branch:'homing'});
+ s.firstNew='r';s.level=4;s.pendingLevels=1;
+ const old=restore({...snapshot(s),balanceRevision:'b86-coastal-counterwaves'});
+ assert.ok(action(old,'upgrade'));
+ assert.ok(!old.choices.some(c=>c.label==='H+R 합체 재료'));
+ assert.ok(action(s,'upgrade'));
+ assert.ok(s.choices.some(c=>c.id==='module:coil'&&c.label==='H+R 합체 재료'));
+ assert.ok(choose(s,'module:coil'));
+ assert.equal(moduleRank(s,'coil'),1);
+ assert.ok(!assemblyOptions(s).some(c=>c.id==='fusion:h:r'));
+ s.level=6;s.pendingLevels=1;
+ assert.ok(action(s,'upgrade'));
+ const loaded=restore(snapshot(s));
+ assert.ok(choose(loaded,'module:coil',{doctrine:'reserve'}));
+ assert.equal(moduleRank(loaded,'coil'),2);
+ assert.ok(action(loaded,'gear'));
+ assert.ok(choose(loaded,'fusion:h:r'));
+ assert.equal(loaded.weapons.length,1);
+ assert.equal(loaded.weapons[0].fusion.branch,'homing');
+ assert.equal(loaded.tuning,0);
+ assert.equal(loaded.powerWave.showcase,'fusion');
+});
 test('jam reduces the actual mortar pressure and final infantry has a fixed XP value',()=>{
  const probe=jam=>{const s=directorFixture(2);s.operation.jammed=jam;s.stage='boss';s.boss.active=true;s.boss.timer=999;s.boss.spawnClock=0;tick(s,6.1);return s.enemies.filter(e=>e.cohort==='boss');};const jam=probe(true),normal=probe(false);assert.equal(jam.length,normal.length/2);assert.equal(jam.filter(e=>e.type==='mortar').length,1);assert.equal(normal.filter(e=>e.type==='mortar').length,2);
  const s=directorFixture(2),previousXp=s.stats.xpGenerated;s.spawnClock=999;s.enemies=[enemy('rifle',950,800,'rifle',1)];s.shots=[bullet(s,s.enemies[0])];step(s,dt);assert.equal(s.stats.xpGenerated-previousXp,2);assert.equal(s.gems[0].value,2);
@@ -5587,7 +5612,7 @@ test('multiple research trials retain their own completion state through checkpo
 });
 test('boss telegraphs render safely from their first warning frame through impact',async()=>{
  const {createRenderer}=await import('../src/reboot/render.js'),saved={innerWidth:globalThis.innerWidth,innerHeight:globalThis.innerHeight,devicePixelRatio:globalThis.devicePixelRatio};let arcs=0;
- const gradient={addColorStop(){}},context=new Proxy({arc(x,y,r){assert.ok(Number.isFinite(r)&&r>=0,`unsafe canvas radius ${r}`);arcs++;},createRadialGradient:()=>gradient},{get:(target,key)=>key in target?target[key]:()=>{}});
+ const gradient=()=>({addColorStop(){}}),context=new Proxy({arc(x,y,r){assert.ok(Number.isFinite(r)&&r>=0,`unsafe canvas radius ${r}`);arcs++;},createRadialGradient:gradient,createLinearGradient:gradient},{get:(target,key)=>key in target?target[key]:()=>{}});
  try{Object.assign(globalThis,{innerWidth:960,innerHeight:540,devicePixelRatio:1});const canvas={getContext:()=>context},renderer=createRenderer(canvas,null),s=createOperation(17);s.operation.region=2;s.stage='boss';s.boss.active=true;s.hazards=[{x:800,y:500,r:58,timer:.95,duration:.95},{x:500,y:600,r:48,timer:1.2}];for(const timer of [.95,.94,.5,0]){s.hazards[0].timer=timer;renderer.draw(s);renderer.draw(s,true);}assert.ok(arcs>0);}finally{for(const [key,value]of Object.entries(saved))if(value===undefined)delete globalThis[key];else globalThis[key]=value;}
 });
 

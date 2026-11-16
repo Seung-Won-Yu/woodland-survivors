@@ -1,5 +1,5 @@
 const artNames=['operators','enemies','vehicles','environment-v014','vehicle-layers-v015'];
-const fieldArtNames=['field-materials-v120','rail-boxcar-v120','rail-artillery-v120','port-command-v120'];
+const fieldArtNames=['front-terrain-v178','rail-boxcar-v120','rail-artillery-v120','port-command-v120'];
 export const missionImageUrl=name=>new URL(`../../art/mission/${name}.webp`,import.meta.url).href;
 export const FIELD_ART_COUNT=artNames.length+fieldArtNames.length;
 async function image(name,priority){

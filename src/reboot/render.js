@@ -892,6 +892,8 @@ function paintXp(c,g,s,reach,reduced){
  const lift=g.salvage?6+(reduced?0:Math.sin(g.age*4+g.x*.09)*2):0;
  c.translate(0,-lift);c.rotate(Math.PI/4);
  const size=g.salvage?8:6;
+ c.fillStyle='#182b31ba';
+ c.fillRect(-size/2-1.5,-size/2-1.5,size+3,size+3);
  c.fillStyle=g.salvage||g.value>=8?'#ffdc8c':'#b5e0d1';
  c.fillRect(-size/2,-size/2,size,size);
  if(g.salvage){c.fillStyle='#fff1b1';c.fillRect(-4,-4,3,5);}
@@ -1335,7 +1337,11 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
      }
     }
    }else if(item.kind==='player'){
-    circle(c,e.x,e.y,19,'#283d3549',e.overdrive>0?'#ffdb82':'#c3e3cd',1);if(e.hurt>0)c.filter='brightness(1.8)';const bx=e.attack>0?-Math.cos(e.aim)*2:0;
+    c.beginPath();c.ellipse(e.x,e.y-1,23,12,0,0,TAU);
+    c.fillStyle='#10272b88';c.fill();
+    c.strokeStyle='#10272bd9';c.lineWidth=4;c.stroke();
+    c.strokeStyle=e.overdrive>0?'#ffdb82':'#d8f3e4';c.lineWidth=2;c.stroke();
+    if(e.hurt>0)c.filter='brightness(1.8)';const bx=e.attack>0?-Math.cos(e.aim)*2:0;
     const burst=s.operator==='marco'&&s.effects.findLast(f=>f.type==='focus-shot'&&f.age<.14),aim=burst?burst.angle:e.aim;
     if(art)actor(c,art.operators,operatorOf(s).row+(Math.sin(aim)<-.6?1:0),e.moving?Math.floor(e.walk)%4:0,e.x+bx,e.y,64,Math.cos(aim)<0);else{c.fillStyle='#edb063';c.fillRect(e.x-13,e.y-44,26,44);}c.filter='none';
     if(art&&hasTurret)paintCapturedMount(c,art,e,turretVolley,reduced);

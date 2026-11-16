@@ -6,7 +6,7 @@ import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRo
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck,coastTurretReturned} from './coast-salvage.js';
-import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon,coastRescueReward,railHandoff,railTransferBrief,railArrivalKit,fieldDraftView} from './interface.js';
+import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon,coastRescueReward,railHandoff,railTransferBrief,railArrivalKit,fieldDraftView,readyAssemblyView} from './interface.js';
 import {REGIONS,BOSS_ENTRY,frontLayout,HOLDOUT,frontTimeLeft,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,isOpeningGun,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastalThermalPrep,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portBuildApproach,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutRewardParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTiming,holdoutOpeningDelay,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railLaneBounds,railBossGuide,railHasRelay,railHasWire,RAIL_GUN_COLORS} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,moduleGain,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle,isCapturedTurret,coastFanAngle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,railRelayInvestment,fieldResearchTrial,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge,conduitMortarCue,railFanCutCue,armoredRaidPart} from './model.js';
@@ -264,13 +264,17 @@ function holdoutClock(tier,wait){
  if(!tier)return `첫 증원까지 ${wait}초`;
  return tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${wait}초`;
 }
-function showChoices(){
+function showChoices(fullAssembly=false){
  if(earlyFieldDraft(run)){
   const level=run.level-run.pendingLevels;
   const prior=ui.querySelector(`.field-draft[data-level="${level}"]`);
   const previous=prior?new Set([...prior.querySelectorAll('[data-offer]')].map(card=>card.dataset.offer)):null;
   panel(fieldDraftView(run,banishOptions(run).length>0,{previous,reduced:store.settings().reduced}));
   return;
+ }
+ if(!fullAssembly&&run.choice.type==='assembly'&&run.operation?.exploration&&!run.choice.gatePrep){
+  const ready=run.choices.filter(isCapstone);
+  if(ready.length){panel(readyAssemblyView(run,ready));return;}
  }
  const coastOptions=run.choices.some(c=>c.kind==='coast-strike');
  const coastalService=run.choices.some(c=>c.coastLevel);
@@ -702,6 +706,7 @@ ui.addEventListener('click',async e=>{
   return;
  }
  if(a==='choice-back'){nextPanelFocus=choiceOrigin;subpanel=null;present(true);return;}if(a==='raid-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="raid-menu"]'};showRaid();return;}
+ if(a==='assembly-full'&&run?.choice?.type==='assembly'){showChoices(true);return;}
  if(a==='banish-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="banish-menu"]'};subpanel={type:'banish'};const options=banishOptions(run);panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="banish-title"><span class="eyebrow">BANISH / 이번 판에서 제외</span><h2 id="banish-title">보급 후보 하나를 바꾼다</h2><div class="branch-list">${options.map(c=>`<button data-exclude="${esc(c.id)}">${esc(c.title)}${c.module&&moduleRank(run,c.module)?' · 이 상자만 교체':' · 이번 판 후보 제외'}</button>`).join('')}</div><small>${options.length?'미보유 후보는 이번 판에서 제외합니다. 보유 모듈은 이 상자의 후보만 교체하고 기존 투자를 유지합니다.':'현재 제외할 후보가 없습니다. 첫 두 보급의 새 총 기회는 보호됩니다.'}</small><button data-action="choice-back">돌아가기</button></section>`);return;}
  if(a==='reroll'){
   await mutate(d=>{
@@ -729,7 +734,11 @@ window.addEventListener('keydown',e=>{
  if(e.repeat)return;if(mode!=='battle'||!run||pending)return;
  if(e.key==='Escape'){e.preventDefault();pauseButton();return;}
  if(busy)return;
- if(run.phase==='choice'&&!subpanel&&/^[1-9]$/.test(e.key)){e.preventDefault();const c=run.choices[Number(e.key)-1];if(c)selectCard(c.id);return;}
+ if(run.phase==='choice'&&!subpanel&&/^[1-9]$/.test(e.key)){
+  e.preventDefault();const c=run.choices[Number(e.key)-1];
+  if(c&&(!ui.querySelector('.assembly-ready')||isCapstone(c)||c.kind==='back'))selectCard(c.id);
+  return;
+ }
  if(run.phase==='choice'&&run.choice.type==='clear'&&!subpanel&&['g','r'].includes(k)){e.preventDefault();mutate(d=>action(d,k==='g'?'gate-assemble':'gate-upgrade'));return;}
  if(run.phase==='choice'&&run.choice.type==='clear'&&!subpanel&&k==='m'){
   const mounts=gatePreparation(run)?.mounts.length;
