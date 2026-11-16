@@ -201,8 +201,8 @@ export function paintCoastOpening(c,{routes}){
   c.restore();
  }
 }
-export function paintTerrain(c,index,seed,art,railLayout){
- const scene=fieldScene(index,seed,railLayout);c.fillStyle=scene.ground;c.fillRect(0,0,1600,1200);
+export function paintTerrain(c,index,seed,art,variant){
+ const scene=fieldScene(index,seed,variant);c.fillStyle=scene.ground;c.fillRect(0,0,1600,1200);
  for(const s of scene.shapes){c.beginPath();if(s.type==='rect'){c.fillStyle=s.fill;c.fillRect(s.x,s.y,s.w,s.h);continue;}s.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));if(s.fill){c.closePath();c.fillStyle=s.fill;c.fill();}if(s.stroke){c.strokeStyle=s.stroke;c.lineWidth=s.width;c.setLineDash(s.dash||[]);c.stroke();c.setLineDash([]);}}
  paintSurface(c,art?.materials,index);
  paintWater(c,art?.materials,index);

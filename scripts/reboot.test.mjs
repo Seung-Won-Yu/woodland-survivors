@@ -2338,6 +2338,7 @@ test('roaming rail and harbor missions wait for a local interaction',()=>{
   assert.equal(interaction(s)?.site?.id,id);
   const prior=snapshot(s);
   prior.balanceRevision='b77-voluntary-coastal-missions';
+  delete prior.operation.portLayout;
   const resumed=restore(prior);
   assert.ok(action(resumed,'interact'));
   const loaded=restore(snapshot(resumed));
@@ -4236,6 +4237,7 @@ test('fresh roaming seeds can change the rail approach without mirroring or chan
  assert.equal(yard.operation.railLayout,'yard');
  assert.equal(opposite.operation.railLayout,'yard');
  delete saved.operation.railLayout;
+ delete saved.operation.portLayout;
  saved.balanceRevision='b80-roaming-capstone-formations';
  for(const run of [base,yard,opposite,saved]){
   Object.assign(run.player,BOSS_ENTRY);
@@ -4273,6 +4275,55 @@ test('fresh roaming seeds can change the rail approach without mirroring or chan
     }
    }
   }
+ }
+});
+test('new quay layouts reroute the harbor approach, hatch and convoys on both sides',()=>{
+ for(const seed of [26,27])for(const old of [false,true]){
+  const {run}=freshSortie(emptyProfile(),seed,null,'fio',null,null,null,'standard',true,null,true);
+  assert.equal(run.operation.portLayout,'quay');
+  if(old){delete run.operation.portLayout;run.balanceRevision='b81-rail-yard-layouts';}
+  const s=restore(snapshot(run));
+  Object.assign(s.player,BOSS_ENTRY);
+  assert.ok(action(s,'interact'));assert.ok(choose(s,'coast:break'));
+  const turret=s.boss.parts[0];
+  s.shots=[bullet(s,{...partPosition(s,turret),id:turret.id},10000)];step(s,dt);
+  s.shots=[bullet(s,s.boss,20000)];step(s,dt);
+  Object.assign(s.player,exitGate(s));
+  assert.ok(action(s,'interact'));assert.ok(choose(s,s.choices.find(c=>c.kind==='advance')?.id));
+  clearRegion(s);assert.ok(choose(s,s.choices.find(c=>c.kind==='advance')?.id));
+  assert.equal(s.operation.region,2);
+  assert.deepEqual(restore(snapshot(s)).sites,s.sites);
+  const [dock,control]=s.sites;
+  assert.equal(control.y,old?620:945);
+  assert.equal(dock.y,old?900:770);
+  const center=s.blocks.find(b=>b.id==='p2');
+  if(old){assert.ok(center.x>=850||center.x+center.w<=750);continue;}
+  assert.ok(center.x<800&&center.x+center.w>800);
+  const validatePath=(path,r)=>{
+   for(const [[x,y],[tx,ty]] of path.slice(1).map((p,i)=>[path[i],p])){
+    const steps=Math.ceil(Math.hypot(tx-x,ty-y)/6);
+    for(let i=0;i<=steps;i++)assert.ok(!overlapsCover(s,{x:x+(tx-x)*i/steps,y:y+(ty-y)*i/steps},r));
+   }
+  };
+  const entry=activeEntry(s);
+  for(const {path} of [...entry.routes,entry.direct])validatePath(path,16);
+  control.state='done';
+  Object.assign(s.player,{x:control.x,y:control.y});
+  validatePath(activeEntry(s).direct.path,16);
+  for(const contract of ['light','armored']){
+   const route=raidRoute(s,contract);
+   assert.ok(Math.hypot(route[0].x-control.x,route[0].y-control.y)<240);
+   validatePath(route.map(({x,y})=>[x,y]),45);
+  }
+  dock.state='done';s.operation.portDock=true;
+  Object.assign(s.player,{x:dock.x,y:dock.y});
+  validatePath(activeEntry(s).direct.path,16);
+  const hatch=portGantry(s);
+  assert.deepEqual(hatch.path[0],[dock.x,dock.y]);validatePath(hatch.path,16);
+  Object.assign(s.player,{x:hatch.x,y:hatch.y});
+  assert.ok(action(s,'interact'));
+  assert.equal(s.operation.portEntry,'gantry');
+  assert.ok(portGantryBypass(s));
  }
 });
 test('marked later-front approaches and actual guard formations clear collision geometry',()=>{
