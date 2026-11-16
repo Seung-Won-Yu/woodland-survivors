@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.168.0" src="https://img.shields.io/badge/RIFT-0.168.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.169.0" src="https://img.shields.io/badge/RIFT-0.169.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -20,6 +20,8 @@
 첫 출격에서는 대원만 고르면 됩니다. 전장에서 보병을 잡아 XP로 무장을 고르거나, 거점 가까이에서 행동 버튼으로 보급 교전을 여세요. 철도 중계기는 열차 조준 유인을, 항구 관제소는 첫 가로 포격을 끊는 전술을 엽니다. 바로 보스에 도전하거나 타이머가 끝날 때까지 성장할 수 있습니다. [자유 동선 검증](docs/RIFT-GAMEPLAY-V1.md#0165-철도와-항구의-선택-교전)
 
 이동하면서 처치한 무리 옆을 지나면 더 넓은 범위의 XP가 따라옵니다. 전장에 떨어지는 자석 하나로 흩어진 XP를 한 번에 회수할 수 있습니다.
+
+귀환 보고서의 **새 전장 출격**으로 같은 대원과 새 전장에 바로 들어갈 수 있습니다. 연구 구매, 출격 설정, 같은 전장 기록 도전도 보고서에서 열 수 있습니다.
 
 **새 출격**은 해안에서 철도와 항구로 이어집니다. 첫 포로 구출부터 마르코는 방패병 옆에서 약점을 맞혀 관통 사격을, 피오는 호위가 떨어뜨린 부품을 직접 주워 연사를 키웁니다. 수송차 포탑을 파괴하면 탄막이 5발에서 3발로 줄고 철갑 급탄이나 후송 정비를 받을 수 있습니다. 포탑을 남겨 두면 격파 뒤 증원 속에서 5초간 분리해 현장에서 장착합니다. 로켓 R을 갖고 있으면 강화 단계를 이어받습니다.
 

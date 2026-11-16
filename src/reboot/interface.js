@@ -585,6 +585,26 @@ function debriefNext(r,p){
  }
  return nextOrder(p);
 }
+function quickDebriefActions(r,p,reference,turretStarter){
+ const next=debriefNext(r,p),experimental=next.purchase||next.dispatch||next.trial;
+ const researchAttributes=next.purchase?`data-research="${next.purchase}" data-debrief-research`
+  :`data-action="replay-brief" data-replay-from="${r.sequence}"${next.dispatch?` data-dispatch="${next.dispatch}"`:` data-trial-focus="${next.trial}"`}`;
+ const research=experimental?`<div class="debrief-research-action">
+   <div>${next.purchase?'':`<strong>${e(next.title)}</strong>`}<small>${e(next.text)}</small></div>
+   <button ${researchAttributes} data-experiment>${e(next.label)}</button>
+  </div>`:'';
+ return `<section class="debrief-actions debrief-quick-actions" aria-label="다음 작전"${experimental?' data-research-next':''}>
+  <button class="primary debrief-launch" data-action="fresh-report" data-replay-from="${r.sequence}" data-actor="${operatorId(r)}"${turretStarter?' data-coast-loadout="turret"':''}>
+   <span><b>새 전장 출격</b><small>${operatorOf(r).name} · ${turretStarter?'노획 포탑':'기관총 H'} L1</small></span><i aria-hidden="true">▶</i>
+  </button>
+  ${research}
+  <div class="debrief-secondary">
+   <button class="text-button" data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="fresh">출격 설정</button>
+   <button class="text-button" data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="same">${reference?'기록 도전':'같은 전장'}</button>
+   <button class="text-button" data-action="home" data-target="research">연구실</button>
+  </div>
+ </section>`;
+}
 function debriefActions(r,p,archived,compared){
  const coast=coastSalvage(r);
  if(coast&&!isSalvageCampaign(r)){
@@ -616,6 +636,7 @@ function debriefActions(r,p,archived,compared){
  const turret=p.milestones.coastTurret&&isSalvageCampaign(r);
  const newTurret=turret&&coastTurretReturned(r);
  const turretStarter=newTurret||turret&&coast.loadout==='turret';
+ if(!archived&&r.operation?.roaming&&briefing&&!p.active)return quickDebriefActions(r,p,reference,turretStarter);
  const wire=briefing&&earnsWireOrder(r)&&canLaunchOrder(p,'wire');
  const wireReplay=wire?`<button class="debrief-wire" data-action="replay-brief" data-replay-from="${r.sequence}" data-replay-route="fresh" data-dispatch="order:wire">${moduleIcon('coil')}<span><b>전파 절단 준비</b><small>해안 암호 회수 · 출격비 ${SORTIE_ORDERS.wire.fee}C</small></span><i aria-hidden="true">›</i></button>`:'';
  const replay=briefing&&isSalvageCampaign(r)?`<div class="debrief-replays debrief-sortie">
@@ -682,7 +703,7 @@ function salvageCampaignReport(r){
   ${site||returned?`<dl><div><dt>철도 첫 교전</dt><dd>${site||'보스 직행'}</dd></div><div><dt>${returned?'포탑 직접 제압 · 철도':'열차 포대 파괴'}</dt><dd>${returned?`${n(r.stats.railTurretKills)}명`:`${n(r.stats.railGunsDestroyed)} / 2문`}</dd></div></dl>`:''}
  </section>`;
 }
-function debriefDetails(r,p,lines){
+function debriefDetails(r,p,lines,fronts=''){
  const lensUses=r.operation?.region===2&&r.operation?.tactic==='lens'?r.stats.frontTactics?.[2]:0;
  const wakeUses=r.operation?.region===2&&r.operation?.tactic==='wake'?r.stats.frontTactics?.[2]:0;
  const procs=[['도탄 적중',r.stats.ricochetHits],['전기 연쇄',r.stats.coilBursts],['열압 폭발',r.stats.heatBursts],
@@ -698,7 +719,8 @@ function debriefDetails(r,p,lines){
   <div class="payout-total"><dt>이번에 지급</dt><dd>+${n(r.credits)}C</dd></div>
   ${paid?`<div><dt>출격비 제외 순수익</dt><dd>${net>0?'+':''}${n(net)}C</dd></div>`:''}
   </dl></section>`:'';
- return `<details class="debrief-details"><summary><span>작전 상세</span><small>무장 · 보급 · 연구</small></summary>
+ return `<details class="debrief-details"><summary><span>작전 상세</span><small>${fronts?'전선 · ':''}무장 · 보급 · 연구</small></summary>
+  ${fronts}
   <div class="debrief-detail-grid">
    <div>${ledger}${orderReceipt(r)}${requisitionReceipt(r)}${unlockedResearch(r,p)}${researchFieldReport(r)}</div>
    <section class="build-report"><h2>이번 작전의 화력</h2>
@@ -725,22 +747,25 @@ export function reportView(r,p,{archived=false}={}){
  const order=orderPay&&sortieOrder(r.operation?.order);
  const reference=referenceMatches(r.reference,r,r.sequence)?r.reference:null;
  const railPace=reference?.goal==='rail-return';
- return `<section class="sheet report-sheet" role="dialog" aria-modal="true" aria-labelledby="result-title">
+ const quick=!archived&&!!r.operation?.roaming;
+ const payoff=harborPayoff(r);
+ const summary=`<section class="debrief-summary" aria-label="전선과 장비 기록">
+    ${coast&&!carriesCoastSalvage(r)?'':(railPace?'':debriefPace(r,reference))+debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${crossfireReport(r)}${signalReport(r)}
+   </section>`;
+ const build=salvageCampaignReport(r),primaryBuild=!quick||r.won||returned;
+ return `<section class="sheet report-sheet"${quick?' data-quick-debrief':''} role="dialog" aria-modal="true" aria-labelledby="result-title">
   <header class="debrief-header"><div><span class="section-index">작전 보고${r.sequence?` / #${r.sequence}`:''}</span>
-   <h1 id="result-title">${title}</h1><p>${operatorOf(r).name} · ${reference?splitClockText(r.seconds):clockText(r.seconds)} · LV.${r.level}${r.newTime&&sameScope?' · 최단 기록 갱신':''}</p></div>
+   <h1 id="result-title">${title}</h1><p>${operatorOf(r).name} · ${reference?splitClockText(r.seconds):clockText(r.seconds)} · LV.${r.level}${r.newTime&&sameScope?(quick?' · 최단 갱신':' · 최단 기록 갱신'):''}</p></div>
    <span class="debrief-stamp ${r.won||returned?'won':failed?'lost':''}">${r.won||returned?'생존 귀환':failed?'전사':'중도 귀환'}</span>
   </header>
   <div class="debrief-overview"${isSalvageCampaign(r)?' data-salvage':''}>
     <section class="debrief-scorecard" aria-label="작전 성과">
      ${hasPayout(r)?`<div class="earned-pay"><span>지급 크레딧</span><b>+${n(r.credits)}<small>C</small></b>${first?`<small class="first-clear">첫 완주 +${n(first)}C 포함</small>`:''}${order?`<small class="order-clear">${order.name} +${n(orderPay)}C 포함</small>`:''}</div>`:''}
-     <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>일반 적 ${n(r.stats.kills)}명 · 잔류 D${r.stats.challenge}</small></div>
+     <div class="debrief-points"><span>작전 점수${r.newScore&&sameScope?' · 갱신':''}</span><b>${n(r.score)}</b><small>${quick?'처치':'일반 적'} ${n(r.stats.kills)}명${!quick||r.stats.challenge>0?` · 잔류 D${r.stats.challenge}`:''}</small></div>
      ${railPace?debriefPace(r,reference):''}
     </section>
-   ${salvageCampaignReport(r)}${harborPayoff(r)}${debriefActions(r,p,archived,!!reference)}
-   <section class="debrief-summary" aria-label="전선과 장비 기록">
-    ${coast&&!carriesCoastSalvage(r)?'':(railPace?'':debriefPace(r,reference))+debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${crossfireReport(r)}${signalReport(r)}
-   </section>
+   ${primaryBuild?build:''}${quick?'':payoff}${debriefActions(r,p,archived,!!reference)}${quick?'':summary}
   </div>
-  ${debriefDetails(r,p,lines)}
+  ${debriefDetails(r,p,lines,quick?summary+payoff+(primaryBuild?'':build):'')}
  </section>`;
 }
