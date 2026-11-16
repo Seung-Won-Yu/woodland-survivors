@@ -119,6 +119,15 @@ export function createAudio({fieldMix = false} = {}) {
     } else if (event === 'boss-evade') {
       transient(now,.08,.033,2200,direct);
       note(490,730,'triangle',now,.115,.044,direct);
+    } else if (event === 'crowd-cleared-fire') {
+      transient(now,.17,.043,640);
+      transient(now+.07,.105,.027,1080);
+      note(145,53,'triangle',now,.19,.035);
+    } else if (event === 'crowd-cleared-arc') {
+      transient(now,.052,.041,2000);
+      note(330,132,'triangle',now,.13,.033);
+      note(820,1310,'sine',now+.045,.065,.030);
+      note(1170,690,'sine',now+.09,.099,.023);
     } else if (event === 'shell-land') {
       transient(now,.16,.055,470);
       note(125,42,'triangle',now,.20,.047);

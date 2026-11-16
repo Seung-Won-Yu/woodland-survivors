@@ -1599,6 +1599,9 @@ test('RIFT keeps boss warnings over hit and pickup cues and distinguishes capsto
  assert.deepEqual(mix(['complete','choose'],{showcase:'flame'}),['inferno-ready']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'fusion'}),['conduit-ready']);
  assert.deepEqual(mix(['complete','choose'],{showcase:'rocket'}),['salvo-ready']);
+ assert.deepEqual(mix(['crowd-cleared-fire','flame','kill'],{inferno:true}),['crowd-cleared-fire']);
+ assert.deepEqual(mix(['warning','crowd-cleared-arc','payload-impact']),['mortar-lock','crowd-cleared-arc']);
+ assert.deepEqual(mix(['rail-lock','hurt','crowd-cleared-arc']),['rail-lock','hurt']);
 });
 
 function quietOperation(operator='fio'){const s=createOperation(17,[],null,null,operator);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
@@ -5537,6 +5540,70 @@ test('a new beach push arrives in two directions, pauses, and resumes from its s
  const before=s.enemies.length;
  tick(s,3.5);assert.equal(s.enemies.length,before);
  tick(s,.65);assert.ok(s.enemies.length>before);
+});
+test('coastal exploration drops one early bomb and defers its only magnet across reloads',()=>{
+ const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true,true);
+ s.blocks=[];s.sites.forEach(site=>site.state='done');
+ Object.assign(s.player,{x:800,y:800});s.weapons[0].cd=999;s.spawnClock=999;
+ const kill=(run,threshold)=>{
+  run.stats.kills=threshold-run.seed%7-1;
+  const e=enemy('supply-proof',890,800,'rifle',1);
+  run.enemies=[e];run.shots=[bullet(run,e)];step(run,dt);
+  const pickup=run.gems.find(g=>g.pickup)?.pickup;
+  run.gems=[];return pickup;
+ };
+ const previous=restore({...snapshot(s),balanceRevision:'b87-linked-field-drafts'});
+ assert.equal(kill(previous,35),'magnet');
+ assert.equal(kill(s,15),'bomb');
+ const restored=restore(snapshot(s));
+ assert.equal(kill(restored,35),undefined);
+ assert.equal(kill(restored,77),undefined);
+ assert.equal(kill(restored,97),'magnet');
+ assert.equal(kill(restore(snapshot(restored)),159),undefined);
+});
+test('coastal capstones stage denser formations with space before the next sweep',()=>{
+ for(const kind of ['flame','fusion']){
+  const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true,true);
+  s.blocks=[];s.enemies=[];s.sites.forEach(site=>site.state='done');s.spawnClock=999;
+  Object.assign(s.player,{x:800,y:580,aim:0});
+  Object.assign(s.weapons[0],{level:4,branch:'ricochet',cd:999});
+  const fused=kind==='fusion';
+  s.weapons.push({...makeWeapon(fused?'r':'f'),uid:'coast-completion',level:fused?4:6,branch:fused?'homing':'trail',cd:999});
+  s.modules=[{id:fused?'coil':'catalyst',rank:2}];
+  s.firstNew=fused?'r':'f';
+  const prior=restore({...snapshot(s),balanceRevision:'b87-linked-field-drafts'});
+  for(const run of [s,prior]){
+   assert.ok(action(run,'gear'));assert.ok(choose(run,fused?'fusion:h:r':'evolve:f'));
+   run.weapons.forEach(w=>w.cd=999);
+   tick(run,.72);
+  }
+  const troops=s.enemies.filter(e=>e.showcase===kind);
+  assert.ok(troops.length>prior.enemies.filter(e=>e.showcase===kind).length,kind);
+  assert.ok(troops.every(e=>distance(s.player,e)>145));
+  assert.equal(s.powerWave.remaining,72-troops.length);
+  assert.equal(s.powerWave.paired,3);
+  const saved=restore(snapshot(s));
+  tick(saved,1);assert.equal(saved.powerWave.paired,3);
+  tick(saved,.65);assert.equal(saved.powerWave.paired,2);
+ }
+});
+test('crowd payoff accents require a real nearby four-enemy capstone sweep',()=>{
+ for(const kind of ['fire','arc']){
+  const read=count=>{
+   const s=quietOperation();s.operation.roaming=true;
+   const points=[[916,782],[948,816],[978,780],[965,846]];
+   s.enemies=points.slice(0,count).map(([x,y],i)=>enemy(`sweep-${i}`,x,y,'rifle',1));
+   if(kind==='fire')s.weapons=[{...makeWeapon('f'),uid:'inferno',cd:0,level:6,evolved:true,branch:'trail'}];
+   else {
+    Object.assign(s.weapons[0],{level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}});
+    s.shots=[{...bullet(s,s.enemies[0]),rocket:true,radius:140,source:'payload'}];
+   }
+   step(s,dt);assert.equal(s.stats.kills,count);
+   return takeEvents(s).filter(event=>event.startsWith('crowd-cleared-'));
+  };
+  assert.deepEqual(read(3),[]);
+  assert.deepEqual(read(4),[`crowd-cleared-${kind}`]);
+ }
 });
 test('ambient population caps do not remove protected encounter targets',()=>{
  const s=directorFixture(2);s.enemies=Array.from({length:158},(_,i)=>enemy(`protected-${i}`,1400,100,'rifle',999));s.enemies.forEach(e=>{e.siteId='guarded';e.cohort='guard';});step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.ok(s.enemies.length<=160);s.sites=[{id:'new-site',kind:'supply',name:'supply',state:'waiting',x:800,y:800}];step(s,dt);assert.equal(s.enemies.filter(e=>e.cohort==='guard').length,158);assert.equal(s.sites[0].state,'waiting');
