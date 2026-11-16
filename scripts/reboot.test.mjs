@@ -13,7 +13,7 @@ import {selectRiftAudioEvents} from '../src/reboot/sound.js';
 import {coastRoleTarget,coastRoleRank,coastFanPosition,COAST_TURRET_RECOVERED} from '../src/reboot/coast-salvage.js';
 import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
 import {COAST_RAID_PATROL_DELAY,COAST_SHIELD_BRACE,bracingCoastEscort,shieldFaces,coastService} from '../src/reboot/campaign.js';
-import {createCoastSortie,railInfernoPlan,railAmmoInvestment,railRelayInvestment,coastPartOpportunity} from '../src/reboot/model.js';
+import {createCoastSortie,railInfernoPlan,railAmmoInvestment,railRelayInvestment,coastPartOpportunity,harborFanCue} from '../src/reboot/model.js';
 const dt=1/60;
 function quiet(){const s=createRun(17);s.sites.forEach(n=>n.state='done');s.blocks=[];s.enemies=[];s.shots=[];s.enemyShots=[];s.spawnClock=999;s.boss.spawnClock=999;s.player.x=800;s.player.y=800;s.weapons[0].cd=999;return s;}
 function tick(s,seconds,input={x:0,y:0}){for(let i=0;i<Math.round(seconds/dt);i++)step(s,dt,input);}
@@ -127,7 +127,7 @@ test('Marco shield hits follow the incoming bullet when he moves during flight',
 });
 
 test('coastal weapon routes carry each operator’s growth into the second engagement',()=>{
- for(const seed of [24,27])for(const [actor,weapon] of [['fio','f'],['marco','r']]){
+ for(const seed of [16,24,27])for(const [actor,weapon] of [['fio','f'],['marco','r']]){
   const s=createOperation(seed,[],null,null,actor,'standard');
   s.enemies=[];s.spawnClock=999;s.director.officerClock=999;s.weapons[0].cd=999;
   supply(s);assert.ok(choose(s,`gun:${weapon}`));
@@ -653,6 +653,24 @@ test('a workshop sweep requires two rays from one captured volley and survives a
   assert.equal(events.filter(event=>event==='rail-fan-sweep').length,1);
   assert.deepEqual(selectRiftAudioEvents(new Set([...events,'rail-lock'])),['rail-lock','turret-sweep']);
   assert.equal(restore(snapshot(resumed)).stats.railFanSweep,true);
+  Object.assign(resumed.weapons[0],{level:6,branch:'homing'});
+  resumed.modules=[{id:'coil',rank:2}];resumed.tuning=0;
+  assert.equal(railWorkshopPlan(resumed).wide.id,'workshop:wide');
+  const noSweep=restore(snapshot(resumed));delete noSweep.stats.railFanSweep;
+  assert.ok(!supply(noSweep,'rail-cache').some(c=>c.id==='workshop:wide'));
+  noSweep.choices.unshift(railWorkshopPlan(noSweep).wide);
+  assert.equal(choose(noSweep,'workshop:wide'),false);
+  assert.throws(()=>restore(snapshot(noSweep)),/체크포인트/);
+  const offer=supply(resumed,'rail-cache').find(c=>c.id==='workshop:wide');
+  assert.match(choiceDetails(resumed,offer).cost,/응급 보급 포기/);
+  const repaired=restore(snapshot(resumed));
+  repaired.player.hp=40;assert.ok(choose(repaired,'resupply:rail-workshop'));
+  assert.equal(repaired.player.hp,60);assert.equal(repaired.weapons[0].evolved,false);
+  const evolved=restore(snapshot(resumed)),hp=evolved.player.hp;
+  assert.ok(choose(evolved,'workshop:wide'));assert.equal(evolved.tuning,0);
+  assert.equal(evolved.player.hp,hp);assert.equal(weaponStats(evolved.weapons[0]).count,7);
+  assert.equal(evolved.powerWave.showcase,'rocket');
+  assert.equal(choose(evolved,'workshop:wide'),false);
  }
  const original=prepared(27),single=restore(snapshot(original)),untracked=restore(snapshot(original));
  const targets=[0,1].map(wing=>single.enemies.find(e=>e.railWing===wing));
@@ -2371,7 +2389,21 @@ test('a real captured fan can interrupt both harbor side batteries from the same
  };
  for(const [seed,evolved] of [[17,false],[18,true]]){
   const s=setup(seed,evolved);
+  assert.equal(harborFanCue(s).state,'ready');
+  s.weapons[0].cd=.3;
+  assert.equal(harborFanCue(s).state,'loading');
+  s.boss.timer=.6;
+  assert.equal(harborFanCue(s).state,'late');
+  s.boss.timer=2.6;
+  const gun=partPosition(s,s.boss.parts[0]);
+  s.blocks=[{x:(s.player.x+gun.x)/2-10,y:(s.player.y+gun.y)/2-10,w:20,h:20}];
+  assert.equal(harborFanCue(s).state,'blocked');
+  s.blocks=[];s.weapons[0].cd=0;
   step(s,dt);
+  assert.equal(harborFanCue(s).state,'flight');
+  s.boss.mode='aim';
+  assert.equal(harborFanCue(s).state,'wait');
+  s.boss.mode='recover';
   assert.equal(s.shots.filter(q=>q.crossfire).length,evolved?6:4);
   const resumed=restore(snapshot(s));
   tick(resumed,.5);
@@ -2391,6 +2423,8 @@ test('a real captured fan can interrupt both harbor side batteries from the same
  }
  const offset=setup(17,true);offset.player.x+=55;
  const late=setup(17,true);late.boss.timer=.25;
+ assert.equal(harborFanCue(offset).state,'approach');
+ assert.equal(harborFanCue(late).state,'late');
  for(const s of [offset,late]){
   tick(s,.55);
   assert.equal(s.stats.harborCrossfires,undefined);

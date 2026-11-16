@@ -569,7 +569,7 @@
 .rail-workshop .upgrade-card[data-choice^="calibrate:"]{--accent:#99c6c8;border-color:#7ea9ad;background:linear-gradient(125deg,#354948,#263839)}
 .rail-workshop .upgrade-card[data-choice^="rail-strip:"]{--accent:#edcf91;border-color:#b89a67}
 @media(min-width:701px){
- .rail-workshop:has([data-choice^="rail-strip:"]) .upgrade-deck{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .rail-workshop .upgrade-deck:has(>.upgrade-card:nth-child(4)){grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 .rail-workshop .upgrade-card[data-finish]{--accent:#efd498;border-color:#ccad78;background:linear-gradient(125deg,#494b36,#283d31)}
 .rail-workshop .upgrade-card[data-finish] .upgrade-category{color:#f1d599}
@@ -1441,7 +1441,8 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
 }
 @media(max-width:360px) and (orientation:portrait) {
  .rail-fork .rail-route-row{padding-block:3px}
- .rail-fork #field-intel:has([data-recommended]) .rail-route-row:not([data-recommended]) .rail-route-tactic{display:none}
+ .rail-fork .rail-route-tactic{word-break:keep-all;overflow-wrap:anywhere}
+ .rail-fork #field-intel:has([data-recommended]) .rail-route-row:not([data-recommended]) :is(.rail-route-tactic,.rail-route-supply){display:none}
  .gate-near #holdout-intel :is(#holdout-steps,#pursuit-intel,#pursuit-pay:not([data-extraction-reward])) {display:none}
  .gate-near #pursuit-goal {font-size:9px}
  .gate-near #pursuit {min-height:44px}

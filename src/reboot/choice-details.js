@@ -1,7 +1,7 @@
 import {GUNS,MODULES,RULES,MODULE_LINKS,isFocusedInferno,isTrailInferno,isConductiveFusion,capstoneName,fusionTitle,bearing,distance,makeWeapon,moduleRank,weaponStats,gunEquipLevel,rankChoiceLevel,moduleGain,buildPaths,evolutionParts,railCalibration,compatible,CAPTURED_TURRET,isCapturedTurret} from './content.js';
 import {canAdvanceFront,isSalvageCampaign,carriesCoastSalvage,RESCUE_COIL} from './coast-salvage.js';
 import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,FRONT_TACTICS,CARGO_CREDITS,COUNTERBATTERY_CREDITS,COAST_APPROACHES,COAST_STRIKES,COAST_SALVAGE_LEVEL,coastApproach,coastService,COAST_SERVICE_COST,coastCrossGun,HOLDOUT,holdoutParts,canAdvanceWithVanguard,vanguardAid,holdoutContract,groundXp,holdoutTier,supportTactic,portCompressionRange,regionBoss,portTurretSide,portSideName,signalLane,signalLaneLabel,defenseSeconds,SIGNAL_SECONDS,SIGNAL_ESCORT_COUNT,signalCargo,signalGuardCount} from './campaign.js';
-import {choose,snapshot,railInfernoPlan,railWorkshopPlan} from './model.js';
+import {choose,snapshot,railInfernoPlan,railWorkshopPlan,WORKSHOP_WIDE} from './model.js';
 import {chargeLabel} from './operator.js';
 const pct=(a,b)=>Math.round((b/a-1)*100),num=n=>Number(n.toFixed(2));
 export const HARBOR_PART_ACTION={
@@ -132,21 +132,24 @@ export function branchBuildPreview(s,c,branch,args={}){
 }
 
 function assemblyConsequence(s,c){
- if(s.phase!=='choice'||s.choice?.type!=='assembly')return [];
+ if(s.phase!=='choice'||s.choice?.type!=='assembly'&&c.id!==WORKSHOP_WIDE)return [];
  const draft=snapshot(s);
  if(!choose(draft,c.id))return [];
  const before=buildPaths(s),after=new Map(buildPaths(draft).map(path=>[path.id,path]));
- const lock=c.kind==='evolve'&&['h','r'].includes(c.weapon);
+ const lock=c.kind==='evolve'&&['h','r'].includes(c.weapon)&&(c.id!==WORKSHOP_WIDE||s.weapons.some(w=>w.id==='h'&&!w.evolved&&!w.fusion));
  const delayed=before.filter(path=>path.ready&&after.get(path.id)?.status==='permit');
  const cache=c.kind==='repair'&&s.operation?.region===1&&s.stage==='field'&&s.sites.some(site=>site.id==='rail-cache'&&site.state!=='done');
  const inferno=c.kind==='repair'&&railInfernoPlan(s,cache?railWorkshopPlan(s):null);
  const losesTune=inferno?.permits===2&&s.tuning===2;
+ const readyWide=c.kind==='repair'&&delayed.some(path=>path.id==='evolve:r')&&s.weapons.some(isCapturedTurret)&&isSalvageCampaign(s);
+ const wideRecovery=readyWide&&(s.operation.region===0||s.operation.region===1&&cache);
  const heatBefore=before.find(path=>path.id==='heat'),heatAfter=after.get('heat');
  const heatCost=heatBefore?.complete&&!heatAfter?.complete?'열압 연계 해제'
   :heatBefore?.ready&&heatAfter?.status==='progress'?'열압 연계 재료 부족':'';
  return [c.kind==='fusion'?`현재 ${GUNS[c.primary].short}·${GUNS[c.secondary].short} 단일 진화 포기`:lock?`현재 ${GUNS[c.weapon].short}로 H+R 합체 불가`:'',
   heatCost,
   delayed.length?`조율권 소진 · ${delayed.map(path=>path.title).join(' · ')} 대기`:'',
+  wideRecovery?'철도 정비대에서 양쪽 대열을 맞히면 현장 개장 가능':'',
   losesTune?`${inferno.title} 진화에 촉매 보급 또는 조율권 추가 필요`:''].filter(Boolean);
 }
 
@@ -238,6 +241,11 @@ export function choiceDetails(s,c){
    out.impact='부채꼴 5발 → 7발 · 바깥 사선 확장';
    out.link=isSalvageCampaign(s)?'항구 관제소에서 양쪽 급탄 차단 전술 선택 가능':'중거리에서 두 무리를 부채꼴 안에 두세요.';
   }
+  if(c.id===WORKSHOP_WIDE){
+   out.title='현장 개장 · 광각 포탑';
+   const hasReservation=s.choices.some(card=>card.id.startsWith('requisition:'));
+   out.cost=`조율권 소비 없음 · ${hasReservation?'예약품과 ':''}차내 응급 보급 포기`;
+  }
   out.consequence=assemblyConsequence(s,c);
  }else if(c.kind==='fusion'){
   const secondary=s.weapons.find(w=>w.id===c.secondary&&!w.fusion),branch=secondary?.branch,incendiary=branch==='incendiary';
@@ -310,9 +318,9 @@ export function choiceDetails(s,c){
   if(s.operation.region===0&&s.operation.coastStrikeUsed)out.detail+=' · 수송차 노획 보급 이월';
   if(s.operation.region===0&&s.operation.order==='wire'&&s.operation.orderRevision&&s.operation.orderDone)out.detail+=' · 교신 암호로 철도 조준 유인';
   if(s.operation?.region===0&&s.operation.order&&!s.operation.orderDone)out.link=s.raid?.state==='active'?'습격 철수 · 상자 소실 · 지령 보너스 없음':'해안 지령 미완료 · 전진 시 추가 보상 없음';
-  const aid=vanguard?vanguardAid(s.player):null;
+ const aid=(vanguard||c.support==='vanguard')?vanguardAid(s.player):null;
   const changes=aid?[Math.ceil(aid.hp)>Math.ceil(s.player.hp)?`체력 ${Math.ceil(s.player.hp)} → ${Math.ceil(aid.hp)}`:'',Math.floor(aid.charge)>Math.floor(s.player.charge)?`충전 ${Math.floor(s.player.charge)} → ${Math.floor(aid.charge)}`:''].filter(Boolean):[];
-  out.cost=aid?changes.join(' · '):'현재 무장·모듈·체력·XP 유지';
+  out.cost=changes.length?changes.join(' · '):'현재 무장·모듈·체력·XP 유지';
  }
  else if(c.kind==='stay'){
   if(c.id==='carry:turret'){

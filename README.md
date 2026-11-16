@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.157.0" src="https://img.shields.io/badge/RIFT-0.157.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.158.0" src="https://img.shields.io/badge/RIFT-0.158.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -26,6 +26,8 @@
 레벨업에서는 다음 강화 한 번으로 진화나 합체를 열 수 있는 카드를 확인할 수 있습니다. 해안 수송차의 파괴·노획을 결정하기 전에 **XP 개조**로 쌓아 둔 보상을 사용할 수 있습니다. 교전 중 자동 개조는 수송차가 재장전할 때 열립니다.
 
 반출 포탑으로 새 출격하면 포로 경비의 양쪽 대열을 한 번의 일제사격으로 맞힐 수 있습니다. 구출 보급에서 **축전 코일 I**을 고르면 다음 명중부터 전기를 방출하며 포탑 진화를 준비합니다. **기관총 H**를 고르면 박격포 진지의 포탑 정비와 철도 중계기의 전도 격발망 재료를 노릴 수 있습니다.
+
+철도에서 진화 재료를 갖춘 노획 포탑으로 화차 정비대의 양쪽 대열을 한 번에 맞히면, 조율권이 없어도 **현장 개장**을 고를 수 있습니다. 5발을 7발로 늘리는 대신 같은 정비대의 응급 보급과 예약품을 포기합니다. [현장 개장과 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#0158-철도-정비대의-광각-개장)
 
 완성 무장을 들고 항구에 들어가면 증원이 무장에 맞는 대열로 접근합니다. 연료 살포는 이동하며 밀집 보병을 잔불로 유인하고, 압축 인페르노는 중거리에서 횡대 보병을 한 사선에 담습니다. 지휘 병기의 재장전 때는 각각 측면 냉각 배관과 정면 코어를 노립니다. 전도 격발망은 떨어진 편대로 탄을 잇고, 광각 포탑은 갈라진 대열을 부채꼴로 겨냥합니다. [항구 증원과 모바일 귀환 검증](docs/RIFT-GAMEPLAY-V1.md#0142-항구에서-갈리는-두-인페르노)
 

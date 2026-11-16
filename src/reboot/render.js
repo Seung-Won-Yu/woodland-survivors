@@ -1,9 +1,9 @@
 import {paintTerrain,paintTerrainMargins,paintNorthBoundary,paintCoastOpening,paintBlock,paintCoverShadow,coverMasksPilot,paintLandmark,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintEntrySigns,paintPortGantry} from './field-art.js';
 import {fieldScene} from './field-scene.js';
-import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,portCrossfireZone,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBossGuide,railLaneBounds} from './campaign.js';
+import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBossGuide,railLaneBounds} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp,coastFanAngle,isCapturedTurret} from './content.js';
-import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue,railFanCutCue} from './model.js';
+import {activeManeuver,partPosition,pickupReach,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue,railFanCutCue,harborFanCue} from './model.js';
 import {DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo,RAIL_GUN_COLORS,RAIL_WORKSHOP_FAN,railGunLabel,bracingCoastEscort,shieldFaces,SHIELD_HALF_ANGLE} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
 import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
@@ -345,17 +345,21 @@ function paintPortCue(c,s,aid){
  if(s.operation?.region!==2||!b.active||b.dead)return;
  c.save();
  const turret=b.parts[0],flank=portTurretInSight(s);
- const crossfire=portCrossfireZone(s);
+ const crossfire=harborFanCue(s);
  if(crossfire&&!portCrossfireCuts(s,b.mode==='salvo'?b.cycle:b.cycle+1)){
-  const {x,y,halfWidth:w,halfDepth:h,ready}=crossfire;
-  const color=ready?'#ffe4a4':'#c8ad7e';
-  c.strokeStyle=color;c.lineWidth=ready?3:2;c.fillStyle=ready?'#ecd89139':'#1e2e287d';
+  const {x,y,halfWidth:w,halfDepth:h,state,guns}=crossfire;
+  const locked=['ready','loading','flight'].includes(state);
+  const color=locked?'#ffe4a4':'#c8ad7e';
+  c.strokeStyle=color;c.lineWidth=locked?3:2;c.fillStyle=locked?'#ecd89139':'#1e2e287d';
   c.fillRect(x-w,y-h,2*w,2*h);
-  c.setLineDash(ready?[]:[5,4]);c.strokeRect(x-w,y-h,2*w,2*h);c.setLineDash([]);
+  c.setLineDash(locked?[]:[5,4]);c.strokeRect(x-w,y-h,2*w,2*h);c.setLineDash([]);
   c.beginPath();c.moveTo(x-7,y+3);c.lineTo(x,y-4);c.lineTo(x+7,y+3);c.stroke();
-  if(b.mode==='recover')for(const part of b.parts){
-   const point=partPosition(s,part);
-   circle(c,point.x,point.y,part.r+3,null,color,2);
+  if(b.mode==='recover')for(const gun of guns){
+   if(locked&&state!=='flight'){
+    c.beginPath();c.moveTo(x+Math.sign(gun.x-x)*w,y-h);c.lineTo(gun.x,gun.y+gun.r);
+    c.setLineDash([5,10]);c.strokeStyle='#ffe4a477';c.lineWidth=1.5;c.stroke();c.setLineDash([]);
+   }
+   circle(c,gun.x,gun.y,gun.r+3,null,color,2);
   }
  }
  if(portTurretShutter(s)&&!flank){

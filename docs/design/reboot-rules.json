@@ -1,7 +1,7 @@
 {
   "status": "prototype subset implemented; expansion planned; combat values are tuning hypotheses",
   "ruleset": "reboot-plan-1.1",
-  "balanceRevision": "b71-coast-specialists",
+  "balanceRevision": "b72-workshop-wide",
   "levelChoiceSpacing": 3,
   "prototypeWeapons": [
     "h",
