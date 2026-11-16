@@ -6,7 +6,7 @@
 <a href="https://github.com/Seung-Won-Yu/woodland-survivors/actions/workflows/pages.yml">검사·배포</a>
 </p>
 <p align="center">
-<img alt="RIFT 0.176.0" src="https://img.shields.io/badge/RIFT-0.176.0-d5b77b?style=flat-square">
+<img alt="RIFT 0.177.0" src="https://img.shields.io/badge/RIFT-0.177.0-d5b77b?style=flat-square">
 <img alt="Canvas and JavaScript" src="https://img.shields.io/badge/Canvas-JavaScript-6d8b63?style=flat-square">
 <img alt="런타임 의존성 없음" src="https://img.shields.io/badge/runtime_dependencies-0-779b87?style=flat-square">
 </p>
@@ -23,7 +23,7 @@
 
 귀환 보고서의 **새 전장 출격**으로 같은 대원과 새 전장에 바로 들어갈 수 있습니다. 연구 구매, 출격 설정, 같은 전장 기록 도전도 보고서에서 열 수 있습니다.
 
-**새 출격**은 해안에서 철도와 항구로 이어집니다. 기본 출격에서는 해안을 돌아다니며 가까이에서 보급을 발견합니다. 파열탄은 처치한 적에서 파편을 날리고, 기동 급탄은 이동 중 XP를 회수하면 연사를 가속합니다. 한 판에 한 종류를 장착합니다. 포로 구출과 무기고 교전은 가까이에서 행동을 눌러 시작합니다. 첫 개조에 나온 무기를 넘기면 다음 레벨에 다른 무기가 나옵니다.
+**새 출격**은 해안에서 철도와 항구로 이어집니다. 해안에서는 보병이 양쪽에서 몰려오고 잠깐 뜸해집니다. 공세 사이에 보급과 XP를 회수해 무기를 키우세요. 파열탄은 처치한 적에서 파편을 날리고, 기동 급탄은 이동 중 XP를 회수하면 연사를 가속합니다. 한 판에 한 종류를 장착합니다. 포로 구출과 무기고 교전은 가까이에서 행동을 눌러 시작합니다. 첫 개조에 나온 무기를 넘기면 다음 레벨에 다른 무기가 나옵니다.
 
 포로 구출에 나서면 마르코는 방패병 옆에서 약점을 맞혀 관통 사격을, 피오는 호위가 떨어뜨린 부품을 직접 주워 연사를 키웁니다. 수송차 포탑을 파괴하면 탄막이 5발에서 3발로 줄고 철갑 급탄이나 후송 정비를 받을 수 있습니다. 포탑을 남겨 두면 격파 뒤 증원 속에서 5초간 분리해 현장에서 장착합니다. 로켓 R을 갖고 있으면 강화 단계를 이어받습니다.
 

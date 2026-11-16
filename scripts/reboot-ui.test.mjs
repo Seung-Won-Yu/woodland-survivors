@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit,fieldDraftView} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
-import {action,createOperation,finish} from '../src/reboot/model.js';
+import {action,createOperation,finish,reroll} from '../src/reboot/model.js';
 import {earlyFieldDraft} from '../src/reboot/coast-discovery.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels,visibleSweep} from '../src/reboot/render.js';
 import {portEscapeLanes,portBuildApproach,frontTactic,portTacticKeys} from '../src/reboot/campaign.js';
@@ -21,6 +21,12 @@ test('early field drafts put short card effects and relevant actions in one dial
  assert.match(html,/data-choice="module:ricochet".*추가 도탄 1회/s);
  assert.match(html,/data-action="reroll".*data-action="banish-menu".*data-action="skip"/s);
  assert.doesNotMatch(html,/L4 분화까지|조율권|보유 무장/);
+ const previous=new Set([...html.matchAll(/data-offer="([^"]+)"/g)].map(([,offer])=>offer.replace(/&quot;/g,'"')));
+ assert.ok(reroll(run));
+ const redraft=fieldDraftView(run,true,{previous,reduced:true});
+ assert.match(redraft,/data-level="2" data-reduced-motion/);
+ assert.match(redraft,/data-choice="gun:f"[^>]+aria-keyshortcuts="1" data-refreshed/);
+ assert.equal(redraft.match(/data-refreshed/g).length,1);
  run.level=6;assert.ok(!earlyFieldDraft(run));
 });
 test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a destroyed mount',()=>{

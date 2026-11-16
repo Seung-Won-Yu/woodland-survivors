@@ -1534,15 +1534,25 @@ body.roaming-field .arsenal #support-status:not([hidden]):not([data-field-kit]){
 .field-draft h2{font-size:clamp(19px,4vw,27px);color:#f4dfb6;margin:0}
 .field-draft-kit{display:block;margin-top:5px;font-size:10px;color:var(--kit-ink)}
 .field-draft-cards{display:grid;gap:6px}
-.field-draft-card{display:grid;grid-template-columns:47px minmax(0,1fr) 17px;align-items:center;gap:10px;min-height:62px;text-align:left;padding:6px 10px;border:1px solid #798779;color:#fff0ca;background:#35443d;box-shadow:inset 3px 0 #7f927a}
-.field-draft-card[data-choice^="gun:"]{box-shadow:inset 3px 0 #d1a766}
-.field-draft-card:not(:disabled):is(:hover,:focus-visible){background:#465a4a;border-color:#e6c892}
+.field-draft-card{--offer-edge:#7f927a;display:grid;grid-template-columns:47px minmax(0,1fr) 17px;align-items:center;gap:10px;min-height:62px;text-align:left;padding:6px 10px;border:1px solid #798779;color:#fff0ca;background:#35443d;box-shadow:inset 3px 0 var(--offer-edge)}
+.field-draft-card[data-choice^="gun:"]{--offer-edge:#d1a766}
+.field-draft-card[data-refreshed]{--offer-edge:var(--gold);background:#4b4532;border-color:#d2b476;box-shadow:inset 5px 0 var(--offer-edge)}
+.field-draft-card:not(:disabled):focus-visible{outline-offset:1px}
 .field-draft-card strong,.field-draft-card small{display:block;line-height:1.4;word-break:keep-all}
 .field-draft-card strong{font-size:14px}.field-draft-card small{margin-top:3px;font-size:11px;color:#d2d9be}
 .field-draft-art{display:grid;place-items:center;width:47px;height:44px;color:#edce95}
 .field-draft-art .kit-sprite{width:58px;height:58px}.field-draft-art svg{width:29px;height:29px}
 .field-draft-card kbd{font:inherit;font-size:10px;text-align:center;border:1px solid #8b947e;color:#dcdebf}
 .field-draft-actions{display:flex;align-items:center;gap:5px;margin-top:8px}
-.field-draft-actions>button{min-height:44px;padding:5px 8px;font-size:10px;white-space:nowrap}
+.field-draft-actions>button{min-height:44px;padding:5px 8px;font-size:10px;white-space:nowrap;background:#2c4040;border-color:#819083}
 .field-draft-actions>button:last-child{margin-left:auto}
+.field-draft button{-webkit-tap-highlight-color:transparent}
+.field-draft button:not(:disabled):active{background:#596044;border-color:var(--gold)}
+@media(hover:hover) and (pointer:fine){
+ .field-draft button:not(:disabled):hover{background:#465a4a;border-color:#e6c892}
+}
+@media(prefers-reduced-motion:no-preference){
+ .field-draft:not([data-reduced-motion]) [data-refreshed] .field-draft-art{animation:draft-art-in 150ms cubic-bezier(.23,1,.32,1) both}
+}
+@keyframes draft-art-in{from{transform:translateX(-5px);opacity:.55}to{transform:translateX(0);opacity:1}}
 @media(pointer:coarse){.field-draft-card{grid-template-columns:47px minmax(0,1fr)}.field-draft-card kbd{display:none}}
