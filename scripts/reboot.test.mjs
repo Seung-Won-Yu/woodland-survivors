@@ -2286,9 +2286,8 @@ test('final stay and menu retreat remain partial until the exit extraction decis
  const s=quietOperation();s.operation.region=2;clearRegion(s);choose(s,'stay');const partial=snapshot(s);assert.ok(finish(partial,true,'retreat'));assert.equal(partial.result.won,false);assert.ok(!partial.stats.extractionPaid);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));assert.ok(s.result.won);assert.ok(s.operation.extracted);
 });
 test('roaming sorties let players equip from XP and activate a coastal mission before rescue',()=>{
- const s=quietOperation();
- s.operation.roaming=true;
- s.sites=regionLayout(s.seed,0).sites;
+ const {run:s}=freshSortie(emptyProfile(),17,null,'fio',null,null,null,null,true,null,true);
+ s.blocks=[];s.enemies=[];s.spawnClock=999;
  const rescue=s.sites.find(site=>site.opening),battery=s.sites.find(site=>site.coastApproach==='r');
  s.level=2;s.pendingLevels=1;
  assert.ok(action(s,'upgrade'));
@@ -2296,8 +2295,15 @@ test('roaming sorties let players equip from XP and activate a coastal mission b
  assert.ok(choose(s,'gun:r'));
  Object.assign(s.player,{x:battery.x,y:battery.y});
  step(s,dt);
+ assert.equal(battery.state,'waiting');
+ assert.ok(!s.enemies.some(enemy=>enemy.siteId===battery.id));
+ assert.equal(interaction(s)?.id,'coast-engage');
+ assert.ok(action(s,'interact'));
+ const loaded=restore(snapshot(s));
+ step(loaded,dt);
  assert.equal(rescue.state,'waiting');
- assert.equal(battery.state,'active');
+ assert.equal(loaded.sites.find(site=>site.id===battery.id).state,'active');
+ assert.equal(loaded.sites.find(site=>site.coastApproach==='f').state,'waiting');
 });
 test('a roaming front starts its boss at the growth deadline without requiring a site',()=>{
  const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);
