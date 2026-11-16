@@ -720,16 +720,24 @@ const YARD_ENTRY={arrival:ENTRY[1].arrival,routes:[
  {...ENTRY[1].routes[0],path:[[800,1040],[580,1000],[350,1000],[350,790]]},
  {...ENTRY[1].routes[1],path:[[800,1040],[1045,995],[1230,966],[1230,850]]}
 ]};
+const QUAY_ENTRY={arrival:ENTRY[2].arrival,routes:[
+ {...ENTRY[2].routes[0],path:[[720,1040],[555,1012],[395,990],[395,770]]},
+ {...ENTRY[2].routes[1],path:[[720,1040],[890,1010],[1120,1010],[1120,945]]}
+]};
 const mirrorEntry=entry=>({
  arrival:{x:1600-entry.arrival.x,y:entry.arrival.y},
  routes:entry.routes.map(route=>({...route,path:route.path.map(([x,y])=>[1600-x,y])}))
 });
 const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry])=>[index,mirrorEntry(entry)]));
 const MIRRORED_YARD_ENTRY=mirrorEntry(YARD_ENTRY);
+const MIRRORED_QUAY_ENTRY=mirrorEntry(QUAY_ENTRY);
 export const railLayoutForSeed=seed=>seed>>>2&1?'yard':undefined;
-export function frontEntry(sectorSeed,index,railLayout){
+export const portLayoutForSeed=seed=>seed>>>3&1?'quay':undefined;
+export const frontLayout=(index,operation)=>index===1?operation?.railLayout:index===2?operation?.portLayout:undefined;
+export function frontEntry(sectorSeed,index,variant){
  const mirrored=sectorSeed%2===0;
- if(index===1&&railLayout==='yard')return mirrored?MIRRORED_YARD_ENTRY:YARD_ENTRY;
+ if(index===1&&variant==='yard')return mirrored?MIRRORED_YARD_ENTRY:YARD_ENTRY;
+ if(index===2&&variant==='quay')return mirrored?MIRRORED_QUAY_ENTRY:QUAY_ENTRY;
  return (mirrored?MIRRORED_ENTRY:ENTRY)[index];
 }
 export function railWorkshopEntry(route,arrival){
@@ -749,23 +757,33 @@ export function railCenterRoute(seed,origin='arrival',railLayout){
 }
 const GANTRY_PATH=[[520,900],[510,812],[510,630],[550,520],[595,400],[595,340]];
 const GANTRY_MIRRORED=GANTRY_PATH.map(([x,y])=>[1600-x,y]);
-export function portCenterRoute(seed,origin='arrival'){
- const entry=frontEntry(mapSeed(seed,2),2),{x,y}=entry.arrival;
- const path=origin==='control'?[entry.routes[1].path.at(-1),[800,620],[800,605],[800,350]]
-  :origin==='dock'?[entry.routes[0].path.at(-1),[800,900],[800,868],[800,350]]
-  :[[x,y],[800,990],[800,350]];
- return {site:'port-center',name:'정면 돌입',sign:'정면 · 첫 가로 포격',path,labelAt:-1,color:'#cab9a4'};
+const QUAY_GANTRY=[[395,770],[430,700],[510,620],[550,520],...GANTRY_PATH.slice(-2)];
+const QUAY_GANTRY_MIRRORED=QUAY_GANTRY.map(([x,y])=>[1600-x,y]);
+export function portCenterRoute(seed,origin='arrival',portLayout){
+ const entry=frontEntry(mapSeed(seed,2),2,portLayout),{x,y}=entry.arrival;
+ const dock=entry.routes[0].path.at(-1),control=entry.routes[1].path.at(-1);
+ const sign={site:'port-center',name:'정면 돌입',sign:'정면 · 첫 가로 포격',labelAt:-1,color:'#cab9a4'};
+ if(portLayout==='quay'){
+  const side=base=>seed%2===0?1600-base:base,inner=side(680);
+  const approach=origin==='control'?[control,[800,945],[800,740]]
+   :origin==='dock'?[dock,[side(480),735]]:[[x,y],[800,985],[800,740]];
+  return {...sign,path:[...approach,[inner,700],[inner,438],[800,420],[800,350]]};
+ }
+ const path=origin==='control'?[control,[800,620],[800,605],[800,350]]
+  :origin==='dock'?[dock,[800,900],[800,868],[800,350]]:[[x,y],[800,990],[800,350]];
+ return {...sign,path};
 }
 export function portGantry(s){
  if(s.operation?.region!==2||!s.operation.portDock||s.stage!=='field')return null;
- const path=s.seed%2===0?GANTRY_MIRRORED:GANTRY_PATH,[x,y]=path.at(-1);
+ const mirrored=s.seed%2===0;
+ const path=s.operation.portLayout==='quay'?(mirrored?QUAY_GANTRY_MIRRORED:QUAY_GANTRY):(mirrored?GANTRY_MIRRORED:GANTRY_PATH);
+ const [x,y]=path.at(-1);
  return {x,y,path,name:'측면 해치',sign:'측면 해치',site:'port-gantry',labelAt:-1,color:'#b6e1c5'};
 }
 export function activeEntry(s){
  const index=s.operation?.region;
  if(!index||s.stage!=='field')return null;
- const {railLayout}=s.operation;
- const entry=frontEntry(mapSeed(s.seed,index),index,railLayout);
+ const variant=frontLayout(index,s.operation),entry=frontEntry(mapSeed(s.seed,index),index,variant);
  if(!entry)return null;
  const routes=entry.routes.flatMap(route=>{
   const [x,y]=route.path.at(-1);
@@ -786,7 +804,7 @@ export function activeEntry(s){
   const control=s.sites.find(site=>site.id==='port-control'&&site.state==='done');
   const dock=s.operation.portDock&&s.sites.find(site=>site.id==='port-landing');
   const origin=control&&(!dock||distance(s.player,control)<distance(s.player,dock))?'control':dock?'dock':'arrival';
-  const direct=portCenterRoute(s.seed,origin);
+  const direct=portCenterRoute(s.seed,origin,variant);
   if(s.operation.jammed)direct.sign='정면 · 첫 장갑탄 차단';
   const staging=portPartStaging(s);
   if(staging){
@@ -816,7 +834,7 @@ export function activeEntry(s){
   linkedRoutes.push({site:ammo.id,sign:'포대 탄약고 · 추가 보급',color:'#ecd197',path,
    ...(origin==='rail-cache'&&relayOpen?{warning:'중계기 경계 구역 인접'}:null)});
  }
- return {...entry,routes:linkedRoutes,direct:railCenterRoute(s.seed,origin,railLayout)};
+ return {...entry,routes:linkedRoutes,direct:railCenterRoute(s.seed,origin,variant)};
 }
 export function entryWaypoint(path,p){
  let best=Infinity,next=path.at(-1);
@@ -828,7 +846,7 @@ export function entryWaypoint(path,p){
  }
  return best<=145?next:path.at(-1);
 }
-export function regionLayout(seed,index=0,order=null,salvageRail=false,railLayout){
+export function regionLayout(seed,index=0,order=null,salvageRail=false,variant){
  const map=layout(seed);
  if(index===0){
   const route=beachRoute(seed);
@@ -840,21 +858,24 @@ export function regionLayout(seed,index=0,order=null,salvageRail=false,railLayou
   })};
  }
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});
- const entry=frontEntry(seed,index,railLayout),landing=i=>{const [x,y]=entry.routes[i].path.at(-1);return {x,y};};
+ const entry=frontEntry(seed,index,variant),landing=i=>{const [x,y]=entry.routes[i].path.at(-1);return {x,y};};
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});
- const mortarAtWorkshop=(seed>>>1&1)!==0,yard=railLayout==='yard';
+ const mortarAtWorkshop=(seed>>>1&1)!==0,yard=variant==='yard';
  if(index===1)return {...map,sites:[
   {id:'rail-cache',kind:'supply',name:'화차 정비대',...landing(0),guardPlan:salvageRail?'spread':mortarAtWorkshop?'mortar':'shield',state:'waiting'},
   {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),guardPlan:salvageRail?'battery':mortarAtWorkshop?'shield':'mortar',state:'waiting',progress:0},
   {id:'arsenal',kind:'armory',name:'선로 정비창',...p(350,430),state:'waiting'},
   {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...(yard?p(1270,445):p(1160,300)),state:'waiting'}
  ],blocks:[block('r1',640,yard?570:730,100,185),block('r2',640,385,100,180),block('r3',950,yard?710:600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};
+ const quay=variant==='quay';
  return {...map,sites:[
   {id:'port-landing',kind:'supply',name:'하역장 해치',...landing(0),state:'waiting',gantry:true},
   {id:'port-control',kind:'control',name:'항구 관제소',...landing(1),state:'waiting'},
   {id:'arsenal',kind:'armory',name:'시험 병기 창고',...p(280,475),state:'waiting'},
   {id:'port-ammo',kind:'supply',name:'지휘부 탄약',...p(1100,320),state:'waiting'}
- ],blocks:[block('p1',550,690,210,100),block('p2',850,470,235,100),block('p3',340,350,170,100),block('p4',1120,800,160,100),block('p5',1070,170,160,75,280)]};
+ ],blocks:[quay?block('p1',545,795,210,100):block('p1',550,690,210,100),
+  quay?block('p2',735,495,300,110):block('p2',850,470,235,100),block('p3',340,350,170,100),
+  quay?block('p4',1125,740,160,100):block('p4',1120,800,160,100),block('p5',1070,170,160,75,280)]};
 }
 export function regionBoss(index,seed=1){const d=REGIONS[index],turretSide=index===2&&seed%2===0?1:-1;return{id:'boss',type:'boss',x:800,y:180,hp:d.hp,maxHp:d.hp,r:index===1?76:65,active:false,dead:false,body:Math.PI/2,aim:Math.PI/2,mode:'aim',timer:1.3,cycle:0,spawnClock:4,kick:0,flash:0,parts:[{id:'part-a',type:'part',ox:60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25},{id:'part-b',type:'part',ox:-60*turretSide,hp:d.partHp,maxHp:d.partHp,r:25}]};}
 export const RESEARCH={

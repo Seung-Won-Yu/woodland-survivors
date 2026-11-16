@@ -1,4 +1,4 @@
-import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope,isOpeningGun,railLayoutForSeed} from './campaign.js';
+import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope,isOpeningGun,railLayoutForSeed,portLayoutForSeed} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,createCoastSortie,restore,snapshot,finish,canResumeRun} from './model.js';
 import {coastSalvage,coastTurretReturned,isSalvageCampaign,railSortieReturned} from './coast-salvage.js';
@@ -72,6 +72,8 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
   run.operation.roaming=true;
   const railLayout=railLayoutForSeed(seed);
   if(railLayout)run.operation.railLayout=railLayout;
+  const portLayout=portLayoutForSeed(seed);
+  if(portLayout)run.operation.portLayout=portLayout;
  }
  if(requisition)run.operation.requisition=requisition;
  if(requisitionAt)run.operation.requisitionAt=requisitionAt;

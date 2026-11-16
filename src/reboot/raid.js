@@ -18,6 +18,10 @@ const CONTROL={
  light:[[1330,650],[1410,750],[1410,970],[1065,1060],[965,1090]],
  armored:[[1350,690],[805,690],[805,330],[910,110]]
 };
+const QUAY_CONTROL={
+ light:[[1300,948],[1410,968],[1410,1045],[1065,1060],[965,1090]],
+ armored:[[1335,905],[1390,905],[1390,680],[1090,680],[1090,425],[1010,397],[910,110]]
+};
 
 export function raidRoute(s,contract){
  const armory=s.sites.find(site=>site.id==='arsenal'),front=s.operation?.region||0;
@@ -28,7 +32,7 @@ export function raidRoute(s,contract){
  }
  const control=s.sites.find(site=>site.id==='port-control');
  const fromControl=control&&(s.choice?.siteId===control.id||!s.choice?.siteId&&distance(control,s.player)<distance(armory,s.player));
- const [paths,flip]=fromControl?[CONTROL,control.x<800]:[front===1?RAIL:PORT,armory.x>800];
+ const [paths,flip]=fromControl?[s.operation.portLayout==='quay'?QUAY_CONTROL:CONTROL,control.x<800]:[front===1?RAIL:PORT,armory.x>800];
  return paths[contract].map(([x,y])=>({x:flip?1600-x:x,y}));
 }
 

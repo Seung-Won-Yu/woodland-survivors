@@ -1,6 +1,6 @@
 import {paintTerrain,paintTerrainMargins,paintNorthBoundary,paintCoastOpening,paintBlock,paintCoverShadow,coverMasksPilot,paintLandmark,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintEntrySigns,paintPortGantry} from './field-art.js';
 import {fieldScene} from './field-scene.js';
-import {exitGate,BOSS_ENTRY,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBossGuide,railLaneBounds} from './campaign.js';
+import {exitGate,BOSS_ENTRY,frontLayout,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBossGuide,railLaneBounds} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp,coastFanAngle,isCapturedTurret} from './content.js';
 import {activeManeuver,partPosition,pickupReach,xpInReach,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue,railFanCutCue,harborFanCue} from './model.js';
@@ -1114,12 +1114,12 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   c.setTransform(size.dpr,0,0,size.dpr,0,0);c.clearRect(0,0,size.w,size.h);c.fillStyle='#263a44';c.fillRect(0,0,size.w,size.h);c.translate(size.w/2,size.h/2);c.scale(scale,scale);c.translate(-cx,-cy);c.imageSmoothingEnabled=false;
   const shake=!reduced&&s.player.hurt>0?Math.sin(s.t*75)*3:0;c.translate(shake,0);
-  const index=s.operation?.region||0,railLayout=s.operation?.railLayout,key=`${index}:${s.seed}:${railLayout??''}`;
+  const index=s.operation?.region||0,variant=frontLayout(index,s.operation),key=`${index}:${s.seed}:${variant??''}`;
   if(edgeMargin)paintTerrainMargins(c,index,edgeMargin);
   const northMargin=view.h/2-cy;
   if(gateTop||rail&&northMargin>0)paintNorthBoundary(c,index,Math.ceil(Math.max(gateTop,northMargin))+1);
-  if(canvas.ownerDocument&&key!==terrainKey){terrainKey=key;siteStates.clear();terrainCache=canvas.ownerDocument.createElement('canvas');terrainCache.width=1600;terrainCache.height=1200;const tc=terrainCache.getContext('2d');tc.imageSmoothingEnabled=false;paintTerrain(tc,index,s.seed,art,railLayout);}
-  if(terrainCache)c.drawImage(terrainCache,0,0);else paintTerrain(c,index,s.seed,art,railLayout);
+  if(canvas.ownerDocument&&key!==terrainKey){terrainKey=key;siteStates.clear();terrainCache=canvas.ownerDocument.createElement('canvas');terrainCache.width=1600;terrainCache.height=1200;const tc=terrainCache.getContext('2d');tc.imageSmoothingEnabled=false;paintTerrain(tc,index,s.seed,art,variant);}
+  if(terrainCache)c.drawImage(terrainCache,0,0);else paintTerrain(c,index,s.seed,art,variant);
   if(opening)paintCoastOpening(c,{routes:opening.routes.filter(route=>route.site===lead?.id)});
   const visible=(x,y,padding=48)=>Math.abs(x-cx)<=view.w/2+padding&&Math.abs(y-cy)<=view.h/2+padding;
   for(const b of s.blocks)if(b.hp!==0&&visible(b.x,b.y,220))paintCoverShadow(c,b,index);
@@ -1195,7 +1195,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    }
   }
   const entities=[...s.sites.map(e=>({y:e.y,kind:'site',e})),...s.blocks.filter(e=>e.hp!==0).map(e=>({y:e.y+e.h,kind:'block',e})),...s.enemies.map(e=>({y:e.y,kind:'enemy',e})),{y:s.player.y,kind:'player',e:s.player}];
-  if(art)for(const [row,col,x,y,w] of fieldScene(index,s.seed,railLayout).landmarks)
+  if(art)for(const [row,col,x,y,w] of fieldScene(index,s.seed,variant).landmarks)
    entities.push({y,kind:'landmark',e:{row,col,x,y,w}});
   if(relayDefense)entities.push({y:relaySet.y,kind:'relay-defense',e:relaySet});
   if(gate)entities.push({y:gate.y,kind:'gate',e:gate});

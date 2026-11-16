@@ -6,7 +6,7 @@ import {OPERATORS,operatorOf,operatorId} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount,coastFanPosition} from './coast-salvage.js';
 import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
 import {HARBOR_PART_ACTION} from './choice-details.js';
-import {RAIL_SALVAGE_ROUTES,frontEntry,mapSeed,railWorkshopEntry,railLayoutForSeed} from './campaign.js';
+import {RAIL_SALVAGE_ROUTES,frontEntry,mapSeed,railWorkshopEntry,railLayoutForSeed,portLayoutForSeed} from './campaign.js';
 import {railRelayInvestment} from './model.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
@@ -95,8 +95,8 @@ const briefCopy=[
  {terrain:'컨테이너 길목과 하역장',supply:'관제소 교란 · 시험 병기',tactic:'부위를 파괴한 뒤 노출된 코어에 집중하라.'}
 ];
 function operationMap(selected,seed,order,showPreempt,openingGun,turret){
- const railLayout=railLayoutForSeed(seed),map=previewLayout(seed,selected,order,false,railLayout);
- return `<div class="operation-chart"><nav class="sector-selector" aria-label="전선 브리핑">${REGIONS.map((d,i)=>`<button class="sector-pin ${selected===i?'selected':''}" data-brief="${i}" aria-pressed="${selected===i}" aria-label="${d.name} 브리핑 보기"><span>${`0${i+1}`}</span><b>${d.name}</b><small>${i===0?'해안 교두보':i===1?'물자 수송로':'지휘 병기'}</small></button>`).join('')}</nav><div class="field-chart">${regionPreview(selected,seed,null,order,showPreempt,openingGun,turret,railLayout)}<span class="chart-direction">N ↑</span><div class="chart-legend"><strong>${REGIONS[selected].name}</strong><span class="chart-key"><i></i>투입 지점</span><span class="chart-key boss"><i></i>보스 진입</span>${map.sites.map(n=>`<span class="chart-site ${n.state==='done'?'done':''}"><svg viewBox="-30 -30 60 60" aria-hidden="true">${siteSymbol(n,0,0,21)}</svg><span>${sitePresentation(n).name}${n.state==='done'?'<small>확보 완료</small>':''}</span></span>`).join('')}</div></div></div>`;
+ const variant=selected===2?portLayoutForSeed(seed):railLayoutForSeed(seed),map=previewLayout(seed,selected,order,false,variant);
+ return `<div class="operation-chart"><nav class="sector-selector" aria-label="전선 브리핑">${REGIONS.map((d,i)=>`<button class="sector-pin ${selected===i?'selected':''}" data-brief="${i}" aria-pressed="${selected===i}" aria-label="${d.name} 브리핑 보기"><span>${`0${i+1}`}</span><b>${d.name}</b><small>${i===0?'해안 교두보':i===1?'물자 수송로':'지휘 병기'}</small></button>`).join('')}</nav><div class="field-chart">${regionPreview(selected,seed,null,order,showPreempt,openingGun,turret,variant)}<span class="chart-direction">N ↑</span><div class="chart-legend"><strong>${REGIONS[selected].name}</strong><span class="chart-key"><i></i>투입 지점</span><span class="chart-key boss"><i></i>보스 진입</span>${map.sites.map(n=>`<span class="chart-site ${n.state==='done'?'done':''}"><svg viewBox="-30 -30 60 60" aria-hidden="true">${siteSymbol(n,0,0,21)}</svg><span>${sitePresentation(n).name}${n.state==='done'?'<small>확보 완료</small>':''}</span></span>`).join('')}</div></div></div>`;
 }
 
 function turretOpeningPlan(seed,sites,rescue,fan,showPreempt,operator){
