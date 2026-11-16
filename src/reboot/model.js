@@ -195,7 +195,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -443,7 +443,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
   if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
   const part=s.raid.part,designated=isSalvageCampaign(s)&&contract==='armored';
-  if(designated&&[RULES.balanceRevision,'b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
+  if(designated&&[RULES.balanceRevision,'b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
   if(part!==undefined&&(!designated||part!==null&&(
    !['coil','catalyst','ricochet'].includes(part?.module)||part.rank!==2&&!(part.module==='catalyst'&&part.rank===3))))fail();
   if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
@@ -462,7 +462,7 @@ export function restore(raw,{allowPrevious=false}={}){
  const defense=s.challenge?.type==='defend'?s.challenge:null;
  if(s.challenge?.safeTransmission!==undefined&&(!defense||defense.safeTransmission!==true||s.operation?.region!==1||s.stage!=='holdout'))fail();
  if(defense&&(![defense.progress,defense.duration,defense.strike].every(Number.isFinite)
-  ||[RULES.balanceRevision,'b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
+  ||[RULES.balanceRevision,'b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
  const relayRounds=s.hazards.filter(h=>h?.relayDefense!==undefined);
  const liveDefense=defense?.state==='active'&&!defense.secured||defense?.state==='withdrawn'&&s.phase==='result';
  if(relayRounds.length>1||relayRounds.some(h=>h.relayDefense!==true||!defense?.safeTransmission||h.lane
@@ -501,7 +501,13 @@ export function restore(raw,{allowPrevious=false}={}){
 export function pause(s){if(s.phase==='result'||s.phase==='paused')return;s.resumePhase=s.phase;s.phase='paused';}
 export function resume(s){if(s.phase==='paused'){s.phase=s.resumePhase||'playing';delete s.resumePhase;}}
 export function xpNeeded(s){return s.level<=17?RULES.xpCosts[s.level-1]:90+(s.level-18)*7;}
-export function pickupReach(s){return 65+s.boosts.pickup*10+moduleRank(s,'magnet')*30+(s.operation?.support==='recovery'?55:0);}
+export function pickupReach(s){
+ const reach=s.operation?.roaming&&s.player.pickupSweep?112:65;
+ return reach+s.boosts.pickup*10+moduleRank(s,'magnet')*30+(s.operation?.support==='recovery'?55:0);
+}
+export function xpInReach(s,gem,reach=pickupReach(s)){
+ return distance(gem,s.player)<reach&&(!s.operation?.roaming||groundLineClear(s,s.player,gem));
+}
 export function coastPartOpportunity(s){
  const coast=coastAtShore(s);
  if(!isSalvageCampaign(s)||!coast||s.operator==='marco'||coast.progress>=COAST_SALVAGE.steps.at(-1)||!['field','holdout'].includes(s.stage)
@@ -3221,6 +3227,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
   if(trail)leaveInfernoWake(s,trail,startX,startY);
   if(s.operator==='marco')p.moveAim=Math.atan2(iy,ix);
  }
+ if(s.operation?.roaming)p.pickupSweep=p.x!==startX||p.y!==startY;
  const kit=PORT_SUPPORT.overrun;
  const coreCut=coreDash&&Number.isFinite(p.portCutX)&&Math.abs(p.x-p.portCutX)>=kit.sideStep;
  if((coreEntry||coreCut)&&distance(p,b)<=coreReach&&!lineBlocked(s,p,b)){
@@ -3308,10 +3315,9 @@ export function step(s,dt,input={x:0,y:0},view=null){
  const reach=pickupReach(s);
  for(const gem of s.gems){
   gem.age+=dt;
-  if(gem.pickup)continue;
+  if(gem.pickup||!xpInReach(s,gem,reach))continue;
   const d=distance(gem,p);
-  if(d>=reach)continue;
-  const pull=Math.min(1,dt*10);
+  const pull=dt*(s.operation?.roaming?16:10);
   gem.x+=(p.x-gem.x)*pull;gem.y+=(p.y-gem.y)*pull;
   if(d<22){pickedXp+=gem.value;salvage||=!!gem.salvage;gem.collected=true;}
  }

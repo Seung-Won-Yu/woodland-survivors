@@ -2370,6 +2370,26 @@ test('roaming field supplies use distinct blast and XP effects',()=>{
  assert.equal(s.gems.length,0);
  assert.equal(s.xp,elsewhere);
 });
+test('roaming XP follows real movement and respects cover',()=>{
+ const s=quietOperation();
+ s.operation.roaming=true;
+ s.blocks=[{id:'cover',x:760,y:750,w:24,h:115,hp:-1}];
+ const open={x:800,y:905,value:3,age:0},behindCover={x:750,y:800,value:4,age:0};
+ s.gems=[open,behindCover];
+ step(s,dt,{x:-1,y:0});
+ assert.equal(s.player.x,800);
+ assert.equal(pickupReach(s),65);
+ assert.deepEqual(s.gems.map(g=>[g.x,g.y]),[[800,905],[750,800]]);
+ step(s,dt,{x:1,y:0});
+ assert.equal(pickupReach(s),112);
+ assert.ok(open.y<905);
+ assert.deepEqual([behindCover.x,behindCover.y],[750,800]);
+ tick(s,.3,{x:0,y:1});
+ assert.equal(s.xp,3);
+ assert.deepEqual(s.gems,[behindCover]);
+ step(s,dt);
+ assert.equal(pickupReach(s),65);
+});
 test('seed 19 can extract after all three fronts with evolved fire and no checkpoint edits',()=>{
  const run=pilot(19,'fire',{operation:true,pursuit:'all',maxSeconds:240});
  assert.ok(run.won&&!run.stalled);assert.equal(run.regions,3);assert.ok(run.hp>0);assert.ok(run.weapons.some(w=>w.id==='f'&&w.evolved));
