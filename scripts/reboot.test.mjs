@@ -2349,6 +2349,38 @@ test('roaming rail and harbor missions wait for a local interaction',()=>{
   assert.ok(loaded.enemies.some(e=>e.siteId===id));
  }
 });
+test('a coastal reinforcement pulse gives two readable approaches and a gap before the next wave',()=>{
+ for(const seed of [26,27]){
+  const {run}=freshSortie(emptyProfile(),seed,null,'fio',null,null,null,null,true,null,true);
+  run.enemies=[];run.spawnClock=0;run.director.pack=8;run.operation.regionTime=20;
+  Object.assign(run.player,{x:800,y:980,aim:-Math.PI/2});
+  for(const site of run.sites)site.state='done';
+  step(run,dt);
+  const columns=run.effects.filter(f=>f.coastalColumn);
+  assert.equal(columns.length,2);
+  assert.ok(Math.hypot(columns[0].x-columns[1].x,columns[0].y-columns[1].y)>400);
+  assert.equal(run.enemies.length,11);
+  for(const enemy of run.enemies){
+   assert.equal(enemy.cohort,'ambient');
+   assert.ok(Math.hypot(enemy.x-run.player.x,enemy.y-run.player.y)>330);
+   assert.ok(!overlapsCover(run,enemy,enemy.r));
+  }
+  assert.ok(run.spawnClock>2.5);
+  takeEvents(run);
+  const saved=restore(snapshot(run));
+  step(saved,dt);step(run,dt);
+  assert.deepEqual(saved,run);
+ }
+ const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);
+ run.enemies=[];run.spawnClock=0;run.director.pack=8;run.operation.regionTime=20;
+ Object.assign(run.player,{x:800,y:980,aim:-Math.PI/2});
+ run.blocks=[{x:40,y:60,w:700,h:1080,hp:-1},{x:860,y:60,w:700,h:1080,hp:-1}];
+ for(const site of run.sites)site.state='done';
+ step(run,dt);
+ assert.ok(!run.effects.some(f=>f.coastalColumn));
+ assert.ok(run.enemies.length<=5);
+ assert.equal(run.spawnClock,1.9);
+});
 test('a roaming front starts its boss at the growth deadline without requiring a site',()=>{
  const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);
  s.sites.forEach(site=>{site.state='waiting';});

@@ -1080,7 +1080,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    const showcase=s.powerWave?.showcase;
    const wake=showcase==='flame'&&s.effects.findLast(f=>f.type==='wake-flash'&&f.age<.22);
    const strike=wake||showcase&&s.effects.findLast(f=>{
-    if(f.type==='formation')return true;
+    if(f.type==='formation')return !f.coastalColumn;
     if(showcase==='rocket')return f.type==='salvo-impact'||f.type==='captured-impact';
     if(showcase==='quad')return f.type==='quad-contact';
     return showcase==='flame'?f.type==='flame'&&f.evolved:f.type==='payload-impact'||f.type==='payload-relay';
