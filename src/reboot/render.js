@@ -1,5 +1,6 @@
 import {paintTerrain,paintTerrainMargins,paintNorthBoundary,paintCoastOpening,paintBlock,paintCoverShadow,coverMasksPilot,paintLandmark,paintSiteGround,paintSite,paintSiteLabel,paintGate,paintGateApproach,paintWreckGround,paintWreckSmoke,paintFrontEntry,paintEntryRoutes,paintEntrySigns,paintPortGantry} from './field-art.js';
 import {fieldScene} from './field-scene.js';
+import {coastCaches,FIELD_KITS,movingReload} from './coast-discovery.js';
 import {exitGate,BOSS_ENTRY,frontLayout,coastStagingPoint,portPartStaging,portCoreWindow,portCoreDisrupted,portCoreReach,portCrossfireCuts,PORT_SUPPORT,portFlankPoint,portArmorExposed,portTurretShutter,portGantry,portGantryBypass,portTurretSide,portWakePoint,portWakeBreach,portWakeMode,portAidCue,portAidCounterTarget,portAidCounterRound,portEscapeLanes,railGunOf,railLaneLabel,COAST_MORTAR,orderTarget,coastFork,coastLead,coastLeadColor,coastEncounterCue,coastShieldImpact,coastMortarAiming,coastMortarThreatens,activeEntry,railBossGuide,railLaneBounds} from './campaign.js';
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp,coastFanAngle,isCapturedTurret} from './content.js';
@@ -11,6 +12,19 @@ import {operatorOf,focusLane,canUseSkill} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastRoleTarget,coastTurretLane,coastSalvageWreck} from './coast-salvage.js';
 const TAU=Math.PI*2;
 const FORMATION_INK={flame:'#f1b477',fusion:'#abe5d7',rocket:'#edd3a3',quad:'#e4e5a9'};
+function paintFieldCache(c,art,cache,near){
+ const {x,y,seen,kit}=cache,color=FIELD_KITS[kit].color;
+ c.save();c.translate(x,y);
+ c.fillStyle='#242d2a68';c.beginPath();c.ellipse(0,4,27,9,0,0,TAU);c.fill();
+ if(art)prop(c,art,2,0,0,0,58);
+ else{c.fillStyle='#455349';c.fillRect(-24,-26,48,26);c.fillStyle='#929477';c.fillRect(-26,-28,52,5);}
+ c.fillStyle=seen?color:'#d5b37b';c.fillRect(-4,-15,8,4);
+ if(near&&seen){
+  c.beginPath();c.moveTo(-8,-40);c.lineTo(0,-33);c.lineTo(8,-40);
+  c.strokeStyle='#1d2b29';c.lineWidth=6;c.stroke();c.strokeStyle=color;c.lineWidth=3;c.stroke();
+ }
+ c.restore();
+}
 function circle(c,x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(0,r),0,TAU);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
 const relaySet={x:DEFENSE_ZONE.x,y:DEFENSE_ZONE.y-13};
 function paintRelayGround(c,s,round){
@@ -1182,6 +1196,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(entry)paintFrontEntry(c,entry.x,entry.y,index,entry.age,reduced);
   for(const n of s.sites){const previous=siteStates.get(n.id);siteStates.set(n.id,{state:n.state,collected:previous&&previous.state!=='done'&&n.state==='done'?s.t:previous?.collected});}
   for(const n of s.sites)paintSiteGround(c,n,distance(n,s.player)<185,n.state==='active');
+  for(const cache of coastCaches(s))if(visible(cache.x,cache.y))paintFieldCache(c,art,cache,distance(cache,s.player)<180);
   if(sweep)paintSweepGround(c,sweep,reduced);
   for(const n of s.sites)if(n.kind==='relay'&&n.state==='active'){circle(c,n.x,n.y,125,'#83c5a40b','#c7dfb566',1);c.strokeStyle='#e8d49a';c.lineWidth=2;c.beginPath();c.arc(n.x,n.y,125,-Math.PI/2,-Math.PI/2+n.progress/5*TAU);c.stroke();}
   for(const [a,b] of infernoWakeLinks(s))if(visible(a.x,a.y,a.r)||visible(b.x,b.y,b.r))paintWakeLink(c,a,b);
@@ -1324,6 +1339,9 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
     const burst=s.operator==='marco'&&s.effects.findLast(f=>f.type==='focus-shot'&&f.age<.14),aim=burst?burst.angle:e.aim;
     if(art)actor(c,art.operators,operatorOf(s).row+(Math.sin(aim)<-.6?1:0),e.moving?Math.floor(e.walk)%4:0,e.x+bx,e.y,64,Math.cos(aim)<0);else{c.fillStyle='#edb063';c.fillRect(e.x-13,e.y-44,26,44);}c.filter='none';
     if(art&&hasTurret)paintCapturedMount(c,art,e,turretVolley,reduced);
+    if(movingReload(s)){
+     c.fillStyle=FIELD_KITS.stride.color;c.fillRect(e.x-13,e.y+4,8,2);c.fillRect(e.x+5,e.y+4,8,2);
+    }
     if(e.overdrive>0){c.strokeStyle='#ffce72aa';c.lineWidth=2;c.beginPath();c.arc(e.x,e.y-24,35,s.t*3,s.t*3+4.6);c.stroke();}
     const maneuver=activeManeuver(e);if(maneuver){c.fillStyle=maneuver==='brace'?'#f8cf7e':'#9becbe';for(const side of [-1,1])c.fillRect(e.x+side*22-3,e.y+6,6,2);}
    }else if(item.kind==='signal-cargo'){

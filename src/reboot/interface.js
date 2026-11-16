@@ -1,4 +1,5 @@
 import {regionPreview,previewLayout,sitePresentation,siteSymbol,coastOpeningBrief,railSalvagePreview} from './field-scene.js';
+import {FIELD_KITS} from './coast-discovery.js';
 import {REGIONS,RESEARCH,RESEARCH_PROOFS,RESEARCH_PROOF_CREDITS,researchProofProgress,pickedResearchTrials,REQUISITION_FEE,requisitionDestination,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,COAST_STRIKES,COAST_RESPONSE,HOLDOUT,HOLDOUT_CONTRACTS,defenseSeconds,coastApproach,coastPreemptGun,isOpeningGun,COAST_SALVAGE_LEVEL,beachRoute,railGarrison,holdoutParts,SORTIE_ORDERS,sortieOrder,orderRecordScope,orderBonus,operationCredits} from './campaign.js';
 import {GUNS,MODULES,RULES,CAPTURED_TURRET,bearing,distance,makeWeapon,compatible,weaponStats,capstoneName,isCapturedTurret} from './content.js';
 import {canLaunchOrder,canReserveResearch,earnsWireOrder,marcoRecord,orderUnlocked,sortieResearchTrials} from './profile.js';
@@ -750,8 +751,12 @@ export function reportView(r,p,{archived=false}={}){
  const railPace=reference?.goal==='rail-return';
  const quick=!archived&&!!r.operation?.roaming;
  const payoff=harborPayoff(r);
+ const found=r.operation?.exploration?.kit;
+ const fieldKit=Object.hasOwn(FIELD_KITS,found)?FIELD_KITS[found]:null;
+ const fieldUses=found==='burst'?r.stats.fieldKitBursts:r.stats.fieldKitShots;
  const summary=`<section class="debrief-summary" aria-label="전선과 장비 기록">
     ${coast&&!carriesCoastSalvage(r)?'':(railPace?'':debriefPace(r,reference))+debriefRoute(r.operation,r.stats,reference)}${debriefEquipment(r,reference)}${crossfireReport(r)}${signalReport(r)}
+    ${fieldKit?`<p><b>${fieldKit.name}</b> · ${found==='burst'?`파편 발동 ${n(fieldUses)}회`:`이동 연사 ${n(fieldUses)}회`}</p>`:''}
    </section>`;
  const build=salvageCampaignReport(r),primaryBuild=!quick||r.won||returned;
  return `<section class="sheet report-sheet"${quick?' data-quick-debrief':''} role="dialog" aria-modal="true" aria-labelledby="result-title">

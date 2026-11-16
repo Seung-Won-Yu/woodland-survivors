@@ -1496,7 +1496,7 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
 .roaming-field:not([data-roam-contract]) #holdout-intel{display:none}
 #holdout-preview{color:#ffdf9d;font-size:10px;line-height:1.45;word-break:keep-all}
 .roaming-field #weapons .weapon.empty{display:none}
-body.roaming-field .arsenal #support-status:not([hidden]){display:none}
+body.roaming-field .arsenal #support-status:not([hidden]):not([data-field-kit]){display:none}
 .roaming-field #gear[data-mode="repair"]{background:#384739;border-color:#acbb9b;color:#efefd4}
 @media(max-width:700px){
  .roaming-field:not(.boss-active,.raid-active,.coast-warning) .field-stack{top:calc(max(12px,env(safe-area-inset-top)) + 66px)}

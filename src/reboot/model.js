@@ -1,3 +1,4 @@
+import {coastCaches,FIELD_KITS,movingReload,validCoastDiscovery} from './coast-discovery.js';
 import {REGIONS,RESEARCH,frontTimeLeft,requisitionFront,requisitionStation,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,PORT_TURRET,PORT_BARRAGE,PORT_CENTER,portBarrageAxis,portJamsSweep,portCrossfireCuts,portCrossfireZone,portBarrageRounds,portBarrageMark,portRelayCuts,portSignalCuts,portConductiveSignal,PORT_CONDUCTIVE_SIGNAL,PORT_LANDING,BOSS_ENTRY,railGarrison,wireGarrison,relayCrewLeft,portGantry,portPartStaging,portTacticKeys,FRONT_TACTICS,RAIL_BARRAGE,railDisarmed,railGunOf,railGunLabel,railLaneContains,DEFENSE_ZONE,RELAY_SHELL,relayDefenseRound,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,SIGNAL_ESCORT_COUNT,signalLane,signalPosition,signalCargo,signalEscortPlan,COAST_APPROACHES,COAST_SALVAGE_LEVEL,COAST_PREEMPT_RANGE,COAST_PREEMPT_ESCORT,COAST_RAID_PATROL_DELAY,COAST_SHIELD_BEARING,bracingCoastEscort,shieldFaces,COAST_RESPONSE,coastPreemptSite,coastOpeningGun,isOpeningGun,coastCrossGun,coastTacticalLootAvailable,COAST_WING,COAST_MORTAR,coastMortarWait,COAST_STRIKES,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,coastLead,coastalThermalPrep,frontTactic,portBreachFlank,portArmorRound,portArmorOpportunity,portArmorFlank,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portTurretShutter,portTurretSide,portWakePoint,portWakeMode,portAidPoint,portAidWindow,portAidCounterRound,portAidCounterReady,portAidCounterTarget,defenseSeconds,holdoutContract,portBatteryPositions,signalCourier,region,regionLayout,mapSeed,frontEntry,frontLayout,railLayoutForSeed,portLayoutForSeed,regionBoss,gatePosition,exitGate,sortieOrder,holdoutTier,holdoutOpeningDelay,holdoutRewardParts,canAdvanceWithVanguard,vanguardAid,HOLDOUT,railHasRelay,railHasWire,railDecoyReady,railBarrageAim,railBarrageRounds} from './campaign.js';
 import {RULES,VERSION,FIELD,GUNS,MODULES,QUALITY,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,INFERNO_WAKE,isConductiveFusion,CONDUIT_MORTAR,EMBER_CHARGE,capstoneName,fusionTitle,makeWeapon,tags,moduleRank,moduleGain,gunEquipLevel,rankChoiceLevel,compatible,canReplaceModule,completionModules,buildPaths,railCalibration,refitWeapons,canEvolve,canFuse,heatSynergyReady,weaponStats,distance,blastContactRadius,clamp,layout,rayBoxDistance,CAPTURED_TURRET,COAST_FAN,coastFanAngle,isCapturedTurret} from './content.js';
 import {raidRoute,raidOnNose,raidCursor} from './raid.js';
@@ -196,7 +197,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b81-rail-yard-layouts','b80-roaming-capstone-formations','b79-moving-xp-recovery','b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b82-harbor-quay-layouts','b81-rail-yard-layouts','b80-roaming-capstone-formations','b79-moving-xp-recovery','b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -286,6 +287,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(s.operation.roaming!==undefined&&(s.operation.roaming!==true||!isSalvageCampaign(s)))fail();
   if(s.operation.railLayout!==undefined&&(!s.operation.roaming||s.operation.railLayout!==railLayoutForSeed(s.seed)))fail();
   if(s.operation.portLayout!==undefined&&(!s.operation.roaming||s.operation.portLayout!==portLayoutForSeed(s.seed)))fail();
+  if(s.operation.exploration!==undefined&&!validCoastDiscovery(s))fail();
   const {requisition,requisitionAt,requisitionClaimed}=s.operation;
   if(requisition!==undefined&&(order!==undefined||!Object.hasOwn(RESEARCH,requisition)||!s.research.includes(requisition)||s.trials?.includes(requisition)))fail();
   if(requisitionAt!==undefined&&(requisitionAt!=='coast'||!RESEARCH[requisition]?.fieldGun))fail();
@@ -446,7 +448,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
   if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
   const part=s.raid.part,designated=isSalvageCampaign(s)&&contract==='armored';
-  if(designated&&[RULES.balanceRevision,'b81-rail-yard-layouts','b80-roaming-capstone-formations','b79-moving-xp-recovery','b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
+  if(designated&&[RULES.balanceRevision,'b82-harbor-quay-layouts','b81-rail-yard-layouts','b80-roaming-capstone-formations','b79-moving-xp-recovery','b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
   if(part!==undefined&&(!designated||part!==null&&(
    !['coil','catalyst','ricochet'].includes(part?.module)||part.rank!==2&&!(part.module==='catalyst'&&part.rank===3))))fail();
   if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
@@ -465,7 +467,7 @@ export function restore(raw,{allowPrevious=false}={}){
  const defense=s.challenge?.type==='defend'?s.challenge:null;
  if(s.challenge?.safeTransmission!==undefined&&(!defense||defense.safeTransmission!==true||s.operation?.region!==1||s.stage!=='holdout'))fail();
  if(defense&&(![defense.progress,defense.duration,defense.strike].every(Number.isFinite)
-  ||[RULES.balanceRevision,'b81-rail-yard-layouts','b80-roaming-capstone-formations','b79-moving-xp-recovery','b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
+  ||[RULES.balanceRevision,'b82-harbor-quay-layouts','b81-rail-yard-layouts','b80-roaming-capstone-formations','b79-moving-xp-recovery','b78-voluntary-front-missions','b77-voluntary-coastal-missions','b76-roaming-fronts','b75-coast-holdout-parts','b74-inland-patrols','b73-coast-recovery','b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
  const relayRounds=s.hazards.filter(h=>h?.relayDefense!==undefined);
  const liveDefense=defense?.state==='active'&&!defense.secured||defense?.state==='withdrawn'&&s.phase==='result';
  if(relayRounds.length>1||relayRounds.some(h=>h.relayDefense!==true||!defense?.safeTransmission||h.lane
@@ -821,15 +823,23 @@ function closingInvestment(s,offered,rest){
 function levelCards(s){
  if(s.operation?.roaming&&!s.firstNew&&s.weapons.length===1&&!s.weapons[0].capturedTurret){
   const newWeapons=['f','r'].filter(id=>!s.excluded.includes(id)).map(id=>newGun(id,'새 무기'));
-  if(newWeapons.length)return fillCards(s,[...newWeapons,gunCard(s.weapons[0])]);
+  if(newWeapons.length){
+   if(s.operation.exploration){
+    const weapon=newWeapons[(s.seed>>>3)%newWeapons.length];
+    return [weapon,gunCard(s.weapons[0]),utility('pickup')];
+   }
+   return fillCards(s,[...newWeapons,gunCard(s.weapons[0])]);
+  }
  }
  const investments=currentInvestments(s),guns=upgradeable(s),missed=guns.filter(w=>!s.offeredWeapons.slice(-2).some(ids=>ids.includes(w.id)));
- const primary=s.operation?.roaming&&guns.find(w=>w.id===s.firstNew);
+ const primary=s.operation?.roaming&&!s.operation.exploration&&guns.find(w=>w.id===s.firstNew);
  const a=primary?gunCard(primary):guns.length?gunCard(pick(s,'supply',missed.length?missed:guns)):investments[0];
  const rest=investments.filter(c=>c.id!==a?.id);
  const newModules=s.operation&&s.modules.length<4&&(!rest.length||s.modules.length===0||s.offeredWeapons.length%3===2)?modulePool(s).filter(id=>!moduleRank(s,id)):[];
  const trial=trialModule(s,newModules);
- const b=trial?trialCard(trial):newModules.length?{...moduleCard(pick(s,'supply',newModules)),label:'새 발동 모듈'}:rest.length?pick(s,'supply',rest):null;
+ const alternate=s.operation?.exploration&&s.operation.region===0&&s.weapons.length<3&&s.offeredWeapons.length%3===2
+  &&['f','r'].find(id=>!s.weapons.some(w=>w.id===id||w.fusion?.secondary===id)&&!s.excluded.includes(id));
+ const b=trial?trialCard(trial):alternate?newGun(alternate):newModules.length?{...moduleCard(pick(s,'supply',newModules)),label:'새 발동 모듈'}:rest.length?pick(s,'supply',rest):null;
  const close=b?.trial?null:closingInvestment(s,[a,b],rest);
  const support=utility(s.boosts.pickup<3&&rng(s,'supply')<.45?'pickup':'health');
  const cards=a||b?fillCards(s,[a,close||b,support]):['power','health','charge'].map(utility);
@@ -1682,6 +1692,20 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   emit(s,'raid-success',e.x,e.y,{quality:s.raid.quality,text:ordered?'보급선 절단 · 귀환 시 지령 보상':`${QUALITY[s.raid.quality]} 보급 탈취`,life:1.4});return;
  }
  e.dead=true;e.death=.3;scoreKill(s,e,source,kind,ignitedPayload,owner);
+ if(source==='native'&&s.operation?.exploration?.kit==='burst')fireFieldFragments(s,e);
+}
+function fireFieldFragments(s,origin){
+ const discovery=s.operation.exploration,{range,damage:amount,reload}=FIELD_KITS.burst;
+ if(s.t<(discovery.until??0))return;
+ const targets=alive(s).filter(e=>distance(e,origin)<range&&groundLineClear(s,origin,e))
+  .sort((a,b)=>distance(a,origin)-distance(b,origin)).slice(0,2);
+ if(!targets.length)return;
+ discovery.until=s.t+reload;
+ s.stats.fieldKitBursts=(s.stats.fieldKitBursts||0)+1;
+ for(const e of targets){
+  emit(s,'ricochet',origin.x,origin.y,{x2:e.x,y2:e.y,life:.28});
+  damage(s,e,amount,'blast','field-kit');
+ }
 }
 function feed(s,owner,weight,target,breachLane){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}
@@ -2507,9 +2531,9 @@ function railWorkshopSettingUp(s){
  const wings=s.enemies.filter(e=>e.railWing!==undefined&&!e.dead&&e.hp>0);
  return wings.length>0&&wings[0].spawnAge<RAIL_WORKSHOP_FAN.setup&&wings.some(e=>e.railWing!==wings[0].railWing);
 }
-const voluntarySite=(s,site)=>s.operation?.roaming&&(s.operation.region>0||!!site.coastApproach);
+const voluntarySite=(s,site)=>s.operation?.roaming&&(s.operation.region>0||!!site.coastApproach||!!s.operation.exploration);
 const siteEngageLabels={
- 'supply-b':'보급차 호위 제압','supply-c':'박격포 진지 제압',
+ 'supply-a':'포로 구출 시작','supply-b':'보급차 호위 제압','supply-c':'박격포 진지 제압',
  'rail-cache':'화차 정비대 확보','rail-relay':'중계기 확보 · 조준 유인','rail-ammo':'포대 탄약고 확보',
  'port-landing':'해치 확보 · 측면 기습','port-control':'관제소 확보 · 포격 차단','port-ammo':'지휘부 탄약 확보',
  arsenal:'병기 창고 확보'
@@ -2927,6 +2951,8 @@ export function interaction(s){
  if(gate&&distance(s.player,gate)<(s.operation?92:140))return{id:'extract',label:isSalvageCampaign(s)&&s.operation.region===1?'귀환 · 전진 선택':canAdvanceFront(s)?'전진 · 잔류 선택':'귀환 선택'};
  const cargo=signalCargo(s);
  if(cargo&&distance(s.player,cargo)<=SIGNAL_CARGO_REACH&&!lineBlocked(s,s.player,cargo))return {id:'signal-cargo',label:'통신 화물 회수'};
+ const cache=coastCaches(s).find(c=>distance(s.player,c)<=73&&groundLineClear(s,s.player,c));
+ if(cache)return {id:'field-kit',cache,label:`${FIELD_KITS[cache.kit].name} 장착`,detail:FIELD_KITS[cache.kit].detail};
  const site=nearbyVoluntarySite(s);
  return site?{id:'site-engage',site,label:siteEngageLabels[site.id]||'거점 교전 시작'}:null;
 }
@@ -3056,6 +3082,12 @@ export function action(s,kind,input){
    return true;
   }
   if(item.id==='site-engage'){item.site.engaged=true;return true;}
+  if(item.id==='field-kit'){
+   item.cache.seen=true;
+   s.operation.exploration.kit=item.cache.kit;
+   emit(s,'field-kit',item.cache.x,item.cache.y,{text:`${FIELD_KITS[item.cache.kit].name} 장착`,life:1.1});
+   return true;
+  }
   if(item.id==='secure-turret'){
    const coast=coastSalvage(s);
    coast.turret='securing';
@@ -3281,7 +3313,9 @@ export function step(s,dt,input={x:0,y:0},view=null){
  }
  updatePowerWave(s,dt);
  const coast=coastSalvage(s),fieldReload=coast&&s.operator!=='marco'?1-coastRoleBonus(s.operator,coastRoleRank(coast)):1;
- const cadence=(p.overdrive>0?.65:1)*(activeManeuver(p)==='assault'?.78:1)*fieldReload;
+ const reloading=movingReload(s);
+ const cadence=(p.overdrive>0?.65:1)*(activeManeuver(p)==='assault'?.78:1)*fieldReload
+  *(reloading?FIELD_KITS.stride.interval:1);
  for(const w of s.weapons){
   w.cd-=dt;w.payloadCd=Math.max(0,w.payloadCd-dt);
   if(w.uid===COAST_TURRET_STARTER&&w.shots===0&&coastFanRescue(s)){
@@ -3293,6 +3327,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
   if(w.cd<=0||counter?.state==='ready'){
    const fired=shoot(s,w,counter);
    if(fired||w.cd<=0)w.cd=fired?weaponStats(w).interval*cadence:0;
+   if(fired&&reloading)s.stats.fieldKitShots=(s.stats.fieldKitShots||0)+1;
   }
  }
  if(s.operation?.coastStrike==='r'&&s.operation.region===0&&b.mode==='windup')fireCoastSignal(s);
@@ -3348,6 +3383,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  }
  p.pickupBudget=Math.min(3,(p.pickupBudget??3)+dt*3);
  if(pickedXp){
+  if(s.operation?.exploration?.kit==='stride'&&p.pickupSweep)s.operation.exploration.until=s.t+FIELD_KITS.stride.duration;
   gainXp(s,pickedXp);p.pickupTime=.6;s.gems=s.gems.filter(g=>!g.collected);
   const gained=Math.min(pickedXp*.15,p.pickupBudget);
   if(s.operation?.support==='recovery'&&p.hp>0){
@@ -3380,6 +3416,8 @@ export function step(s,dt,input={x:0,y:0},view=null){
   }
   s.queue.push({type:'raid-reward',source:'습격 성공 · 새 보급',cards:crateCards(s,quality,contract),extra:{quality,contract,wagerQuality:wager.quality}});
  }
+ for(const cache of coastCaches(s))
+  if(!cache.seen&&distance(cache,p)<=180&&groundLineClear(s,p,cache))cache.seen=true;
  updateSites(s,dt);nextChoice(s);
 }
 export function takeEvents(s){const e=s.events;s.events=[];return e;}
