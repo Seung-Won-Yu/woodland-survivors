@@ -1487,7 +1487,7 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
 .quick-command .operator-selector small,.quick-command .operator-selector button>span,.quick-start .sortie-role{display:none}
 .quick-command .operator-selector button{display:flex;min-height:44px}
 .quick-start .sortie-kit{margin:7px 0;padding:0}
-.roaming-field :is(#operation-track,#stage,#field-direct,#coast-part-cue,#rail-arrival-kit,#modules,#support-status,#maneuver-status){display:none}
+.roaming-field :is(#operation-track,#stage,#field-direct,#coast-part-cue,#rail-arrival-kit,#modules,#maneuver-status,#charge){display:none}
 .roaming-field #field-intel:not([data-coast-recovery]){display:none}
 .roaming-field #score{display:none}
 .roaming-field #time[data-front-clock]{font-size:clamp(12px,2vw,20px);color:#f7d595;font-weight:700}
@@ -1495,5 +1495,12 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
 .roaming-field #field-objective{padding-block:7px}
 .roaming-field:not([data-roam-contract]) #holdout-intel{display:none}
 .roaming-field #weapons .weapon.empty{display:none}
-.roaming-field .arsenal #support-status{display:none}
+body.roaming-field .arsenal #support-status:not([hidden]){display:none}
+.roaming-field #gear[data-mode="repair"]{background:#384739;border-color:#acbb9b;color:#efefd4}
+@media(max-width:700px){
+ .roaming-field:not(.boss-active,.raid-active,.coast-warning) .field-stack{top:calc(max(12px,env(safe-area-inset-top)) + 66px)}
+ .roaming-field .arsenal #weapons .weapon{min-width:60px;min-height:33px;padding:3px 6px 3px 29px}
+ .roaming-field .arsenal #weapons .weapon>.kit-sprite{top:2px;left:0;width:29px;height:29px}
+ .roaming-field .arsenal #weapons .weapon small{font-size:8px}
+}
 @media(max-width:700px){.quick-hangar:has([data-starter]) .quick-portrait{height:clamp(45px,12dvh,82px)}}

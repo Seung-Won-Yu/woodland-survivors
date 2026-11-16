@@ -322,7 +322,15 @@ function showChoices(){
   ${capstones.length?paths:''}
  </section>`);
 }
-function showPause(){panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="pause-title"><span class="eyebrow">작전 일시정지</span><h2 id="pause-title">다음 한 수를 준비하라.</h2><p>${run.operation?`${run.operation.region+1}/${sortieFrontCount(run)} ${region(run).name} · ${fmt(run.t)} · LV.${run.level}`:'전투 중'}<br>${run.stage==='holdout'?'게이트 개방. 남아서 XP를 회수하거나 게이트로 이동하세요.':region(run).mission}</p>${loadoutChips(run.weapons,run.modules)}<div class="pause-actions"><button class="primary" data-action="continue">전투 이어하기 ▶</button><button data-action="retreat">작전 정산</button></div><div class="pause-secondary">${run.raid?.state==='active'?'<button data-action="withdraw">습격 철수 · 건 상자 소실</button>':''}${run.stage==='holdout'&&(!coastSalvage(run)||isSalvageCampaign(run))&&(!run.challenge||run.operation&&['complete','failed'].includes(run.challenge.state))?`<button data-action="challenge">${holdoutContract(run).name} · D ${(run.operation?.challengeTier||0)+1}</button>`:''}<button class="text-button" data-action="settings-menu">환경 설정</button></div></section>`);}
+function showPause(){
+ const workshop=run.operation?.roaming&&run.resumePhase==='playing'&&assemblyOptions(run).length
+  ?'<button class="text-button" data-action="pause-gear">장비 정비</button>':'';
+ panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="pause-title"><span class="eyebrow">작전 일시정지</span><h2 id="pause-title">다음 한 수를 준비하라.</h2><p>${run.operation?`${run.operation.region+1}/${sortieFrontCount(run)} ${region(run).name} · ${fmt(run.t)} · LV.${run.level}`:'전투 중'}<br>${run.stage==='holdout'?'게이트 개방. 남아서 XP를 회수하거나 게이트로 이동하세요.':region(run).mission}</p>
+ ${loadoutChips(run.weapons,run.modules)}
+ <div class="pause-actions"><button class="primary" data-action="continue">전투 이어하기 ▶</button><button data-action="retreat">작전 정산</button></div>
+ <div class="pause-secondary">${run.raid?.state==='active'?'<button data-action="withdraw">습격 철수 · 건 상자 소실</button>':''}${run.stage==='holdout'&&(!coastSalvage(run)||isSalvageCampaign(run))&&(!run.challenge||run.operation&&['complete','failed'].includes(run.challenge.state))?`<button data-action="challenge">${holdoutContract(run).name} · D ${(run.operation?.challengeTier||0)+1}</button>`:''}
+ ${workshop}<button class="text-button" data-action="settings-menu">환경 설정</button></div></section>`);
+}
 function showResult(r=run.result,archived=false){
  const p=profile();
  if(!archived&&r?.runId)r=p.recent.find(x=>x?.runId===r.runId&&isReport(x))||r;
@@ -664,6 +672,14 @@ ui.addEventListener('click',async e=>{
  if(a==='retry'){const {next,draft,launchMode}=pending;pending=null;await commitDraft(draft,next,launchMode);return;}
  if(a==='reload-latest'){location.reload();return;}
  if(a==='gate-challenge'){await callGateChallenge();return;}
+ if(a==='pause-gear'){
+  await mutate(d=>{
+   if(d.phase!=='paused'||d.resumePhase!=='playing'||!assemblyOptions(d).length)return false;
+   resume(d);
+   return action(d,'gear');
+  });
+  return;
+ }
  if(a==='choice-back'){nextPanelFocus=choiceOrigin;subpanel=null;present(true);return;}if(a==='raid-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="raid-menu"]'};showRaid();return;}
  if(a==='banish-menu'){choiceOrigin={scroll:ui.scrollTop,selector:'[data-action="banish-menu"]'};subpanel={type:'banish'};const options=banishOptions(run);panel(`<section class="sheet compact" role="dialog" aria-modal="true" aria-labelledby="banish-title"><span class="eyebrow">BANISH / 이번 판에서 제외</span><h2 id="banish-title">보급 후보 하나를 바꾼다</h2><div class="branch-list">${options.map(c=>`<button data-exclude="${esc(c.id)}">${esc(c.title)}${c.module&&moduleRank(run,c.module)?' · 이 상자만 교체':' · 이번 판 후보 제외'}</button>`).join('')}</div><small>${options.length?'미보유 후보는 이번 판에서 제외합니다. 보유 모듈은 이 상자의 후보만 교체하고 기존 투자를 유지합니다.':'현재 제외할 후보가 없습니다. 첫 두 보급의 새 총 기회는 보호됩니다.'}</small><button data-action="choice-back">돌아가기</button></section>`);return;}
  if(['continue','withdraw','challenge','skip'].includes(a))unlockSound();
@@ -1335,35 +1351,38 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
   }
  }
  $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
- const key=JSON.stringify([run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion,isCapturedTurret(w)]),run.modules,run.tuning]);
+ const key=JSON.stringify([roaming,run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion,isCapturedTurret(w)]),run.modules,run.tuning]);
  if(key!==inventoryStamp){
   inventoryStamp=key;
   $('weapons').innerHTML=run.weapons.map(w=>{
    const captured=isCapturedTurret(w);
    const label=w.fusion?`${GUNS[w.id].short}+${GUNS[w.fusion.secondary].short}`:captured?w.evolved?'광각':'포탑':GUNS[w.id].short;
    const detail=captured?`${weaponStats(w).count}발 부채꼴`:w.evolved?capstoneName(w):`L${w.level}/6 ${w.branch?GUNS[w.id].branches[w.branch][0]:''}`;
-   return `<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}"${captured?' data-captured':''}>${itemArt(captured?'turret':w.id)}<b>${label}</b><small>${detail}</small></div>`;
+   return `<div class="weapon ${w.evolved?'evolved':''}" data-weapon-id="${w.id}"${captured?' data-captured':''}>${itemArt(captured?'turret':w.id)}<b>${label}</b><small>${roaming&&!w.evolved?`L${w.level}`:detail}</small></div>`;
   }).join('')+Array.from({length:3-run.weapons.length},()=>'<div class="weapon empty"><b>＋</b><small>미확보</small></div>').join('');
   $('modules').innerHTML=run.modules.map(m=>`<span class="module">${MODULES[m.id].name} ${m.rank}</span>`).join('');
  }
  const fusion=run.weapons.find(w=>w.fusion),focused=run.weapons.find(isFocusedInferno),synergy=$('synergy');
  synergy.classList.toggle('conductive',!!fusion);
- synergy.textContent=fusion?.fusion.branch==='incendiary'?`화약탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 유폭 ${run.stats.emberBursts||0}회`:fusion?`연쇄탄 ${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload} · 도약 ${run.stats.payloadRelays||0}회`:moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
+ const payload=fusion&&`${Math.min(RULES.fusion.hitsPerPayload,Math.floor(fusion.payload))}/${RULES.fusion.hitsPerPayload}`;
+ synergy.textContent=fusion?.fusion.branch==='incendiary'?`화약탄 ${payload}${roaming?'':` · 유폭 ${run.stats.emberBursts||0}회`}`
+  :fusion?`연쇄탄 ${payload}${roaming?'':` · 도약 ${run.stats.payloadRelays||0}회`}`
+  :!roaming&&moduleRank(run,'catalyst')?`점화 ${[...run.enemies,...(run.boss.active?[run.boss,...run.boss.parts]:[]),...(run.raid?.state==='active'?[run.raid.target]:[])].filter(e=>!e.dead&&e.hp>0&&e.burn>0).length} · 열압 ${run.stats.heatBursts}회`:'';
  const trial=run.modules.map(m=>researchProofProgress(run,m.id)).find(proof=>proof&&!proof.done);
  const proved=completedResearchProofs(run).length;
  if(trial||proved){
   const thermalWaiting=trial?.counter==='thermalRecovered'&&run.player.charge===100;
   const status=trial?`${trial.short} 실증 ${Math.floor(trial.progress)}/${trial.amount}${thermalWaiting?' · 스킬 사용 후 충전':''}`:`실증 완료 · 정산 +${proved*RESEARCH_PROOF_CREDITS}C`;
   synergy.textContent=[synergy.textContent,status].filter(Boolean).join(' · ');
- }else{
+ }else if(!roaming){
   if(moduleRank(run,'shrapnel'))synergy.textContent+=`${synergy.textContent?' · ':''}파쇄 ${run.stats.shrapnelBursts||0}회`;
   if(moduleRank(run,'thermal')&&run.stats.thermalRecovered>=1)synergy.textContent+=`${synergy.textContent?' · ':''}흡열 +${Math.floor(run.stats.thermalRecovered)}충전`;
  }
  const options=assemblyOptions(run),ready=(run.firstNew==='f'&&options.find(o=>o.id==='evolve:f'))||options.find(o=>['evolve','fusion'].includes(o.kind));
  const heatReady=heatSynergyReady(run,2)&&moduleRank(run,'catalyst')===2&&options.some(o=>o.id==='tune:catalyst');
  const upgrade=$('field-upgrade');
- upgrade.hidden=run.pendingLevels===0||run.phase!=='playing';
  upgrade.disabled=!canOpenLevel(run);
+ upgrade.hidden=run.pendingLevels===0||run.phase!=='playing'||roaming&&upgrade.disabled;
  if(!upgrade.hidden){
   const count=String(run.pendingLevels),badge=$('field-upgrade-count');
   if(badge.textContent!==count)badge.textContent=count;
@@ -1372,16 +1391,19 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  }
  const gear=$('gear');
  const tuneReady=tuneInferno?.action==='tune';
- const gearMode=ready||heatReady||tuneReady?'ready':options.some(o=>o.kind==='maneuver')?'maneuver':'idle';
- const gearTitle=ready?ready.title:tuneReady?'촉매 조율':heatReady?'열압 연계':gearMode==='maneuver'?'노획 교범':'병기 작업대';
- const gearHint=ready?'조립 가능':tuneReady?'조율 후 진화':heatReady?'조율 가능':`조율권 ${run.tuning}`;
+ const needsRepair=roaming&&p.hp/p.maxHp<=.6&&options.some(o=>o.kind==='repair');
+ const gearMode=ready||heatReady||tuneReady?'ready':needsRepair?'repair':options.some(o=>o.kind==='maneuver')?'maneuver':'idle';
+ const gearTitle=ready?ready.title:tuneReady?'촉매 조율':heatReady?'열압 연계':gearMode==='repair'?'응급 정비':gearMode==='maneuver'?'노획 교범':'병기 작업대';
+ const gearHint=ready?'조립 가능':tuneReady?'조율 후 진화':heatReady?'조율 가능':gearMode==='repair'?'체력 회복':`조율권 ${run.tuning}`;
+ gear.hidden=!!roaming&&(gearMode==='idle'||run.phase!=='playing');
+ gear.parentElement.hidden=gear.hidden&&upgrade.hidden;
  const gearKey=`${gearMode}:${gearTitle}:${gearHint}`;
  if(gear.dataset.view!==gearKey){
   gear.dataset.view=gearKey;
   gear.dataset.mode=gearMode;
   gear.setAttribute('aria-label',`${gearTitle} · ${gearHint}`);
   gear.setAttribute('aria-keyshortcuts','G');
-  const short=ready?'조립':heatReady||tuneReady?'조율':gearMode==='maneuver'?'교범':'작업대';
+  const short=ready?'조립':heatReady||tuneReady?'조율':gearMode==='repair'?'응급 정비':gearMode==='maneuver'?'교범':'작업대';
   gear.innerHTML=`<b>${esc(gearTitle)}</b><small>${gearHint}</small><b class="gear-short" aria-hidden="true">${short}</b><kbd class="key-hint" aria-hidden="true">G</kbd>`;
  }
  const railLocked=rail?.locked;
