@@ -2297,13 +2297,38 @@ test('roaming sorties let players equip from XP and activate a coastal mission b
  step(s,dt);
  assert.equal(battery.state,'waiting');
  assert.ok(!s.enemies.some(enemy=>enemy.siteId===battery.id));
- assert.equal(interaction(s)?.id,'coast-engage');
+ assert.equal(interaction(s)?.id,'site-engage');
  assert.ok(action(s,'interact'));
  const loaded=restore(snapshot(s));
  step(loaded,dt);
  assert.equal(rescue.state,'waiting');
  assert.equal(loaded.sites.find(site=>site.id===battery.id).state,'active');
  assert.equal(loaded.sites.find(site=>site.coastApproach==='f').state,'waiting');
+});
+test('roaming rail and harbor missions wait for a local interaction',()=>{
+ for(const [region,id] of [[1,'rail-relay'],[2,'port-control']]){
+  const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);
+  Object.assign(s.operation,{region,cleared:region});
+  Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+  Object.assign(s,regionLayout(mapSeed(s.seed,region),region,null,true));
+  s.boss=regionBoss(region,s.seed);
+  s.blocks=[];s.enemies=[];s.spawnClock=999;
+  const site=s.sites.find(n=>n.id===id);
+  Object.assign(s.player,{x:site.x,y:site.y+120});
+  step(s,dt);
+  assert.ok(s.sites.every(n=>n.state==='waiting'));
+  assert.equal(interaction(s)?.site?.id,id);
+  const prior=snapshot(s);
+  prior.balanceRevision='b77-voluntary-coastal-missions';
+  const resumed=restore(prior);
+  assert.ok(action(resumed,'interact'));
+  const loaded=restore(snapshot(resumed));
+  Object.assign(loaded.player,{x:800,y:1040});
+  step(loaded,dt);
+  assert.equal(loaded.sites.find(n=>n.id===id).state,'active');
+  assert.ok(loaded.sites.filter(n=>n.id!==id).every(n=>n.state==='waiting'));
+  assert.ok(loaded.enemies.some(e=>e.siteId===id));
+ }
 });
 test('a roaming front starts its boss at the growth deadline without requiring a site',()=>{
  const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);

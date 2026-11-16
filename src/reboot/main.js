@@ -1285,8 +1285,15 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  }
  if(roaming){
   if(run.stage==='field'){
-   const site=interact?.id==='coast-engage'?interact.site:run.sites.filter(n=>['active','ready'].includes(n.state)&&distance(p,n)<195).sort((a,b)=>distance(p,a)-distance(p,b))[0];
-   $('objective').textContent=nearGate?'게이트 개방':site?sitePresentation(site).name:`${bearing(p,BOSS_ENTRY.x,BOSS_ENTRY.y)} 보스 ${Math.round(distance(p,BOSS_ENTRY)/10)}m`;
+   const site=interact?.id==='site-engage'?interact.site:run.sites.filter(n=>['active','ready'].includes(n.state)&&distance(p,n)<195).sort((a,b)=>distance(p,a)-distance(p,b))[0];
+   let local=site&&sitePresentation(site).name;
+   if(site?.state==='ready')local=`${local} · 접근해 회수`;
+   else if(site?.state==='active'){
+    const guards=site.kind==='relay'?relayCrewLeft(run,site):run.enemies.filter(e=>!e.dead&&e.siteId===site.id).length;
+    local=site.kind==='relay'&&guards===0?`중계기 근처 유지 · ${Math.ceil(5-site.progress)}초`:`경비 ${guards}명 남음`;
+   }
+   $('objective').textContent=site?local:`${bearing(p,BOSS_ENTRY.x,BOSS_ENTRY.y)} 보스 ${Math.round(distance(p,BOSS_ENTRY)/10)}m`;
+   if(!conduit&&!cut)threat.textContent='';
   }else if(holdout&&run.challenge?.state!=='active'){
    $('objective').textContent=nearGate?'게이트 개방':`${direction} 게이트 ${Math.round(distance(p,gate)/10)}m`;
    $('threat').textContent='남으면 증원 강화';
