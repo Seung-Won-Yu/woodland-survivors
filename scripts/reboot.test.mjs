@@ -2285,6 +2285,60 @@ test('researched effects are conditional, capped and cannot recursively trigger 
 test('final stay and menu retreat remain partial until the exit extraction decision',()=>{
  const s=quietOperation();s.operation.region=2;clearRegion(s);choose(s,'stay');const partial=snapshot(s);assert.ok(finish(partial,true,'retreat'));assert.equal(partial.result.won,false);assert.ok(!partial.stats.extractionPaid);Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));assert.ok(choose(s,'extract'));assert.ok(s.result.won);assert.ok(s.operation.extracted);
 });
+test('roaming sorties let players equip from XP and activate a coastal mission before rescue',()=>{
+ const s=quietOperation();
+ s.operation.roaming=true;
+ s.sites=regionLayout(s.seed,0).sites;
+ const rescue=s.sites.find(site=>site.opening),battery=s.sites.find(site=>site.coastApproach==='r');
+ s.level=2;s.pendingLevels=1;
+ assert.ok(action(s,'upgrade'));
+ assert.deepEqual(s.choices.map(card=>card.id),['gun:f','gun:r','rank:h']);
+ assert.ok(choose(s,'gun:r'));
+ Object.assign(s.player,{x:battery.x,y:battery.y});
+ step(s,dt);
+ assert.equal(rescue.state,'waiting');
+ assert.equal(battery.state,'active');
+});
+test('a roaming front starts its boss at the growth deadline without requiring a site',()=>{
+ const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);
+ s.sites.forEach(site=>{site.state='waiting';});
+ s.enemies=[];s.operation.regionTime=74.98;s.spawnClock=999;
+ step(s,dt);
+ assert.equal(s.stage,'field');
+ step(s,dt);
+ assert.equal(s.stage,'boss');
+ assert.equal(s.boss.active,true);
+ assert.ok(s.sites.every(site=>site.state==='waiting'));
+ assert.equal(s.operation.coastSalvage.plan,'break');
+ assert.equal(restore(snapshot(s)).operation.roaming,true);
+ for(const [region,time] of [[1,85],[2,95]]){
+  const {run:front}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);
+  Object.assign(front.operation,{region,cleared:region,regionTime:time-.02});
+  Object.assign(front,regionLayout(mapSeed(front.seed,region),region,null,true));
+  front.boss=regionBoss(region,front.seed);
+  front.enemies=[];front.spawnClock=999;
+  step(front,dt);
+  assert.equal(front.stage,'field');
+  step(front,dt);
+  assert.equal(front.stage,'boss');
+  assert.equal(front.boss.active,true);
+ }
+});
+test('roaming field supplies use distinct blast and XP effects',()=>{
+ const s=quietOperation();
+ s.operation.roaming=true;
+ s.gems=[{x:800,y:800,value:0,age:0,pickup:'bomb'},{x:810,y:800,value:0,age:0,pickup:'magnet'},{x:1100,y:1000,value:5,age:0}];
+ const near=enemy('near',935,800,'rifle',5),far=enemy('far',1250,800,'rifle',5);
+ s.enemies=[near,far];
+ step(s,dt);
+ assert.equal(near.dead,true);
+ assert.equal(far.dead,false);
+ assert.ok(s.gems.some(gem=>gem.pickup==='magnet'));
+ const elsewhere=s.gems.filter(gem=>!gem.pickup).reduce((sum,gem)=>sum+gem.value,0);
+ step(s,dt);
+ assert.equal(s.gems.length,0);
+ assert.equal(s.xp,elsewhere);
+});
 test('seed 19 can extract after all three fronts with evolved fire and no checkpoint edits',()=>{
  const run=pilot(19,'fire',{operation:true,pursuit:'all',maxSeconds:240});
  assert.ok(run.won&&!run.stalled);assert.equal(run.regions,3);assert.ok(run.hp>0);assert.ok(run.weapons.some(w=>w.id==='f'&&w.evolved));

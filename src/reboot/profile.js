@@ -47,7 +47,7 @@ export function sortieResearchTrials(p){
  const cleared=clearedResearchTrials(p.active.run);
  return p.trials.filter(id=>!cleared.includes(id));
 }
-export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null,coastLoadout=null,fullCampaign=false,openingGun=null){
+export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null,coastLoadout=null,fullCampaign=false,openingGun=null,roaming=false){
  if(coastLoadout!==null&&(!['standard','turret'].includes(coastLoadout)||!fullCampaign&&(order||requisition||requisitionAt)||
     coastLoadout==='turret'&&p.milestones.coastTurret!==true))throw Error('해안 노획 출격 조건을 확인하세요.');
  const priorReport=replayFrom===null?null:p.recent.find(report=>report?.sequence===replayFrom);
@@ -68,6 +68,7 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
  const run=coastLoadout&&!fullCampaign?createCoastSortie(seed,operator,coastLoadout)
   :createOperation(seed,p.research,p.trials,order,operator,fullCampaign?coastLoadout||'standard':null);
  if(isOpeningGun(openingGun)&&fullCampaign&&coastLoadout!=='turret'&&!order&&!requisition&&!run.trials.length)run.operation.openingGun=openingGun;
+ if(fullCampaign&&roaming)run.operation.roaming=true;
  if(requisition)run.operation.requisition=requisition;
  if(requisitionAt)run.operation.requisitionAt=requisitionAt;
  return {run,next:beginProfile(p,run,reference)};
