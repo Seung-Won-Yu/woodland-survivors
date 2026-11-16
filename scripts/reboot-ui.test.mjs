@@ -281,6 +281,21 @@ test('settled reports lead to affordable research and preserve exact replay seed
  assert.match(archived,/data-action="replay-brief" data-replay-from="1"/);assert.doesNotMatch(archived,/저장한 작전 계속/);
  assert.doesNotMatch(archived,/data-debrief-research|data-trial-focus|data-dispatch="requisition/);
 });
+test('harbor reports keep the recovered courier cargo alongside the counterbattery result',()=>{
+ const run=createOperation(27,[],null,null,'fio','standard');
+ const active=beginProfile(emptyProfile(),run);
+ Object.assign(run.operation,{region:2,cleared:3,extracted:true});
+ Object.assign(run.stats,{
+  bossKilled:true,challengeWins:4,signalOutcome:'recovered',holdoutCargo:true,
+  portBatteriesCleared:2,portCounterbatteryCargo:true
+ });
+ finish(run,true);
+ const settled=settleProfile(active,run);
+ const html=reportView(settled.recent[0],settled);
+ assert.match(html,/class="debrief-wager">차량 저지 · 통신 화물 \/ 포대 2문 제압</);
+ assert.match(html,/노획 화물<\/dt><dd>\+70C/);
+ assert.match(html,/항구 포격 진지 노획품 반출<\/dt><dd>\+60C/);
+});
 test('the research experiment follows one module through trial briefing, payout and optional reservation',()=>{
  const base=emptyProfile();base.credits=500;base.research=['shrapnel'];base.trials=['shrapnel'];
  const run=createOperation(23,base.research,base.trials),active=beginProfile(base,run);
