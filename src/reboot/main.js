@@ -1,4 +1,5 @@
 import {OPERATORS,operatorOf,operatorId,skillRules,canUseSkill,chargeLabel} from './operator.js';
+import {coastCaches,FIELD_KITS,movingReload} from './coast-discovery.js';
 import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractDetails,gateActiveContract,HARBOR_PART_ACTION} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview,coastOpeningGuide,railSalvagePreview} from './field-scene.js';
@@ -540,7 +541,7 @@ async function launch(source,seed=operationPlan.seed,order=source.dataset.sortie
   closePreparation();
  }
  const replayFrom=source.dataset.action==='same-seed'&&source.dataset.replayFrom?Number(source.dataset.replayFrom):null;
- const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom,delivery,coastLoadout,fullCampaign,openingGun,true);
+ const {run:draft,next}=freshSortie(profile(),seed,order,actor,requisition,replayFrom,delivery,coastLoadout,fullCampaign,openingGun,true,true);
  renderer=createRenderer($('world'),art,combatHud);
  await commitDraft(draft,next,art?'art':'fallback');
 }
@@ -761,6 +762,7 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast,conduit,op
  if(conduit?.gun){const {gun,clear}=conduit;map+=dot('map-conduit-gun',gun.x,gun.y,34,clear?'#a4e3e3':'#ffcf9a',clear?'도약 목표 · 박격포':'포격 중인 박격포');}
  map+=run.sites.filter(n=>n.state!=='done').map(n=>dot('map-site',n.x,n.y,n.state==='ready'?36:25,n.kind==='armory'?'#c5a8f5':'#ffe0a1',`${n.name} · ${n.state==='ready'?'회수 가능':n.state==='active'?n.kind==='relay'?`해킹 ${Math.round(n.progress/5*100)}%`:'경비 교전':'미확보'}`)).join('');
  map+=run.sites.filter(n=>n.state!=='done').map(n=>siteSymbol(n,n.x,n.y,22)).join('');
+ map+=coastCaches(run).filter(c=>c.seen).map(c=>dot('map-field-kit',c.x,c.y,34,FIELD_KITS[c.kit].color,FIELD_KITS[c.kit].name)).join('');
  if(lead){const {x,y}=lead;map+=`<path d="M${x} ${y-51}l51 51 -51 51 -51 -51Z" fill="none" stroke="${coastLeadColor(lead)}" stroke-width="14" aria-label="${esc(sitePresentation(lead).name)} · 다음 표적"/>`;}
  if(otherCoast){const {x,y}=otherCoast;map+=`<circle cx="${x}" cy="${y}" r="51" fill="none" stroke="${coastLeadColor(otherCoast)}" stroke-width="10" stroke-dasharray="15 12" aria-label="${esc(sitePresentation(otherCoast).name)} · 선택 경로"/>`;}
  if(dispatch)map+=orderPinSvg(dispatch,run.operation.order);
@@ -1340,7 +1342,8 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
     const guards=site.kind==='relay'?relayCrewLeft(run,site):run.enemies.filter(e=>!e.dead&&e.siteId===site.id).length;
     local=site.kind==='relay'&&guards===0?`중계기 근처 유지 · ${Math.ceil(5-site.progress)}초`:`경비 ${guards}명 남음`;
    }
-   $('objective').textContent=site?local:`${bearing(p,BOSS_ENTRY.x,BOSS_ENTRY.y)} 보스 ${Math.round(distance(p,BOSS_ENTRY)/10)}m`;
+   const found=coastCaches(run).filter(c=>c.seen&&distance(c,p)<190).sort((a,b)=>distance(a,p)-distance(b,p))[0];
+   $('objective').textContent=interact?.id==='field-kit'?interact.detail:site?local:found?`${bearing(p,found.x,found.y)} ${FIELD_KITS[found.kit].name}`:`${bearing(p,BOSS_ENTRY.x,BOSS_ENTRY.y)} 보스 ${Math.round(distance(p,BOSS_ENTRY)/10)}m`;
    if(!conduit&&!cut)threat.textContent='';
   }
  }
@@ -1348,6 +1351,8 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  maneuver.hidden=!p.maneuver;maneuver.classList.toggle('active',!!active);
  if(p.maneuver)maneuver.textContent=`${MANEUVERS[p.maneuver].name} · ${active?'가동':p.maneuver==='assault'?'회피하며 이동':'정지해 조준'}`;
  const support=FRONT_SUPPORTS[run.operation?.support];
+ const kit=run.operation?.exploration?.kit,showFieldKit=!!kit&&run.stage==='field'&&front===0;
+ $('support-status').toggleAttribute('data-field-kit',showFieldKit);
  $('support-status').hidden=!support;
  if(support)$('support-status').textContent=carriesCoastSalvage(run)&&front===1&&run.operation.support==='vanguard'?'후송 정비 · 첫 경보 +1초'
   :front===2&&part!=='breach'&&Object.hasOwn(PORT_SUPPORT,part)&&!run.boss.active&&run.stage==='field'
@@ -1358,6 +1363,10 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
   if(coastAtShore(run)||!support){
    $('support-status').hidden=false;
    $('support-status').textContent=`${name} ${salvage.progress}/${COAST_SALVAGE.steps.at(-1)}${rank?marco?` · 관통 피해 +${bonus}%`:` · 발사 간격 −${bonus}%`:''}`;
+  }
+  if(showFieldKit){
+   $('support-status').hidden=false;
+   $('support-status').textContent=FIELD_KITS[kit].name+(movingReload(run)?' · 연사':'');
   }
   if(roleTarget&&!isSalvageCampaign(run)){
    $('objective').textContent=`${bearing(p,roleTarget.x,roleTarget.y)} ${roleTarget.name} · ${Math.round(distance(p,roleTarget)/10)}m`;
@@ -1449,7 +1458,7 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
   actionButton.style.setProperty('--transfer-ink',shoreTransfer&&gateInk||'');
  }
  $('interact-label').textContent=shoreTransfer?'철도 게이트 열기':interact?.label||'';
- const actionNote=shoreTransfer?.gateNote||'';
+ const actionNote=shoreTransfer?.gateNote||(interact?.id==='field-kit'?'이번 판에 한 종류만 장착':'');
  actionDetail.hidden=!actionNote;
  if(actionDetail.textContent!==actionNote)actionDetail.textContent=actionNote;
  const skill=skillRules(run),counter=portAidCounterReady(run),counterRound=portAidCounterRound(run),skillButton=$('skill');

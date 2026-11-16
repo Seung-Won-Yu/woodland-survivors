@@ -1,4 +1,5 @@
 import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope,isOpeningGun,railLayoutForSeed,portLayoutForSeed} from './campaign.js';
+import {coastDiscovery} from './coast-discovery.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,createCoastSortie,restore,snapshot,finish,canResumeRun} from './model.js';
 import {coastSalvage,coastTurretReturned,isSalvageCampaign,railSortieReturned} from './coast-salvage.js';
@@ -47,7 +48,7 @@ export function sortieResearchTrials(p){
  const cleared=clearedResearchTrials(p.active.run);
  return p.trials.filter(id=>!cleared.includes(id));
 }
-export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null,coastLoadout=null,fullCampaign=false,openingGun=null,roaming=false){
+export function freshSortie(p,seed,order=null,operator='fio',requisition=null,replayFrom=null,requisitionAt=null,coastLoadout=null,fullCampaign=false,openingGun=null,roaming=false,explore=false){
  if(coastLoadout!==null&&(!['standard','turret'].includes(coastLoadout)||!fullCampaign&&(order||requisition||requisitionAt)||
     coastLoadout==='turret'&&p.milestones.coastTurret!==true))throw Error('해안 노획 출격 조건을 확인하세요.');
  const priorReport=replayFrom===null?null:p.recent.find(report=>report?.sequence===replayFrom);
@@ -70,6 +71,8 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
  if(isOpeningGun(openingGun)&&fullCampaign&&coastLoadout!=='turret'&&!order&&!requisition&&!run.trials.length)run.operation.openingGun=openingGun;
  if(fullCampaign&&roaming){
   run.operation.roaming=true;
+  if(explore&&!order&&!requisition&&!run.operation.openingGun&&!run.trials.length&&coastLoadout!=='turret')
+   run.operation.exploration=coastDiscovery(run.seed);
   const railLayout=railLayoutForSeed(seed);
   if(railLayout)run.operation.railLayout=railLayout;
   const portLayout=portLayoutForSeed(seed);

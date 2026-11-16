@@ -2323,6 +2323,72 @@ test('roaming sorties let players equip from XP and activate a coastal mission b
  assert.equal(loaded.sites.find(site=>site.id===battery.id).state,'active');
  assert.equal(loaded.sites.find(site=>site.coastApproach==='f').state,'waiting');
 });
+test('coastal exploration reveals the equipment only nearby and reserves one kit for the run',()=>{
+ const start=seed=>freshSortie(emptyProfile(),seed,null,'fio',null,null,null,'standard',true,null,true,true).run;
+ const first=start(27),second=start(31);
+ for(const [run,kit] of [[first,'burst'],[second,'stride']]){
+  const discovery=run.operation.exploration,[west,east]=discovery.caches;
+  assert.deepEqual(discovery.caches.map(c=>c.seen),[false,false]);
+  assert.equal(west.kit,kit);
+  assert.notEqual(interaction(run)?.id,'field-kit');
+  Object.assign(run.player,{x:west.x,y:west.y+135});
+  step(run,dt);
+  assert.equal(west.seen,true);
+  assert.equal(east.seen,false);
+  assert.equal(run.sites[0].state,'waiting');
+  Object.assign(run.player,{x:west.x,y:west.y+41});
+  assert.equal(interaction(run)?.id,'field-kit');
+  assert.ok(action(run,'interact'));
+  assert.equal(discovery.kit,kit);
+  assert.equal(run.phase,'playing');
+  Object.assign(run.player,{x:east.x,y:east.y+41});
+  assert.notEqual(interaction(run)?.id,'field-kit');
+  assert.equal(restore(snapshot(run)).operation.exploration.kit,kit);
+ }
+ for(const [seed,gun] of [[27,'r'],[39,'f']]){
+  const run=start(seed);run.level=2;run.pendingLevels=1;
+  assert.ok(action(run,'upgrade'));
+  assert.deepEqual(run.choices.map(c=>c.id),[`gun:${gun}`,'rank:h','utility:pickup']);
+ }
+ const rescue=start(27),prisoner=rescue.sites[0];
+ Object.assign(rescue.player,{x:prisoner.x,y:prisoner.y});
+ step(rescue,dt);
+ assert.equal(prisoner.state,'waiting');
+ assert.equal(interaction(rescue)?.site,prisoner);
+ assert.ok(action(rescue,'interact'));
+ step(rescue,dt);
+ assert.equal(prisoner.state,'active');
+});
+test('field equipment rewards close groups or moving XP through distinct live attacks',()=>{
+ const equip=kit=>{
+  const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,null,true,true);
+  const cache=run.operation.exploration.caches.find(c=>c.kit===kit);
+  Object.assign(run.player,{x:cache.x,y:cache.y});
+  assert.ok(action(run,'interact'));
+  run.blocks=[];run.enemies=[];run.spawnClock=999;run.director.officerClock=999;
+  run.sites.forEach(n=>n.state='done');
+  Object.assign(run.player,{x:800,y:920});
+  return run;
+ };
+ const burst=equip('burst'),target=enemy('primary',900,900,'rifle',10);
+ const close=[enemy('neighbor-a',940,900),enemy('neighbor-b',937,936)],far=enemy('far',1070,900);
+ burst.enemies=[target,...close,far];burst.weapons[0].cd=999;burst.shots=[bullet(burst,target)];
+ step(burst,dt);
+ assert.equal(burst.stats.fieldKitBursts,1);
+ assert.ok(close.every(e=>e.hp<100));assert.equal(far.hp,100);
+ const stride=equip('stride');stride.enemies=[enemy('target',1000,920)];
+ stride.weapons[0].cd=999;
+ stride.gems=[{x:stride.player.x,y:stride.player.y,value:1,age:0}];
+ step(stride,dt);
+ assert.equal(stride.operation.exploration.until,undefined);
+ stride.gems=[{x:stride.player.x,y:stride.player.y,value:1,age:0}];
+ step(stride,dt,{x:1,y:0});
+ assert.ok(stride.operation.exploration.until>stride.t+2);
+ stride.weapons[0].cd=0;
+ step(stride,dt,{x:1,y:0});
+ assert.ok(stride.weapons[0].cd<weaponStats(stride.weapons[0]).interval*.75);
+ assert.equal(stride.stats.fieldKitShots,1);
+});
 test('roaming rail and harbor missions wait for a local interaction',()=>{
  for(const [region,id] of [[1,'rail-relay'],[2,'port-control']]){
   const {run:s}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true);

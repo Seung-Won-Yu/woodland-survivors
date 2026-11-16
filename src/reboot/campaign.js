@@ -524,7 +524,7 @@ export function coastPreemptGun(seed){
 export const isOpeningGun=id=>id==='f'||id==='r';
 export const coastOpeningGun=s=>s.operation?.openingGun||coastPreemptGun(s.seed);
 export function coastPreemptSite(s){
- if(s.operation?.region!==0||s.stage!=='field'||coastAtShore(s)&&!isSalvageCampaign(s)||s.operation.order||s.operation.requisition||s.operation.trialProof||s.trials?.length||s.firstNew||s.sites[0]?.state==='done')return null;
+ if(s.operation?.region!==0||s.stage!=='field'||coastAtShore(s)&&!isSalvageCampaign(s)||s.operation.order||s.operation.requisition||s.operation.trialProof||s.operation.exploration||s.trials?.length||s.firstNew||s.sites[0]?.state==='done')return null;
  const gun=coastOpeningGun(s);
  if(s.weapons.some(w=>w.id===gun&&!w.fusion))return null;
  return s.sites.find(site=>site.coastApproach===gun&&site.state!=='done')||null;
