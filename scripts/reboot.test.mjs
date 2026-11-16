@@ -103,6 +103,17 @@ test('coast rescue teaches each operator without requiring their growth target f
  }
 });
 
+test('coast patrols leave the prisoner approach open across all four campaign landings',()=>{
+ for(const seed of [24,25,26,27])for(const loadout of ['standard','turret']){
+  const s=createOperation(seed,[],null,null,'marco',loadout),rescue=s.sites[0];
+  const patrols=s.enemies.filter(e=>e.coastArmor||e.coastCarrier);
+  assert.equal(patrols.filter(e=>e.coastArmor).length,3);
+  assert.equal(patrols.filter(e=>e.coastCarrier).length,3);
+  assert.ok(patrols.every(e=>e.y+e.r<rescue.y-150));
+  assert.equal(s.enemies.filter(e=>e.cohort==='ambient').length,6);
+ }
+});
+
 test('Marco shield hits follow the incoming bullet when he moves during flight',()=>{
  for(const [degrees,move,hp,progress] of [[20,1,72,1],[34,-1,84.6,0]]){
   const s=createOperation(27,[],null,null,'marco','standard');
