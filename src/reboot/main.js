@@ -1285,7 +1285,7 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
  }
  if(roaming){
   if(run.stage==='field'){
-   const site=run.sites.filter(n=>['active','ready'].includes(n.state)&&distance(p,n)<195).sort((a,b)=>distance(p,a)-distance(p,b))[0];
+   const site=interact?.id==='coast-engage'?interact.site:run.sites.filter(n=>['active','ready'].includes(n.state)&&distance(p,n)<195).sort((a,b)=>distance(p,a)-distance(p,b))[0];
    $('objective').textContent=nearGate?'게이트 개방':site?sitePresentation(site).name:`${bearing(p,BOSS_ENTRY.x,BOSS_ENTRY.y)} 보스 ${Math.round(distance(p,BOSS_ENTRY)/10)}m`;
   }else if(holdout&&run.challenge?.state!=='active'){
    $('objective').textContent=nearGate?'게이트 개방':`${direction} 게이트 ${Math.round(distance(p,gate)/10)}m`;
