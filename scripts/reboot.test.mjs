@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,railBossGuide,portTacticKeys} from '../src/reboot/campaign.js';
+import {BOSS_ENTRY,beachRoute,regionLayout,exitGate,holdoutTier,holdoutTiming,holdoutParts,holdoutContract,portBatteryPositions,portBatteries,HOLDOUT,RAIL_BARRAGE,DEFENSE_ZONE,CARGO_CREDITS,SORTIE_ORDERS,orderRecordScope,orderBonus,orderTarget,coastFork,coastLead,coastPreemptSite,coastResponseCue,coastStagingPoint,coastApproach,coastEncounterCue,operationCredits,regionBoss,mapSeed,frontEntry,activeEntry,entryWaypoint,railCrewLeft,portGantry,portGantryBypass,portTurretShutter,portWakePoint,portBarrageMark,portEscapeLanes,portAidPreview,portAidBaitRisk,portAidCue,portAidCounterRound,portPartStaging,portCoreDisrupted,signalCourier,signalCargo,signalRoute,signalPosition,SIGNAL_SECONDS,railBarragePreview,railLaneBounds,railEscapeSlot,railBossGuide,portTacticKeys} from '../src/reboot/campaign.js';
 import {RULES,FIELD,MODULES,INFERNO_WAKE,CONDUIT_MORTAR,COAST_FAN,coastFanAngle,makeWeapon,weaponStats,buildPaths,capstoneName,distance} from '../src/reboot/content.js';
 import {createRun,createOperation,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,snapshot,restore,takeEvents,activeManeuver,assemblyOptions,gatePreparation,railWorkshopPlan,interaction,pickupReach,partPosition,portTurretInSight,portArmorLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,focusPlan,conduitMortarCue,railFanCutCue,armoredRaidPart} from '../src/reboot/model.js';
 import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,settleProfile,createStore,parseProfile,canLaunchOrder,freshSortie} from '../src/reboot/profile.js';
@@ -5421,6 +5421,18 @@ test('remaining on the field escalates waves, armor and mortars on the same cloc
  assert.equal(holdoutTier(r.holdTime),3);assert.ok(r.enemies.length>first.length);
  assert.ok(r.enemies.some(e=>e.type==='officer'));assert.ok(r.enemies.some(e=>e.type==='mortar'));
  assert.ok(r.enemies.find(e=>e.type==='rifle').maxHp>lightHp);assert.deepEqual(exitGate(r),exitGate(s));
+});
+test('the roaming holdout warning agrees with the first wave and the next escalation',()=>{
+ const s=quietOperation();s.operation.roaming=true;
+ downBoss(s);s.player.invuln=200;
+ assert.match(s.effects.find(f=>f.type==='gate-open').text,/2초 후 증원/);
+ assert.deepEqual(holdoutTiming(s),{tier:0,wait:2});
+ tick(s,1.8);assert.equal(s.enemies.length,0);
+ assert.deepEqual(holdoutTiming(s),{tier:0,wait:1});
+ tick(s,.3);assert.ok(s.enemies.some(e=>e.cohort==='holdout'));
+ assert.deepEqual(holdoutTiming(s),{tier:1,wait:14});
+ s.holdTime=16;
+ assert.deepEqual(holdoutTiming(s),{tier:2,wait:10});
 });
 test('last-version boss clear checkpoints resume at the physical gate without removing earned supplies',()=>{
  const s=quietOperation();clearRegion(s);s.balanceRevision='b06-swarms';delete s.operation.gate;
