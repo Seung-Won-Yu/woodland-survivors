@@ -8,7 +8,7 @@ import {STORAGE_KEY,buyResearch,emptyProfile,beginProfile,checkpointProfile,sett
 import {pilot} from './reboot-pilot.mjs';
 import {choiceDetails,growthForecast,branchBuildPreview,gateContractDetails} from '../src/reboot/choice-details.js';
 import {raidRoute,raidOnNose,raidAhead} from '../src/reboot/raid.js';
-import {COAST_CHARGE,coastChargeLane,planCoastCharge} from '../src/reboot/coast-charge.js';
+import {COAST_CHARGE,coastChargeLane,coastChargeExits,planCoastCharge} from '../src/reboot/coast-charge.js';
 import {selectRiftAudioEvents} from '../src/reboot/sound.js';
 import {coastRoleTarget,coastRoleRank,coastFanPosition,COAST_TURRET_RECOVERED} from '../src/reboot/coast-salvage.js';
 import {coastOpeningBrief,coastOpeningGuide} from '../src/reboot/field-scene.js';
@@ -5609,6 +5609,46 @@ test('multiple research trials retain their own completion state through checkpo
  assert.deepEqual(final.trials,[]);
  assert.deepEqual(final.recent[0].researchProven,['thermal']);
  assert.equal(final.recent[0].creditBreakdown.trial,120);
+});
+test('coast charge previews only show a crossing the pilot can clear before cover',()=>{
+ const s=quietOperation();
+ Object.assign(s.boss,{active:true,mode:'windup',body:0,x:600,y:600});
+ Object.assign(s.player,{x:720,y:600});
+ s.boss.chargePath=planCoastCharge(s);
+ const lane=coastChargeLane(s);
+ assert.deepEqual(coastChargeExits(s,lane).map(exit=>exit.dy),[-1,1]);
+ s.blocks=[{x:690,y:623,w:65,h:45,hp:-1}];
+ assert.deepEqual(coastChargeExits(s,lane).map(exit=>exit.dy),[-1]);
+ s.blocks.push({x:690,y:530,w:65,h:45,hp:-1});
+ assert.deepEqual(coastChargeExits(s,lane),[]);
+ s.blocks=[];s.player.y=720;
+ assert.deepEqual(coastChargeExits(s,lane),[]);
+});
+test('a real boss contact confirms active dodge once and excludes other immunity',()=>{
+ function arena(front){
+  const s=quietOperation();
+  s.stage='boss';s.operation.region=front;
+  Object.assign(s.boss,{active:true,mode:front?'salvo':'charge',timer:front?2:.5,x:front?600:730,y:800,body:0});
+  if(front===1)s.hazards=[{lane:true,x:800,y:800,w:180,h:340,timer:dt/2,duration:1.25}];
+  if(front===2)s.hazards=[0,12].map(dx=>({x:800+dx,y:800,r:58,portRound:'lock',timer:dt/2,duration:.95}));
+  return s;
+ }
+ for(const front of [0,1,2]){
+  const hit=arena(front);step(hit,dt);
+  assert.equal(hit.player.hp,front?86:84);
+  assert.ok(!takeEvents(hit).includes('boss-evade'));
+
+  const dodge=arena(front);assert.ok(action(dodge,'dash'));step(dodge,dt);
+  assert.equal(dodge.player.hp,100);
+  assert.equal(takeEvents(dodge).filter(event=>event==='boss-evade').length,1);
+  assert.ok(selectRiftAudioEvents(new Set(['shell-land','boss-evade'])).includes('boss-evade'));
+  tick(dodge,.25);assert.equal(dodge.player.dodgeFrom,undefined);
+
+  const immune=arena(front);immune.player.invuln=.4;assert.ok(action(immune,'dash'));step(immune,dt);
+  assert.equal(immune.player.hp,100);assert.ok(!takeEvents(immune).includes('boss-evade'));
+ }
+ const clear=arena(2);clear.player.x=950;assert.ok(action(clear,'dash'));step(clear,dt);
+ assert.ok(!takeEvents(clear).includes('boss-evade'));
 });
 test('boss telegraphs render safely from their first warning frame through impact',async()=>{
  const {createRenderer}=await import('../src/reboot/render.js'),saved={innerWidth:globalThis.innerWidth,innerHeight:globalThis.innerHeight,devicePixelRatio:globalThis.devicePixelRatio};let arcs=0;

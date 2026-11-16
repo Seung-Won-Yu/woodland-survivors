@@ -5,9 +5,9 @@ import {exitGate,BOSS_ENTRY,frontLayout,coastStagingPoint,portPartStaging,portCo
 import {actor,prop,vehicle} from '../mission/art.js';
 import {INFERNO_CORE_DISTANCE,distance,blastContactRadius,clamp,coastFanAngle,isCapturedTurret} from './content.js';
 import {activeManeuver,partPosition,pickupReach,xpInReach,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,infernoWakeLinks,conduitMortarCue,railFanCutCue,harborFanCue} from './model.js';
-import {DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo,RAIL_GUN_COLORS,RAIL_WORKSHOP_FAN,railGunLabel,bracingCoastEscort,shieldFaces,SHIELD_HALF_ANGLE} from './campaign.js';
+import {DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_CARGO_REACH,signalRoute,signalCourier,signalCargo,RAIL_BARRAGE,PORT_BARRAGE,RAIL_GUN_COLORS,RAIL_WORKSHOP_FAN,railGunLabel,bracingCoastEscort,shieldFaces,SHIELD_HALF_ANGLE} from './campaign.js';
 import {RAID_MARKS,raidAhead,raidOnNose} from './raid.js';
-import {COAST_CHARGE,coastChargeLane} from './coast-charge.js';
+import {COAST_CHARGE,coastChargeLane,coastChargeExits} from './coast-charge.js';
 import {operatorOf,focusLane,canUseSkill} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastRoleTarget,coastTurretLane,coastSalvageWreck} from './coast-salvage.js';
 const TAU=Math.PI*2;
@@ -90,9 +90,11 @@ function paintChargeLane(c,b,lane,outline=false){
  c.moveTo(x+sideX,y+sideY);c.lineTo(endX+sideX,endY+sideY);
  c.arc(endX,endY,r,angle+Math.PI/2,angle-Math.PI/2,true);
  c.lineTo(x-sideX,y-sideY);c.arc(x,y,r,angle-Math.PI/2,angle+Math.PI/2,true);c.closePath();
- if(!outline){c.fillStyle=warning?'#9b5d312e':'#ac46282c';c.fill();c.restore();return;}
+ const readiness=warning?clamp(1-b.timer/COAST_CHARGE.warning,0,1):1;
+ if(!outline){c.fillStyle=`rgba(184,68,43,${.17+readiness*.18})`;c.fill();c.restore();return;}
  c.strokeStyle='#483625';c.lineWidth=5;c.stroke();
- c.strokeStyle=warning?'#f3be79':'#eb9668';c.lineWidth=2;c.setLineDash(warning?[11,8]:[]);c.stroke();c.setLineDash([]);
+ c.strokeStyle=warning&&readiness<.7?'#f3be79':'#ffbf91';
+ c.lineWidth=readiness>=.7?4:2;c.setLineDash(warning&&readiness<.7?[11,8]:[]);c.stroke();c.setLineDash([]);
  c.translate(x,y);c.rotate(angle);
  const remaining=Math.hypot(endX-x,endY-y);
  c.fillStyle=warning?'#ffe1a9':'#fbb882';
@@ -982,9 +984,10 @@ function paintRailWarning(c,h,y,forecast=false,locked=false){
   c.strokeStyle=bait?'#ffe0a9':'#b9ddc4';c.lineWidth=bait?3:2;c.setLineDash([8,12]);c.strokeRect(left,top,width,height);c.setLineDash([]);
   if(!locked)return;
  }else{
-  c.fillStyle=h.tracked?'#dc64402e':'#c55a3624';c.fillRect(left,top,width,height);
+  const readiness=clamp(1-h.timer/(h.duration||RAIL_BARRAGE.warning),0,1);
+  c.fillStyle=`rgba(211,79,54,${.16+readiness*.19})`;c.fillRect(left,top,width,height);
   c.strokeStyle='#3d2424';c.lineWidth=6;c.strokeRect(left,top,width,height);
-  c.strokeStyle=h.tracked?'#ffc88a':'#efa578';c.lineWidth=h.tracked?4:3;c.strokeRect(left,top,width,height);
+  c.strokeStyle=h.tracked?'#ffc88a':'#efa578';c.lineWidth=readiness>=.72||h.tracked?4:3;c.strokeRect(left,top,width,height);
   c.fillStyle='#f1a375b0';
   for(let row=top+30;row<bottom-18;row+=72){
    c.fillRect(left+5,row,12,3);c.fillRect(left+5,row+8,8,3);
@@ -1022,10 +1025,12 @@ function paintRailStop(c,p,slot){
  c.restore();
 }
 function paintPortPerimeter(c,rounds){
+ if(!rounds.length)return;
+ const readiness=Math.max(...rounds.map(h=>clamp(1-h.timer/(h.duration||PORT_BARRAGE.warning),0,1)));
  const circles=rounds.map(h=>({x:h.x,y:h.y,r:blastContactRadius(h)}));
  c.beginPath();
  for(const {x,y,r} of circles){c.moveTo(x+r,y);c.arc(x,y,r,0,TAU);}
- c.fillStyle='#b14b372f';c.fill();
+ c.fillStyle=`rgba(193,71,51,${.18+readiness*.20})`;c.fill();
  c.beginPath();
  circles.forEach(({x,y,r},i)=>{
   if(circles.slice(0,i).some(p=>p.x===x&&p.y===y&&p.r===r))return;
@@ -1045,11 +1050,11 @@ function paintPortPerimeter(c,rounds){
   }
  });
  c.strokeStyle='#39272a';c.lineWidth=6;c.stroke();
- c.strokeStyle='#ffb78c';c.lineWidth=3;c.stroke();
+ c.strokeStyle='#ffb78c';c.lineWidth=readiness>=.72?4:3;c.stroke();
 }
-function paintPortEscape(c,s,lanes){
+function paintEscapeChevrons(c,player,lanes){
  if(!lanes.length)return;
- c.save();c.translate(s.player.x,s.player.y);c.beginPath();
+ c.save();c.translate(player.x,player.y);c.beginPath();
  for(const {dx,dy,reach} of lanes){
   if(reach<36)continue;
   const start=dy<0?Math.max(31,Math.min(66/-dy,24/Math.abs(dx))):31;
@@ -1668,9 +1673,24 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   }
   if(focus)paintFocusTargets(c,focus,visible);
   paintPortWakeCue(c,s);
-  paintPortEscape(c,s,escapeLanes);
+  if(chargeLane)paintEscapeChevrons(c,s.player,coastChargeExits(s,chargeLane));
+  paintEscapeChevrons(c,s.player,escapeLanes);
   c.setTransform(size.dpr,0,0,size.dpr,0,0);const vignette=c.createRadialGradient(size.w/2,size.h/2,size.h*.2,size.w/2,size.h/2,size.w*.75);vignette.addColorStop(0,'#12232c00');vignette.addColorStop(1,'#12232c65');c.fillStyle=vignette;c.fillRect(0,0,size.w,size.h);
   const project=(x,y)=>({x:size.w/2+(x-cx+shake)*scale,y:size.h/2+(y-cy)*scale});
+  const evade=s.effects.findLast(f=>f.type==='boss-evade');
+  if(evade){
+   const point=project(evade.x,evade.y-62);
+   const label=clearBearingPosition(size,point,78,combatHud.rects,12);
+   if(label){
+    const {x,y}=label;
+    c.save();c.globalAlpha=reduced?1:Math.min(1,(evade.life-evade.age)*7);
+    c.fillStyle='#152e34f7';c.fillRect(x-39,y-12,78,24);
+    c.strokeStyle='#b5ebd4';c.lineWidth=1.5;c.strokeRect(x-39,y-12,78,24);
+    c.beginPath();c.moveTo(x-30,y);c.lineTo(x-27,y+3);c.lineTo(x-22,y-4);c.stroke();
+    c.fillStyle='#daffe7';c.font='bold 11px Galmuri';c.textAlign='center';c.fillText('회피 성공',x+7,y+4);
+    c.restore();
+   }
+  }
   const railMark=rail?.slot||railFanLine;
   if(railMark&&distance(s.player,railMark)<230){
    const ink=rail.slot?'#c7f2e3':'#ffe2a0';

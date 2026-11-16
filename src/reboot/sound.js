@@ -21,6 +21,7 @@ export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  else if(showcase==='flame')foreground='inferno-ready';
  else if(showcase==='fusion')foreground='conduit-ready';
  else if(showcase==='rocket')foreground='salvo-ready';
+ else if(events.has('boss-evade'))foreground='boss-evade';
  else if(events.has('shell-land'))foreground='shell-land';
  else if(events.has('rail-decoy'))foreground='rail-decoy';
  if(foreground)return warning?[warning,foreground]:[foreground];

@@ -28,3 +28,21 @@ export function coastChargeLane(s){
  if(s.operation?.region>0||!b.active||b.dead||!path||!['windup','charge'].includes(b.mode))return null;
  return {...path,endX:path.x+Math.cos(b.body)*path.length,endY:path.y+Math.sin(b.body)*path.length,r:b.r+16};
 }
+export function coastChargeExits(s,lane){
+ if(!lane||s.boss.mode!=='windup')return [];
+ const p=s.player,forwardX=Math.cos(s.boss.body),forwardY=Math.sin(s.boss.body);
+ const along=(p.x-lane.x)*forwardX+(p.y-lane.y)*forwardY;
+ const across=(p.y-lane.y)*forwardX-(p.x-lane.x)*forwardY;
+ const endGap=along-clamp(along,0,lane.length);
+ if(Math.hypot(endGap,across)>=lane.r)return [];
+ const edge=Math.sqrt(lane.r**2-endGap**2);
+ const exits=[];
+ for(const side of [-1,1]){
+  const dx=-forwardY*side,dy=forwardX*side,reach=edge-across*side+12;
+  const x=p.x+dx*reach,y=p.y+dy*reach;
+  if(x<FIELD.left+16||x>FIELD.right-16||y<FIELD.top+16||y>FIELD.bottom-16)continue;
+  if(s.blocks.some(b=>b.hp!==0&&rayBoxDistance(p,dx,dy,b,16)<reach))continue;
+  exits.push({dx,dy,reach});
+ }
+ return exits.sort((a,b)=>a.reach-b.reach);
+}
