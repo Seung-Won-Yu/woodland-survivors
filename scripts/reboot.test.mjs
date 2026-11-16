@@ -1740,6 +1740,24 @@ test('a narrow rail lane can deploy a whole split wave with a clear and safe ent
  assert.equal(s.powerWave.remaining,52);
  assert.deepEqual(restore(snapshot(s)).powerWave,s.powerWave);
 });
+test('roaming capstones reinforce clear packs using the same reserve',()=>{
+ for(const build of ['flame','fusion']){
+  const s=railwayCapstone(27,build);
+  s.operation.roaming=true;
+  Object.assign(s.player,{x:810,y:780,aim:-Math.PI/2});
+  s.spawnClock=999;s.director.officerClock=999;
+  for(const weapon of s.weapons)weapon.cd=999;
+  const loaded=restore(snapshot(s));
+  for(let i=0;i<55&&!loaded.enemies.length;i++)step(loaded,dt);
+  const troops=loaded.enemies.filter(e=>e.showcase===build);
+  assert.ok(troops.length>=12);
+  assert.equal(loaded.powerWave.remaining,60-troops.length);
+  assert.ok(loaded.effects.some(f=>f.type==='formation'&&f.reinforced));
+  assert.ok(troops.every(e=>distance(loaded.player,e)>145));
+  for(const [i,e] of troops.entries())assert.ok(troops.slice(i+1).every(other=>distance(e,other)>=33.9));
+  if(build==='fusion')assert.ok(new Set(troops.map(e=>e.waveGroup)).size>=2);
+ }
+});
 test('advancing with a completed loadout leads with two formations from the existing reinforcement reserve',()=>{
  for(const build of ['flame','fusion','rocket','quad']){
   const s=railwayCapstone(27,build);

@@ -659,15 +659,16 @@ function paintFormationEntry(c,f,reduced){
  const fire=f.showcase==='flame',t=f.age/f.life;
  const line=f.focused?'#ffe0ae':FORMATION_INK[f.showcase]||FORMATION_INK.fusion;
  const dust=fire?'#e4bc79':f.showcase==='rocket'?'#f8e3af':'#b8e1cd';
- const rear=f.showcase==='quad'?-60:-27;
+ const rear=f.showcase==='quad'?-60:f.reinforced?-42:-27;
+ const halfWidth=f.reinforced?32:23;
  c.save();c.globalAlpha=Math.min(1,(1-t)*2);c.translate(f.x,f.y);c.rotate(f.angle??0);
  c.lineJoin='bevel';c.beginPath();
  for(const side of [-1,1]){
-  c.moveTo(-9,side*23);c.lineTo(rear,side*23);c.lineTo(rear,side*8);
+  c.moveTo(-9,side*halfWidth);c.lineTo(rear,side*halfWidth);c.lineTo(rear,side*8);
   if(!reduced){c.fillStyle=dust;c.fillRect(-33-t*14,side*19-2,5,4);}
  }
  if(f.focused){
-  c.moveTo(14,-23);c.lineTo(23,-23);c.lineTo(23,23);c.lineTo(14,23);
+  c.moveTo(14,-halfWidth);c.lineTo(23,-halfWidth);c.lineTo(23,halfWidth);c.lineTo(14,halfWidth);
  }else if(Number.isFinite(f.angle)){c.moveTo(14,-10);c.lineTo(24,0);c.lineTo(14,10);}
  c.strokeStyle='#29332b';c.lineWidth=7;c.stroke();
  c.strokeStyle=line;c.lineWidth=3;c.stroke();
