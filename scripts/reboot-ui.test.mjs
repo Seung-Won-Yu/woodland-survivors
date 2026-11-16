@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit,fieldDraftView} from '../src/reboot/interface.js';
+import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit,fieldDraftView,readyAssemblyView} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
 import {action,createOperation,finish,reroll} from '../src/reboot/model.js';
 import {earlyFieldDraft} from '../src/reboot/coast-discovery.js';
@@ -28,6 +28,18 @@ test('early field drafts put short card effects and relevant actions in one dial
  assert.match(redraft,/data-choice="gun:f"[^>]+aria-keyshortcuts="1" data-refreshed/);
  assert.equal(redraft.match(/data-refreshed/g).length,1);
  run.level=6;assert.ok(!earlyFieldDraft(run));
+});
+test('field assembly leads with the attack, price and alternatives in one short dialog',()=>{
+ const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,null,true,null,true,true);
+ Object.assign(run.weapons[0],{level:4,branch:'ricochet'});
+ run.weapons.push({...makeWeapon('r'),uid:'field-rocket',level:4,branch:'homing'});
+ run.modules=[{id:'coil',rank:2}];
+ assert.ok(action(run,'gear'));
+ const html=readyAssemblyView(run,run.choices.filter(c=>c.kind==='fusion'));
+ assert.match(html,/무기 합체.*조율권 1개 사용/s);
+ assert.match(html,/data-choice="fusion:h:r"[^>]+aria-keyshortcuts="1".*전도 격발망.*한 번 더 도약.*단일 진화 포기/s);
+ assert.match(html,/data-action="assembly-full"[^>]*>다른 정비/);
+ assert.doesNotMatch(html,/data-choice="tune:repair"/);
 });
 test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a destroyed mount',()=>{
  const s=createOperation(27,[],null,null,'fio','standard');
@@ -803,7 +815,8 @@ test('mixed supply and planned lobby geography show the actual capped outcome',(
 
 test('browser terrain caches rebuild per region and physical objects sort around the player',async()=>{
  const {createRenderer}=await import('../src/reboot/render.js'),saved={innerWidth:globalThis.innerWidth,innerHeight:globalThis.innerHeight,devicePixelRatio:globalThis.devicePixelRatio},fills=[];let caches=0;
- const context=record=>new Proxy({fillRect(...args){if(record)fills.push(args);},measureText:t=>({width:t.length*6}),createRadialGradient:()=>({addColorStop(){}})},{get:(o,k)=>k in o?o[k]:()=>{}}),main=context(true),canvas={getContext:()=>main,ownerDocument:{createElement:()=>{caches++;return{getContext:()=>context(false)};}}};
+ const gradient=()=>({addColorStop(){}});
+ const context=record=>new Proxy({fillRect(...args){if(record)fills.push(args);},measureText:t=>({width:t.length*6}),createRadialGradient:gradient,createLinearGradient:gradient},{get:(o,k)=>k in o?o[k]:()=>{}}),main=context(true),canvas={getContext:()=>main,ownerDocument:{createElement:()=>{caches++;return{getContext:()=>context(false)};}}};
  try{Object.assign(globalThis,{innerWidth:960,innerHeight:540,devicePixelRatio:1});const renderer=createRenderer(canvas,null),run=createOperation(17);renderer.draw(run);renderer.draw(run);assert.equal(caches,1);
   run.operation.region=1;run.player.x=800;run.player.y=650;run.enemies=[];run.sites=[{id:'test',kind:'supply',x:1100,y:700,state:'waiting'}];run.blocks=[{x:1000,y:580,w:100,h:80,hp:-1},{x:760,y:620,w:100,h:70,hp:0}];fills.length=0;renderer.draw(run);assert.equal(caches,2);
   const index=(x,y)=>fills.findIndex(a=>a[0]===x&&a[1]===y);

@@ -58,9 +58,8 @@ function paintSurface(c,materials,index){
  const w=materials.width/2,h=materials.height/2;
  const sx=index===1?w:0,sy=index>=2?h:0;
  c.save();
- c.globalCompositeOperation='soft-light';
- c.globalAlpha=[.82,.69,.68][index];
- c.drawImage(materials,sx,sy,w,h,0,0,1600,1200);
+ c.globalAlpha=[.88,.76,.85][index];
+ c.drawImage(materials,sx+3,sy+3,w-6,h-6,0,0,1600,1200);
  c.restore();
 }
 function paintWater(c,materials,index){
@@ -72,8 +71,8 @@ function paintWater(c,materials,index){
  c.rect(0,FIELD.bottom,1600,1200-FIELD.bottom);
  if(index===2)c.rect(1562,0,38,1200);
  c.clip();
- c.globalAlpha=.76;
- c.drawImage(materials,w,h,w,h,0,0,1600,1200);
+ c.globalAlpha=.88;
+ c.drawImage(materials,w+3,h+3,w-6,h-6,0,0,1600,1200);
  c.restore();
 }
 const STENCIL={
@@ -106,6 +105,77 @@ function paintQuay(c,seed){
   const x=132+(seed+i*151)%1318,y=978+(i*67)%148;
   c.fillStyle=i%3?'#283d434d':'#9aaea652';c.fillRect(x,y,7+i%9*3,2);
  }
+}
+function paintWaterline(c,index,seed){
+ if(index===1)return;
+ const beach=index===0;
+ const bottom=FIELD.bottom;
+ const edge=beach?FIELD.left:38;
+ const wave=(length,cross,flip=false)=>{
+  const reach=beach?22:13;
+  const tide=c.createLinearGradient(0,cross,0,cross+reach);
+  tide.addColorStop(0,beach?'#7bd1bda6':'#467f897d');
+  tide.addColorStop(1,'#17324500');
+  c.fillStyle=tide;c.fillRect(0,cross,length,reach);
+  for(let i=0;i<length;i+=8){
+   const phase=i*.035+(seed%19)+Number(flip);
+   const crest=Math.round(Math.sin(phase)*3+Math.sin(i*.008)*4);
+   const skip=Math.sin(phase*1.73)>.5;
+   c.fillStyle=beach?'#fff0c2bc':'#8ac7bd83';
+   if(!skip)c.fillRect(i,cross+crest+2,8,beach?3:2);
+   c.fillStyle=beach?'#c2dec49c':'#589c9c84';
+   if(i%24)c.fillRect(i+2,cross+crest+9,5,2);
+  }
+ };
+ c.save();
+ c.beginPath();c.rect(0,bottom-9,1600,49);c.clip();
+ wave(1600,bottom);
+ c.restore();
+ c.save();c.translate(edge,0);c.rotate(Math.PI/2);
+ wave(bottom,0,true);
+ c.restore();
+ if(!beach){
+  c.save();c.translate(1562,bottom);c.rotate(-Math.PI/2);
+  wave(bottom,0,true);
+  c.restore();
+ }
+}
+function paintRailPlatforms(c,scene){
+ // The same numbered pads appear on the tactical map after the yard is mirrored.
+ for(const [x,y] of scene.marks){
+  const w=108,h=78,left=x-w/2,top=y-h*.88;
+  c.fillStyle='#1b262482';c.fillRect(left-4,top+5,w+8,h+5);
+  c.fillStyle='#535346';c.fillRect(left,top,w,h);
+  c.fillStyle='#c5a768bb';c.fillRect(left,top,w,3);
+  for(let d=6;d<w-8;d+=11){
+   c.fillStyle='#222a2598';c.fillRect(left+d,top+9,2,h-15);
+   c.fillStyle='#7b787045';c.fillRect(left+d+3,top+9,2,h-15);
+  }
+  c.fillStyle='#8a7d63';c.fillRect(left,top+h-4,w,3);
+  for(const end of [left,left+w-18]){
+   c.fillStyle='#bd9e5c';c.fillRect(end,y+7,18,4);
+  }
+ }
+}
+function paintQuayLanes(c,scene){
+ c.save();c.beginPath();c.rect(44,40,1512,1114);c.clip();
+ c.fillStyle='#142f3b7a';
+ for(let y=216;y<1153;y+=121)c.fillRect(45,y,1510,2);
+ for(let y=216;y<1140;y+=121){
+  for(let x=132+(y%2)*66;x<1546;x+=194)c.fillRect(x,y,2,121);
+ }
+ for(const [x,y] of scene.marks){
+  const light=c.createRadialGradient(x,y-22,4,x,y-22,116);
+  light.addColorStop(0,'#d7a75c43');light.addColorStop(1,'#d7a75c00');
+  c.fillStyle=light;c.fillRect(x-116,y-138,232,232);
+  c.fillStyle='#cea961b8';
+  for(const side of [-1,1]){
+   const corner=x+side*78;
+   c.fillRect(Math.min(corner,corner-side*26),y+11,26,3);
+   c.fillRect(corner-1,y-8,3,19);
+  }
+ }
+ c.restore();
 }
 function paintCoastGround(c,scene,seed,art){
  const variation=(seed>>>0)%173;
@@ -203,14 +273,19 @@ export function paintCoastOpening(c,{routes}){
 }
 export function paintTerrain(c,index,seed,art,variant){
  const scene=fieldScene(index,seed,variant);c.fillStyle=scene.ground;c.fillRect(0,0,1600,1200);
- for(const s of scene.shapes){c.beginPath();if(s.type==='rect'){c.fillStyle=s.fill;c.fillRect(s.x,s.y,s.w,s.h);continue;}s.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));if(s.fill){c.closePath();c.fillStyle=s.fill;c.fill();}if(s.stroke){c.strokeStyle=s.stroke;c.lineWidth=s.width;c.setLineDash(s.dash||[]);c.stroke();c.setLineDash([]);}}
  paintSurface(c,art?.materials,index);
+ c.save();
+ if(art?.materials)c.globalAlpha=index===0?.54:.67;
+ for(const s of scene.shapes){c.beginPath();if(s.type==='rect'){c.fillStyle=s.fill;c.fillRect(s.x,s.y,s.w,s.h);continue;}s.points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));if(s.fill){c.closePath();c.fillStyle=s.fill;c.fill();}if(s.stroke){c.strokeStyle=s.stroke;c.lineWidth=s.width;c.setLineDash(s.dash||[]);c.stroke();c.setLineDash([]);}}
+ c.restore();
  paintWater(c,art?.materials,index);
  const grainCount=index===0?1500:1260;
  for(let i=0;i<grainCount;i++){const x=(i*137+(seed%211))%1600,y=(i*263+(seed%137))%1200;if(x<80||x>1560||(index===0||index===2)&&y>=1146)continue;c.fillStyle=scene.grain[i%2]+(i%3?'28':'38');c.fillRect(x,y,i%5+2,i%3+1);}
  if(index===0)paintCoastGround(c,scene,seed,art);
+ if(index===1)paintRailPlatforms(c,scene);
  for(let i=0;i<55;i++){const x=130+(i*271+seed%97)%1320,y=75+(i*173+seed%113)%1050;c.fillStyle='#2f3d3025';c.fillRect(x,y,7+i%7,3);c.fillStyle='#c4b48d33';c.fillRect(x+2,y-2,5,2);}
- if(index===2)paintQuay(c,seed);
+ if(index===2){paintQuayLanes(c,scene);paintQuay(c,seed);}
+ paintWaterline(c,index,seed);
  for(const points of scene.rails||[])paintRailTrack(c,points,seed);
  for(const [x,y,label]of scene.marks||[])paintMark(c,x,y,label,index===1?'#c6b17d9c':'#bad1c894');
 }

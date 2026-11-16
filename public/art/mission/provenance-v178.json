@@ -1,0 +1,21 @@
+{
+  "tool": "built-in imagegen",
+  "source": "exec-67bf545e-b4b7-4af7-881a-c038c5409e5e.png",
+  "asset": "front-terrain-v178.webp",
+  "dimensions": [
+    1448,
+    1086
+  ],
+  "layout": {
+    "columns": 2,
+    "rows": 2,
+    "items": [
+      "coastal sand",
+      "rail ballast",
+      "quay concrete",
+      "water"
+    ]
+  },
+  "runtime": "Opaque ground only. RIFT applies playable boundaries, site markings and tracks in Canvas.",
+  "prompt": "Create ONE terrain material atlas image for an original indie top-down 2D arcade military survivors game with hand-drawn late-1990s 16/32-bit side-scrolling arcade craftsmanship adapted to overhead view. Landscape 4:3. Absolute orthographic vertical top-down ground surface, no perspective. EXACTLY a 2-by-2 grid with 4 equal rectangular texture zones, clean cuts at exactly half image height and width, no borders, markings, symbols, grid lines, frames, lettering, captions, UI or gutters. Top left: warm desaturated sand from a tropical military landing beach, broad flattened compacted patches of sand and small calm wind streaks as granular pixel clusters, with occasional damp terracotta patches, tan and muted ochre. Top right: medium-dark, warm muted brown and charcoal rail-yard ballast gravel and worn packed industrial earth with clustered tiny slate pebbles, faint gravel-scuffed marks, no railroad rails or recognizable objects. Bottom left: blue-gray slate concrete shipping quay, rainy and slightly wet, subtly mottled weathered material and hairline aggregate, almost completely flat with sparse worn patchwork, no yellow lane lines, no conspicuous cracks/shapes. Bottom right: dark desaturated blue-teal coastal harbor water from above, subtle fine horizontal wave ripples in narrow broken stripes, no shore, no bright white large wave patches, no reflected buildings. Each texture occupies its entire quadrant edge to edge at consistent granularity. All textures uniformly mid-low contrast, low-frequency tone variations, no glowing or dramatic central shapes, preserve tactical readability for contrasting orange and blue enemies and pickups above. Palette grounded in sand, muted ballast and dusk blue steel. Deliberate fine pixel clusters, retro game background material, dither without a pixel grid overlay, no checkerboards, no objects or silhouettes. Output one four quadrant atlas intended to be divided down the midlines."
+}
