@@ -630,7 +630,7 @@ export function coastEncounterCue(s,site,volley,counter){
   if(site.state==='ready')return `${site.coastApproach.toUpperCase()} L${COAST_SALVAGE_LEVEL} · 접근해 노획`;
  }
  if(site.state==='ready'){
-  if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'))return '로켓 한 발 · 두 문 제압';
+  if(site.coastApproach==='r'&&s.effects.some(f=>f.type==='coast-volley'))return '두 문 제압 · 진지에 접근해 회수';
   const salvage=coastCrossGun(s,site);
   if(salvage)return `접근해 회수 · ${salvage.toUpperCase()} L${COAST_SALVAGE_LEVEL}${coastTacticalLootAvailable(s,site)?' / L1 전술':''}`;
   const service=coastService(s,site);

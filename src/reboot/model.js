@@ -193,7 +193,7 @@ function validCoastService(s,c){
  return s.choice?.type==='supply'&&c.kind==='rank'&&service&&service.weapon.id===c.weapon
   &&c.id===`coast-service:${c.weapon}`&&c.coastLevel===service.level;
 }
-export const canResumeRevision=revision=>[RULES.balanceRevision,'b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
+export const canResumeRevision=revision=>[RULES.balanceRevision,'b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b66-coast-fan','b65-field-study','b64-harbor-standoff','b63-rail-spares','b62-rail-firing-pad','b61-harbor-formations','b60-raid-salvage','b59-carrier-prep','b58-capstone-formations','b57-rail-fan-cut','b56-relay-growth','b55-workshop-fan','b54-harbor-extraction','b53-harbor-signal','b52-coast-role-rescue','b51-harbor-crossfire','b50-salvage-campaign','b49-coast-preempt-response','b48-coast-preempt','b47-conduit-mortar','b46-inferno-wake-links','b45-harbor-part-staging','b44-coast-weapon-service','b43-rail-relay-signal','b42-harbor-counter-aim','b41-rail-workshop-rebuild','b40-coast-field-replan','b39-harbor-intercept','b38-rocket-salvos','b37-harbor-relay','b36-counterbattery','b35-coast-requisition','b34-harbor-staging','b33-harbor-fire-control','b32-showcase-escort','b31-harbor-counterattack','b30-port-gantry','b29-rail-workshop','b28-research-dispatch','b27-boss-counterplay','b26-rail-gun-lock','b25-convoy-routes','b24-harbor-counterplay','b23-front-approaches','b22-capstone-impact','b21-field-rhythm','b20-harbor-shutter','b19-coast-opening','b18-harbor-parts','b17-vanguard-triage','b16-holdout-draft','b15-front-tactics','b14-coast-approaches','b13-capstone-showcase','b12-fusion-relay','b11-capstone-combat','b10-beach-routes','b09-front-contracts','b08-pursuit-supply','b07-open-gates','b06-swarms'].includes(revision);
 // Older later-front checkpoints contain site coordinates from before the route change.
 export function canResumeRun(run){
  if(!canResumeRevision(run.balanceRevision))return false;
@@ -439,7 +439,7 @@ export function restore(raw,{allowPrevious=false}={}){
   if(!pointOk(target)||!Number.isFinite(target.hp)||!Number.isFinite(target.maxHp)||target.maxHp<=0||target.hp<0||target.hp>target.maxHp||!Number.isFinite(target.aim)||!Number.isFinite(target.r)||target.r<=0)fail();
   if(!Object.hasOwn(QUALITY,quality)||!Object.hasOwn(QUALITY,wager?.quality))fail();
   const part=s.raid.part,designated=isSalvageCampaign(s)&&contract==='armored';
-  if(designated&&[RULES.balanceRevision,'b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
+  if(designated&&[RULES.balanceRevision,'b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds','b61-harbor-formations','b60-raid-salvage'].includes(s.balanceRevision)&&part===undefined)fail();
   if(part!==undefined&&(!designated||part!==null&&(
    !['coil','catalyst','ricochet'].includes(part?.module)||part.rank!==2&&!(part.module==='catalyst'&&part.rank===3))))fail();
   if(!Array.isArray(route)||route.length<2||!route.every((p,i)=>pointOk(p)&&(!i||distance(p,route[i-1])>0))||segment!=null&&(!Number.isInteger(segment)||segment<0||segment>=route.length-1))fail();
@@ -458,7 +458,7 @@ export function restore(raw,{allowPrevious=false}={}){
  const defense=s.challenge?.type==='defend'?s.challenge:null;
  if(s.challenge?.safeTransmission!==undefined&&(!defense||defense.safeTransmission!==true||s.operation?.region!==1||s.stage!=='holdout'))fail();
  if(defense&&(![defense.progress,defense.duration,defense.strike].every(Number.isFinite)
-  ||[RULES.balanceRevision,'b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
+  ||[RULES.balanceRevision,'b72-workshop-wide','b71-coast-specialists','b70-relay-branch','b69-rescue-coil','b68-quad-lanes','b67-turret-builds'].includes(s.balanceRevision)&&!defense.safeTransmission))fail();
  const relayRounds=s.hazards.filter(h=>h?.relayDefense!==undefined);
  const liveDefense=defense?.state==='active'&&!defense.secured||defense?.state==='withdrawn'&&s.phase==='result';
  if(relayRounds.length>1||relayRounds.some(h=>h.relayDefense!==true||!defense?.safeTransmission||h.lane
@@ -897,7 +897,8 @@ function deferContactDraft(s){
  const site=coastLead(s);
  if(!site?.coastApproach||site.coastApproach!==s.firstNew)return false;
  const gap=distance(s.player,site);
- return site.state==='waiting'?gap<=430:site.state==='active'&&gap<=coastApproach(site).range+130;
+ if(site.state==='waiting')return gap<=430;
+ return ['active','ready'].includes(site.state)&&gap<=coastApproach(site).range+130;
 }
 function openLevel(s,extra){
  s.pendingLevels--;
