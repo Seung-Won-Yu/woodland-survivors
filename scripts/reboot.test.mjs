@@ -2359,6 +2359,40 @@ test('coastal exploration reveals the equipment only nearby and reserves one kit
  step(rescue,dt);
  assert.equal(prisoner.state,'active');
 });
+test('exploration lets the pilot wait for the other gun or turn over the offer immediately',()=>{
+ const start=()=>freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,null,true,true).run;
+ const draw=(s,level)=>{
+  s.t+=3;s.level=level;s.pendingLevels=1;assert.ok(action(s,'upgrade'));
+  return s.choices.find(c=>c.kind==='gun')?.weapon;
+ };
+ const waiting=start();
+ assert.equal(draw(waiting,2),'r');
+ assert.ok(choose(waiting,'rank:h'));
+ assert.equal(waiting.weapons[0].level,2);
+ assert.equal(draw(waiting,3),'f');
+ const saved=restore(snapshot(waiting));
+ assert.ok(choose(saved,'gun:f'));
+ assert.deepEqual(saved.weapons.map(w=>[w.id,w.level]),[['h',2],['f',1]]);
+ assert.equal(saved.rerolls,2);
+ const redraw=start();
+ assert.equal(draw(redraw,2),'r');
+ assert.ok(reroll(redraw));assert.equal(redraw.choices[0].weapon,'f');assert.equal(redraw.rerolls,1);
+ assert.ok(reroll(redraw));assert.equal(redraw.choices[0].weapon,'r');assert.equal(redraw.rerolls,0);
+ const fixed=start();fixed.excluded=['f'];
+ assert.equal(draw(fixed,2),'r');assert.equal(reroll(fixed),false);assert.equal(fixed.rerolls,2);
+});
+test('a discovered kit changes the early supporting offer without locking a weapon into the build',()=>{
+ for(const [kit,offer] of [['burst','module:ricochet'],['stride','utility:pickup']]){
+  const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,null,true,true);
+  const cache=run.operation.exploration.caches.find(c=>c.kit===kit);
+  Object.assign(run.player,{x:cache.x,y:cache.y});assert.ok(action(run,'interact'));
+  run.level=2;run.pendingLevels=1;assert.ok(action(run,'upgrade'));
+  assert.deepEqual(run.choices.map(c=>c.id),['gun:r','rank:h',offer]);
+  assert.ok(choose(run,offer));assert.equal(run.firstNew,null);
+  if(kit==='burst')assert.deepEqual(run.modules,[{id:'ricochet',rank:1}]);
+  else assert.equal(run.boosts.pickup,1);
+ }
+});
 test('field equipment rewards close groups or moving XP through distinct live attacks',()=>{
  const equip=kit=>{
   const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,null,true,true);

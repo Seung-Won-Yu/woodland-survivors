@@ -1,12 +1,12 @@
 import {OPERATORS,operatorOf,operatorId,skillRules,canUseSkill,chargeLabel} from './operator.js';
-import {coastCaches,FIELD_KITS,movingReload} from './coast-discovery.js';
+import {coastCaches,FIELD_KITS,movingReload,earlyFieldDraft} from './coast-discovery.js';
 import {createOperationPlan} from './operation-plan.js';
 import {choiceDetails,growthForecast,branchBuildPreview,isQuickMod,gateContractDetails,gateActiveContract,HARBOR_PART_ACTION} from './choice-details.js';
 import {terrainSvg,siteSymbol,sitePresentation,gateSymbol,entryRouteSvg,escapeRouteSvg,orderPinSvg,raidRouteSvg,raidPreview,coastOpeningGuide,railSalvagePreview} from './field-scene.js';
 import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.js';
 import {coastChargeLane} from './coast-charge.js';
 import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck,coastTurretReturned} from './coast-salvage.js';
-import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon,coastRescueReward,railHandoff,railTransferBrief,railArrivalKit} from './interface.js';
+import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon,coastRescueReward,railHandoff,railTransferBrief,railArrivalKit,fieldDraftView} from './interface.js';
 import {REGIONS,BOSS_ENTRY,frontLayout,HOLDOUT,frontTimeLeft,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,isOpeningGun,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastalThermalPrep,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portBuildApproach,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutRewardParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTiming,holdoutOpeningDelay,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railLaneBounds,railBossGuide,railHasRelay,railHasWire,RAIL_GUN_COLORS} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,moduleGain,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle,isCapturedTurret,coastFanAngle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,railRelayInvestment,fieldResearchTrial,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge,conduitMortarCue,railFanCutCue,armoredRaidPart} from './model.js';
@@ -265,6 +265,7 @@ function holdoutClock(tier,wait){
  return tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${wait}초`;
 }
 function showChoices(){
+ if(earlyFieldDraft(run)){panel(fieldDraftView(run,banishOptions(run).length>0));return;}
  const coastOptions=run.choices.some(c=>c.kind==='coast-strike');
  const coastalService=run.choices.some(c=>c.coastLevel);
  const railAmmo=run.choice.siteId==='rail-ammo';
@@ -549,7 +550,7 @@ async function selectCard(id,args={}){const c=run.choices.find(c=>c.id===id);if(
  if(c.kind==='refit'&&!args.weapon){showRefits(c);return;}
  const ranked=c.kind==='rank'&&run.weapons.find(w=>w.id===c.weapon&&!w.fusion);
  if(ranked&&rankChoiceLevel(ranked,c)===4&&!args.branch){showBranches(c,args);return;}
- if(c.kind==='gun'&&!c.salvageLevel&&args.slot===undefined&&(run.weapons.length>=3||!run.choice.opening&&run.refits>0&&run.weapons.some(w=>w.level>1&&!w.evolved))){showSlots(c);return;}
+ if(c.kind==='gun'&&!c.salvageLevel&&args.slot===undefined&&(run.weapons.length>=3||!earlyFieldDraft(run)&&!run.choice.opening&&run.refits>0&&run.weapons.some(w=>w.level>1&&!w.evolved))){showSlots(c);return;}
  if(c.kind==='module'&&!moduleRank(run,c.module)&&run.modules.length>=4&&args.slot===undefined){showSlots(c);return;}
  const before=run.stats.choices.length,hadHeat=heatSynergyReady(run);
  const openingGun=!!((run.choice.opening||run.choice.preempt)&&c.kind==='gun'&&COAST_APPROACHES[c.weapon]);
