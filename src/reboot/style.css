@@ -1441,6 +1441,17 @@ body[data-scene="battle"] .objective:not([data-field-clear]) {border-left-color:
  .shore-transfer .arsenal :is(#weapons,#modules,#synergy,#support-status){display:none}
 }
 @media(max-width:360px) and (orientation:portrait) {
+ .front-transfer[data-transfer="broken"]:has(.transfer-route){grid-template-columns:minmax(0,3fr) minmax(0,5fr)}
+ .front-transfer[data-transfer="broken"] > .kit-sprite{display:none}
+ .front-transfer[data-transfer="broken"] .transfer-route{grid-column:auto;grid-template-columns:36px minmax(0,1fr);gap:4px}
+ .front-transfer[data-transfer="broken"] .transfer-route .rail-salvage-map{min-height:30px}
+ .front-transfer[data-transfer="broken"] .transfer-route b{word-break:keep-all}
+ .front-transfer[data-transfer="broken"] :is(.transfer-route small,.transfer-kit small){display:none}
+ .gate-menu:has(.front-transfer[data-transfer="broken"]) .gate-deck{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .gate-menu:has(.front-transfer[data-transfer="broken"]) .gate-holdout{display:contents}
+ .gate-menu:has(.front-transfer[data-transfer="broken"]) .gate-order:not([data-choice="stay"],[data-choice="extract"]){grid-column:1/-1}
+ .gate-menu:has(.front-transfer[data-transfer="broken"]) .gate-order:is([data-choice="stay"],[data-choice="extract"]){grid-template-columns:minmax(0,1fr) auto}
+ .gate-menu:has(.front-transfer[data-transfer="broken"]) .gate-order:is([data-choice="stay"],[data-choice="extract"]) .gate-order-icon{display:none}
  .rail-fork .rail-route-row{padding-block:3px}
  .rail-fork .rail-route-tactic{word-break:keep-all;overflow-wrap:anywhere}
  .rail-fork #field-intel:has([data-recommended]) .rail-route-row:not([data-recommended]) :is(.rail-route-tactic,.rail-route-supply){display:none}

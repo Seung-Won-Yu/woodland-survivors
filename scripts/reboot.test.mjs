@@ -2331,6 +2331,32 @@ test('rare parts wait for actual reinforcements and match the fixed seed preview
  assert.deepEqual(s.choices.filter(c=>c.kind==='front-support').map(c=>c.key),holdoutParts(s.seed,0));
  assert.ok(s.choices.some(c=>c.kind==='resupply'));
 });
+test('coast demolition holdout offers two parts that change the next rail fight',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ Object.assign(s.operation.coastSalvage,{plan:'break',turret:'broken'});
+ s.operation.cleared=1;s.stage='holdout';s.boss.dead=true;s.boss.hp=0;s.boss.parts[0].hp=0;
+ s.enemies=[];s.blocks=[];s.sites.forEach(site=>site.state='done');
+ Object.assign(s.player,exitGate(s));assert.ok(action(s,'interact'));
+ assert.deepEqual(s.choices.filter(c=>c.kind==='advance').map(c=>c.support),['breach','vanguard']);
+ const preview=gateContractDetails(s);
+ assert.deepEqual(preview.parts.map(part=>part.id),['overrun','recovery']);
+ assert.match(preview.cost,/전진 지원 종료/);
+ assert.ok(action(s,'gate-challenge'));
+ s.enemies.filter(e=>e.cohort==='challenge').forEach(e=>e.dead=true);
+ s.operation.holdoutKills=HOLDOUT.rareKills;
+ step(s,dt);
+ assert.deepEqual(s.choices.map(c=>c.id),['support:overrun','support:recovery','resupply:pursuit-mixed']);
+ const dashKit=snapshot(s);
+ for(const [run,part] of [[dashKit,'overrun'],[s,'recovery']]){
+  assert.ok(choose(run,`support:${part}`));
+  Object.assign(run.player,exitGate(run));
+  assert.ok(action(run,'interact'));
+  assert.deepEqual(run.choices.filter(c=>c.kind==='advance').map(c=>c.id),['advance']);
+  assert.ok(choose(run,'advance'));
+  assert.equal(run.operation.support,part);
+  assert.equal(run.operation.region,1);
+ }
+});
 test('fast advance gives one longer warning, while late advance skips the early kit',()=>{
  const warning=holdTime=>{
   const s=quietOperation();clearRegion(s);s.holdTime=holdTime;assert.ok(choose(s,'advance'));
