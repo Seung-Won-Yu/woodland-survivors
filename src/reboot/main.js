@@ -1379,7 +1379,7 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
    if(recoveringTurret)$('threat').textContent=distance(p,wreck)<=COAST_SALVAGE.reach?'범위 안에서 증원군을 막으세요.':'분리 일시 중단 · 잔해 범위로 복귀';
   }
  }
- $('combo').textContent=run.combo>=8?`${run.combo} 연속 처치`:'';
+ $('combo').textContent=!roaming&&run.combo>=8?`${run.combo} 연속 처치`:'';
  const key=JSON.stringify([roaming,run.weapons.map(w=>[w.id,w.level,w.branch,w.evolved,w.fusion,isCapturedTurret(w)]),run.modules,run.tuning]);
  if(key!==inventoryStamp){
   inventoryStamp=key;
