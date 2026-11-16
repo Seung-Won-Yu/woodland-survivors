@@ -1504,3 +1504,26 @@ body.roaming-field .arsenal #support-status:not([hidden]){display:none}
  .roaming-field .arsenal #weapons .weapon small{font-size:8px}
 }
 @media(max-width:700px){.quick-hangar:has([data-starter]) .quick-portrait{height:clamp(45px,12dvh,82px)}}
+
+.report-sheet[data-quick-debrief] .debrief-overview{grid-template-areas:"score next" "salvage next"}
+.debrief-quick-actions{display:grid;gap:6px}
+.debrief-launch{padding:8px 12px;text-align:left}
+.debrief-launch span{display:grid;gap:2px}
+.debrief-launch small{font-size:10px;font-weight:400}
+.debrief-launch i{font-style:normal}
+.debrief-research-action{display:grid;gap:5px;padding:6px 0;border-bottom:1px solid #657560}
+.debrief-research-action strong,.debrief-research-action small{display:block}
+.debrief-research-action strong{font-size:12px;color:#f1e7cb}
+.debrief-research-action small{margin-top:2px;color:#cbd8bb;font-size:10px;line-height:1.4;word-break:keep-all}
+.debrief-research-action button{min-height:44px;padding:6px 8px;text-align:left;font-size:11px}
+.debrief-secondary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 6px}
+.debrief-secondary button{min-height:44px;padding-inline:4px;font-size:11px}
+.report-sheet[data-quick-debrief] .debrief-details>:is(.debrief-summary,.rail-part-receipt,.salvage-report){margin:0 0 8px}
+@media(max-width:700px){
+ .sheet.report-sheet[data-quick-debrief]{padding-block:12px 7px}
+ .report-sheet[data-quick-debrief] .debrief-header{margin-bottom:8px}
+ .report-sheet[data-quick-debrief] .debrief-overview{grid-template-areas:"score" "salvage" "next";row-gap:6px}
+ .report-sheet[data-quick-debrief] .debrief-details{margin-top:6px}
+ .report-sheet[data-quick-debrief] .debrief-details summary{min-height:44px}
+ .debrief-quick-actions{padding:8px}
+}

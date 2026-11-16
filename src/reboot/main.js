@@ -666,6 +666,13 @@ ui.addEventListener('click',async e=>{
  }
  if(a==='replay-brief'){openReplayBriefing(button);return;}
  if(a==='replay-brief-back'){closeReplayBriefing();return;}
+ if(a==='fresh-report'){
+  const report=profile().recent[0];
+  if(run?.phase==='result'&&report?.sequence===Number(button.dataset.replayFrom)){
+   await launch(button,operationPlan.forReport(report.seed));
+  }
+  return;
+ }
  if(a==='launch'||a==='coast-launch'){await launch(button,subpanel?.type==='replay-briefing'?subpanel.options.freshSeed:undefined);return;}if(a==='same-seed'){const seed=Number(button.dataset.seed);if(Number.isSafeInteger(seed)&&seed>=0&&seed<=4294967295)await launch(button,seed);else notice('지난 전장의 코드를 읽지 못했습니다.');return;}if(a==='home'){if(mode==='report'){closeArchivedReport();return;}lobbyTab=button.dataset.target||'mission';briefRegion=null;missionDetails=false;showHome();return;}if(a==='settings-menu'){showSettings();return;}if(a==='settings-back'){closeSettings();return;}if(a==='last-report'){const report=profile().recent[0];if(!report?.stats||!Array.isArray(report.weapons)||!Array.isArray(report.modules)){notice('전투 보고서를 읽지 못했습니다.');return;}reportOrigin=null;mode='report';showResult(report,true);return;}
  if(a==='end-saved'){run=restore(profile().active.run);showRetreat(true);return;}
  if(a==='retreat'){showRetreat();return;}if(a==='retreat-cancel'){if(subpanel?.fromHome)showHome();else present(true);return;}if(a==='retreat-confirm'){mode='battle';document.body.dataset.scene='battle';await mutate(d=>d.result?true:finish(d,false));return;}

@@ -660,6 +660,12 @@ test('harbor wins show the final build and put its unlocked research before opti
  assert.match(reportView(signal,saved),/data-part="signal".*역송 2회 · 포탑 직접 파괴 1문 · 보조포 포격 차단 1회/);
  const study=buyResearch(saved,'thermal'),after=reportView(saved.recent[0],study);
  assert.match(after,/data-trial-focus="thermal"[\s\S]*data-replay-route="fresh"/);
+ const roaming={...saved.recent[0],operation:{...saved.recent[0].operation,roaming:true}};
+ const quick=reportView(roaming,saved);
+ assert.match(quick,/data-quick-debrief[\s\S]*data-action="fresh-report"[\s\S]*data-research="thermal"[\s\S]*data-replay-route="same"/);
+ assert.match(quick,/<details class="debrief-details">[\s\S]*class="debrief-route"/);
+ assert.match(reportView(roaming,study),/data-action="fresh-report"[\s\S]*data-trial-focus="thermal"/);
+ assert.doesNotMatch(reportView(roaming,saved,{archived:true}),/data-action="fresh-report"/);
  const brief=replayBriefingView(saved.recent[0],study,'standard','thermal',{freshSeed:28});
  assert.match(brief,/포로 구출 · 화염 F 확보[\s\S]*박격포 진지 · 축전 코일 장착[\s\S]*이동 보급차 · 흡열 코일 장착[\s\S]*data-action="launch"/);
  assert.doesNotMatch(brief,/data-requisition=/);
