@@ -116,6 +116,9 @@ export function createAudio({fieldMix = false} = {}) {
     } else if (mortar) {
       transient(now,.08,.026,1460,direct);
       note(445,235,'sine',now,.12,.022,direct);
+    } else if (event === 'boss-evade') {
+      transient(now,.08,.033,2200,direct);
+      note(490,730,'triangle',now,.115,.044,direct);
     } else if (event === 'shell-land') {
       transient(now,.16,.055,470);
       note(125,42,'triangle',now,.20,.047);

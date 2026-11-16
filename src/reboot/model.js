@@ -2295,6 +2295,11 @@ function updateShots(s,dt){
  }
 }
 function hurt(s,amount,x,y){const p=s.player;if(p.invuln>0||p.dash>0||p.hp<=0)return;const actual=amount*(moduleRank(s,'overcharger')?1.15:1);p.hp=Math.max(0,p.hp-actual);s.stats.damageTaken+=actual;p.hurt=.2;p.invuln=.65;const dx=p.x-x,dy=p.y-y,d=Math.hypot(dx,dy)||1;move(s,p,dx/d*RULES.combatFeel.pilotHitPush,dy/d*RULES.combatFeel.pilotHitPush,16);emit(s,'hurt',p.x,p.y);}
+function confirmedBossDodge(s){
+ const p=s.player;
+ if(p.hp<=0||p.dash<=0||!(s.t>=p.dodgeFrom)||s.effects.some(f=>f.type==='boss-evade'))return;
+ emit(s,'boss-evade',p.x,p.y,{life:.62});
+}
 function enemyShot(s,e,a,portFan=false){if(s.enemyShots.length<100)s.enemyShots.push({x:e.x,y:e.y,vx:Math.cos(a)*180,vy:Math.sin(a)*180,life:3,r:5,...(portFan?{portFan}:null)});}
 function separateEnemies(s,dt){
  const crowd=alive(s),cells=new Map(),forces=crowd.map(()=>({x:0,y:0})),cell=56,limit=RULES.combatFeel.crowdSeparationSpeed*dt;
@@ -2350,7 +2355,10 @@ function updateEnemies(s,dt){
  for(const h of s.hazards){h.timer-=dt;if(h.timer<=0&&!h.hit){
   h.hit=true;emit(s,h.lane?'barrage':'explosion',h.x,h.y,{r:h.r,w:h.w,h:h.h,life:.3});s.events.push('shell-land');
   const caught=h.lane?railLaneContains(h,p):distance(h,p)<blastContactRadius(h);
-  if(caught&&(!incoming||incoming.amount<14))incoming={amount:14,x:h.x,y:h.y};
+  if(caught){
+   if(s.stage==='boss'&&(h.lane||h.portRound))confirmedBossDodge(s);
+   if(!incoming||incoming.amount<14)incoming={amount:14,x:h.x,y:h.y};
+  }
  }}
  s.enemyShots=s.enemyShots.filter(q=>q.life>0);s.hazards=s.hazards.filter(h=>h.timer>-.3);s.enemies=s.enemies.filter(e=>!e.dead||e.death>0);
  if(incoming&&(!s.hitCandidate||incoming.amount>s.hitCandidate.amount))s.hitCandidate=incoming;
@@ -2515,7 +2523,8 @@ function updateBoss(s,dt){
  updateBurn(s,b,dt);for(const part of b.parts)updateBurn(s,part,dt);if(b.dead)return;
  if(!b.chargePath&&['windup','charge'].includes(b.mode))lockCoastCharge(s);
  b.timer-=dt;b.spawnClock-=dt;b.kick=Math.max(0,b.kick-dt*3);b.flash=Math.max(0,b.flash-dt);
- if(b.mode==='charge')updateCoastCharge(s);
+ const charging=b.mode==='charge';
+ if(charging)updateCoastCharge(s);
  else if(b.timer<=0){
   if(b.mode==='windup'){b.mode='charge';b.timer=COAST_CHARGE.duration;emit(s,'boss-charge',b.x,b.y);}
   else if(b.mode==='recover'){
@@ -2535,7 +2544,10 @@ function updateBoss(s,dt){
  }
  b.aim=b.mode==='charge'||b.mode==='windup'?b.body:Math.atan2(p.y-b.y,p.x-b.x);
  if(b.spawnClock<=0){b.spawnClock=5;for(let i=0;i<6;i++)spawnAround(s,i===0?'shield':'rifle');}
- if(distance(b,p)<b.r+16&&(!s.hitCandidate||s.hitCandidate.amount<16))s.hitCandidate={amount:16,x:b.x,y:b.y};
+ if(distance(b,p)<b.r+16){
+  if(charging)confirmedBossDodge(s);
+  if(!s.hitCandidate||s.hitCandidate.amount<16)s.hitCandidate={amount:16,x:b.x,y:b.y};
+ }
 }
 function frontControlCards(s){
  const index=s.operation.region,tactics=FRONT_TACTICS[index];
@@ -3095,6 +3107,7 @@ export function action(s,kind,input){
    if(distance(p,b)>portCoreReach(s))p.portRush=true;
    else p.portCutX=p.x;
   }
+  p.dodgeFrom=s.t+p.invuln;
   p.dash=.18;p.dashCd=2;p.invuln=Math.max(p.invuln,.30);delete p.emberDashSpent;
   if(p.maneuver==='assault')p.assaultTime=1.25;
   emit(s,'dash',p.x,p.y,{angle:p.aim,life:.2});return true;
@@ -3326,6 +3339,7 @@ export function step(s,dt,input={x:0,y:0},view=null){
  }
  const wasDashing=p.dash>0;
  for(const key of ['invuln','hurt','attack','dash','dashCd','skillCd','pickupTime'])p[key]=Math.max(0,p[key]-dt);
+ if(!p.dash&&p.dodgeFrom!==undefined)delete p.dodgeFrom;
  const previousOverdrive=p.overdrive;p.overdrive=Math.max(0,p.overdrive-dt);if(previousOverdrive>0&&p.overdrive===0&&moduleRank(s,'overcharger'))blast(s,p.x,p.y,180,140,'module');
  if(s.operator!=='marco')p.charge=Math.min(100,p.charge+(s.stage==='boss'?2:.5)*dt);
  s.coilCd=Math.max(0,s.coilCd-dt);s.heatCd=Math.max(0,s.heatCd-dt);for(const cd of ['medicCd','thermalCd','shrapnelCd'])s[cd]=Math.max(0,(s[cd]||0)-dt);
