@@ -1,4 +1,4 @@
-import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope,isOpeningGun} from './campaign.js';
+import {RESEARCH,REQUISITION_FEE,operationPayout,completedResearchProofs,pickedResearchTrials,sortieOrder,orderRecordScope,isOpeningGun,railLayoutForSeed} from './campaign.js';
 import {VERSION,RULES} from './content.js';
 import {createOperation,createCoastSortie,restore,snapshot,finish,canResumeRun} from './model.js';
 import {coastSalvage,coastTurretReturned,isSalvageCampaign,railSortieReturned} from './coast-salvage.js';
@@ -68,7 +68,11 @@ export function freshSortie(p,seed,order=null,operator='fio',requisition=null,re
  const run=coastLoadout&&!fullCampaign?createCoastSortie(seed,operator,coastLoadout)
   :createOperation(seed,p.research,p.trials,order,operator,fullCampaign?coastLoadout||'standard':null);
  if(isOpeningGun(openingGun)&&fullCampaign&&coastLoadout!=='turret'&&!order&&!requisition&&!run.trials.length)run.operation.openingGun=openingGun;
- if(fullCampaign&&roaming)run.operation.roaming=true;
+ if(fullCampaign&&roaming){
+  run.operation.roaming=true;
+  const railLayout=railLayoutForSeed(seed);
+  if(railLayout)run.operation.railLayout=railLayout;
+ }
  if(requisition)run.operation.requisition=requisition;
  if(requisitionAt)run.operation.requisitionAt=requisitionAt;
  return {run,next:beginProfile(p,run,reference)};

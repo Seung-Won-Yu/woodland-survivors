@@ -298,11 +298,11 @@ function showChoices(){
  const mounts=shoreGate?(preparation?.mounts||[]):[];
  const [mountOption]=mounts;
  const directMount=mounts.length===1;
- const transferBrief=handoff&&!wireTransfer?railTransferBrief(run.seed,handoff,mountOption):'';
+ const transferBrief=handoff&&!wireTransfer?railTransferBrief(run.seed,handoff,mountOption,run.operation.railLayout):'';
  const mountLabel=directMount?'장착하고 철도 진입':'장착 슬롯 고르고 진입';
  const kitNote=directMount?`${mountOption.detail} · ${mountOption.fanCount}발 부채꼴`:mounts.length?'교체할 무장을 고르면 철도로 전진':handoff?.state==='cargo'?'장착 가능한 슬롯 없음 · 전리품으로 운반':handoff?.gateDetail||handoff?.detail;
  const transfer=handoff?`<div class="front-transfer" data-transfer="${handoff.state}"${directMount?' data-mount-forward':''}>${itemArt(handoff.art)}<div class="transfer-kit"><b>${directMount?esc(mountOption.title):mounts.length?'노획 포탑 확보':esc(handoff.title)}</b><small>${esc(kitNote)}</small></div>${transferBrief}${mounts.length?`<button data-action="${directMount?'gate-mount-advance':'gate-mount'}" aria-keyshortcuts="M">${mountLabel} <span aria-hidden="true">›</span><kbd aria-hidden="true">M</kbd></button>`:''}</div>`:'';
- const railPreview=carrier&&carriesCoastSalvage(run)?`<aside class="rail-salvage-brief" aria-label="다음 전선 철도 공략">${railSalvagePreview(run.seed)}
+ const railPreview=carrier&&carriesCoastSalvage(run)?`<aside class="rail-salvage-brief" aria-label="다음 전선 철도 공략">${railSalvagePreview(run.seed,null,true,run.operation.railLayout)}
   <div>${['rail-relay','rail-cache'].map(id=>{
    const route=RAIL_SALVAGE_ROUTES[id];
    return `<span style="--route-ink:${route.color}"><b>${route.name}</b><small>${route.boss}</small></span>`;
@@ -746,7 +746,7 @@ function updateMap(lead,entry,gantry,dispatch,reserved,aid,otherCoast,conduit,op
    :`fill="${h.tracked?'#ef9a6799':'#ee975e66'}" stroke="#ffda99"`;
   return `<rect class="${forecast?'map-forecast-lane':'map-danger-lane'}" x="${left}" y="${top}" width="${width}" height="${height}" ${paint} stroke-width="8"><title>${railLaneLabel(h,bait)}</title></rect>`;
  };
- let map=terrainSvg(run.operation?.region||0,run.seed)+entryRouteSvg(entry||opening)+(rail?.forecast||[]).map(h=>railLane(h,true)).join('')
+ let map=terrainSvg(run.operation?.region||0,run.seed,run.operation?.railLayout)+entryRouteSvg(entry||opening)+(rail?.forecast||[]).map(h=>railLane(h,true)).join('')
   +warnings.map(h=>h.lane?railLane(h):dot('map-danger',h.x,h.y,h.portRound||h.signalCut||h.portBattery||h.conduitGun||h.coastMortar==='coast-response'?blastContactRadius(h):h.r,h.portRound==='rake'?'#f99354bb':h.portRound==='turret'?'#f9bf83b0':'#f77e778c',h.signalCut?'차량 진로 포격':h.portBattery||h.conduitGun||h.coastMortar==='coast-response'?'박격포 탄착 범위':h.portRound==='lock'?'집중 포격 조준점':h.portRound==='rake'?'측면 장갑 가로 포격':h.portRound==='battery'?'측면 장갑 세로 포격':h.portRound==='turret'?'포탑 측면 포격':'')).join('');
  map+=run.blocks.filter(b=>b.hp!==0).map(b=>`<rect class="map-block" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#71837e"/>`).join('');
  map+=run.gems.map(g=>g.pickup
