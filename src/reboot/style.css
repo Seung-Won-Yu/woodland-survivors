@@ -181,7 +181,7 @@
 #rail-arrival-kit:is([data-state="broken"],[data-state="fusion"]){--kit-ink:#9cd4da;background:linear-gradient(95deg,#294443,#182b27)}
 #rail-arrival-kit .kit-sprite{width:29px;height:22px}
 #rail-arrival-kit small{color:#f3ead4;font-size:10px;text-align:right}
-.rail-fork #rail-arrival-kit:not([hidden]) + #objective{display:none}
+.rail-fork:not(.roaming-field) #rail-arrival-kit:not([hidden]) + #objective{display:none}
 .rail-route-row{display:grid;grid-template-columns:23px minmax(0,1fr);align-items:center;gap:6px;padding:5px 6px;border-left:2px solid #70867b;color:#d7dfce;background:#14272285;line-height:1.35}
 .rail-route-row[data-recommended]{border-color:var(--route-ink);background:linear-gradient(95deg,color-mix(in srgb,var(--route-ink) 21%,#1b2c28),#1b2c28)}
 .rail-route-row b{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:12px;color:var(--route-ink)}
