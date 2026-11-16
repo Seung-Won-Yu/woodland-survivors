@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
-import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
+import {aidBearingPosition,coastCuePosition,coveredCombatPanels,visibleSweep} from '../src/reboot/render.js';
 import {portEscapeLanes,portBuildApproach,frontTactic,portTacticKeys} from '../src/reboot/campaign.js';
 import {makeWeapon} from '../src/reboot/content.js';
 
@@ -843,4 +843,19 @@ test('the sortie board exposes both operators and the selected specialist and av
  assert.ok(marco.indexOf('data-pilot=')<marco.indexOf('data-action="launch"'));
  assert.match(marco,/마르코 · 지령 출격/);assert.match(marco,/사격 버튼을 끌어 조준한 뒤 놓으세요/);
  assert.match(marco,/관통 사격 E/);assert.match(marco,/마르코 출격 준비 모습/);
+});
+
+test('a sweep counts nearby visible capstone kills in the same burst',()=>{
+ const kill=(x,y,sweep='fire',age=.1)=>({type:'kill',x,y,sweep,age});
+ const fire=[kill(180,200),kill(210,230),kill(240,240),kill(259,240)];
+ const unrelated=[kill(80,80,undefined,.42),kill(790,80),kill(220,220,'arc'),kill(259,240,'fire',.38)];
+ const sweep=visibleSweep([...unrelated,...fire],x=>x<600);
+ assert.equal(sweep.kind,'fire');
+ assert.equal(sweep.count,4);
+ assert.equal(sweep.x,222.25);
+ assert.equal(sweep.y,227.5);
+ assert.equal(visibleSweep(fire,x=>x<250),null);
+ assert.equal(visibleSweep(fire.map(f=>({...f,sweep:undefined})),()=>true),null);
+ const arcs=[kill(200,50,'arc'),kill(350,50,'arc'),kill(360,60,'arc'),kill(400,70,'arc')];
+ assert.equal(visibleSweep(arcs,()=>true)?.count,4);
 });

@@ -1444,7 +1444,7 @@ function relayCoreHit(s,owner){
  const result=target.hp<=0?'파괴':portRelayCuts(s,b.cycle+1,b.harborRelayPart)?'다음 사격 차단':'명중';
  emit(s,'weakpoint',target.x,target.y,{text:`코어 역송 · ${turret?'포탑':'보조포'} ${result}`,portRelay:true,life:1.15});
 }
-function scoreKill(s,e,source,kind,ignitedPayload){
+function scoreKill(s,e,source,kind,ignitedPayload,owner){
  const coast=coastAtShore(s);
  if(coast&&s.operator!=='marco'&&coast.progress<COAST_SALVAGE.steps.at(-1)&&
     coastGrowthEnemy(s,e)){
@@ -1482,7 +1482,10 @@ function scoreKill(s,e,source,kind,ignitedPayload){
  }
  const flavor=ignitedPayload||kind==='fire'?'fire':source==='payload'?'arc':null;
  if(flavor)e.deathFlavor=flavor;
- emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{}),...(wake?{wake:true}:{})});
+ const weapon=s.operation?.roaming&&flavor&&owner?s.weapons.find(w=>w.uid===owner):null;
+ const sweep=s.operation?.roaming&&((wake||flavor==='fire'&&(isTrailInferno(weapon)||isFocusedInferno(weapon)))?'fire'
+  :flavor==='arc'&&isConductiveFusion(weapon)?'arc':null);
+ emit(s,'kill',e.x,e.y,{angle:s.player.aim,...(flavor?{flavor}:{}),...(wake?{wake:true}:{}),...(sweep?{sweep}:{})});
  if(wake)s.events.push('wake-kill');
  const rank=moduleRank(s,'catalyst');if(rank&&e.burn>0&&!e.burnDepth&&['native','dot','wake'].includes(source)){const others=alive(s).filter(o=>o!==e&&distance(e,o)<100).sort((a,b)=>distance(e,a)-distance(e,b)).slice(0,rank);for(const other of others){burn(other,RULES.modules.catalyst.burnDamagePerSecond[rank-1],2,1);emit(s,'fire-spread',e.x,e.y,{x2:other.x,y2:other.y,life:.25});}}
 }
@@ -1678,7 +1681,7 @@ function damage(s,e,amount,kind='bullet',source='native',owner=null,weight=0,bre
   if(ordered)s.operation.orderDone=true;
   emit(s,'raid-success',e.x,e.y,{quality:s.raid.quality,text:ordered?'보급선 절단 · 귀환 시 지령 보상':`${QUALITY[s.raid.quality]} 보급 탈취`,life:1.4});return;
  }
- e.dead=true;e.death=.3;scoreKill(s,e,source,kind,ignitedPayload);
+ e.dead=true;e.death=.3;scoreKill(s,e,source,kind,ignitedPayload,owner);
 }
 function feed(s,owner,weight,target,breachLane){
  if(moduleRank(s,'coil')){s.coil+=weight;const r=moduleRank(s,'coil'),d=RULES.modules.coil;if(s.coil>=d.threshold[r-1]&&s.coilCd<=0){s.coil-=d.threshold[r-1];s.coilCd=d.cooldown;s.stats.coilBursts++;const near=targets(s).filter(e=>e.hp>0&&distance(e,target)<150).sort((a,b)=>distance(a,target)-distance(b,target)).slice(0,d.targets[r-1]);for(const e of near){s.effects.push({type:'lightning',x:target.x,y:target.y,x2:e.x,y2:e.y,age:0,life:.18});damage(s,e,d.damage[r-1],'electric','module');}}}

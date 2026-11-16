@@ -823,6 +823,41 @@ function paintCapstoneKill(c,f,t,reduced){
   c.fillRect(f.x+dx,f.y-18-rise,i%2?4:6,3);
  }
 }
+const SWEEP_INK={fire:'#ffce91',arc:'#bbf5ee'};
+export function visibleSweep(effects,visible){
+ const groups=[];
+ for(let i=effects.length-1;i>=0;i--){
+  const f=effects[i];
+  if(f.type!=='kill'||!Object.hasOwn(SWEEP_INK,f.sweep)||f.age>=.42||!visible(f.x,f.y,0))continue;
+  const radius=f.sweep==='fire'?138:208;
+  const group=groups.find(g=>g.kind===f.sweep&&Math.abs(g.anchor.age-f.age)<=.18&&distance(g.anchor,f)<=radius);
+  if(group){group.points.push(f);continue;}
+  if(groups.length<8)groups.push({kind:f.sweep,anchor:f,points:[f]});
+ }
+ const best=groups.reduce((winner,g)=>g.points.length>(winner?.points.length??3)?g:winner,null);
+ if(!best)return null;
+ const {kind,anchor,points}=best,count=points.length;
+ return {kind,count,points,age:anchor.age,x:points.reduce((a,p)=>a+p.x,0)/count,y:points.reduce((a,p)=>a+p.y,0)/count};
+}
+function paintSweepGround(c,sweep,reduced){
+ const fire=sweep.kind==='fire';
+ c.save();
+ for(const f of sweep.points.slice(0,12)){
+  const fade=1-f.age/.42;
+  c.globalAlpha=fade*.64;
+  if(fire){
+   c.fillStyle='#351e1a';c.beginPath();c.ellipse(f.x,f.y+4,18,7,0,0,TAU);c.fill();
+   c.fillStyle='#ffb76a';
+   const lift=reduced?0:f.age*36;
+   c.fillRect(f.x-7,f.y+1-lift,4,2);c.fillRect(f.x+8,f.y+5-lift*.6,3,2);
+  }else{
+   c.strokeStyle='#8bddd0';c.lineWidth=2;c.beginPath();
+   c.moveTo(f.x-15,f.y+7);c.lineTo(f.x-5,f.y+3);c.lineTo(f.x-1,f.y+6);
+   c.moveTo(f.x+3,f.y+4);c.lineTo(f.x+11,f.y-1);c.lineTo(f.x+15,f.y+1);c.stroke();
+  }
+ }
+ c.restore();
+}
 function paintXp(c,g,s,reach,reduced){
  const player=s.player;
  c.save();c.translate(g.x,g.y);
@@ -1015,6 +1050,7 @@ function paintPortEscape(c,s,lanes){
  c.restore();
 }
 export function createRenderer(canvas,art,combatHud={rects:[]}){
+ let sweepCue=null;
  const c=canvas.getContext('2d');let size={w:0,h:0,dpr:1},view={w:960,h:540},terrainCache=null,terrainKey='',siteStates=new Map();
  const missileTrails=new WeakMap();
  let showcaseLead=0,coastShiftX=0,coastShiftY=0,previousTime=0;
@@ -1122,6 +1158,14 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(terrainCache)c.drawImage(terrainCache,0,0);else paintTerrain(c,index,s.seed,art,variant);
   if(opening)paintCoastOpening(c,{routes:opening.routes.filter(route=>route.site===lead?.id)});
   const visible=(x,y,padding=48)=>Math.abs(x-cx)<=view.w/2+padding&&Math.abs(y-cy)<=view.h/2+padding;
+  const sweeping=s.operation?.roaming&&s.stage!=='boss'&&s.phase==='playing';
+  const sweep=sweeping?visibleSweep(s.effects,visible):null;
+  if(!sweeping||sweepCue&&(s.t-sweepCue.at>=.58||sweepCue.stage!==s.stage))sweepCue=null;
+  if(sweep){
+   const at=s.t-sweep.age;
+   if(!sweepCue||at-sweepCue.at>.18||sweep.count>sweepCue.count)
+    sweepCue={at,stage:s.stage,kind:sweep.kind,count:sweep.count,x:sweep.x,y:sweep.y};
+  }
   for(const b of s.blocks)if(b.hp!==0&&visible(b.x,b.y,220))paintCoverShadow(c,b,index);
   for(const b of s.blocks)if(b.hp===0&&visible(b.x,b.y,220))paintBlock(c,b,index,art);
   const gateNear=gate&&distance(gate,s.player)<(s.operation?92:140);
@@ -1138,6 +1182,7 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
   if(entry)paintFrontEntry(c,entry.x,entry.y,index,entry.age,reduced);
   for(const n of s.sites){const previous=siteStates.get(n.id);siteStates.set(n.id,{state:n.state,collected:previous&&previous.state!=='done'&&n.state==='done'?s.t:previous?.collected});}
   for(const n of s.sites)paintSiteGround(c,n,distance(n,s.player)<185,n.state==='active');
+  if(sweep)paintSweepGround(c,sweep,reduced);
   for(const n of s.sites)if(n.kind==='relay'&&n.state==='active'){circle(c,n.x,n.y,125,'#83c5a40b','#c7dfb566',1);c.strokeStyle='#e8d49a';c.lineWidth=2;c.beginPath();c.arc(n.x,n.y,125,-Math.PI/2,-Math.PI/2+n.progress/5*TAU);c.stroke();}
   for(const [a,b] of infernoWakeLinks(s))if(visible(a.x,a.y,a.r)||visible(b.x,b.y,b.r))paintWakeLink(c,a,b);
   for(const z of s.zones){
@@ -1621,6 +1666,22 @@ export function createRenderer(canvas,art,combatHud={rects:[]}){
    c.restore();
   }
   const equipped=s.stage==='field'&&s.phase==='playing'&&s.effects.findLast(f=>f.type==='complete'&&f.showcase&&f.text);
+  if(sweepCue&&!equipped&&visible(sweepCue.x,sweepCue.y,0)){
+   const point=project(sweepCue.x,sweepCue.y-32),pilot=project(s.player.x,s.player.y-20);
+   const width=sweepCue.count>=10?56:44;
+   const badge=clearBearingPosition(size,point,width,combatHud.rects,15);
+   const warning=badge&&s.hazards.some(h=>!h.hit&&h.timer>0&&(h.lane
+    ?Math.abs(project(h.x,h.y).x-badge.x)<h.w*scale/2+width/2
+    :distance(project(h.x,h.y),badge)<blastContactRadius(h)*scale+width/2));
+   if(badge&&!warning&&distance(point,badge)<=39&&distance(badge,pilot)>38){
+    c.save();c.font='bold 22px Galmuri';c.textAlign='center';c.textBaseline='middle';
+    c.globalAlpha=clamp((.58-s.t+sweepCue.at)*8,0,1);
+    c.lineJoin='round';c.lineWidth=5;c.strokeStyle='#1a282e';
+    const label=`×${sweepCue.count}`;
+    c.strokeText(label,badge.x,badge.y);c.fillStyle=SWEEP_INK[sweepCue.kind];c.fillText(label,badge.x,badge.y);
+    c.restore();
+   }
+  }
   if(equipped&&!s.hazards.some(h=>!h.hit&&h.timer>0&&distance(h,s.player)<blastContactRadius(h)+56)){
    const label=equipped.text.split(' · ')[0],ink=FORMATION_INK[equipped.showcase];
    c.save();c.font='bold 13px Galmuri';
