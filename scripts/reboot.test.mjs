@@ -4230,6 +4230,51 @@ test('the selected replay reference survives eviction, checkpoint reload and set
 test('all region supplies and boss entrances stay reachable around permanent geometry',()=>{
  for(const seed of [16,17,18,19])for(let index=0;index<3;index++){const m=regionLayout(seed,index),free=(x,y)=>x>55&&x<1545&&y>55&&y<1145&&!m.blocks.some(b=>b.hp!==0&&x+16>b.x&&x-16<b.x+b.w&&y+16>b.y&&y-16<b.y+b.h),key=(x,y)=>`${x},${y}`,queue=[[800,1040]],seen=new Set(['800,1040']);for(let i=0;i<queue.length;i++){const [x,y]=queue[i];for(const [dx,dy]of [[20,0],[-20,0],[0,20],[0,-20]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(seen.has(k)||!free(nx,ny))continue;seen.add(k);queue.push([nx,ny]);}}for(const goal of [...m.sites,{x:800,y:350}])assert.ok(queue.some(([x,y])=>Math.hypot(x-goal.x,y-goal.y)<55),`${index}/${seed} ${goal.id||'boss'}`);}
 });
+test('fresh roaming seeds can change the rail approach without mirroring or changing a saved sortie',()=>{
+ const launch=seed=>freshSortie(emptyProfile(),seed,null,'fio',null,null,null,'standard',true,null,true).run;
+ const base=launch(27),yard=launch(31),opposite=launch(28),saved=launch(31);
+ assert.equal(yard.operation.railLayout,'yard');
+ assert.equal(opposite.operation.railLayout,'yard');
+ delete saved.operation.railLayout;
+ saved.balanceRevision='b80-roaming-capstone-formations';
+ for(const run of [base,yard,opposite,saved]){
+  Object.assign(run.player,BOSS_ENTRY);
+  assert.ok(action(run,'interact'));assert.ok(choose(run,'coast:break'));
+  const turret=run.boss.parts[0];
+  run.shots=[bullet(run,{...partPosition(run,turret),id:turret.id},10000)];step(run,dt);
+  run.shots=[bullet(run,run.boss,20000)];step(run,dt);
+  Object.assign(run.player,exitGate(run));
+  assert.ok(action(run,'interact'));assert.ok(choose(run,run.choices.find(card=>card.kind==='advance')?.id));
+  assert.deepEqual(restore(snapshot(run)).sites,run.sites);
+ }
+ const position=(run,id)=>{const {x,y}=run.sites.find(site=>site.id===id);return [x,y];};
+ assert.deepEqual(position(saved,'rail-relay'),position(base,'rail-relay'));
+ assert.equal(position(saved,'rail-relay')[1],580);
+ assert.equal(position(yard,'rail-relay')[1],850);
+ assert.equal(position(yard,'rail-cache')[1],790);
+ assert.equal(position(yard,'rail-relay')[0]+position(opposite,'rail-relay')[0],1600);
+ assert.notEqual(yard.blocks[0].y,base.blocks[0].y);
+ for(const run of [yard,opposite]){
+  const entry=activeEntry(run),paths=[entry.direct,...entry.routes];
+  for(const {site} of entry.routes){
+   const stop=run.sites.find(n=>n.id===site);
+   stop.state='done';Object.assign(run.player,{x:stop.x,y:stop.y});
+   const next=activeEntry(run);
+   paths.push(next.direct,...next.routes);
+   stop.state='waiting';
+  }
+  for(const {site,path} of paths){
+   assert.deepEqual(path.at(-1),site==='rail-center'?[800,350]:position(run,site));
+   for(let i=1;i<path.length;i++){
+    const [[x,y],[tx,ty]]=path.slice(i-1,i+1),samples=Math.ceil(Math.hypot(tx-x,ty-y)/8);
+    for(let j=0;j<=samples;j++){
+     const px=x+(tx-x)*j/samples,py=y+(ty-y)*j/samples;
+     assert.ok(!run.blocks.some(b=>px+16>b.x&&px-16<b.x+b.w&&py+16>b.y&&py-16<b.y+b.h),site);
+    }
+   }
+  }
+ }
+});
 test('marked later-front approaches and actual guard formations clear collision geometry',()=>{
  const clear=(s,x,y,r)=>!s.blocks.some(b=>b.hp!==0&&x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h);
  for(const seed of [19,58]){

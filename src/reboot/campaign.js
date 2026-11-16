@@ -716,11 +716,22 @@ const ENTRY={
   {site:'port-control',sign:'관제소 · 전술 또는 증원 절반',color:'#b5dce7',path:[[720,1040],[875,1010],[995,929],[1030,821],[1090,740],[1180,690],[1180,620]]}
  ]}
 };
-const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry])=>[index,{
+const YARD_ENTRY={arrival:ENTRY[1].arrival,routes:[
+ {...ENTRY[1].routes[0],path:[[800,1040],[580,1000],[350,1000],[350,790]]},
+ {...ENTRY[1].routes[1],path:[[800,1040],[1045,995],[1230,966],[1230,850]]}
+]};
+const mirrorEntry=entry=>({
  arrival:{x:1600-entry.arrival.x,y:entry.arrival.y},
  routes:entry.routes.map(route=>({...route,path:route.path.map(([x,y])=>[1600-x,y])}))
-}]));
-export const frontEntry=(sectorSeed,index)=>(sectorSeed%2===0?MIRRORED_ENTRY:ENTRY)[index];
+});
+const MIRRORED_ENTRY=Object.fromEntries(Object.entries(ENTRY).map(([index,entry])=>[index,mirrorEntry(entry)]));
+const MIRRORED_YARD_ENTRY=mirrorEntry(YARD_ENTRY);
+export const railLayoutForSeed=seed=>seed>>>2&1?'yard':undefined;
+export function frontEntry(sectorSeed,index,railLayout){
+ const mirrored=sectorSeed%2===0;
+ if(index===1&&railLayout==='yard')return mirrored?MIRRORED_YARD_ENTRY:YARD_ENTRY;
+ return (mirrored?MIRRORED_ENTRY:ENTRY)[index];
+}
 export function railWorkshopEntry(route,arrival){
  const [x,y]=route.path.at(-1),flankY=y+244;
  return [[arrival.x,arrival.y],[(arrival.x+x)/2,flankY],[x,flankY],[x,y]];
@@ -728,11 +739,12 @@ export function railWorkshopEntry(route,arrival){
 export function railWorkshopFan({x,y}){
  return {x,y:y+RAIL_GARRISONS.spread.range-15,dx:0,dy:1};
 }
-export function railCenterRoute(seed,origin='arrival'){
- const entry=frontEntry(mapSeed(seed,1),1);
+export function railCenterRoute(seed,origin='arrival',railLayout){
+ const entry=frontEntry(mapSeed(seed,1),1,railLayout);
  const cache=entry.routes[0].path.at(-1),relay=entry.routes[1].path.at(-1);
- const path=origin==='rail-cache'?[cache,[cache[0],710],[800,710],[800,350]]
-  :origin==='rail-relay'?[relay,[800,580],[800,350]]:[[800,1040],[800,920],[800,350]];
+ const yard=railLayout==='yard',cacheCrossing=yard?790:710,relayCrossing=yard?640:580;
+ const path=origin==='rail-cache'?[cache,...(yard?[]:[[cache[0],cacheCrossing]]),[800,cacheCrossing],[800,350]]
+  :origin==='rail-relay'?[relay,...(yard?[[relay[0],relayCrossing]]:[]),[800,relayCrossing],[800,350]]:[[800,1040],[800,920],[800,350]];
  return {site:'rail-center',name:'포격 열차',sign:'포격 열차 직행',path,color:'#cab9a4'};
 }
 const GANTRY_PATH=[[520,900],[510,812],[510,630],[550,520],[595,400],[595,340]];
@@ -752,7 +764,8 @@ export function portGantry(s){
 export function activeEntry(s){
  const index=s.operation?.region;
  if(!index||s.stage!=='field')return null;
- const entry=frontEntry(mapSeed(s.seed,index),index);
+ const {railLayout}=s.operation;
+ const entry=frontEntry(mapSeed(s.seed,index),index,railLayout);
  if(!entry)return null;
  const routes=entry.routes.flatMap(route=>{
   const [x,y]=route.path.at(-1);
@@ -803,7 +816,7 @@ export function activeEntry(s){
   linkedRoutes.push({site:ammo.id,sign:'포대 탄약고 · 추가 보급',color:'#ecd197',path,
    ...(origin==='rail-cache'&&relayOpen?{warning:'중계기 경계 구역 인접'}:null)});
  }
- return {...entry,routes:linkedRoutes,direct:railCenterRoute(s.seed,origin)};
+ return {...entry,routes:linkedRoutes,direct:railCenterRoute(s.seed,origin,railLayout)};
 }
 export function entryWaypoint(path,p){
  let best=Infinity,next=path.at(-1);
@@ -815,7 +828,7 @@ export function entryWaypoint(path,p){
  }
  return best<=145?next:path.at(-1);
 }
-export function regionLayout(seed,index=0,order=null,salvageRail=false){
+export function regionLayout(seed,index=0,order=null,salvageRail=false,railLayout){
  const map=layout(seed);
  if(index===0){
   const route=beachRoute(seed);
@@ -827,15 +840,15 @@ export function regionLayout(seed,index=0,order=null,salvageRail=false){
   })};
  }
  const mirror=seed%2===0,p=(x,y)=>({x:mirror?1600-x:x,y});
- const entry=frontEntry(seed,index),landing=i=>{const [x,y]=entry.routes[i].path.at(-1);return {x,y};};
+ const entry=frontEntry(seed,index,railLayout),landing=i=>{const [x,y]=entry.routes[i].path.at(-1);return {x,y};};
  const block=(id,x,y,w,h,hp=-1)=>({id,x:mirror?1600-x-w:x,y,w,h,hp,maxHp:hp});
- const mortarAtWorkshop=(seed>>>1&1)!==0;
+ const mortarAtWorkshop=(seed>>>1&1)!==0,yard=railLayout==='yard';
  if(index===1)return {...map,sites:[
   {id:'rail-cache',kind:'supply',name:'화차 정비대',...landing(0),guardPlan:salvageRail?'spread':mortarAtWorkshop?'mortar':'shield',state:'waiting'},
   {id:'rail-relay',kind:'relay',name:'통신 중계기',...landing(1),guardPlan:salvageRail?'battery':mortarAtWorkshop?'shield':'mortar',state:'waiting',progress:0},
   {id:'arsenal',kind:'armory',name:'선로 정비창',...p(350,430),state:'waiting'},
-  {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...p(1160,300),state:'waiting'}
- ],blocks:[block('r1',640,730,100,185),block('r2',640,385,100,180),block('r3',950,600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};
+  {id:'rail-ammo',kind:'supply',name:'포대 탄약고',...(yard?p(1270,445):p(1160,300)),state:'waiting'}
+ ],blocks:[block('r1',640,yard?570:730,100,185),block('r2',640,385,100,180),block('r3',950,yard?710:600,105,180),block('r4',950,250,105,160),block('r5',400,630,100,70,200)]};
  return {...map,sites:[
   {id:'port-landing',kind:'supply',name:'하역장 해치',...landing(0),state:'waiting',gantry:true},
   {id:'port-control',kind:'control',name:'항구 관제소',...landing(1),state:'waiting'},

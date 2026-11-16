@@ -6,7 +6,7 @@ import {OPERATORS,operatorOf,operatorId} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount,coastFanPosition} from './coast-salvage.js';
 import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
 import {HARBOR_PART_ACTION} from './choice-details.js';
-import {RAIL_SALVAGE_ROUTES,frontEntry,mapSeed,railWorkshopEntry} from './campaign.js';
+import {RAIL_SALVAGE_ROUTES,frontEntry,mapSeed,railWorkshopEntry,railLayoutForSeed} from './campaign.js';
 import {railRelayInvestment} from './model.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const e=escapeHtml,n=v=>(Number(v)||0).toLocaleString();
@@ -14,17 +14,17 @@ export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padSta
 const splitClockText=t=>{const tenths=tenthsOfSecond(t);return `${clockText(tenths/10)}.${tenths%10}`;};
 const svg=(body,box='0 0 160 100')=>`<svg viewBox="${box}" aria-hidden="true" focusable="false">${body}</svg>`;
 export function itemArt(id,extra=''){return `<span class="kit-sprite kit-${id} ${extra}" aria-hidden="true"></span>`;}
-function railApproachBrief(seed,site,fan){
- const {arrival,routes}=frontEntry(mapSeed(seed,1),1);
+function railApproachBrief(seed,site,fan,railLayout){
+ const {arrival,routes}=frontEntry(mapSeed(seed,1),1,railLayout);
  const route=routes.find(item=>item.site===site),path=fan?railWorkshopEntry(route,arrival):route.path;
  return {...RAIL_SALVAGE_ROUTES[site],direction:bearing(arrival,...path[1]),side:path[1][0]<arrival.x?'왼쪽':'오른쪽'};
 }
-export function railTransferBrief(seed,handoff,mountOption){
+export function railTransferBrief(seed,handoff,mountOption,railLayout){
  const site=mountOption?'rail-cache':handoff.route;
  if(!site)return '';
- const fan=site==='rail-cache',{name,color,direction,side,fight,boss}=railApproachBrief(seed,site,fan);
+ const fan=site==='rail-cache',{name,color,direction,side,fight,boss}=railApproachBrief(seed,site,fan,railLayout);
  const material=!mountOption&&handoff.material;
- return `<div class="transfer-route" data-transfer-route="${site}" style="--route-ink:${color}">${railSalvagePreview(seed,site,fan)}<span><b><i role="img" aria-label="${side}">${direction}</i> ${name}</b><small>${fight}</small>${material?`<small class="transfer-material">격발망 · ${e(material)}</small>`:''}<small class="transfer-boss">${boss}</small></span></div>`;
+ return `<div class="transfer-route" data-transfer-route="${site}" style="--route-ink:${color}">${railSalvagePreview(seed,site,fan,railLayout)}<span><b><i role="img" aria-label="${side}">${direction}</i> ${name}</b><small>${fight}</small>${material?`<small class="transfer-material">격발망 · ${e(material)}</small>`:''}<small class="transfer-boss">${boss}</small></span></div>`;
 }
 export function railHandoff(s){
  const turret=s.weapons.find(isCapturedTurret),coast=coastSalvage(s);
@@ -94,8 +94,9 @@ const briefCopy=[
  {terrain:'화차 사이의 측면 통로',supply:'중계기 해킹 · 선로 정비창',tactic:'포격 차선을 피하고 양쪽 포대를 파괴하라.'},
  {terrain:'컨테이너 길목과 하역장',supply:'관제소 교란 · 시험 병기',tactic:'부위를 파괴한 뒤 노출된 코어에 집중하라.'}
 ];
-function operationMap(selected,seed,order,showPreempt,openingGun,turret){const map=previewLayout(seed,selected,order);
- return `<div class="operation-chart"><nav class="sector-selector" aria-label="전선 브리핑">${REGIONS.map((d,i)=>`<button class="sector-pin ${selected===i?'selected':''}" data-brief="${i}" aria-pressed="${selected===i}" aria-label="${d.name} 브리핑 보기"><span>${`0${i+1}`}</span><b>${d.name}</b><small>${i===0?'해안 교두보':i===1?'물자 수송로':'지휘 병기'}</small></button>`).join('')}</nav><div class="field-chart">${regionPreview(selected,seed,null,order,showPreempt,openingGun,turret)}<span class="chart-direction">N ↑</span><div class="chart-legend"><strong>${REGIONS[selected].name}</strong><span class="chart-key"><i></i>투입 지점</span><span class="chart-key boss"><i></i>보스 진입</span>${map.sites.map(n=>`<span class="chart-site ${n.state==='done'?'done':''}"><svg viewBox="-30 -30 60 60" aria-hidden="true">${siteSymbol(n,0,0,21)}</svg><span>${sitePresentation(n).name}${n.state==='done'?'<small>확보 완료</small>':''}</span></span>`).join('')}</div></div></div>`;
+function operationMap(selected,seed,order,showPreempt,openingGun,turret){
+ const railLayout=railLayoutForSeed(seed),map=previewLayout(seed,selected,order,false,railLayout);
+ return `<div class="operation-chart"><nav class="sector-selector" aria-label="전선 브리핑">${REGIONS.map((d,i)=>`<button class="sector-pin ${selected===i?'selected':''}" data-brief="${i}" aria-pressed="${selected===i}" aria-label="${d.name} 브리핑 보기"><span>${`0${i+1}`}</span><b>${d.name}</b><small>${i===0?'해안 교두보':i===1?'물자 수송로':'지휘 병기'}</small></button>`).join('')}</nav><div class="field-chart">${regionPreview(selected,seed,null,order,showPreempt,openingGun,turret,railLayout)}<span class="chart-direction">N ↑</span><div class="chart-legend"><strong>${REGIONS[selected].name}</strong><span class="chart-key"><i></i>투입 지점</span><span class="chart-key boss"><i></i>보스 진입</span>${map.sites.map(n=>`<span class="chart-site ${n.state==='done'?'done':''}"><svg viewBox="-30 -30 60 60" aria-hidden="true">${siteSymbol(n,0,0,21)}</svg><span>${sitePresentation(n).name}${n.state==='done'?'<small>확보 완료</small>':''}</span></span>`).join('')}</div></div></div>`;
 }
 
 function turretOpeningPlan(seed,sites,rescue,fan,showPreempt,operator){
@@ -530,12 +531,12 @@ export function replayBriefingView(r,p,selection='standard',trialId=null,options
  let nextRoute='';
  const turretPlan=starter==='turret'&&!dispatch&&!trial&&!remainingTrials.length;
  if(sortie&&!wire&&(!thermalRoute||railReservation)){
-  const fan=starter==='turret',{color,name,direction}=railApproachBrief(seed,railId,fan);
+  const railLayout=railLayoutForSeed(seed),fan=starter==='turret',{color,name,direction}=railApproachBrief(seed,railId,fan,railLayout);
   const conditional=!railReservation&&starter!=='turret';
   nextRoute=conditional&&openingGun!=='r'
-   ?`<div class="replay-rail-target" data-replay-rail="field" style="--route-ink:#c9c8a6">${railSalvagePreview(seed,null,false)}<div><b>철도 · 해안에서 고른 무장으로 공략</b><span>${openingGun==='f'?'화염 F를 유지하면 분사기 강화·촉매 후보':`R이면 ${direction} 통신 중계기 · 포탑이면 화차 정비대`}</span></div></div>`
-   :turretPlan?`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed)}<div><b>철도 ${direction} ${name}</b><span>포탑 유지 · 금색 사격 위치</span></div></div>`
-   :`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed,railId,fan)}<div><b>철도 ${direction} ${name}</b><span>${e(railTip)}</span></div></div>`;
+   ?`<div class="replay-rail-target" data-replay-rail="field" style="--route-ink:#c9c8a6">${railSalvagePreview(seed,null,false,railLayout)}<div><b>철도 · 해안에서 고른 무장으로 공략</b><span>${openingGun==='f'?'화염 F를 유지하면 분사기 강화·촉매 후보':`R이면 ${direction} 통신 중계기 · 포탑이면 화차 정비대`}</span></div></div>`
+   :turretPlan?`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed,null,true,railLayout)}<div><b>철도 ${direction} ${name}</b><span>포탑 유지 · 금색 사격 위치</span></div></div>`
+   :`<div class="replay-rail-target" data-replay-rail="${railId}" style="--route-ink:${color}">${railSalvagePreview(seed,railId,fan,railLayout)}<div><b>철도 ${direction} ${name}</b><span>${e(railTip)}</span></div></div>`;
  }
  return `<section class="sheet replay-briefing${experiment?' research-sortie-briefing':sortie?' sortie-briefing':''}" role="dialog" aria-modal="true" aria-labelledby="replay-brief-title">
   <header><div><span class="section-index">${experiment?`병기 연구 · ${OPERATORS[operator].name}`:`${trial?'실전 시험 · 같은 전장 · ':''}작전 #${r.sequence??'–'}${canSwitchPilot?'':` · ${OPERATORS[operator].name}`}`}</span><h2 id="replay-brief-title">${trial?trial.name:experiment?(shrapnelRoute?request.name:'연구 장비 배치'):sortie?'다음 출격 준비':'같은 전장 재도전'}</h2></div>${canSwitchPilot?`<button class="replay-pilot-toggle" data-action="brief-pilots" aria-expanded="${!!options.showPilots}" aria-controls="replay-pilots"><b>${OPERATORS[operator].name}</b><small>대원 변경</small></button>`:configurable?'':`<b>${splitClockText(r.seconds)}<small>${n(r.score)}점</small></b>`}</header>
