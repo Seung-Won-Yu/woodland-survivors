@@ -1,6 +1,7 @@
 const artNames=['operators','enemies','vehicles','environment-v014','vehicle-layers-v015'];
+const fieldArtNames=['field-materials-v120','rail-boxcar-v120','rail-artillery-v120','port-command-v120'];
 export const missionImageUrl=name=>new URL(`../../art/mission/${name}.webp`,import.meta.url).href;
-export const MISSION_ART_COUNT=artNames.length;
+export const FIELD_ART_COUNT=artNames.length+fieldArtNames.length;
 async function image(name,priority){
  const im=new Image();
  im.fetchPriority=priority;
@@ -38,6 +39,14 @@ export async function loadMissionArt({priority='auto',onProgress}={}){
  }));
  return {operators,enemies,vehicles,environment,vehicleLayers};
 }
+export async function loadFieldArt(priority,onProgress){
+ const [materials,railWagon,railBoss,portBoss]=await Promise.all(fieldArtNames.map(async name=>{
+  const art=await image(name,priority).catch(()=>null);
+  onProgress?.();
+  return art;
+ }));
+ return {materials,railWagon,railBoss,portBoss};
+}
 export async function loadFioPortrait(){
  const atlas=sheet(await image('fio-hangar-v033','high'),1);
  return {operators:{...atlas,rows:[null,null,atlas.rows[0]]}};
@@ -49,15 +58,23 @@ export function operatorPortrait(canvas,art,hero,height=190){const c=canvas.getC
 export function environmentProp(c,art,row,col,x,y,width,alpha=1){const atlas=art.environment,b=atlas.rows[row].cells[col];c.save();c.globalAlpha*=alpha;c.drawImage(atlas.image,b.sx,b.sy,b.w,b.h,x-width/2,y-b.h/b.w*width,width,b.h/b.w*width);c.restore();}
 
 // Layers keep separate pivots: a tank can steer its hull while aiming its cannon.
-export function vehicle(c,art,{x,y,width=120,enemy=false,body=0,turret=0,kick=0,tread=0,moving=false,pitch=0,flash=0,damaged=false,wreck=false,reduced=false}){
+export function vehicle(c,art,{x,y,width=120,enemy=false,body=0,turret=0,kick=0,tread=0,moving=false,pitch=0,flash=0,damaged=false,wreck=false,reduced=false,hull=null,turretDisabled=false,turretRemoved=false}){
  const im=art.vehicleLayers,cell=im.width/2,row=enemy?1:0,scale=width/(cell*(enemy?.9:.76));
  const pivots=enemy?[[.495,.50],[.32,.49]]:[[.5,.52],[.43,.52]];
  c.save();c.translate(x,y);c.fillStyle='#101b2255';c.beginPath();c.ellipse(0,1,width*.52,width*.35,0,0,Math.PI*2);c.fill();
  c.save();c.rotate(body);c.translate((reduced?0:pitch)*width,0);if(damaged)c.filter=wreck?'brightness(.35) saturate(.3)':'brightness(.65) saturate(.6)';
- c.drawImage(im,0,row*cell,cell,cell,-pivots[0][0]*cell*scale,-pivots[0][1]*cell*scale,cell*scale,cell*scale);
+ if(hull){
+  c.rotate(-Math.PI/2);
+  const height=width*hull.height/hull.width;
+  c.drawImage(hull,-width*.5,-height*.52,width,height);
+ }else c.drawImage(im,0,row*cell,cell,cell,-pivots[0][0]*cell*scale,-pivots[0][1]*cell*scale,cell*scale,cell*scale);
  if(moving){c.fillStyle='#17212690';for(const side of [-1,1])for(let i=-3;i<=3;i++){const tx=((i*13+tread*.7)%84+84)%84-42;c.fillRect(tx,side*width*.29-2,5,4);}if(!reduced){c.fillStyle='#cec1a15a';for(const side of [-1,1])for(let i=0;i<3;i++)c.fillRect(-width*.5-i*7,side*width*.26+Math.sin(tread*.11+i)*5,10-i*2,6-i);}}
  c.restore();
- c.save();c.translate(wreck?width*.08:0,wreck?-5:-15);c.rotate(turret+(wreck?.18:0));c.translate(reduced?0:-kick*width*.06,0);if(damaged)c.filter=wreck?'brightness(.4) saturate(.3)':'brightness(.75) saturate(.6)';
- c.drawImage(im,cell,row*cell,cell,cell,-pivots[1][0]*cell*scale,-pivots[1][1]*cell*scale,cell*scale,cell*scale);
+ if(turretRemoved){c.restore();return;}
+ const turretScale=hull?scale*.78:scale;
+ c.save();c.translate(wreck?width*.08:0,wreck?-5:-15);c.rotate(turret+(wreck?.18:0));c.translate(reduced?0:-kick*width*.06,0);
+ if(turretDisabled)c.filter='brightness(.46) saturate(.42)';
+ else if(damaged)c.filter=wreck?'brightness(.4) saturate(.3)':'brightness(.75) saturate(.6)';
+ c.drawImage(im,cell,row*cell,cell,cell,-pivots[1][0]*cell*turretScale,-pivots[1][1]*cell*turretScale,cell*turretScale,cell*turretScale);
  if(flash>0){c.translate(width*(enemy?.68:.54),0);c.fillStyle='#ffe9a1';c.beginPath();c.moveTo(-5,-8);c.lineTo(25,0);c.lineTo(-5,8);c.fill();}c.restore();c.restore();
 }

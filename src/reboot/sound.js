@@ -2,14 +2,15 @@ import {RIFT_BOSS_CUES,selectAudioEvents} from '../game/audio.js';
 
 const fieldCues={
  shot:'swarm-shot','rocket-shot':'scatter-shot','focus-shot':'focus-shot',flame:'flame-loop',
+ 'captured-volley':'turret-volley','carrier-volley':'turret-volley','captured-impact':'turret-impact',
  heat:'heat-break','fire-spread':'fire-spread','payload-impact':'conduit-impact','payload-relay':'conduit-hop','ember-burst':'heat-break',
  kill:'wood-kill',impact:'rifle-hit',explosion:'power-kill','charge-impact':'slam','salvo-impact':'power-kill','armor-impact':'guard-block',
  complete:'forge-evolve',skill:'burst',choose:'choose','boss-arrival':'boss-arrival',
- 'port-hatch':'front-entry','port-ambush':'front-entry','region-entry':'front-entry','hunt-reserve':'front-entry','signal-down':'armor-collapse','challenge-clear':'rampage','raid-success':'forge-evolve',
+ 'port-hatch':'front-entry','port-ambush':'front-entry','region-entry':'front-entry','hunt-reserve':'front-entry','relay-reserve':'front-entry','signal-down':'armor-collapse','challenge-clear':'rampage','raid-success':'forge-evolve',
  heal:'heal',break:'crowd-break','xp-pickup':'xp'
 };
 const capstoneContacts=new Set(['heat-break','conduit-hop','conduit-impact','conduit-transfer']);
-const weaponCasts=new Set(['focus-shot','inferno-jet','flame-loop','scatter-shot','swarm-shot']);
+const weaponCasts=new Set(['focus-shot','inferno-jet','flame-loop','turret-volley','scatter-shot','swarm-shot']);
 
 export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  const warning=events.has('boss-charge')?'coast-charge':RIFT_BOSS_CUES.find(cue=>events.has(cue))||(events.has('warning')?'mortar-lock':null);
@@ -23,6 +24,7 @@ export function selectRiftAudioEvents(events,{inferno=false,showcase}={}){
  else if(events.has('shell-land'))foreground='shell-land';
  else if(events.has('rail-decoy'))foreground='rail-decoy';
  if(foreground)return warning?[warning,foreground]:[foreground];
+ if(events.has('rail-fan-sweep')||events.has('rescue-fan-sweep'))return warning?[warning,'turret-sweep']:['turret-sweep'];
  if(events.has('payload-arrival'))return warning?[warning,'conduit-arrival']:['conduit-arrival'];
  if(events.has('wake-flash'))return warning?[warning,'heat-break']:['heat-break'];
  if(inferno&&(events.has('fire-spread')||events.has('wake-kill'))){

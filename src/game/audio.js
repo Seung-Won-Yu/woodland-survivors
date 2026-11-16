@@ -1,6 +1,6 @@
 const IMPORTANT = ['hurt', 'armor-collapse', 'front-entry', 'forge-union', 'forge-evolve', 'guard-block', 'boss-arrival', 'boss-warning', 'boss-charge', 'boss-thorns', 'boss-defeated', 'elite-break', 'crowd-break', 'rampage', 'horde', 'evolve', 'signature-ash', 'signature-ember', 'signature-grove', 'burst', 'level', 'heal', 'choose', 'slam', 'warning', 'elite'];
-const IMPACTS = ['heat-break', 'conduit-hop', 'conduit-impact', 'power-kill', 'wood-impact', 'wood-kill', 'blade-impact', 'ember-impact', 'rifle-hit'];
-const CASTS = ['focus-shot', 'inferno-jet', 'inferno-spread', 'flame-loop', 'scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
+const IMPACTS = ['heat-break', 'conduit-hop', 'conduit-impact', 'turret-impact', 'power-kill', 'wood-impact', 'wood-kill', 'blade-impact', 'ember-impact', 'rifle-hit'];
+const CASTS = ['focus-shot', 'inferno-jet', 'inferno-spread', 'flame-loop', 'turret-volley', 'scatter-shot', 'swarm-shot', 'acorn-shot', 'whoosh', 'throw', 'buzz', 'swing', 'rune-hit', 'pulse'];
 export const RIFT_BOSS_CUES = ['coast-charge', 'coast-lock', 'rail-lock', 'harbor-rake-lock', 'harbor-vertical-lock', 'harbor-center-lock'];
 
 export function selectAudioEvents(events) {
@@ -162,6 +162,16 @@ export function createAudio({fieldMix = false} = {}) {
     }
     else if(event==='flame-loop'){transient(now,.13,.035,1250);note(82,64,'triangle',now,.14,.012);}
     else if(event==='power-kill'){transient(now,.04,.05,1100);note(140,42,'triangle',now,.1,.038);note(790,1200,'sine',now+.01,.06,.013);}
+    else if(event==='turret-volley'){
+      transient(now,.072,.046,1320);
+      transient(now+.032,.047,.024,1950);
+      note(146,48,'triangle',now,.14,.035);
+    }
+    else if(event==='turret-impact'){transient(now,.066,.033,870);note(108,39,'triangle',now,.10,.023);}
+    else if(event==='turret-sweep'){
+      transient(now,.048,.032,1040);transient(now+.045,.042,.025,1550);
+      note(150,58,'triangle',now,.12,.024);
+    }
     else if(event==='scatter-shot'){transient(now,.035,.03,1800);note(180,65,'triangle',now,.09,.03);note(78,45,'sine',now,.1,.018);}
     else if(event==='swarm-shot'){transient(now,.025,.02,2400);note(240,170,'triangle',now,.06,.014);}
     else if(event==='armor-collapse'){

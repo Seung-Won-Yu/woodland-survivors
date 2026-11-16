@@ -1,10 +1,97 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView,replayBriefingView,gatePace} from '../src/reboot/interface.js';
-import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie} from '../src/reboot/profile.js';
+import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit} from '../src/reboot/interface.js';
+import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
 import {createOperation,finish} from '../src/reboot/model.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels} from '../src/reboot/render.js';
-import {portEscapeLanes} from '../src/reboot/campaign.js';
+import {portEscapeLanes,portBuildApproach,frontTactic,portTacticKeys} from '../src/reboot/campaign.js';
+import {makeWeapon} from '../src/reboot/content.js';
+
+test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a destroyed mount',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ const coast=s.operation.coastSalvage;
+ s.stage='holdout';
+ coast.turret='intact';
+ assert.equal(railHandoff(s).state,'wreck');
+ coast.turret='secured';
+ assert.match(railHandoff(s).detail,/현재 무장으로 교전.*철도 생존 귀환/);
+ assert.equal(railHandoff(s).state,'cargo');
+ assert.equal(railHandoff(s).gateNote,'노획 포탑 운반 중');
+ assert.equal(railHandoff(s).route,undefined);
+ s.weapons.push({id:'r',level:6,branch:'homing',evolved:true,capturedTurret:true});
+ assert.equal(railHandoff(s).title,'광각 포탑 L6 이월');
+ assert.match(railHandoff(s).detail,/7발/);
+ assert.equal(railHandoff(s).route,'rail-cache');
+ assert.match(railHandoff(s).gateNote,/포탑 L6.*화차 정비대/);
+ s.weapons.pop();
+ coast.turret='broken';
+ assert.equal(railHandoff(s).state,'broken');
+ assert.equal(railHandoff(s).route,'rail-relay');
+ s.operation.nextSupport='vanguard';
+ assert.match(railHandoff(s).detail,/후송 정비.*이월/);
+});
+
+test('the rail transfer briefing mirrors the first move and keeps carried cargo distinct from a mount',()=>{
+ const s=createOperation(27,[],null,null,'fio','standard');
+ s.stage='holdout';
+ s.operation.coastSalvage.turret='secured';
+ const cargo=railHandoff(s);
+ assert.equal(railTransferBrief(27,cargo), '');
+ const mount={title:'노획 포탑 L4'};
+ assert.match(railTransferBrief(27,cargo,mount),/data-transfer-route="rail-cache".*<\/i> 화차 정비대/s);
+ assert.match(railTransferBrief(27,cargo,mount),/aria-label="오른쪽">→<\/i>.*양쪽 대열에 일제사격/s);
+ assert.match(railTransferBrief(27,cargo,mount),/data-rail-transfer-pad.*양쪽 대열에 일제사격.*열차 정면에서 양쪽 포격 차단/s);
+ assert.match(railTransferBrief(28,cargo,mount),/aria-label="왼쪽">←<\/i>.*양쪽 대열에 일제사격/s);
+ s.operation.coastSalvage.turret='broken';
+ const broken=railHandoff(s);
+ assert.match(railTransferBrief(27,broken),/data-transfer-route="rail-relay".*↖<\/i>.*교신으로 열차 조준 유인/s);
+ assert.match(railTransferBrief(27,broken),/후방 박격포 먼저 제압.*교신으로 열차 조준 유인/s);
+ assert.doesNotMatch(railTransferBrief(27,broken),/data-rail-transfer-pad/);
+ assert.match(railTransferBrief(28,broken),/↗<\/i>.*교신으로 열차 조준 유인/s);
+});
+
+test('the captured starter with a first H routes a missing turret branch to the railway relay',()=>{
+ const s=createOperation(28,[],null,null,'fio','turret');
+ s.stage='holdout';s.firstNew='h';s.operation.coastSalvage.turret='broken';
+ s.weapons[0].level=3;s.weapons.push({...makeWeapon('h'),uid:'rifle'});
+ const handoff=railHandoff(s);
+ assert.equal(handoff.route,'rail-relay');
+ assert.match(railTransferBrief(28,handoff),/data-transfer-route="rail-relay".*↗<\/i>.*격발망 · 포탑 L4.*열차 조준 유인/s);
+ s.weapons[0].level=2;
+ assert.equal(railHandoff(s).route,'rail-cache');
+ assert.equal(railArrivalKit(s).label,'반출 포탑');
+ s.weapons=[{...makeWeapon('h'),level:6,evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}}];
+ for(const turret of ['broken','secured']){
+  s.operation.coastSalvage.turret=turret;
+  assert.deepEqual(railArrivalKit(s),{state:'fusion',art:'r',label:'합체 장착',weapon:'전도 격발망'});
+ }
+});
+
+test('the harbor forecast matches the mounted build and the actual control tactic',()=>{
+ const s=createOperation(27,[],null,null,'fio','turret');
+ s.operation.region=1;
+ assert.equal(portBuildApproach(s),null);
+ Object.assign(s.weapons[0],{level:6,branch:'homing',evolved:true});
+ const wide=portBuildApproach(s);
+ assert.equal(wide.key,'crossfire');
+ assert.match(wide.position,/정면 20m/);
+ s.operation.region=2;
+ assert.ok(portTacticKeys(s).includes(wide.key));
+ assert.equal(frontTactic(s,wide.key).name,wide.name);
+
+ s.weapons=[{...makeWeapon('h'),level:6,branch:'ricochet',evolved:true,fusion:{secondary:'r',branch:'homing',overflow:0}}];
+ const fusion=portBuildApproach(s);
+ assert.equal(fusion.key,'signal');
+ assert.match(fusion.position,/측면 22m 이상/);
+ assert.notEqual(fusion.color,wide.color);
+ assert.ok(portTacticKeys(s).includes(fusion.key));
+ s.operation.tactic='signal';
+ assert.equal(frontTactic(s).name,fusion.name);
+ assert.match(frontTactic(s).hint,/좌우로 이동/);
+ s.weapons[0].fusion.branch='incendiary';
+ assert.equal(portBuildApproach(s),null);
+ assert.equal(frontTactic(s).name,'포탑 교신 탈취');
+});
 
 test('portrait HUD clearance uses confirmed contact and live warning shapes without covering holdout actions',()=>{
  const box=(id,left,top,right,bottom)=>({id,rect:{left,top,right,bottom}});
@@ -19,6 +106,11 @@ test('portrait HUD clearance uses confirmed contact and live warning shapes with
  assert.deepEqual(covered([{...relay,relayArrival:false}],[]),[]);
  assert.deepEqual(covered([{...relay,contact:{x:328,y:207}}],[]),[]);
  assert.deepEqual(covered([{type:'fire-spread',x2:82,y2:364,age:.04,life:.25}],[]),['weapons']);
+ assert.deepEqual(covered([{type:'quad-contact',x:102,y:371,age:.03,life:.24}],[]),['weapons']);
+ assert.deepEqual(covered([{type:'quad-contact',x:102,y:371,age:.16,life:.24}],[]),[]);
+ assert.deepEqual(covered([{type:'formation',x:92,y:360,age:.2},{type:'formation',x:225,y:135,age:.2}],[]),['weapons']);
+ assert.deepEqual(covered([{type:'formation',x:225,y:135,age:.2,focused:true}],[]),['map-panel','field-objective']);
+ assert.deepEqual(covered([{type:'formation',x:92,y:360,age:.5}],[]),[]);
  assert.deepEqual(covered([{type:'wake-flash',x:24,y:348,x2:136,y2:272,r:21,age:.02,life:.42}],[]),['weapons','field-feedback']);
  assert.deepEqual(covered([],[{x:280,y:230,w:20,h:220,lane:true,timer:.7}]),['map-panel']);
 });
@@ -151,8 +243,7 @@ test('research briefs identify both the coast delivery and the prerequisite rout
  assert.match(research,/data-reserve="shrapnel" data-requisition-at="coast"/);
  assert.doesNotMatch(research,/data-reserve="(?:medic|thermal)" data-requisition-at="coast"/);
  const trial=lobbyView(p);
- assert.match(trial,/data-coast="f" data-suggested[\s\S]*흡열 코일 시험/);
- assert.match(trial,/data-coast="r" data-suggested[\s\S]*흡열 준비 · 축전 코일 후보/);
+ assert.match(trial,/class="thermal-route"[\s\S]*화염 F 확보[\s\S]*축전 코일 장착[\s\S]*흡열 코일 장착/);
  const coastal=lobbyView(p,{requisition:'shrapnel',requisitionAt:'coast'});
  assert.match(coastal,/박격포 진지 예약 · 분열 수류탄/);
  assert.match(coastal,/data-requisition="shrapnel" data-requisition-at="coast"/);
@@ -203,6 +294,21 @@ test('the research experiment follows one module through trial briefing, payout 
  assert.match(briefing,/파편 적중 8회 · 실증 \+120C/);
  assert.match(briefing,/data-action="same-seed" data-seed="23"/);
  assert.doesNotMatch(briefing,/data-requisition=/);
+ const experiment={...pending,milestones:{coastTurret:true}};
+ assert.match(lobbyView(experiment,{seed:27,loadout:'turret'}),/포로 구출 · F \/ H 보급[\s\S]*포탑으로 즉시 실증/);
+ const freshBrief=replayBriefingView(r,experiment,'standard','shrapnel',{freshSeed:27,starter:'turret'});
+ assert.match(freshBrief,/data-brief-route="fresh" aria-pressed="true"/);
+ assert.match(freshBrief,/data-brief-starter="turret" aria-pressed="true"/);
+ assert.match(freshBrief,/포로 구출 · F \/ H 보급[\s\S]*포탑으로 즉시 실증[\s\S]*박격포 진지 · 분열 수류탄 장착/);
+ assert.match(freshBrief,/data-action="launch" data-actor="fio" data-coast-loadout="turret">새 전장 출격/);
+ assert.doesNotMatch(freshBrief,/data-requisition=|data-replay-from=/);
+ const multiple={...experiment,trials:['medic','shrapnel'],research:['medic','shrapnel']};
+ const delayed=replayBriefingView(r,multiple,'standard','shrapnel',{freshSeed:28,starter:'turret'});
+ assert.match(delayed,/H를 고르면 격발망 재료 확보[\s\S]*박격포 진지 · 분열 수류탄 장착/);
+ assert.doesNotMatch(delayed,/포탑으로 즉시 실증/);
+ const sameBrief=replayBriefingView(r,experiment,'standard','shrapnel',{freshSeed:27,route:'same'});
+ assert.match(sameBrief,/포로 구출 · 로켓 R 확보/);
+ assert.match(sameBrief,/data-action="same-seed" data-seed="23" data-actor="fio">같은 전장 출격/);
  const wonTrial=createOperation(23,base.research,base.trials),newActive=beginProfile(pending,wonTrial);
  wonTrial.stats.researchTrialsPicked=['shrapnel'];wonTrial.stats.shrapnelHits=8;
  finish(wonTrial,false);
@@ -214,6 +320,10 @@ test('the research experiment follows one module through trial briefing, payout 
  const reservation=replayBriefingView(report,tested,'requisition:shrapnel:coast');
  assert.match(reservation,/data-requisition="shrapnel" data-requisition-at="coast"/);
  assert.match(reservation,/재출격 · 120C/);
+ const freshReservation=replayBriefingView(report,tested,'requisition:shrapnel:coast',null,{freshSeed:27});
+ assert.match(freshReservation,/data-action="launch" data-actor="fio" data-requisition="shrapnel" data-requisition-at="coast">새 전장 출격 · 120C/);
+ const turretReservation=replayBriefingView(report,{...tested,milestones:{coastTurret:true}},'requisition:shrapnel:coast',null,{freshSeed:27,starter:'turret'});
+ assert.match(turretReservation,/박격포 진지 예약 · 분열 수류탄[\s\S]*data-coast-loadout="turret" data-requisition="shrapnel"/);
 });
 test('a comparable repeat shows independent time and score changes and the actual sector splits',()=>{
  const complete=(run,fronts,score)=>{
@@ -328,7 +438,7 @@ test('unreadable historical reports cannot crash archive or report navigation',(
 
 import {choiceDetails,isQuickMod} from '../src/reboot/choice-details.js';
 import {fieldScene,sitePresentation,regionPreview,previewLayout,coastOpeningGuide,entryRouteSvg} from '../src/reboot/field-scene.js';
-import {paintBlock} from '../src/reboot/field-art.js';
+import {paintBlock,coverDepth,coverMasksPilot} from '../src/reboot/field-art.js';
 import {FIELD} from '../src/reboot/content.js';
 import {snapshot} from '../src/reboot/model.js';
 
@@ -363,11 +473,194 @@ test('briefings show matching seeded arrival routes and mirror the railway',()=>
  assert.deepEqual(fieldScene(1,19).rails[2][0],[900,1190]);
  assert.deepEqual(fieldScene(1,58).rails[2][0],[700,1190]);
  const rail17=lobbyView(emptyProfile(),{brief:1,seed:17}),rail19=lobbyView(emptyProfile(),{brief:1,seed:19});
- assert.match(rail17,/화차 정비대 · 방패 검문/);assert.match(rail17,/통신 중계기 · 박격포 경계/);
- assert.match(rail19,/화차 정비대 · 박격포 경계/);assert.match(rail19,/통신 중계기 · 방패 검문/);
+ for(const html of [rail17,rail19]){
+  assert.match(html,/화차 정비대 · 갈라진 보병/);
+  assert.match(html,/통신 중계기 · 집중 박격포/);
+ }
+});
+test('a rail report can start a new sortie or replay with the turret originally selected',()=>{
+ const p=emptyProfile();p.milestones.coastTurret=true;
+ const {run,next}=freshSortie(p,17,null,'fio',null,null,null,'turret',true);
+ Object.assign(run.operation,{region:1,cleared:2});
+ Object.assign(run.operation.coastSalvage,{turret:'broken',extracted:true});
+ finish(run,false,'rail-return');
+ const saved=settleProfile(next,run),r=saved.recent[0];
+ const lobby=lobbyView(saved,{seed:r.seed,loadout:'turret'});
+ assert.equal([...lobby.matchAll(/data-action="launch"/g)].length,1);
+ assert.match(lobby,/data-starter="turret" aria-pressed="true"/);
+ const result=reportView(r,saved);
+ assert.match(result,/철도 돌파[\s\S]*data-replay-route="fresh"[\s\S]*새 전장 준비/);
+ assert.doesNotMatch(result,/data-action="launch"/);
+ assert.match(replayBriefingView(r,saved),/data-action="same-seed"[^>]*data-coast-loadout="turret"/);
+ assert.doesNotMatch(replayBriefingView(r,saved),/박격포 진지 기습/);
+});
+test('rail debrief shows the tactical result and the next sortie reward from each route',()=>{
+ for(const capture of [false,true]){
+  const {run,next}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+  Object.assign(run.operation,{region:1,cleared:2});
+  Object.assign(run.operation.coastSalvage,{turret:capture?'secured':'broken',extracted:true});
+  Object.assign(run.stats,capture?{railFirstSite:'rail-cache',railFanSweep:true,railFanCut:true,railTurretKills:8}
+   :{railFirstSite:'rail-relay',railDecoys:1,railGunsDestroyed:2});
+  finish(run,false,'rail-return');
+  const saved=settleProfile(next,run),r=saved.recent[0],view=reportView(r,saved);
+  assert.equal(r.creditBreakdown.extraction,60);
+  if(capture){
+   assert.equal(r.creditBreakdown.turret,40);
+   assert.match(view,/노획 포탑 반출[\s\S]*정비대 양쪽 대열 명중 · 열차 양쪽 포격 차단[\s\S]*\+40C · 새 전장에서 포탑 L1 선택[\s\S]*철도 포탑 제압<\/dt><dd>8명/);
+   assert.match(replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28,starter:'turret'}),/data-action="launch"[^>]+data-coast-loadout="turret"/);
+  }else{
+   assert.equal(r.creditBreakdown.turret,undefined);
+   assert.match(view,/중계기 교신으로 돌파[\s\S]*열차 조준 유인 1회[\s\S]*열차 포대 파괴<\/dt><dd>2 \/ 2문/);
+   assert.match(view,/data-replay-route="fresh" data-dispatch="order:wire"[\s\S]*전파 절단 준비/);
+   const wire=replayBriefingView(r,saved,'order:wire',null,{sortie:true,freshSeed:28});
+   assert.match(wire,/data-order-pin="wire"[\s\S]*5초 해킹[\s\S]*진입 시 장착 무장 정비[\s\S]*중계기 경유 없이 열차 조준 유인/);
+   assert.match(wire,/data-brief-order="wire" aria-pressed="true"/);
+   assert.match(wire,/data-action="launch"[^>]*data-sortie="wire"[^>]*>새 전장 출격 · 70C/);
+   assert.doesNotMatch(wire,/data-replay-from=|data-brief-opening/);
+   const standard=replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28});
+   assert.match(standard,/data-brief-order="standard" aria-pressed="true"[\s\S]*항구 보스 격파 후 귀환/);
+   assert.doesNotMatch(standard,/data-sortie=|data-order-pin=/);
+   assert.doesNotMatch(view,/새 전장에서 포탑 L1 선택/);
+   assert.match(reportView({...r,stats:{...r.stats,wireDecoy:1}},saved),/교신 암호로 돌파/);
+  }
+ }
+});
+test('a standard railway return sets an actionable same-seed target for its two fronts',()=>{
+ const source=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+ const complete=(run,coastTime,railTime,score)=>{
+  Object.assign(run.operation,{region:1,cleared:2,history:[{region:0,time:coastTime}],regionTime:railTime});
+  Object.assign(run.operation.coastSalvage,{turret:'secured',extracted:true});
+  Object.assign(run.stats,{bossKilled:true,score});
+  run.t=coastTime+railTime;
+  finish(run,false,'rail-return');
+ };
+ complete(source.run,32,21.2,4500);
+ const saved=settleProfile(source.next,source.run),report=saved.recent[0],options={sortie:true,freshSeed:28,route:'same'};
+ assert.match(reportView(report,saved),/data-rail-record><span><b>철도 기록 도전<\/b><small>0:53\.2 · 4,500점/);
+ const same=replayBriefingView(report,saved,'standard',null,options);
+ assert.match(same,/철도 귀환 0:53\.2 \/ 4,500점/);
+ assert.match(same,/data-replay-rail="field"[\s\S]*R이면 ↖ 통신 중계기 · 포탑이면 화차 정비대/);
+ assert.match(same,/data-seed="27"[^>]+data-replay-from="1"/);
+ const turret=replayBriefingView(report,saved,'standard',null,{...options,starter:'turret'});
+ assert.match(turret,/data-replay-rail="rail-cache"[\s\S]*철도 → 화차 정비대/);
+ assert.doesNotMatch(turret,/data-replay-from/);
+ const fresh=replayBriefingView(report,saved,'standard',null,{...options,starter:'turret',route:'fresh'});
+ assert.match(fresh,/data-replay-rail="rail-cache"[\s\S]*철도 ← 화차 정비대/);
+ assert.doesNotMatch(fresh,/data-replay-from/);
+ const retry=freshSortie(saved,27,null,'fio',null,1,null,'standard',true);
+ const reference=retry.next.active.reference;
+ assert.equal(reference.goal,'rail-return');
+ assert.deepEqual(reference.fronts,[32,21.2]);
+ assert.deepEqual(parseProfile(JSON.stringify(retry.next)).active.reference,reference);
+ assert.equal(freshSortie(saved,27,null,'fio',null,1,null,'turret',true).next.active.reference,undefined);
+ assert.equal(freshSortie({...saved,research:['thermal'],trials:['thermal']},27,null,'fio',null,1,null,'standard',true).next.active.reference,undefined);
+ assert.match(gatePace({region:1,regionTime:25,history:[{region:0,time:27}]},reference),/철도 귀환 시.*1\.2초 단축/);
+ complete(retry.run,27,25,4700);
+ const final=settleProfile(retry.next,retry.run),html=reportView(final.recent[0],final);
+ assert.match(html,/철도 귀환 #1 대비.*전체 1\.2초 단축.*\+200점/);
+ assert.match(html,/철도 차단<\/span><small>돌파 · 0:25\.0<\/small><small class="front-pace" data-trend="behind">3\.8초 지연/);
+ const onward={...final.recent[0],won:true,reason:'prototype-complete',operation:{...final.recent[0].operation,region:2,cleared:3,extracted:true}};
+ assert.match(reportView(onward,final),/철도 귀환 #1 대비<\/span><b>항구로 전진/);
+ assert.doesNotMatch(reportView(onward,final),/전체 1\.2초 단축/);
+});
+test('a canonical report previews the chosen beach and starter and only compares matching records',()=>{
+ const p=emptyProfile(),run=createOperation(27,[],null,null,'fio','standard'),active=beginProfile(p,run);
+ Object.assign(run.operation,{region:2,cleared:3,extracted:true,history:[{region:0,time:20},{region:1,time:40}],regionTime:30});
+ Object.assign(run.operation.coastSalvage,{turret:'secured',extracted:true});
+ run.stats.bossKilled=true;run.t=90;finish(run,true);
+ const saved=settleProfile(active,run),r=saved.recent[0];
+ assert.match(reportView(r,saved),/반출한 포탑으로 새 동선 시험/);
+ const fresh=replayBriefingView(r,saved,'standard',null,{sortie:true,freshSeed:28,starter:'turret'});
+ const swap={sortie:true,freshSeed:28,starter:'turret',operator:'marco',showPilots:true};
+ const nextMarco=replayBriefingView(r,saved,'standard',null,swap);
+ assert.match(nextMarco,/data-brief-pilot="marco" aria-pressed="true"/);
+ assert.match(nextMarco,/data-action="launch" data-actor="marco" data-coast-loadout="turret"/);
+ assert.match(nextMarco,/data-rescue-role="marco"/);
+ const sameFio=replayBriefingView(r,saved,'standard',null,{...swap,route:'same'});
+ assert.match(sameFio,/data-action="same-seed" data-seed="27" data-actor="fio"/);
+ assert.doesNotMatch(sameFio,/data-brief-pilot/);
+ assert.match(fresh,/새 전장<small>서쪽 난파선/);
+ assert.match(fresh,/같은 전장<small>벙커 횡단/);
+ assert.match(fresh,/class="replay-landing"><b>↙ 금색 사격 위치<\/b> · 양쪽 명중 시 축전 코일/);
+ assert.match(fresh,/코일 I · 포탑 유지[\s\S]*← 철도 정비대 · 광각 진화[\s\S]*기관총 H · 두 무장 투자[\s\S]*박격포 진지에서 포탑 정비[\s\S]*↗ 철도 중계기 · 전도 격발망/);
+ assert.match(fresh,/철도[^<]*화차 정비대/);
+ assert.doesNotMatch(fresh,/박격포 진지 기습|data-replay-from/);
+ assert.match(fresh,/data-action="launch"[^>]+data-coast-loadout="turret"/);
+ const options={sortie:true,freshSeed:28,route:'same'};
+ const same=replayBriefingView(r,saved,'standard',null,options);
+ assert.match(same,/철도 · 해안에서 고른 무장으로 공략/);
+ assert.match(same,/data-seed="27"[^>]+data-replay-from="1"/);
+ assert.match(same,/data-brief-opening="auto" aria-pressed="true"/);
+ for(const [gun,text] of [['f','이동 보급차 · 30m · 방패 측면 공략'],['r','박격포 진지 · 64m · 박격포 2문']]){
+  const planned=replayBriefingView(r,saved,'standard',null,{...options,openingGun:gun});
+  assert.ok(planned.includes(text));
+  assert.match(planned,new RegExp(`data-brief-opening="${gun}" aria-pressed="true"`));
+  assert.match(planned,new RegExp(`data-seed="27"[^>]+data-opening-gun="${gun}"`));
+  assert.doesNotMatch(planned,/data-replay-from/);
+  assert.match(planned,gun==='r'?/로켓 R을 유지하면 후방 박격포/:/화염 F를 유지하면 분사기 강화/);
+  const {run:nextRun,next}=freshSortie(saved,27,null,'fio',null,1,null,'standard',true,gun);
+  assert.equal(nextRun.operation.openingGun,gun);
+  assert.equal(next.active.reference,undefined);
+ }
+ const alternate=replayBriefingView(r,saved,'standard',null,{...options,starter:'turret'});
+ assert.match(alternate,/data-seed="27"[^>]+data-coast-loadout="turret"/);
+ assert.doesNotMatch(alternate,/data-replay-from/);
+ assert.doesNotMatch(replayBriefingView(r,saved,'standard',null,{...options,starter:'turret',openingGun:'f'}),/data-brief-opening|data-opening-gun/);
+ const plan=createOperationPlan(()=>27,28);
+ assert.equal(plan.seed,27);
+ assert.notEqual(plan.forReport(27)%4,27%4);
+ assert.notEqual(plan.forReport(27)%4,28%4);
+ assert.notDeepEqual(holdoutParts(plan.forReport(27),0),holdoutParts(27,0));
+ assert.equal(plan.seed,27);
+});
+test('a returned rail part appears in the receipt and the selected replay map previews its own pair',()=>{
+ const {run,next}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true);
+ Object.assign(run.operation,{region:1,cleared:2,nextSupport:'recovery'});
+ Object.assign(run.operation.coastSalvage,{turret:'broken',extracted:true});
+ run.stats.challenge=1;
+ run.stats.challengeWins=1;
+ finish(run,false,'rail-return');
+ const saved=settleProfile(next,run),report=saved.recent[0];
+ assert.match(reportView(report,saved),/rail-part-receipt" data-part="recovery"[^]*회수 의무 장비<\/b><p>항구 투입 전 작전 종료 · 잔류 \+20C/);
+ const fresh=replayBriefingView(report,saved,'standard',null,{sortie:true,freshSeed:28,route:'fresh'});
+ const same=replayBriefingView(report,saved,'standard',null,{sortie:true,freshSeed:28,route:'same'});
+ assert.match(fresh,/data-rail-options><summary><b>철도 잔류 보급<\/b><small>철갑 급탄 · 돌격 신관/);
+ assert.match(fresh,/이번 전장에서는 위 두 부품 중 선택/);
+ assert.match(same,/data-rail-options><summary><b>철도 잔류 보급<\/b><small>철갑 급탄 · 회수 의무 장비/);
+ assert.match(same,/이번 전장의 방어 보상으로 다시 확보 가능/);
+});
+test('harbor wins show the final build and put its unlocked research before optional replays',()=>{
+ const p=emptyProfile(),run=createOperation(27,[],null,null,'fio','standard'),active=beginProfile(p,run);
+ Object.assign(run.operation,{region:2,cleared:3,extracted:true,history:[{region:0,time:20},{region:1,time:40}],regionTime:30});
+ run.operation.coastSalvage.turret='broken';
+ run.weapons.push({id:'f',level:6,branch:'trail',evolved:true});
+ Object.assign(run.stats,{bossKilled:true,wakeKills:20,infernoCoreHits:3,flameBosses:1});
+ run.t=90;finish(run,true);
+ const saved=settleProfile(active,run),html=reportView(saved.recent[0],saved);
+ assert.match(html,/data-build-summary[\s\S]*인페르노[\s\S]*잔불 제압 20명 · 코어 직격 3회/);
+ assert.match(html,/data-research-next[\s\S]*data-research="thermal" data-debrief-research[\s\S]*data-replay-route="fresh"/);
+ const captured={...saved.recent[0],operation:{...saved.recent[0].operation,coastSalvage:{...saved.recent[0].operation.coastSalvage,turret:'secured'}},stats:{...saved.recent[0].stats,railFirstSite:'rail-cache',railFanCut:true,railTurretKills:20},creditBreakdown:{...saved.recent[0].creditBreakdown,turret:40}};
+ assert.match(reportView(captured,saved),/data-build-summary data-outcome="returned"[\s\S]*인페르노[\s\S]*포탑 반출 \+40C[\s\S]*화차 정비대 · 양쪽 포격 차단 · 포탑 제압 20명/);
+ const signal={...captured,stats:{...captured.stats,harborSignalHits:2,harborSignalTurretBreaks:1,harborSignalArmorCuts:1}};
+ assert.match(reportView(signal,saved),/data-part="signal".*역송 2회 · 포탑 직접 파괴 1문 · 보조포 포격 차단 1회/);
+ const study=buyResearch(saved,'thermal'),after=reportView(saved.recent[0],study);
+ assert.match(after,/data-trial-focus="thermal"[\s\S]*data-replay-route="fresh"/);
+ const brief=replayBriefingView(saved.recent[0],study,'standard','thermal',{freshSeed:28});
+ assert.match(brief,/포로 구출 · 화염 F 확보[\s\S]*박격포 진지 · 축전 코일 장착[\s\S]*이동 보급차 · 흡열 코일 장착[\s\S]*data-action="launch"/);
+ assert.doesNotMatch(brief,/data-requisition=/);
+ const tested={...study,trials:[]};
+ const paid=replayBriefingView(saved.recent[0],tested,'requisition:thermal:coast',null,{freshSeed:28});
+ assert.match(paid,/박격포 진지 · 축전 코일 장착[\s\S]*이동 보급차 · 흡열 코일 장착[\s\S]*data-requisition="thermal" data-requisition-at="coast"/);
+ const rail=replayBriefingView(saved.recent[0],tested,'requisition:thermal:rail',null,{freshSeed:28,sortie:true});
+ assert.match(rail,/박격포 진지 · 축전 코일 장착[\s\S]*화차 정비대 · 흡열 코일 장착/);
+ const replay=replayBriefingView(saved.recent[0],study,'standard',null,{freshSeed:28,sortie:true});
+ assert.match(replay,/이동 보급차 · 흡열 코일 장착/);
+ assert.doesNotMatch(replay,/class="replay-rail-target"|class="replay-route-hint"/);
+ assert.match(lobbyView(study,{seed:28}),/class="thermal-route"/);
 });
 test('briefings share distinct field terrain and recognizable site symbols',()=>{
- assert.equal(fieldScene(0).water,'#365766');assert.ok(fieldScene(1).rails.length);assert.equal(fieldScene(1).water,null);assert.equal(fieldScene(2).water,'#234b5e');
+ assert.ok(fieldScene(0).water&&fieldScene(2).water&&fieldScene(0).water!==fieldScene(2).water);
+ assert.ok(fieldScene(1).rails.length);assert.equal(fieldScene(1).water,null);
  const run=createOperation(17),html=regionPreview(0,17);for(const site of run.sites)assert.ok(html.includes(`translate(${site.x} ${site.y})`));
  assert.equal(sitePresentation(run.sites[0]).name,'포로 구출');assert.equal(sitePresentation(run.sites[1]).icon,'truck');
 });
@@ -398,16 +691,28 @@ test('coastal tracks connect the actual sites through clear ground and water sta
   assert.equal(coastOpeningGuide(run),null);
  }
 });
-test('the launch briefing offers rescue and the seeded nearby outpost before the start button',()=>{
- const briefing=seed=>lobbyView(emptyProfile(),{seed}).match(/<section class="coast-plan"[\s\S]*?<\/section>/)[0];
- const seed22=briefing(22),seed25=briefing(25);
- assert.match(seed22,/포로 구출<\/strong><span>↖ 경비 제압 후 접근<\/span><small>화염 F \/ 로켓 R 선택/);
- assert.match(seed22,/이동 보급차 기습<\/strong><span>↗ 방패 호위 제압<\/span><small>F L2 노획/);
- assert.match(seed25,/포로 구출<\/strong><span>↗ 경비 제압 후 접근<\/span><small>화염 F \/ 로켓 R 선택/);
- assert.match(seed25,/박격포 진지 기습<\/strong><span>↖ 박격포 2문 제압<\/span><small>R L2 노획/);
- const lobby=lobbyView(emptyProfile(),{seed:22});
- assert.ok(lobby.indexOf(seed22)<lobby.indexOf('data-action="launch"'));
- assert.doesNotMatch(lobbyView(emptyProfile(),{seed:22,brief:1}),/class="coast-plan"/);
+test('the launch briefing offers rescue or either raid and matches the selected battlefield route',()=>{
+ const p=emptyProfile(),lobby=lobbyView(p,{seed:27});
+ assert.match(lobby,/data-lobby-opening="auto" aria-pressed="true"/);
+ assert.match(lobby,/감옥에서 화염 F \/ 로켓 R 선택/);
+ assert.ok(lobby.indexOf('data-lobby-opening="r"')<lobby.indexOf('data-action="launch"'));
+ assert.doesNotMatch(lobby,/data-action="launch"[^>]+data-opening-gun/);
+ for(const openingGun of ['f','r']){
+  const selected=lobbyView(p,{seed:27,openingGun});
+  assert.match(selected,new RegExp(`data-lobby-opening="${openingGun}" aria-pressed="true"`));
+  assert.match(selected,new RegExp(`data-action="launch"[^>]+data-opening-gun="${openingGun}"`));
+  const {run}=freshSortie(p,27,null,'fio',null,null,null,'standard',true,openingGun);
+  assert.ok(selected.includes(entryRouteSvg(coastOpeningGuide(run))));
+  assert.match(lobbyView(p,{seed:27,brief:1,openingGun}),new RegExp(`data-action="launch"[^>]+data-opening-gun="${openingGun}"`));
+ }
+ const unlocked=emptyProfile();unlocked.milestones.coastTurret=true;
+ for(const brief of [1,2]){
+  const turret=lobbyView(unlocked,{seed:22,brief,loadout:'turret',openingGun:'f'});
+  assert.match(turret,/첫 목표 · 포로 구출<\/b><small>화염 F \/ 기관총 H 선택/);
+  assert.doesNotMatch(turret,/data-lobby-opening|data-opening-gun/);
+ }
+ const trial=emptyProfile();trial.research=['thermal'];trial.trials=['thermal'];
+ assert.doesNotMatch(lobbyView(trial,{seed:27,openingGun:'r'}),/data-lobby-opening|data-opening-gun/);
 });
 test('the harbor quay follows the field boundary and bay marks follow mirrored loading sites',()=>{
  const port=fieldScene(2,19),mirror=fieldScene(2,18);
@@ -425,6 +730,19 @@ test('the same harbor container uses the same art and depth limit on both mirror
   const [scale,draw]=calls.splice(0);
   assert.equal(draw.sprite,100);
   assert.ok(Math.abs(draw.height*scale.scale-(b.h+40))<1e-9);
+ }
+});
+test('rail wagon art projects north of its footprint and fades on the walkable side',()=>{
+ for(const seed of [17,18]){
+  const b=previewLayout(seed,1).blocks.find(block=>block.id==='r1');
+  const sprite={},draws=[];
+  const context={save(){},restore(){},drawImage(...args){draws.push(args);}};
+  paintBlock(context,b,1,{railWagon:sprite});
+  const depth=coverDepth(b,1);
+  assert.deepEqual(draws,[[sprite,b.x,b.y-depth,b.w,b.h+depth]]);
+  assert.ok(coverMasksPilot(b,1,{x:b.x+b.w/2,y:b.y-20}));
+  assert.equal(coverMasksPilot(b,1,{x:b.x+b.w+20,y:b.y-20}),false);
+  assert.equal(coverMasksPilot(b,1,{x:b.x+b.w/2,y:b.y-depth-1}),false);
  }
 });
 
@@ -481,6 +799,11 @@ test('fresh launch avoids the previous beach route, including after reload and s
 
 test('the post-clear order dock previews the correct field site and never silently opts in',()=>{
  const p=emptyProfile();assert.doesNotMatch(lobbyView(p),/추가 작전 지령/);
+ const early={...p,credits:69,milestones:{wireOrder:true}};
+ const earlyBoard=lobbyView(early,{order:'wire'});
+ assert.match(earlyBoard,/data-order="wire"[^>]*disabled[\s\S]*1C 부족/);
+ assert.doesNotMatch(earlyBoard,/data-order="convoy"|data-sortie=/);
+ assert.match(lobbyView({...early,credits:70},{order:'wire'}),/data-sortie="wire"/);
  p.records.wins=1;p.credits=600;
  const normal=lobbyView(p);assert.match(normal,/추가 작전 지령/);assert.doesNotMatch(normal,/data-sortie=/);
  const wire=lobbyView(p,{seed:19,order:'wire'});assert.match(wire,/data-sortie="wire"/);
