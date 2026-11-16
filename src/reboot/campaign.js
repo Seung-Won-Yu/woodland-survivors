@@ -42,6 +42,10 @@ export function holdoutParts(seed,front){
  const missing=(((seed^(seed>>>16))>>>0)+front*2+2)%RARE_PARTS.length;
  return RARE_PARTS.filter((_,index)=>index!==missing);
 }
+export function holdoutRewardParts(s){
+ if(isSalvageCampaign(s)&&coastAtShore(s)?.turret==='broken')return ['overrun','recovery'];
+ return holdoutParts(s.seed,s.operation.region);
+}
 export const canAdvanceWithVanguard=s=>canAdvanceFront(s)&&!isCoastRailSortie(s)&&!(isSalvageCampaign(s)&&coastAtShore(s))&&s.stage==='holdout'&&s.holdTime<HOLDOUT.grace&&!s.challenge&&!s.operation.nextSupport;
 export function vanguardAid(player){
  const kit=FRONT_SUPPORTS.vanguard;
