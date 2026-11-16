@@ -1,12 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit} from '../src/reboot/interface.js';
+import {lobbyView,reportView,replayBriefingView,gatePace,railHandoff,railTransferBrief,railArrivalKit,fieldDraftView} from '../src/reboot/interface.js';
 import {emptyProfile,beginProfile,settleProfile,createStore,freshSortie,buyResearch,parseProfile} from '../src/reboot/profile.js';
-import {createOperation,finish} from '../src/reboot/model.js';
+import {action,createOperation,finish} from '../src/reboot/model.js';
+import {earlyFieldDraft} from '../src/reboot/coast-discovery.js';
 import {aidBearingPosition,coastCuePosition,coveredCombatPanels,visibleSweep} from '../src/reboot/render.js';
 import {portEscapeLanes,portBuildApproach,frontTactic,portTacticKeys} from '../src/reboot/campaign.js';
 import {makeWeapon} from '../src/reboot/content.js';
 
+test('early field drafts put short card effects and relevant actions in one dialog',()=>{
+ const {run}=freshSortie(emptyProfile(),27,null,'fio',null,null,null,'standard',true,null,true,true);
+ const cache=run.operation.exploration.caches.find(c=>c.kit==='burst');
+ Object.assign(run.player,{x:cache.x,y:cache.y});assert.ok(action(run,'interact'));
+ run.level=2;run.pendingLevels=1;assert.ok(action(run,'upgrade'));
+ assert.ok(earlyFieldDraft(run));
+ const html=fieldDraftView(run,true);
+ assert.match(html,/LV\.2 개조.*파열탄 장착 중/s);
+ assert.match(html,/data-choice="gun:r".*로켓 R L1.*적 무리 광역 폭발/s);
+ assert.match(html,/data-choice="rank:h".*기관총 H L2.*연사 화력 \+17%/s);
+ assert.match(html,/data-choice="module:ricochet".*추가 도탄 1회/s);
+ assert.match(html,/data-action="reroll".*data-action="banish-menu".*data-action="skip"/s);
+ assert.doesNotMatch(html,/L4 분화까지|조율권|보유 무장/);
+ run.level=6;assert.ok(!earlyFieldDraft(run));
+});
 test('rail handoff distinguishes a weapon from cargo, an unrecovered wreck and a destroyed mount',()=>{
  const s=createOperation(27,[],null,null,'fio','standard');
  const coast=s.operation.coastSalvage;

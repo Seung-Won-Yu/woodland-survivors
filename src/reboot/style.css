@@ -1528,3 +1528,21 @@ body.roaming-field .arsenal #support-status:not([hidden]):not([data-field-kit]){
  .report-sheet[data-quick-debrief] .debrief-details summary{min-height:44px}
  .debrief-quick-actions{padding:8px}
 }
+
+.sheet.field-menu.field-draft{width:min(100%,436px);padding:clamp(12px,4vw,22px);border-top:3px solid #e3ba79;background:#202c2cf7}
+.field-draft>header{align-items:start;gap:8px;margin-bottom:12px}
+.field-draft h2{font-size:clamp(19px,4vw,27px);color:#f4dfb6;margin:0}
+.field-draft-kit{display:block;margin-top:5px;font-size:10px;color:var(--kit-ink)}
+.field-draft-cards{display:grid;gap:6px}
+.field-draft-card{display:grid;grid-template-columns:47px minmax(0,1fr) 17px;align-items:center;gap:10px;min-height:62px;text-align:left;padding:6px 10px;border:1px solid #798779;color:#fff0ca;background:#35443d;box-shadow:inset 3px 0 #7f927a}
+.field-draft-card[data-choice^="gun:"]{box-shadow:inset 3px 0 #d1a766}
+.field-draft-card:not(:disabled):is(:hover,:focus-visible){background:#465a4a;border-color:#e6c892}
+.field-draft-card strong,.field-draft-card small{display:block;line-height:1.4;word-break:keep-all}
+.field-draft-card strong{font-size:14px}.field-draft-card small{margin-top:3px;font-size:11px;color:#d2d9be}
+.field-draft-art{display:grid;place-items:center;width:47px;height:44px;color:#edce95}
+.field-draft-art .kit-sprite{width:58px;height:58px}.field-draft-art svg{width:29px;height:29px}
+.field-draft-card kbd{font:inherit;font-size:10px;text-align:center;border:1px solid #8b947e;color:#dcdebf}
+.field-draft-actions{display:flex;align-items:center;gap:5px;margin-top:8px}
+.field-draft-actions>button{min-height:44px;padding:5px 8px;font-size:10px;white-space:nowrap}
+.field-draft-actions>button:last-child{margin-left:auto}
+@media(pointer:coarse){.field-draft-card{grid-template-columns:47px minmax(0,1fr)}.field-draft-card kbd{display:none}}

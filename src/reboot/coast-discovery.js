@@ -42,3 +42,5 @@ export const coastCaches=s=>s.operation?.region===0&&s.stage==='field'&&!s.opera
  ?s.operation.exploration?.caches||[]:[];
 export const movingReload=s=>s.operation?.exploration?.kit==='stride'&&s.player.pickupSweep
  &&s.t<s.operation.exploration.until;
+export const earlyFieldDraft=s=>s.choice?.type==='level'&&s.operation?.exploration&&s.operation.region===0
+ &&s.stage==='field'&&!s.choice.coastPrep&&!s.choice.gatePrep&&s.level<=5;

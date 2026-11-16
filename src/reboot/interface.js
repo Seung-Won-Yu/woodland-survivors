@@ -6,7 +6,7 @@ import {canLaunchOrder,canReserveResearch,earnsWireOrder,marcoRecord,orderUnlock
 import {OPERATORS,operatorOf,operatorId} from './operator.js';
 import {COAST_SALVAGE,coastSalvage,coastSalvageWreck,coastRole,coastRoleRank,coastTurretReturned,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,railSortieReturned,sortieFrontCount,coastFanPosition} from './coast-salvage.js';
 import {frontElapsed,replayReference,referenceMatches,tenthsOfSecond,timeDifference,installedCapstones,harborLoadout} from './replay.js';
-import {HARBOR_PART_ACTION} from './choice-details.js';
+import {choiceDetails,HARBOR_PART_ACTION} from './choice-details.js';
 import {RAIL_SALVAGE_ROUTES,frontEntry,mapSeed,railWorkshopEntry,railLayoutForSeed,portLayoutForSeed} from './campaign.js';
 import {railRelayInvestment} from './model.js';
 export const escapeHtml=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -15,6 +15,25 @@ export const clockText=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padSta
 const splitClockText=t=>{const tenths=tenthsOfSecond(t);return `${clockText(tenths/10)}.${tenths%10}`;};
 const svg=(body,box='0 0 160 100')=>`<svg viewBox="${box}" aria-hidden="true" focusable="false">${body}</svg>`;
 export function itemArt(id,extra=''){return `<span class="kit-sprite kit-${id} ${extra}" aria-hidden="true"></span>`;}
+export function fieldDraftView(run,canBanish){
+ const level=run.level-run.pendingLevels,kit=FIELD_KITS[run.operation.exploration.kit];
+ const cards=run.choices.map((card,i)=>{
+  const info=choiceDetails(run,card);
+  const rank=card.kind==='rank'?` L${info.after}`:card.kind==='gun'?' L1':'';
+  const benefits={r:'적 무리 광역 폭발',f:'가까운 적을 함께 태움'};
+  const impact=card.kind==='gun'?benefits[card.weapon]||info.impact:card.id==='utility:pickup'?'XP 회수 반경 +10':info.impact;
+  const icon=info.art?itemArt(info.art):moduleIcon(card.module||'gear');
+  return `<button data-choice="${e(card.id)}" class="field-draft-card"${info.blocked?' disabled':''}>
+   <span class="field-draft-art" aria-hidden="true">${icon}</span><span><strong>${e(info.title+rank)}</strong><small>${e(impact)}</small></span><kbd>${i+1}</kbd>
+  </button>`;
+ }).join('');
+ const cannotSwitch=!run.firstNew&&run.choices.some(card=>card.kind==='gun')&&run.excluded.some(gun=>gun==='f'||gun==='r');
+ return `<section class="sheet field-menu field-draft" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+  <header><div><h2 id="choice-title">LV.${level} 개조</h2>${kit?`<small class="field-draft-kit" style="--kit-ink:${kit.color}">${kit.name} 장착 중</small>`:''}</div><span class="paused">Ⅱ 전투 정지</span></header>
+  <div class="field-draft-cards">${cards}</div>
+  <footer class="field-draft-actions"><button data-action="reroll"${!run.rerolls||cannotSwitch?' disabled':''}>재추첨 ${run.rerolls}</button>${canBanish?`<button data-action="banish-menu">후보 제외 ${run.banishes}</button>`:''}<button data-action="skip">건너뛰기</button></footer>
+ </section>`;
+}
 function railApproachBrief(seed,site,fan,railLayout){
  const {arrival,routes}=frontEntry(mapSeed(seed,1),1,railLayout);
  const route=routes.find(item=>item.site===site),path=fan?railWorkshopEntry(route,arrival):route.path;
