@@ -6,7 +6,7 @@ import {RAID_MARKS,raidSeconds,raidTimeLeft,raidAhead,raidOnNose} from './raid.j
 import {coastChargeLane} from './coast-charge.js';
 import {COAST_SALVAGE,coastSalvage,coastAtShore,isCoastRailSortie,isSalvageCampaign,carriesCoastSalvage,sortieFrontCount,canAdvanceFront,coastRole,coastRoleRank,coastRoleBonus,coastRoleTarget,coastTurretLane,coastHullFront,coastSalvageWreck,coastTurretReturned} from './coast-salvage.js';
 import {lobbyView,reportView,replayBriefingView,isReport,gatePace,loadoutChips,itemArt,moduleIcon,coastRescueReward,railHandoff,railTransferBrief,railArrivalKit} from './interface.js';
-import {REGIONS,BOSS_ENTRY,HOLDOUT,frontTimeLeft,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,isOpeningGun,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastalThermalPrep,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portBuildApproach,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutRewardParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTier,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railLaneBounds,railBossGuide,railHasRelay,railHasWire,RAIL_GUN_COLORS} from './campaign.js';
+import {REGIONS,BOSS_ENTRY,HOLDOUT,frontTimeLeft,COUNTERBATTERY_CREDITS,MANEUVERS,FRONT_SUPPORTS,PORT_SUPPORT,PORT_AID_INTERCEPT,FRONT_TACTICS,RESEARCH,RESEARCH_PROOF_CREDITS,completedResearchProofs,researchProofProgress,requisitionSite,CARGO_CREDITS,DEFENSE_ZONE,relayDefenseRound,SIGNAL_COLOR,SIGNAL_SECONDS,SIGNAL_CARGO_REACH,signalCargo,signalGuardCount,signalEscortPlan,signalRoute,signalLane,signalLaneLabel,sortieOrder,orderTarget,COAST_APPROACHES,COAST_SALVAGE_LEVEL,coastFork,coastPreemptSite,isOpeningGun,coastResponseCue,coastCrossGun,coastTacticalLootAvailable,coastStagingPoint,coastStrike,coastStrikeArmed,coastStrikeForSite,claimedCoastLead,coastApproach,coastService,COAST_SERVICE_COST,activeEntry,entryWaypoint,railGarrison,wireGarrison,relayCrewLeft,coastLead,coastalThermalPrep,coastLeadColor,coastEncounterCue,frontTactic,railDisarmed,railGunOf,railGunLabel,railLaneLabel,portBreachFlank,portArmorExposed,portFlankPoint,portCoreWindow,portCoreDisrupted,portCoreReach,portCompressionBand,portCompressionRange,portWakeBreach,portWakeMode,portTurretShutter,portGantry,portPartStaging,portSideName,portTacticKeys,portBuildApproach,portGantryBypass,portTurretSide,portBarrageAxis,portAuxiliaryRound,portCrossfireCuts,portCrossfireZone,portJamsSweep,portRelayCuts,portSignalCuts,portConductiveSignal,portAidCue,portAidCounterReady,portAidCounterRound,portEscapeLanes,holdoutRewardParts,canAdvanceWithVanguard,beachRoute,supportTactic,defenseSeconds,holdoutContract,signalCourier,exitGate,groundXp,holdoutTiming,holdoutOpeningDelay,portBatteryPositions,portBatterySide,portBatteries,region,operationCredits,operationPayout,railLaneBounds,railBossGuide,railHasRelay,railHasWire,RAIL_GUN_COLORS} from './campaign.js';
 import {GUNS,MODULES,QUALITY,RULES,INFERNO_CORE_DISTANCE,isFocusedInferno,isTrailInferno,isConductiveFusion,buildPaths,bearing,distance,blastContactRadius,gunEquipLevel,rankChoiceLevel,heatSynergyReady,moduleRank,moduleGain,compatible,railCalibration,refitWeapons,weaponStats,capstoneName,fusionTitle,isCapturedTurret,coastFanAngle} from './content.js';
 import {restore,snapshot,step,choose,action,reroll,banish,banishOptions,skip,pause,resume,finish,assemblyOptions,gatePreparation,railWorkshopPlan,railRelayInvestment,fieldResearchTrial,infernoControlRank,canOpenLevel,activeManeuver,interaction,focusPlan,xpNeeded,takeEvents,infernoCoreLine,portTurretInSight,portArmorLine,harborArcTarget,harborSignalLine,coastRocketVolley,coastRocketCounter,coastSignalPlan,coastFlameLine,emberChargeCue,canStartChallenge,canCallGateChallenge,conduitMortarCue,railFanCutCue,armoredRaidPart} from './model.js';
 import {createStore,buyResearch,canLaunchOrder,canReserveResearch,freshSortie,checkpointProfile,settleProfile,STORAGE_KEY} from './profile.js';
@@ -259,6 +259,10 @@ function gateChoices(harborBuild){
  }).join('');
  return `<div class="gate-deck" data-count="${run.choices.length}">${orders}</div>`;
 }
+function holdoutClock(tier,wait){
+ if(!tier)return `첫 증원까지 ${wait}초`;
+ return tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${wait}초`;
+}
 function showChoices(){
  const coastOptions=run.choices.some(c=>c.kind==='coast-strike');
  const coastalService=run.choices.some(c=>c.coastLevel);
@@ -285,7 +289,9 @@ function showChoices(){
  const quality=run.choice.quality,receipt=type==='raid-reward'?raidReceipt(quality):'',paths=assembly&&!gateAssembly?workshopBlueprints():'';
  const orderArmory=type==='armory'&&run.choice.siteId==='arsenal'&&run.operation?.region===0&&run.operation.order==='convoy'&&!run.raidUsed;
  const harborForecast=railGate&&portBuildApproach(run);
- const gateIntel=atGate&&!harborForecast?`<div class="gate-intel"><span><small>돌파 전선</small><b>${esc(region(run).name)}</b></span><span><small>다음 전선</small><b>${canAdvanceFront(run)?esc(REGIONS[run.operation.region+1].name):'작전실'}</b></span><span><small>미회수 XP</small><b>${groundXp(run)}</b></span></div>`:'';
+ const gateTiming=atGate&&run.operation.roaming?holdoutTiming(run):null;
+ const gateReadout=gateTiming?`바닥 XP ${groundXp(run)} · ${holdoutClock(gateTiming.tier,gateTiming.wait)}`:'';
+ const gateIntel=atGate&&!harborForecast&&!gateTiming?`<div class="gate-intel"><span><small>돌파 전선</small><b>${esc(region(run).name)}</b></span><span><small>다음 전선</small><b>${canAdvanceFront(run)?esc(REGIONS[run.operation.region+1].name):'작전실'}</b></span><span><small>미회수 XP</small><b>${groundXp(run)}</b></span></div>`:'';
  const handoff=shoreGate?railHandoff(run):null;
  const wireTransfer=shoreGate&&wireTransferInvestment(run);
  const preparation=atGate?gatePreparation(run):null;
@@ -316,7 +322,7 @@ function showChoices(){
  const deck=carrier||mount?ordnanceDeck():atGate?gateChoices(harborForecast):assembly?`${capstones.length?choiceDeck(capstones):paths}${assemblyMaintenance(other)}`:run.choice.opening?openingChoiceDeck(run.choices):choiceDeck(run.choices);
  const footer=gateAssembly?'조립을 마치면 같은 게이트로 돌아갑니다.':assembly?(run.tuning?'조립과 정비는 조율권을 공유합니다.':(run.operation?.cleared||0)<2?'중간 보스 격파 시 조율권 1개 확보':'보유 조율권 없음'):type==='control'?'이번 전선에서 쓸 전술 또는 보급 한 가지':type==='clear'?gateNote:atPursuit?(run.operation.region<2?'선택한 장비는 다음 전선 한 곳에서 작동합니다.':'다음 D2 · 양쪽 박격포 제압 +1,000점 · 귀환로 개방'):workshop?'정비 보급은 한 가지 · 변경한 발사 방식은 항구까지 유지':type==='level'||run.choice.opening||coastalService||wireSupply?'':'새 총은 필드에서 · XP는 보유 공격과 모듈에 투자';
  panel(`<section class="sheet field-menu${wireSupply?' wire-supply-menu':''}${carrier||mount?' field-ordnance':''}${assembly?' assembly-menu':''}${gateAssembly?' gate-assembly':''}${coastOptions?' coast-options':salvage?' coast-salvage':''}${coastalService?' coast-service-menu':relaySupply?' relay-supply-menu':''}${type==='level'?' level-draft':''} ${quick?'quick-mod':''}${atGate?' gate-menu':atPursuit?' pursuit-menu':type==='control'?' control-menu':workshop?' rail-workshop':run.choice.opening?' opening-supply':''}" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-  <header><div><span class="eyebrow">${wireReceipt?'전파 절단 · 해안 통신소':wireSupply?'전파 절단 · 철도 진입':carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?rescueReceipt:run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${wireReceipt?'교신 암호 확보':wireSupply?'암호 보급 수령':title}</h2>${wireReceipt?'<p class="wire-receipt-note">철도 진입 시 무장 정비 · 열차 조준 유인 1회</p>':wireSupply?'<p class="wire-receipt-note">한 가지 선택 · 암호로 열차 조준 유인 1회</p>':lead?`<p>${esc(lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
+  <header><div><span class="eyebrow">${wireReceipt?'전파 절단 · 해안 통신소':wireSupply?'전파 절단 · 철도 진입':carrier?'해안 · 장갑 수송차':mount?esc(run.choice.source):run.choice.opening?rescueReceipt:run.choice.preempt?'기습 성공':type==='level'?`LV.${earnedLevel} 보상 · XP 개조`:assembly?`조율권 ${run.tuning}개`:type==='clear'?(railGate?'귀환로 개방':'게이트 통과'):atPursuit?'잔류 도전 D1':workshop||relaySupply?'철도 · 현장 정비':'노획 · 현장 보급'} ${quality?' / '+QUALITY[quality]:''}</span><h2 id="choice-title">${wireReceipt?'교신 암호 확보':wireSupply?'암호 보급 수령':title}</h2>${wireReceipt?'<p class="wire-receipt-note">철도 진입 시 무장 정비 · 열차 조준 유인 1회</p>':wireSupply?'<p class="wire-receipt-note">한 가지 선택 · 암호로 열차 조준 유인 1회</p>':gateReadout||lead?`<p>${esc(gateReadout||lead)}</p>`:''}</div><span class="paused">${atGate||carrier||mount?'Ⅱ 전투 정지':'Ⅱ 정비 중'}</span></header>
   ${toolsAfterDeck?'':tools}${doctrineChoices()}${receipt}${orderArmory?'<p class="armory-order-note">보급선 절단 · 경량 보급차를 저지해야 지령을 완료합니다. 여기서 보급을 받거나 건너뛰면 지령 기회를 잃습니다.</p>':''}${railPreview}${carrierPrep?`<button class="carrier-prep" data-action="coast-upgrade" aria-keyshortcuts="R"><span>${moduleIcon('gear')}<b>XP 개조</b> <small>${run.pendingLevels}회 대기</small></span><span>교전 전 사용 <i aria-hidden="true">›</i></span></button>`:''}${deck}${prepAfterDeck?gatePrep:''}${toolsAfterDeck?tools:''}
   ${coastalService||carrier||mount?'':`<footer class="choice-footer">${footer?`<small>${footer}</small>`:''}<div class="buttons">${back?`<button data-choice="back">${gateAssembly?'게이트로 돌아가기':'전투로 돌아가기'} ${choiceKey(back)}</button>`:''}${type==='armory'&&!run.raidUsed?'<button class="primary" data-action="raid-menu">상자를 걸고 습격</button>':''}${!['assembly','clear','control','pursuit-reward'].includes(type)?'<button class="subtle" data-action="skip">건너뛰기 · 소량 회복</button>':''}</div></footer>`}
   ${capstones.length?paths:''}
@@ -1245,12 +1251,15 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
   recovery.lastElementChild.textContent=`${(Math.floor(salvage.work*10)/10).toFixed(1)} / ${COAST_SALVAGE.seconds}초`;
  }
  const pursuit=$('pursuit');
+ const holdoutPreview=$('holdout-preview');
+ const showHoldoutPreview=roaming&&holdout&&run.challenge?.state!=='active'&&!recoveringTurret&&run.raid?.state!=='active';
+ holdoutPreview.hidden=!showHoldoutPreview;
  pursuit.hidden=!holdout||run.raid?.state==='active'||run.challenge?.state==='active';
  if(holdout){
   const challenge=run.challenge,active=challenge?.state==='active';
   const contract=holdoutContract(run,active?challenge.tier:undefined);
   pursuit.disabled=!canStartChallenge(run);
-  const tier=holdoutTier(run.holdTime),nextWave=Math.ceil(HOLDOUT.grace+tier*HOLDOUT.tierSeconds-run.holdTime);
+  const {tier,wait:nextWave}=holdoutTiming(run);
   const nearGate=interact?.id==='extract',finalFront=!canAdvanceFront(run);
   const contractTier=(run.operation.challengeTier||0)+1;
   const rewardTier=active?challenge.tier:contractTier;
@@ -1287,11 +1296,12 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
   const targetName=defending?'중앙 중계기':cargo?'통신 화물':courier?'통신 차량':battery?`${portBatterySide(battery)} 포대`:'지휘관';
   const gatePrompt=shoreTransfer?'철도 전진로 개방':isSalvageCampaign(run)&&front===1?'게이트 · 귀환 또는 전진':finalFront?'게이트 · 귀환 또는 잔류':'게이트 · 전진 또는 잔류';
   $('objective').textContent=defending&&(relayGap<=DEFENSE_ZONE.r||relayComplete)?`중계기 송신 · ${relayTime}`:target?`${bearing(p,target.x,target.y)} ${targetName} · ${Math.round(distance(p,target)/10)}m`:nearGate?gatePrompt:`${direction} ${gate.name} · ${Math.round(distance(p,gate)/10)}m`;
-  const reserveAt=active?challenge.reserveAt:null;
-  $('threat').textContent=relayRound&&(relayInterrupted||relayComplete)?`착탄까지 ${(Math.ceil(relayRound.timer*10)/10).toFixed(1)}초`:reserveAt>run.holdTime?`${defending?'중계기':'지휘부'} 역습까지 ${Math.ceil(reserveAt-run.holdTime)}초`:tier===0?`${active&&challenge.type==='hunt'?'정규 공세':'첫 증원'}까지 ${nextWave}초`:tier===HOLDOUT.maxTier?`공세 ${tier}/${HOLDOUT.maxTier} · 최대 증원`:`공세 ${tier}/${HOLDOUT.maxTier} · 강화까지 ${nextWave}초`;
+  const reserveAt=active&&challenge.reserveAt<holdoutOpeningDelay(run)?challenge.reserveAt:null;
+  $('threat').textContent=relayRound&&(relayInterrupted||relayComplete)?`착탄까지 ${(Math.ceil(relayRound.timer*10)/10).toFixed(1)}초`:reserveAt>run.holdTime?`${defending?'중계기':'지휘부'} 역습까지 ${Math.ceil(reserveAt-run.holdTime)}초`:holdoutClock(tier,nextWave);
   const steps=$('holdout-steps');
   for(let i=0;i<steps.children.length;i++)steps.children[i].classList.toggle('active',i<tier);
-  $('ground-xp').textContent=groundXp(run);
+  const xp=groundXp(run);
+  $('ground-xp').textContent=xp;
   $('pursuit-goal').textContent=cargo?'D1 · 차량 정지, 화물 미회수':active?`D${challenge.tier} · ${contract.name}`:contract.id==='defend'?`안전한 방어 범위에서 ${defenseSeconds(contractTier)}초 송신`:contract.goal;
   $('pursuit-intel').textContent=detail;
   const parts=rare?holdoutRewardParts(run).map(id=>FRONT_SUPPORTS[id].name).join(' / '):'';
@@ -1305,6 +1315,20 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
    :rewardTier===1?`보상 · 화물 ${CARGO_CREDITS}C 또는 후송 보급`:portHoldout&&rewardTier===2&&isSalvageCampaign(run)?`진지 제압 후 생존 귀환 +${COUNTERBATTERY_CREDITS}C`
    :`완료 +${(rewardTier*500).toLocaleString()}점${portHoldout&&run.stats.holdoutCargo?` · 화물 +${CARGO_CREDITS}C 확보`:''}`;
   $('pursuit-label').textContent=pursuit.disabled?'도전 대기 · 적 밀집':`D${contractTier} · ${contract.name}`;
+  if(roaming&&!active){
+   $('objective').textContent=nearGate?'게이트 개방':`${direction} 게이트 ${Math.round(distance(p,gate)/10)}m`;
+   $('threat').textContent=`바닥 XP ${xp} · ${holdoutClock(tier,nextWave)}`;
+  }
+  if(showHoldoutPreview){
+   const reward=wreck?'잔해에서 포탑 분리'
+    :pendingCargo?`귀환 시 노획품 +${COUNTERBATTERY_CREDITS}C`
+    :earned?`${FRONT_SUPPORTS[earned].name} 확보`
+    :rare?`도전 보상 · ${parts}`
+    :rewardTier===1?`차량 저지 · 화물 +${CARGO_CREDITS}C 선택`
+    :portHoldout&&rewardTier===2?`포대 2문 · 귀환 시 +${COUNTERBATTERY_CREDITS}C`
+    :`도전 보상 · +${(rewardTier*500).toLocaleString()}점`;
+   if(holdoutPreview.textContent!==reward)holdoutPreview.textContent=reward;
+  }
  }
  if(roaming){
   if(run.stage==='field'){
@@ -1317,9 +1341,6 @@ function updateHud(entry,focus=null,coast={},rail=null,handoff=null,gateInk){
    }
    $('objective').textContent=site?local:`${bearing(p,BOSS_ENTRY.x,BOSS_ENTRY.y)} 보스 ${Math.round(distance(p,BOSS_ENTRY)/10)}m`;
    if(!conduit&&!cut)threat.textContent='';
-  }else if(holdout&&run.challenge?.state!=='active'){
-   $('objective').textContent=nearGate?'게이트 개방':`${direction} 게이트 ${Math.round(distance(p,gate)/10)}m`;
-   $('threat').textContent='남으면 증원 강화';
   }
  }
  const maneuver=$('maneuver-status'),active=activeManeuver(p);

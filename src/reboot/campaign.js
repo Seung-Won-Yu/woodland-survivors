@@ -13,7 +13,7 @@ export const REGIONS=[
  {id:'port',name:'항구 결전',mission:'지휘 병기를 파괴하고 살아서 귀환하라',boss:'지휘 병기',hp:9000,partHp:850,theme:{ground:'#4b606b',tile:'#8fa1a8',road:'#2e414c',edge:'#1b3a50'},hint:'관제소를 확보하면 최종전 증원을 줄일 수 있습니다.'}
 ];
 export const region=s=>REGIONS[s.operation?.region||0];
-export const HOLDOUT={grace:6,tierSeconds:10,maxTier:6,rareKills:8,coastReserveDelay:2.25,railReserveDelay:3.1};
+export const HOLDOUT={grace:6,roamingGrace:2,tierSeconds:10,maxTier:6,rareKills:8,coastReserveDelay:2.25,railReserveDelay:3.1};
 export const HOLDOUT_CONTRACTS=[
  {id:'hunt',name:'지휘부 소탕',goal:'지휘관 2명 제압',risk:'양쪽에서 오는 장교의 부채꼴 사격'},
  {id:'defend',name:'중계기 방어',goal:'안전한 방어 범위에서 8초 송신',risk:'포격 원 안에서는 송신 중단'},
@@ -476,6 +476,14 @@ export function exitGate(s){
 }
 export function holdoutTier(time){
  return time<HOLDOUT.grace?0:Math.min(HOLDOUT.maxTier,1+Math.floor((time-HOLDOUT.grace)/HOLDOUT.tierSeconds));
+}
+export const holdoutOpeningDelay=s=>s.operation?.roaming?HOLDOUT.roamingGrace:HOLDOUT.grace;
+export function holdoutTiming(s){
+ const time=s.holdTime;
+ const opening=holdoutOpeningDelay(s);
+ if(time<opening)return {tier:0,wait:Math.ceil(opening-time)};
+ const tier=Math.max(1,holdoutTier(time));
+ return {tier,wait:tier===HOLDOUT.maxTier?0:Math.ceil(HOLDOUT.grace+tier*HOLDOUT.tierSeconds-time)};
 }
 export const groundXp=s=>s.gems.reduce((sum,g)=>sum+g.value,0);
 const BEACH_ROUTES=[
